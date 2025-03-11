@@ -1,0 +1,45 @@
+graph TB
+    %% Event Buses
+    EB[EventBus - Base] --> SEB[ServerEventBus]
+    EB --> MEB[MovementEventBus]
+    EB --> UEB[UiEventBus]
+
+    %% Main Components
+    Game[Game] --> SEB
+    Movement[Movement] --> MEB
+    Controls[Controls] --> UEB
+    Renderer[Renderer] --> UEB
+
+    %% Server Events
+    SEB -- map --> Movement & Renderer
+    SEB -- characters --> Movement & Renderer
+    SEB -- player --> Movement
+    SEB -- validCells --> Movement
+    SEB -- speech --> Renderer
+
+    %% Movement Events
+    MEB -- position --> Renderer
+    MEB -- move --> Renderer
+    MEB -- path --> Movement
+    MEB -- requestRoute --> Movement
+    MEB -- location --> Movement
+
+    %% UI Events
+    UEB -- frame --> Movement
+    UEB -- log --> Renderer
+    Controls -- direction --> MEB
+
+    %% Data Flow
+    subgraph Data Flow
+    User[User Input] --> Controls
+    Controls --> Movement
+    Movement -- movement updates --> Renderer
+    Renderer -- display --> User
+    end
+
+    %% Component Types
+    classDef core fill:#f9f,stroke:#333,stroke-width:2px
+    classDef event fill:#bbf,stroke:#33f,stroke-width:1px
+
+    class Game,Movement,Controls,Renderer core
+    class EB,SEB,MEB,UEB event

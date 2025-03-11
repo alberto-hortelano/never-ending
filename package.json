@@ -1,0 +1,23 @@
+{
+  "name": "never-ending",
+  "version": "1.0.0",
+  "description": "",
+  "main": "start",
+  "type": "module",
+  "scripts": {
+    "start": "npx concurrently 'npm run build' 'npm run serve'",
+    "serve": "npx http-server ./public --cors --no-dotfiles -p 3000",
+    "terminal": "tsx ./terminal.ts",
+    "build": "tsc --watch",
+    "web:test": "npm --prefix web-test start",
+    "test": "jest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.3.3",
+    "jest": "^29.7.0"
+  }
+}
