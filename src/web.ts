@@ -1,4 +1,66 @@
-// Main entry point for the game UI
-import { GameUI } from './web/index.js';
+import type { IState, ICharacter, IMessage, IPositionable } from "./common/interfaces";
 
-new GameUI('#app-container');
+import { playerData } from "./common/__tests__/data";
+import { Controls } from "./common/Controls";
+import { Game } from "./common/Game";
+import { IMovement, Movement } from "./common/Movement";
+import { State } from "./common/State";
+import { IGraphics, UI } from "./common/UI";
+import { BaseEvent, EventBus } from "./common/events";
+
+const play = () => {
+    // Test data
+    const playerPosition = { x: 1, y: 2 };
+    // Mocks
+    const printMap = () => {
+    }
+    const locate = (positionable: IPositionable) => {
+        positionable.cell = state.map[playerPosition.y]![playerPosition.x]!;
+        return positionable;
+    }
+    const mockHelpers: {
+        graphics: IGraphics,
+        movement: IMovement,
+    } = {
+        graphics: {
+            printMap,
+        },
+        movement: {
+            locate,
+        }
+    }
+    const initState = (): IState => {
+        // State
+        const map = State.fillMap(20, 30);
+        const characters: ICharacter[] = [playerData];
+        const messages: IMessage[] = [];
+        const initialState: IState = {
+            map,
+            characters,
+            messages,
+        };
+        return initialState;
+    }
+
+    const initialState = initState();
+    const state = new State(initialState);
+    const borders = state.getBorders();
+    state.setWalls(borders.map(cell => cell.position));
+    const movement = new Movement(mockHelpers.movement);
+    const controls = new Controls();
+    const ui = new UI(mockHelpers.graphics);
+    const game = new Game(state);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).game = {
+        state,
+        movement,
+        controls,
+        ui,
+        game,
+    }
+}
+
+(async () => {
+    const eventBus = new EventBus();
+    eventBus.listen(BaseEvent.play, play);
+})();

@@ -5,10 +5,12 @@
   "main": "start",
   "type": "module",
   "scripts": {
-    "start": "npx concurrently 'npm run build' 'npm run serve'",
-    "serve": "npx http-server ./public --cors --no-dotfiles -p 3000",
-    "terminal": "tsx ./terminal.ts",
+    "start": "npx concurrently 'npm run build' 'npm run sync:files' 'npm run serve' 'npm run scss'",
+    "serve": "tsx ./src/server.ts",
+    "terminal": "tsx ./src/terminal.ts",
     "build": "tsc --watch",
+    "scss": "npx sass --watch ./src:./public/css",
+    "sync:files": "tsx ./scripts/syncFiles.ts --source ./src --destination ./public/html --extensions .html --watch",
     "web:test": "npm --prefix web-test start",
     "test": "jest"
   },
@@ -16,8 +18,17 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@eslint/js": "^9.24.0",
+    "@types/express": "^5.0.1",
+    "@types/jest": "^29.5.14",
+    "eslint": "^9.23.0",
+    "express": "^4.21.2",
+    "globals": "^16.0.0",
+    "jest": "^29.7.0",
+    "sass": "^1.87.0",
+    "ts-jest": "^29.3.0",
     "tsx": "^4.19.2",
     "typescript": "^5.3.3",
-    "jest": "^29.7.0"
+    "typescript-eslint": "^8.29.0"
   }
 }

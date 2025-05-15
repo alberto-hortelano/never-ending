@@ -1,0 +1,13 @@
+
+{
+  "extends": [
+    "eslint.configs.recommended",
+    "eslint.configs.typescript"
+  ],
+  "ignorePatterns": [
+    "**/node_modules",
+    "**/coverage",
+    "**/dist",
+    "jest.config.js"
+  ]
+}

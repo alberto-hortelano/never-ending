@@ -1,0 +1,21 @@
+:host {
+    position: absolute;
+    inset: 0;
+    padding: 0;
+    margin: 0;
+    overflow: auto;
+    touch-action: none;
+    background-color: #111;
+    border: 2px solid #444;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+#grid {
+    display: grid;
+    grid-template-columns: repeat(var(--map-width, 20), var(--cell-width));
+    grid-auto-rows: var(--cell-width);
+    gap: 0;
+    font-family: monospace;
+    font-size: 20px;
+    line-height: 1;
+}

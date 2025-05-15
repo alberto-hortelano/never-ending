@@ -1,0 +1,6 @@
+{
+  "eslint.debug": true,
+  "eslint.useFlatConfig": true,
+  "eslint.lintTask.enable": true,
+  "eslint.format.enable": true
+}

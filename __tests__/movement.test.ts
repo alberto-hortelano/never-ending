@@ -1,6 +1,6 @@
-import { MovementEventBus, ServerEventBus, UiEventBus } from '../../common/events/index.js';
-import { Movement } from '../src/Movement.js';
-import { Cell, IMovable, ICharacter } from '../../common/interfaces.js';
+import { MovementEventBus, ServerEventBus, UiEventBus } from '../src/common/events/index';
+import { Movement } from '../src/game/Movement';
+import { Cell, IMovable, ICharacter } from '../src/common/interfaces';
 
 describe('Movement', () => {
   // Setup test environment
@@ -20,6 +20,8 @@ describe('Movement', () => {
       ui: new UiEventBus(),
       movement: new MovementEventBus()
     };
+    // Silence console TODO: Remove console log
+    mockBus.ui.listen(mockBus.ui.events.log, mockBus, (msg) => { console.log(...msg) });
 
     // Create simple test map (5x5)
     // 0 = wall, 1 = floor (walkable)
@@ -55,9 +57,6 @@ describe('Movement', () => {
     mockBus.server.dispatch(mockBus.server.events.map, mockMap);
     mockBus.server.dispatch(mockBus.server.events.validCells, [' ']);
     mockBus.server.dispatch(mockBus.server.events.player, player);
-
-    // Mock console.log to avoid test output pollution
-    jest.spyOn(console, 'log').mockImplementation();
   });
 
   afterEach(() => {
@@ -92,7 +91,7 @@ describe('Movement', () => {
 
   });
 
-  test('should update player position over time when moving', () => {
+  test.only('should update player position over time when moving', () => {
     // Initial position
     const initialX = player.position!.x;
     const initialY = player.position!.y;
