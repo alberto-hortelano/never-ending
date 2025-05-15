@@ -1,7 +1,7 @@
 import { BaseEvent, EventsMap } from "../../common/events";
-import Movable from "../movable/Movable";
+import { Component } from "../Component";
 
-export default class Characters extends Movable {
+export default class Characters extends Component {
     protected override hasCss = true;
     protected override hasHtml = true;
 

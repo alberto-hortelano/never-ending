@@ -34,67 +34,19 @@ export abstract class Component extends HTMLElement {
         return root;
     }
 
-    private async loadCss(name: string) {
+    private loadCss(name: string) {
         if (!this.hasCss) {
             return;
         }
-        
-        // Get the prototype chain to load CSS from all ancestors
-        const cssSheets: CSSStyleSheet[] = [];
-        const loadedClasses = new Set<string>();
-        
-        // Walk up the prototype chain to load parent CSS files
-        let currentProto = Object.getPrototypeOf(this);
-        while (currentProto && currentProto.constructor.name !== 'HTMLElement') {
-            const className = currentProto.constructor.name.toLowerCase();
-            
-            // Skip if we've already loaded this class's CSS
-            if (!loadedClasses.has(className)) {
-                loadedClasses.add(className);
-                
-                // Check if this prototype has CSS
-                if (currentProto.hasCss !== false) {
-                    const cssUrl = new URL(`./${className}/${className}.css`, import.meta.url).href.replace('/js/', '/css/');
-                    
-                    // Kick off or reuse fetch+parse for CSS
-                    let cssPromise = Component.styleSheetCache.get(className);
-                    if (!cssPromise) {
-                        cssPromise = this.createStyleSheet(cssUrl);
-                        Component.styleSheetCache.set(className, cssPromise);
-                    }
-                    
-                    try {
-                        const sheet = await cssPromise;
-                        if (sheet) {
-                            cssSheets.unshift(sheet); // Add parent styles first
-                        }
-                    } catch (error) {
-                        console.warn(`Failed to load CSS for parent class ${className}:`, error);
-                    }
-                }
-            }
-            
-            currentProto = Object.getPrototypeOf(currentProto);
-        }
-        
-        // Finally, load this component's own CSS
+
         const cssUrl = new URL(`./${name}/${name}.css`, import.meta.url).href.replace('/js/', '/css/');
         let cssPromise = Component.styleSheetCache.get(name);
         if (!cssPromise) {
             cssPromise = this.createStyleSheet(cssUrl);
             Component.styleSheetCache.set(name, cssPromise);
         }
-        
-        try {
-            const sheet = await cssPromise;
-            if (sheet) {
-                cssSheets.push(sheet); // Add this component's styles last
-            }
-        } catch (error) {
-            console.warn(`Failed to load CSS for class ${name}:`, error);
-        }
-        
-        return cssSheets.length > 0 ? cssSheets : undefined;
+
+        return cssPromise;
     }
 
     private loadHtml(name: string) {
