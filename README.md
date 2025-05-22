@@ -2,6 +2,10 @@
 
 A game to test AI
 
+## Events:
+GameEvents: Dinamica del juego como play, pause, save...
+StateEvents: Peticion de modificacion del estado. Solo la clase State puede escucharlos, cualquiera puede dispararlos.
+
 ## TODO:
 1. Print characters
 1. Move characters

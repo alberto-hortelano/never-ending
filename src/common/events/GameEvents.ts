@@ -1,7 +1,7 @@
 import type { IState, ICell } from '../interfaces';
 import type { DeepReadonly } from "../helpers/types";
 
-export enum BaseEvent {
+export enum GameEvent {
     /** Start the game */
     play = 'play',
     /** A new map has arrived from the server */
@@ -18,12 +18,12 @@ export enum BaseEvent {
     validCells = 'validCells',
 }
 
-export interface BaseEventsMap {
-    [BaseEvent.play]: boolean;
-    [BaseEvent.map]: DeepReadonly<IState['map']>;
-    [BaseEvent.characters]: DeepReadonly<IState['characters']>;
-    [BaseEvent.player]: DeepReadonly<object>;
-    [BaseEvent.position]: DeepReadonly<ICell>;
-    [BaseEvent.speech]: DeepReadonly<string>;
-    [BaseEvent.validCells]: DeepReadonly<string[]>;
+export interface GameEventsMap {
+    [GameEvent.play]: boolean;
+    [GameEvent.map]: DeepReadonly<IState['map']>;
+    [GameEvent.characters]: DeepReadonly<IState['characters']>;
+    [GameEvent.player]: DeepReadonly<object>;
+    [GameEvent.position]: DeepReadonly<ICell>;
+    [GameEvent.speech]: DeepReadonly<string>;
+    [GameEvent.validCells]: DeepReadonly<string[]>;
 }

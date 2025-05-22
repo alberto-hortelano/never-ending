@@ -1,13 +1,13 @@
 import type { State } from "./State";
 
-import { EventBus, BaseEvent } from "./events";
+import { EventBus, GameEvent, GameEventsMap } from "./events";
 
-export class Game extends EventBus {
+export class Game extends EventBus<GameEventsMap, GameEventsMap> {
     constructor(
         private state: State,
     ) {
         super();
-        this.dispatch(BaseEvent.map, this.state.map);
-        this.dispatch(BaseEvent.characters, this.state.characters);
+        this.dispatch(GameEvent.map, this.state.map);
+        this.dispatch(GameEvent.characters, this.state.characters);
     }
 };

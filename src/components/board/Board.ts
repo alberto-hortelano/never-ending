@@ -1,15 +1,15 @@
-import { BaseEvent, EventsMap } from "../../common/events";
+import { GameEvent, GameEventsMap } from "../../common/events";
 import { Component } from "../Component";
 import { DragScroll } from "./DragScroll";
 
 export default class Board extends Component {
-  private mapData: EventsMap[BaseEvent.map] = [];
+  private mapData: GameEventsMap[GameEvent.map] = [];
   protected override hasCss = true;
   protected override hasHtml = true;
 
   constructor() {
     super();
-    this.listen(BaseEvent.map, (newMap) => this.updateMap(newMap));
+    this.listen(GameEvent.map, (newMap) => this.updateMap(newMap));
   }
 
   override async connectedCallback() {
@@ -24,19 +24,19 @@ export default class Board extends Component {
           );
         });
       }
-      this.dispatch(BaseEvent.play, true);
+      this.dispatch(GameEvent.play, true);
     });
     playButton?.addEventListener('click', () => {
-      this.dispatch(BaseEvent.play, true);
+      this.dispatch(GameEvent.play, true);
     });
-    this.dispatch(BaseEvent.play, true);
+    this.dispatch(GameEvent.play, true);
     if (this) {
       new DragScroll(this);
     }
     return root;
   }
 
-  private updateMap(newMap: EventsMap[BaseEvent.map]) {
+  private updateMap(newMap: GameEventsMap[GameEvent.map]) {
     this.mapData = newMap;
     this.id = 'board';
 

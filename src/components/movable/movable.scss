@@ -1,5 +1,7 @@
-.host {
+:host {
     position: absolute;
     background-color: blue;
+    width: var(--cell-width);
+    height: var(--cell-width);
     z-index: 10;
 }

@@ -1,9 +1,10 @@
-import { EventBus } from "../common/events";
+import { EventBus, ComponentEventsMap, GameEventsMap, ControlsEventsMap } from "../common/events";
 
 export abstract class Component extends HTMLElement {
+    protected name = this.constructor.name.toLowerCase();
     protected hasCss = false;
     protected hasHtml = false;
-    protected eventBus = new EventBus();
+    protected eventBus = new EventBus<ComponentEventsMap & GameEventsMap & ControlsEventsMap, ComponentEventsMap & GameEventsMap & ControlsEventsMap>();
     protected listen = this.eventBus.listen.bind(this.eventBus);
     protected dispatch = this.eventBus.dispatch.bind(this.eventBus);
 
@@ -15,49 +16,45 @@ export abstract class Component extends HTMLElement {
         if (this.shadowRoot) return;  // already initialized
 
         const root = this.attachShadow({ mode: 'closed' });
-        const name = this.constructor.name.toLowerCase();
-        const cssPromise = this.loadCss(name);
-        const templatePromise = this.loadHtml(name);
-        // Await both in parallel
-        const [styleSheets, template] = await Promise.all([cssPromise, templatePromise]);
+        const styleSheetPromise = this.loadCss();
+        const templatePromise = this.loadHtml();
 
-        if (styleSheets) {
-            if (Array.isArray(styleSheets)) {
-                root.adoptedStyleSheets = styleSheets;
-            } else {
-                root.adoptedStyleSheets = [styleSheets];
-            }
-        }
+        const [styleSheet, template] = await Promise.all([
+            styleSheetPromise,
+            templatePromise,
+        ]);
         if (template) {
             root.append(template.content.cloneNode(true));
         }
+
+        if (styleSheet) {
+            root.adoptedStyleSheets = [styleSheet];
+        }
+
         return root;
     }
 
-    private loadCss(name: string) {
+    private loadCss() {
         if (!this.hasCss) {
             return;
         }
-
-        const cssUrl = new URL(`./${name}/${name}.css`, import.meta.url).href.replace('/js/', '/css/');
-        let cssPromise = Component.styleSheetCache.get(name);
+        const cssUrl = new URL(`./${this.name}/${this.name}.css`, import.meta.url).href.replace('/js/', '/css/');
+        let cssPromise = Component.styleSheetCache.get(this.name);
         if (!cssPromise) {
             cssPromise = this.createStyleSheet(cssUrl);
-            Component.styleSheetCache.set(name, cssPromise);
+            Component.styleSheetCache.set(this.name, cssPromise);
         }
-
         return cssPromise;
     }
 
-    private loadHtml(name: string) {
+    private loadHtml() {
         if (!this.hasHtml) {
             return;
         }
-        const templateUrl = new URL(`./${name}/${name}.html`, import.meta.url).href.replace('/js/', '/html/');
-        let templatePromise = Component.templateCache.get(templateUrl);
+        let templatePromise = Component.templateCache.get(this.name);
         if (!templatePromise) {
-            templatePromise = this.createTemplate(templateUrl);
-            Component.templateCache.set(templateUrl, templatePromise);
+            templatePromise = this.createTemplate();
+            Component.templateCache.set(this.name, templatePromise);
         }
         return templatePromise;
     }
@@ -76,7 +73,8 @@ export abstract class Component extends HTMLElement {
     }
 
     // Helper to fetch and build an HTMLTemplateElement
-    private async createTemplate(url: string): Promise<HTMLTemplateElement> {
+    private async createTemplate(): Promise<HTMLTemplateElement> {
+        const url = new URL(`./${this.name}/${this.name}.html`, import.meta.url).href.replace('/js/', '/html/');
         const res = await fetch(url);
         if (!res.ok) {
             console.error(`Failed to load template ${url}: ${res.statusText}`);
@@ -84,6 +82,7 @@ export abstract class Component extends HTMLElement {
         }
         const html = await res.text();
         const tmpl = document.createElement('template');
+        tmpl.id = this.name;
         tmpl.innerHTML = html;
         return tmpl;
     }

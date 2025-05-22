@@ -1,4 +1,4 @@
-.cell {
+:host {
     width: var(--cell-width);
     height: var(--cell-width);
     display: flex;
@@ -9,12 +9,12 @@
     box-shadow: inset 0px 0px 0px 1px #333;
 }
 
-.wall {
+:host.wall {
     background-color: #333;
     color: #666;
 }
 
-.floor {
+:host.floor {
     background-color: #111;
     color: #888;
 }

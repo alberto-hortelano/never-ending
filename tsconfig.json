@@ -97,6 +97,7 @@
     "skipLibCheck": true /* Skip type checking all .d.ts files. */
   },
   "include": [
-    "./src/**/*"
+    "./src/**/*",
+    "src/components/character/.tsure.ts"
   ]
 }

@@ -1,10 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { BaseEventsMap } from "./BaseEvents";
-import { StateEventsMap } from "./StateEvents";
-import { ControlsEventsMap } from "./ControlsEvents";
+import type { GameEventsMap } from "./GameEvents";
+import type { StateEventsMap } from "./StateEvents";
+import type { ControlsEventsMap } from "./ControlsEvents";
+import type { ComponentEventsMap } from "./ComponentEvents";
+
+type EventsMap =
+    GameEventsMap &
+    StateEventsMap &
+    ControlsEventsMap &
+    ComponentEventsMap;
 
 export type EventCallback<T extends TypedEvent> = (data: EventsMap[T]) => void;
-export type EventsMap = StateEventsMap & BaseEventsMap & ControlsEventsMap;
 export type TypedEvent = keyof EventsMap;
 
 /**
@@ -12,12 +18,13 @@ export type TypedEvent = keyof EventsMap;
  *
  * @template Events  a map from event‑name → payload
  */
-export class EventBus {
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEvents extends Partial<EventsMap> = {}> {
     private static listeners = new Map<string, Map<object, (data: any) => void>>();
 
-    listen<E extends keyof EventsMap>(
+    listen<E extends keyof ListenEvents>(
         eventName: E,
-        cb: (data: EventsMap[E]) => void,
+        cb: (data: ListenEvents[E]) => void,
     ): void {
         const key = String(eventName);
         let bucket = EventBus.listeners.get(key);
@@ -31,9 +38,9 @@ export class EventBus {
         bucket.set(this, cb as (data: any) => void);
     }
 
-    dispatch<E extends keyof EventsMap>(
+    dispatch<E extends keyof DispatchEvents>(
         eventName: E,
-        eventData: EventsMap[E]
+        eventData: DispatchEvents[E]
     ): void {
         const key = String(eventName);
         const bucket = EventBus.listeners.get(key);

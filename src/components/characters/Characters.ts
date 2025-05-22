@@ -1,4 +1,4 @@
-import { BaseEvent, EventsMap } from "../../common/events";
+import { GameEventsMap, GameEvent } from "../../common/events";
 import { Component } from "../Component";
 
 export default class Characters extends Component {
@@ -7,16 +7,14 @@ export default class Characters extends Component {
 
     constructor() {
         super();
-        this.listen(BaseEvent.characters, (characters) => this.printCharacters(characters));
-        console.log('>>> - Characters - constructor - this:', this)
+        this.listen(GameEvent.characters, (characters) => this.printCharacters(characters));
     }
-    private printCharacters(characters: EventsMap[BaseEvent.characters]) {
+    private printCharacters(characters: GameEventsMap[GameEvent.characters]) {
         characters.forEach(characterData => {
             const characterElement = document.createElement('character-component');
             characterElement.dataset.x = characterData.cell.position.x.toString();
             characterElement.dataset.y = characterData.cell.position.y.toString();
             this.appendChild(characterElement);
-            console.log('>>> - Characters - printCharacters - characterData:', characterData)
         })
     }
 }

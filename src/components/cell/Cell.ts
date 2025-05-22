@@ -3,7 +3,7 @@ import { Component } from "../Component";
 
 export default class Cell extends Component {
     protected override hasCss = true;
-    protected override hasHtml = true;
+    protected override hasHtml = false;
     static get observedAttributes() {
         return ['content'];
     }

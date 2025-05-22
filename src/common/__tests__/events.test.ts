@@ -1,18 +1,18 @@
-import { EventsMap, BaseEvent, EventBus } from '../events';
+import { GameEvent, EventBus, GameEventsMap } from '../events';
 
 
-class Extended extends EventBus {
+class Extended extends EventBus<GameEventsMap, GameEventsMap> {
     public name = 'Extended';
-    public map?: EventsMap[BaseEvent.map];
+    public map?: GameEventsMap[GameEvent.map];
     constructor() {
         super();
-        this.listen(BaseEvent.map, (map) => {
+        this.listen(GameEvent.map, (map) => {
             this.map = map;
             console.log('>>> - Extended - listen - map:', map)
         });
     }
-    public load(map: EventsMap[BaseEvent.map]) {
-        this.dispatch(BaseEvent.map, map);
+    public load(map: GameEventsMap[GameEvent.map]) {
+        this.dispatch(GameEvent.map, map);
     }
 }
 

@@ -1,9 +1,9 @@
 import type { ICell, ICharacter, IState } from "./interfaces";
 
 import { fillMap, getBorders, setWalls } from "./helpers/map";
-import { EventsMap, StateEvent, EventBus } from "./events";
+import { StateEvent, EventBus, StateEventsMap } from "./events";
 
-export class State extends EventBus implements IState {
+export class State extends EventBus<StateEventsMap> implements IState {
     #map: IState['map'];
     #characters: IState['characters'];
     #player: ICharacter;
@@ -32,7 +32,7 @@ export class State extends EventBus implements IState {
     private findCharacter(name: ICharacter['name']) {
         return this.#characters.find(c => c.name === name);
     }
-    private onCharacterPosition(c: EventsMap[StateEvent.characterPosition]) {
+    private onCharacterPosition(c: StateEventsMap[StateEvent.characterPosition]) {
         const character = this.findCharacter(c.name);
         if (!character) {
             throw new Error(`No character "${c.name}" found`);
@@ -43,7 +43,7 @@ export class State extends EventBus implements IState {
         }
         character.cell = cell;
     }
-    private onPlayerDirection(d: EventsMap[StateEvent.playerDirection]) {
+    private onPlayerDirection(d: StateEventsMap[StateEvent.playerDirection]) {
         this.#player.direction = d;
     }
     // Public

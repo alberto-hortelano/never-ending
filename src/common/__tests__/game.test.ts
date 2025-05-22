@@ -3,10 +3,10 @@
 import type { ICharacter, IMessage, IPositionable, IState } from '../interfaces';
 
 import { playerData } from './data';
-import { BaseEvent, ControlsEvent, EventsMap } from '../events';
+import { GameEvent, ControlsEvent, GameEventsMap } from '../events';
 import { State } from '../State';
 import { Game } from '../Game';
-import { IGraphics, UI } from '../UI';
+// import { IGraphics, UI } from '../UI';
 import { IMovement, Movement } from '../Movement';
 import { Controls } from '../Controls';
 
@@ -27,9 +27,9 @@ describe('game', () => {
     // Test data
     const playerPosition = { x: 1, y: 2 };
     // Mocks
-    const printMap = jest.fn<void, [EventsMap[BaseEvent.map]], void>();
+    const printMap = jest.fn<void, [GameEventsMap[GameEvent.map]], void>();
     printMap.mockImplementation(map => {
-        console.log(map.map(row => row.map(cell => cell.content ? '#' : ' ').join('')).join('\n'));
+        // console.log(map.map(row => row.map(cell => cell.content ? '#' : ' ').join('')).join('\n'));
     });
     const locate = jest.fn<IPositionable, [IPositionable], void>();
     locate.mockImplementation(positionable => {
@@ -37,12 +37,12 @@ describe('game', () => {
         return positionable;
     })
     const mockHelpers: {
-        graphics: IGraphics,
+        // graphics: IGraphics,
         movement: IMovement,
     } = {
-        graphics: {
-            printMap,
-        },
+        // graphics: {
+        //     printMap,
+        // },
         movement: {
             locate,
         }
@@ -54,7 +54,7 @@ describe('game', () => {
     state.setWalls(borders.map(cell => cell.position));
     const movement = new Movement(mockHelpers.movement);
     const controls = new Controls();
-    const ui = new UI(mockHelpers.graphics);
+    // const ui = new UI(mockHelpers.graphics);
     const game = new Game(state);
     // Characters move to targets
     // Player moves
