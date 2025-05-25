@@ -28,6 +28,12 @@ Hay 100 puntos por turno y cada accion consume n puntos, dependiendo de la habil
 1. Cobertura: Se coloca en una cobertura adyacente
 1. Lanzar granada
 1. Sprint: Se declara al principio del turno y solo se puede mover pero mas barato
+1. Ataque CC: Se abre un selector con los ataques disponibles:
+    1. Fuerte
+    1. Medio
+    1. Rapido
+    1. Finta
+    1. Al arma
 
 ## Daño
 Daño base del arma 

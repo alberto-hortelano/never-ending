@@ -1,6 +1,6 @@
 /** Events from UI, Only Component can dispatch */
 export enum ComponentEvent {
-    characterConnected = 'characterConnected',
+    characterConnected = 'ComponentEvent.characterConnected',
 }
 
 export interface ComponentEventsMap {

@@ -5,7 +5,7 @@ import { playerData } from "./common/__tests__/data";
 import { Controls } from "./common/Controls";
 import { IMovement, Movement } from "./common/Movement";
 import { State } from "./common/State";
-import { GameEvent, EventBus } from "./common/events";
+import { GameEvent, EventBus, ControlsEvent } from "./common/events";
 import { fillMap, getBorders, setWalls } from "./common/helpers/map";
 
 const play = () => {
@@ -22,7 +22,7 @@ const play = () => {
     }
     const initState = (): IState => {
         // State
-        const map = fillMap(10, 10);
+        const map = fillMap(20, 30);
         const characters: ICharacter[] = [playerData];
         const messages: IMessage[] = [];
         const initialState: IState = {
@@ -37,7 +37,7 @@ const play = () => {
     const borders = getBorders(initialState.map);
     setWalls(initialState.map, borders.map(cell => cell.position));
     const state = new State(initialState);
-    const movement = new Movement(mockHelpers.movement);
+    const movement = new Movement(mockHelpers.movement, state);
     const controls = new Controls();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -49,6 +49,10 @@ const play = () => {
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).di = (e: string, data: any) => eventBus.dispatch(e, data)
+
+    setTimeout(() => {
+        eventBus.dispatch(ControlsEvent.moveCharacter, state.player)
+    }, 1000);
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const eventBus = new EventBus<any, any>();

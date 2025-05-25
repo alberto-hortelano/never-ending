@@ -50,4 +50,16 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> 
             this.dispatch(StateChangeEvent.player, structuredClone(this.#player));
         }
     }
+    get map() {
+        return this.#map;
+    }
+    get characters() {
+        return this.#characters;
+    }
+    get messages() {
+        return this.#messages;
+    }
+    get player() {
+        return this.#player;
+    }
 };

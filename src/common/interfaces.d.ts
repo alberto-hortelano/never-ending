@@ -18,17 +18,21 @@ export interface IPositionable {
     location: string;
     blocker: boolean;
 }
+export type Speed = 'verySlow' | 'slow' | 'medium' | 'fast' | 'veryFast';
+export type Direction = 'down' | 'down-right' | 'right' | 'up-right' | 'up' | 'up-left' | 'left' | 'down-left';
 export interface IMovable extends IPositionable {
-    speed: 'verySlow' | 'slow' | 'medium' | 'fast' | 'veryFast';
-    direction: 'down' | 'down-right' | 'right' | 'up-right' | 'up' | 'up-left' | 'left' | 'down-left';
+    speed: Speed;
+    direction: Direction;
     path: ICoord[];
     target: ICell;
 }
+export type Race = 'human' | 'alien' | 'robot';
+export type Action = 'walk' | 'iddle';
 export interface ICharacter extends IMovable {
     name: string;
-    race: 'human' | 'alien' | 'robot';
+    race: Race;
     description: string;
-    action: 'walk' | 'iddle';
+    action: Action
     palette: {
         skin: string;
         helmet: string;
