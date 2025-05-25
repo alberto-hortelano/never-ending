@@ -1,21 +1,20 @@
-import { GameEvent, GameEventsMap } from "../../common/events";
+import { GameEvent, StateChangeEvent, StateChangeEventsMap } from "../../common/events";
 import { Component } from "../Component";
 import { DragScroll } from "./DragScroll";
 
 export default class Board extends Component {
-  private mapData: GameEventsMap[GameEvent.map] = [];
+  private mapData: StateChangeEventsMap[StateChangeEvent.map] = [];
   protected override hasCss = true;
   protected override hasHtml = true;
 
   constructor() {
     super();
-    this.listen(GameEvent.map, (newMap) => this.updateMap(newMap));
+    this.listen(StateChangeEvent.map, (newMap) => this.updateMap(newMap));
   }
 
   override async connectedCallback() {
     const root = await super.connectedCallback();
     const fullScreenButton = root?.getElementById('full-screen');
-    const playButton = root?.getElementById('play');
     fullScreenButton?.addEventListener('click', () => {
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch((err) => {
@@ -24,19 +23,13 @@ export default class Board extends Component {
           );
         });
       }
-      this.dispatch(GameEvent.play, true);
-    });
-    playButton?.addEventListener('click', () => {
-      this.dispatch(GameEvent.play, true);
     });
     this.dispatch(GameEvent.play, true);
-    if (this) {
-      new DragScroll(this);
-    }
+    new DragScroll(this);
     return root;
   }
 
-  private updateMap(newMap: GameEventsMap[GameEvent.map]) {
+  private updateMap(newMap: StateChangeEventsMap[StateChangeEvent.map]) {
     this.mapData = newMap;
     this.id = 'board';
 

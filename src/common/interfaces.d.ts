@@ -21,7 +21,7 @@ export interface IPositionable {
 export interface IMovable extends IPositionable {
     speed: 'verySlow' | 'slow' | 'medium' | 'fast' | 'veryFast';
     direction: 'down' | 'down-right' | 'right' | 'up-right' | 'up' | 'up-left' | 'left' | 'down-left';
-    route: ICoord[];
+    path: ICoord[];
     target: ICell;
 }
 export interface ICharacter extends IMovable {

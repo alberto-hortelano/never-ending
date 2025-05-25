@@ -1,38 +1,26 @@
-import type { ICell, ICharacter, IState } from "./interfaces";
+import type { ICharacter, IState } from "./interfaces";
 
-import { fillMap, getBorders, setWalls } from "./helpers/map";
-import { StateEvent, EventBus, StateEventsMap } from "./events";
+import { UpdateStateEvent, EventBus, UpdateStateEventsMap, StateChangeEventsMap, StateChangeEvent } from "./events";
 
-export class State extends EventBus<StateEventsMap> implements IState {
-    #map: IState['map'];
-    #characters: IState['characters'];
-    #player: ICharacter;
-    #messages: IState['messages'];
+export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> {
+    #map: IState['map'] = [];
+    #characters: IState['characters'] = [];
+    #player?: ICharacter;
+    #messages: IState['messages'] = [];
 
     constructor(initialState: IState) {
         super();
-        this.#map = initialState.map;
-        this.#characters = initialState.characters;
-        this.#messages = initialState.messages;
+        this.map = initialState.map;
+        this.characters = initialState.characters;
+        this.messages = initialState.messages;
 
-        const player = this.findCharacter('player');
-        if (!player) {
-            throw new Error("No player set");
-        }
-        this.#player = player;
+        this.listen(UpdateStateEvent.characterPosition, (c) => this.onCharacterPosition(c));
+    }
 
-        this.listen(StateEvent.characterPosition, (c) => this.onCharacterPosition(c));
-        this.listen(StateEvent.playerDirection, (d) => this.onPlayerDirection(d));
-    }
-    // Static
-    static fillMap(width: number, height: number): IState['map'] {
-        return fillMap(width, height);
-    }
-    // Private
     private findCharacter(name: ICharacter['name']) {
         return this.#characters.find(c => c.name === name);
     }
-    private onCharacterPosition(c: StateEventsMap[StateEvent.characterPosition]) {
+    private onCharacterPosition(c: UpdateStateEventsMap[UpdateStateEvent.characterPosition]) {
         const character = this.findCharacter(c.name);
         if (!character) {
             throw new Error(`No character "${c.name}" found`);
@@ -43,26 +31,23 @@ export class State extends EventBus<StateEventsMap> implements IState {
         }
         character.cell = cell;
     }
-    private onPlayerDirection(d: StateEventsMap[StateEvent.playerDirection]) {
-        this.#player.direction = d;
+    private set map(map: IState['map']) {
+        this.#map = map;
+        this.dispatch(StateChangeEvent.map, structuredClone(this.#map));
     }
-    // Public
-    public setWalls(walls: ICell['position'][]) {
-        setWalls(this.#map, walls);
+    private set characters(characters: IState['characters']) {
+        this.#characters = characters;
+        this.dispatch(StateChangeEvent.characters, structuredClone(this.#characters));
     }
-    public getBorders() {
-        return getBorders(this.#map);
+    private set messages(messages: IState['messages']) {
+        this.#messages = messages;
+        console.log('>>> - State - setmessages - this.#messages:', this.#messages)
+        // this.dispatch(StateChangeEvent.messages, structuredClone(this.#messages));
     }
-    get player() {
-        return structuredClone(this.#player);
-    }
-    get map() {
-        return structuredClone(this.#map);
-    }
-    get characters() {
-        return structuredClone(this.#characters);
-    }
-    get messages() {
-        return structuredClone(this.#messages);
+    private set player(player: ICharacter | undefined) {
+        this.#player = player;
+        if (this.#player) {
+            this.dispatch(StateChangeEvent.player, structuredClone(this.#player));
+        }
     }
 };

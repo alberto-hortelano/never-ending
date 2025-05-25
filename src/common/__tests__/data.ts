@@ -1,7 +1,7 @@
 import { ICell, ICharacter } from "../interfaces";
 
-const noWhere: ICell = {
-    position: { x: -1, y: -1 },
+const cell: ICell = {
+    position: { x: 4, y: 4 },
     locations: [],
     elements: [],
     content: null,
@@ -19,10 +19,10 @@ const baseCharacter: ICharacter = {
     },
     speed: 'medium',
     direction: 'down',
-    route: [],
+    path: [],
     location: '',
-    target: noWhere,
-    cell: noWhere,
+    target: cell,
+    cell: cell,
     blocker: true,
 };
 

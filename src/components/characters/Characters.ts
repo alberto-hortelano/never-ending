@@ -1,4 +1,4 @@
-import { GameEventsMap, GameEvent } from "../../common/events";
+import { StateChangeEvent, StateChangeEventsMap } from "../../common/events";
 import { Component } from "../Component";
 
 export default class Characters extends Component {
@@ -7,15 +7,17 @@ export default class Characters extends Component {
 
     constructor() {
         super();
-        this.listen(GameEvent.characters, (characters) => this.printCharacters(characters));
+        this.listen(StateChangeEvent.characters, (characters) => this.printCharacters(characters));
     }
-    private printCharacters(characters: GameEventsMap[GameEvent.characters]) {
+    private printCharacters(characters: StateChangeEventsMap[StateChangeEvent.characters]) {
         characters.forEach(characterData => {
             const characterElement = document.createElement('character-component');
             characterElement.dataset.x = characterData.cell.position.x.toString();
+            console.log('>>> - Characters - printCharacters - characterData.cell.position:', characterData.cell.position)
             characterElement.dataset.y = characterData.cell.position.y.toString();
+            characterElement.id = characterData.name;
             this.appendChild(characterElement);
-        })
+        });
     }
 }
 

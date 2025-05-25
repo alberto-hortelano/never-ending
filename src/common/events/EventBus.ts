@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { GameEventsMap } from "./GameEvents";
-import type { StateEventsMap } from "./StateEvents";
+import type { StateChangeEventsMap, UpdateStateEventsMap } from "./StateEvents";
 import type { ControlsEventsMap } from "./ControlsEvents";
 import type { ComponentEventsMap } from "./ComponentEvents";
 
 type EventsMap =
     GameEventsMap &
-    StateEventsMap &
+    UpdateStateEventsMap &
+    StateChangeEventsMap &
     ControlsEventsMap &
     ComponentEventsMap;
 
@@ -51,7 +52,7 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
         console.log('>>> - EventBus - eventName:', eventName)
         for (const [, cb] of bucket) {
             try {
-                cb(eventData);
+                cb(structuredClone(eventData));
             } catch (err) {
                 console.error(`Error in listener for "${key}":`, err);
             }

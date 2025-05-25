@@ -2,13 +2,13 @@ import type { DeepReadonly } from "./helpers/types";
 import type { IPositionable } from "./interfaces";
 // import type { State } from "./State";
 
-import { GameEvent, EventBus, StateEvent, ControlsEvent, GameEventsMap, ControlsEventsMap, StateEventsMap } from "./events";
+import { GameEvent, EventBus, UpdateStateEvent, ControlsEvent, GameEventsMap, ControlsEventsMap, UpdateStateEventsMap } from "./events";
 
 export interface IMovement {
     locate(positionable: DeepReadonly<IPositionable>): IPositionable;
 }
 
-export class Movement extends EventBus<GameEventsMap & ControlsEventsMap, StateEventsMap> {
+export class Movement extends EventBus<GameEventsMap & ControlsEventsMap, UpdateStateEventsMap> {
 
     constructor(
         private movement: IMovement,
@@ -24,11 +24,11 @@ export class Movement extends EventBus<GameEventsMap & ControlsEventsMap, StateE
             console.log('>>> - Movement - onCharacters - character:', character)
             const position = this.movement.locate(character);
             const positionedCharacter = { ...character, ...position };
-            this.dispatch(StateEvent.characterPosition, positionedCharacter);
+            this.dispatch(UpdateStateEvent.characterPosition, positionedCharacter);
         });
     }
     private onDirection(direction: ControlsEventsMap[ControlsEvent.direction]) {
-        this.dispatch(StateEvent.playerDirection, direction);
+        this.dispatch(UpdateStateEvent.playerDirection, direction);
     }
     private onCellClick(position: ControlsEventsMap[ControlsEvent.cellClick]) {
         console.log('>>> - Movement - onCellClick - position:', position)

@@ -1,6 +1,15 @@
-:host {
+.character {
     background-color: red;
-    display: block;
     width: var(--cell-width);
     height: var(--cell-width);
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;
+    border-radius: 50%;
+    transition: transform 0.3s ease-in-out;
+}
+
+:host.moving {
+    transform-origin: center;
 }

@@ -1,37 +1,28 @@
 import type { IState, ICharacter, IMessage, IPositionable } from "./common/interfaces";
 
+import './components';
 import { playerData } from "./common/__tests__/data";
 import { Controls } from "./common/Controls";
-import { Game } from "./common/Game";
 import { IMovement, Movement } from "./common/Movement";
 import { State } from "./common/State";
-// import { IGraphics, UI } from "./common/UI";
-import { GameEvent, EventBus, GameEventsMap } from "./common/events";
+import { GameEvent, EventBus } from "./common/events";
+import { fillMap, getBorders, setWalls } from "./common/helpers/map";
 
 const play = () => {
-    // Test data
-    const playerPosition = { x: 0, y: 0 };
     // Mocks
-    // const printMap = () => {
-    // }
     const locate = (positionable: IPositionable) => {
-        positionable.cell = state.map[playerPosition.y]![playerPosition.x]!;
         return positionable;
     }
     const mockHelpers: {
-        // graphics: IGraphics,
         movement: IMovement,
     } = {
-        // graphics: {
-        //     printMap,
-        // },
         movement: {
             locate,
         }
     }
     const initState = (): IState => {
         // State
-        const map = State.fillMap(1, 1);
+        const map = fillMap(10, 10);
         const characters: ICharacter[] = [playerData];
         const messages: IMessage[] = [];
         const initialState: IState = {
@@ -43,24 +34,22 @@ const play = () => {
     }
 
     const initialState = initState();
+    const borders = getBorders(initialState.map);
+    setWalls(initialState.map, borders.map(cell => cell.position));
     const state = new State(initialState);
-    const borders = state.getBorders();
-    state.setWalls(borders.map(cell => cell.position));
     const movement = new Movement(mockHelpers.movement);
     const controls = new Controls();
-    // const ui = new UI(mockHelpers.graphics);
-    const game = new Game(state);
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).game = {
         state,
         movement,
         controls,
-        // ui,
-        game,
-    }
+        eventBus,
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).di = (e: string, data: any) => eventBus.dispatch(e, data)
 }
-
-(async () => {
-    const eventBus = new EventBus<GameEventsMap>();
-    eventBus.listen(GameEvent.play, play);
-})();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const eventBus = new EventBus<any, any>();
+eventBus.listen(GameEvent.play, play);

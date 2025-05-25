@@ -3,5 +3,8 @@
     background-color: blue;
     width: var(--cell-width);
     height: var(--cell-width);
+    top: calc(var(--cell-width) * var(--y));
+    left: calc(var(--cell-width) * var(--x));
+    transition: top 400ms ease, left 400ms ease;
     z-index: 10;
 }
