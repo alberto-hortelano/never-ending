@@ -1,6 +1,7 @@
 export interface IState {
     map: ICell[][];
     characters: ICharacter[];
+    player?: ICharacter;
     messages: IMessage[];
 }
 export interface ICoord {
@@ -14,7 +15,7 @@ export interface ICell {
     content: IPositionable | null;
 }
 export interface IPositionable {
-    cell: ICell;
+    position: ICoord;
     location: string;
     blocker: boolean;
 }

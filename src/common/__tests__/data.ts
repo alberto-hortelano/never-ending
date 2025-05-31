@@ -22,7 +22,7 @@ const baseCharacter: ICharacter = {
     path: [],
     location: '',
     target: cell,
-    cell: cell,
+    position: cell.position,
     blocker: true,
 };
 

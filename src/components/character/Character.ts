@@ -1,5 +1,4 @@
-import { StateChangeEventsMap, StateChangeEvent } from "../../common/events";
-// import { ICharacter } from "../../common/interfaces";
+import { StateChangeEventsMap, StateChangeEvent, ControlsEvent, GUIEvent } from "../../common/events";
 import { Component } from "../Component";
 import type Movable from "../movable/Movable";
 import "../movable/Movable";
@@ -11,20 +10,27 @@ export default class Character extends Component {
 
     constructor() {
         super();
+        this.listen(ControlsEvent.moveCharacter, caracter => this.onMoveCharacter(caracter));
     }
 
     override async connectedCallback() {
         const root = await super.connectedCallback();
         this.movable = root?.getElementById('movable') as Movable;
-        this.movable?.setAttribute('x', `${this.dataset.x}`);
-        this.movable?.setAttribute('y', `${this.dataset.y}`);
+        this.movable.dataset.x = `${this.dataset.x}`;
+        this.movable.dataset.y = `${this.dataset.y}`;
+        this.movable.addEventListener("transitionend", () => {
+            console.log('#####################################')
+            this.dispatch(GUIEvent.movementEnd, this.id)
+        });
         return root;
     }
 
-    private onPosition(character: StateChangeEventsMap[StateChangeEvent.player]) {
-        console.log('>>> - Character - onPosition - character:', this.movable, character.cell.position);
-        this.movable?.setAttribute('x', `${character.cell.position.x}`);
-        this.movable?.setAttribute('y', `${character.cell.position.y}`);
+    private onMoveCharacter(character: StateChangeEventsMap[StateChangeEvent.player]) {
+        if (!this.movable) {
+            return;
+        }
+        this.movable.dataset.x = `${character.position.x}`;
+        this.movable.dataset.y = `${character.position.y}`;
     }
 }
 

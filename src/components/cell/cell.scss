@@ -9,22 +9,33 @@
     box-shadow: inset 0px 0px 0px 1px #333;
 }
 
-:host.wall {
+:host(.wall) {
     background-color: #333;
     color: #666;
 }
 
-:host.floor {
+:host(.floor) {
     background-color: #111;
     color: #888;
 }
 
-:host.reachable {
+:host(.highlight) {
     background-color: rgba(0, 255, 0, 0.2);
-    border: 1px solid rgba(0, 255, 0, 0.5);
+    box-shadow: inset 0px 0px 0px 1px #00ff4217;
+    ;
+    cursor: pointer;
 }
 
-:host.path {
+:host(.path) {
     background-color: rgba(255, 255, 0, 0.3);
     border: 1px solid rgba(255, 255, 0, 0.7);
+}
+
+:host::before {
+    content: attr(data-x) "-" attr(data-y);
+    position: absolute;
+    font-size: 1.2dvh;
+    color: rgba(255, 255, 255, 0.4);
+    pointer-events: none;
+    z-index: 1;
 }

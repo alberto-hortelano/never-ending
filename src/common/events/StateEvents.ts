@@ -1,27 +1,27 @@
 import type { ICharacter, IState } from '../interfaces';
 import type { DeepReadonly } from "../helpers/types";
 
-/** Events to update state */
+/** Events to update state. Only State can listen. All can dispatch */
 export enum UpdateStateEvent {
     /** Update character position */
     characterPosition = 'UpdateStateEvent.characterPosition',
     characterPath = 'UpdateStateEvent.characterPath',
-    playerDirection = 'UpdateStateEvent.playerDirection',
 }
 
 export interface UpdateStateEventsMap {
     [UpdateStateEvent.characterPosition]: DeepReadonly<ICharacter>;
     [UpdateStateEvent.characterPath]: DeepReadonly<ICharacter>;
-    [UpdateStateEvent.playerDirection]: DeepReadonly<ICharacter['direction']>;
 }
 
-/** Events to update state */
+/** Events when the state has changed. All can listen. Only State can dispatch */
 export enum StateChangeEvent {
     /** Update character position */
     map = 'StateChangeEvent.map',
     characters = 'StateChangeEvent.characters',
     player = 'StateChangeEvent.player',
     messages = 'StateChangeEvent.messages',
+    characterPosition = 'StateChangeEvent.characterPosition',
+    characterPath = 'StateChangeEvent.characterPath',
 }
 
 export interface StateChangeEventsMap {
@@ -29,4 +29,6 @@ export interface StateChangeEventsMap {
     [StateChangeEvent.characters]: DeepReadonly<IState['characters']>;
     [StateChangeEvent.player]: DeepReadonly<ICharacter>;
     [StateChangeEvent.messages]: DeepReadonly<IState['messages']>;
+    [StateChangeEvent.characterPosition]: DeepReadonly<ICharacter>;
+    [StateChangeEvent.characterPath]: DeepReadonly<ICharacter>;
 }

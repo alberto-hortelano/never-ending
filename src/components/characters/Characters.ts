@@ -12,9 +12,8 @@ export default class Characters extends Component {
     private printCharacters(characters: StateChangeEventsMap[StateChangeEvent.characters]) {
         characters.forEach(characterData => {
             const characterElement = document.createElement('character-component');
-            characterElement.dataset.x = characterData.cell.position.x.toString();
-            console.log('>>> - Characters - printCharacters - characterData.cell.position:', characterData.cell.position)
-            characterElement.dataset.y = characterData.cell.position.y.toString();
+            characterElement.dataset.x = characterData.position.x.toString();
+            characterElement.dataset.y = characterData.position.y.toString();
             characterElement.id = characterData.name;
             this.appendChild(characterElement);
         });

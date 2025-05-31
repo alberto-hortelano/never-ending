@@ -28,6 +28,7 @@ const play = () => {
         const initialState: IState = {
             map,
             characters,
+            player: playerData,
             messages,
         };
         return initialState;
@@ -50,9 +51,10 @@ const play = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).di = (e: string, data: any) => eventBus.dispatch(e, data)
 
+    console.log('>>> - setTimeout - state.player:', state.player)
     setTimeout(() => {
-        eventBus.dispatch(ControlsEvent.moveCharacter, state.player)
-    }, 1000);
+        eventBus.dispatch(ControlsEvent.showMovement, state.player)
+    }, 400);
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const eventBus = new EventBus<any, any>();

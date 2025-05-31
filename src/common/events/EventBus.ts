@@ -2,14 +2,14 @@
 import type { GameEventsMap } from "./GameEvents";
 import type { StateChangeEventsMap, UpdateStateEventsMap } from "./StateEvents";
 import type { ControlsEventsMap } from "./ControlsEvents";
-import type { ComponentEventsMap } from "./ComponentEvents";
+import type { GUIEventsMap } from "./UIEvents";
 
 type EventsMap =
     GameEventsMap &
     UpdateStateEventsMap &
     StateChangeEventsMap &
     ControlsEventsMap &
-    ComponentEventsMap;
+    GUIEventsMap;
 
 export type EventCallback<T extends TypedEvent> = (data: EventsMap[T]) => void;
 export type TypedEvent = keyof EventsMap;
@@ -26,8 +26,9 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
     listen<E extends keyof ListenEvents>(
         eventName: E,
         cb: (data: ListenEvents[E]) => void,
+        filter: string = '',
     ): void {
-        const key = String(eventName);
+        const key = String(eventName) + filter;
         let bucket = EventBus.listeners.get(key);
         if (!bucket) {
             bucket = new Map();
@@ -41,9 +42,10 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
 
     dispatch<E extends keyof DispatchEvents>(
         eventName: E,
-        eventData: DispatchEvents[E]
+        eventData: DispatchEvents[E],
+        filter: string = '',
     ): void {
-        const key = String(eventName);
+        const key = String(eventName) + filter;
         const bucket = EventBus.listeners.get(key);
         if (!bucket) {
             console.warn(`${this.constructor.name}: no listeners for "${key}"`);

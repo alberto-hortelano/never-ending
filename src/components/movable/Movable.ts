@@ -2,19 +2,17 @@ import { Component } from "../Component";
 
 export default class Movable extends Component {
     protected override hasCss = true;
-    protected override hasHtml = false;
+    protected override hasHtml = true;
     constructor() {
         super();
-        console.log('>>> - Movable - constructor!!!!!!!:', this)
     }
     static get observedAttributes() {
-        return ['x', 'y'];
+        return ['data-x', 'data-y'];
     }
     attributeChangedCallback(name: string, oldVal: string | null, newVal: string | null) {
-        console.log('>>> - Movable - attributeChangedCallback - name:', name)
         if (oldVal === newVal) return;
-        this.style.setProperty(`--${name}`, newVal);
-        console.log('>>> - Movable - attributeChangedCallback - name:', name, newVal)
+        if (name === 'data-x') this.style.setProperty('--x', newVal);
+        if (name === 'data-y') this.style.setProperty('--y', newVal);
     }
 }
 
