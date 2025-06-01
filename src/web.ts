@@ -1,43 +1,13 @@
-import type { IState, ICharacter, IMessage, IPositionable } from "./common/interfaces";
-
 import './components';
-import { playerData } from "./data/data";
 import { Controls } from "./common/Controls";
-import { IMovement, Movement } from "./common/Movement";
+import { Movement } from "./common/Movement";
 import { State } from "./common/State";
 import { GameEvent, EventBus } from "./common/events";
-import { fillMap, getBorders, setWalls } from "./common/helpers/map";
+import { mockHelpers } from './data/state';
+import { baseState } from './data';
 
 const play = () => {
-    // Mocks
-    const locate = (positionable: IPositionable) => {
-        return positionable;
-    }
-    const mockHelpers: {
-        movement: IMovement,
-    } = {
-        movement: {
-            locate,
-        }
-    }
-    const initState = (): IState => {
-        // State
-        const map = fillMap(20, 30);
-        const characters: ICharacter[] = [playerData];
-        const messages: IMessage[] = [];
-        const initialState: IState = {
-            map,
-            characters,
-            player: playerData,
-            messages,
-        };
-        return initialState;
-    }
-
-    const initialState = initState();
-    const borders = getBorders(initialState.map);
-    setWalls(initialState.map, borders.map(cell => cell.position));
-    const state = new State(initialState);
+    const state = new State(baseState);
     const movement = new Movement(mockHelpers.movement, state);
     const controls = new Controls();
 

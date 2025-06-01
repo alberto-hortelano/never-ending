@@ -98,6 +98,5 @@
   },
   "include": [
     "./src/**/*",
-    "src/components/character/.tsure.ts"
   ]
 }

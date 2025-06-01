@@ -31,7 +31,7 @@ export default class Cell extends Component {
         switch (name) {
             case 'content':
                 if (newVal === 'wall') {
-                    this.innerText = '#';
+                    this.classList.add('wall');
                 } else {
                     this.innerText = ' ';
                 }

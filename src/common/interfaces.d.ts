@@ -25,7 +25,6 @@ export interface IMovable extends IPositionable {
     speed: Speed;
     direction: Direction;
     path: ICoord[];
-    target: ICell;
 }
 export type Race = 'human' | 'alien' | 'robot';
 export type Action = 'walk' | 'iddle';

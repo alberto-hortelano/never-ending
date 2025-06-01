@@ -45,18 +45,31 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
         eventData: DispatchEvents[E],
         filter: string = '',
     ): void {
-        const key = String(eventName) + filter;
+        const key = String(eventName);
+        const filterKey = String(eventName) + filter;
         const bucket = EventBus.listeners.get(key);
-        if (!bucket) {
+        const filterBucket = EventBus.listeners.get(filterKey);
+        if (!bucket && !filterBucket) {
             console.warn(`${this.constructor.name}: no listeners for "${key}"`);
             return;
         }
-        console.log(eventName)
-        for (const [, cb] of bucket) {
-            try {
-                cb(structuredClone(eventData));
-            } catch (err) {
-                console.error(`Error in listener for "${key}":`, err);
+        console.log(eventName);
+        if (bucket && filterKey !== key) {
+            for (const [, cb] of bucket) {
+                try {
+                    cb(structuredClone(eventData));
+                } catch (err) {
+                    console.error(`Error in listener for "${key}":`, err);
+                }
+            }
+        }
+        if (filterBucket) {
+            for (const [, cb] of filterBucket) {
+                try {
+                    cb(structuredClone(eventData));
+                } catch (err) {
+                    console.error(`Error in listener for "${filterKey}":`, err);
+                }
             }
         }
     }
@@ -67,3 +80,6 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
         }
     }
 }
+
+// For testing and development only
+export const superEventBus = new EventBus<EventsMap, EventsMap>();
