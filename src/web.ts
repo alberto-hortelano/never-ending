@@ -1,7 +1,7 @@
 import type { IState, ICharacter, IMessage, IPositionable } from "./common/interfaces";
 
 import './components';
-import { playerData } from "./common/__tests__/data";
+import { playerData } from "./data/data";
 import { Controls } from "./common/Controls";
 import { IMovement, Movement } from "./common/Movement";
 import { State } from "./common/State";

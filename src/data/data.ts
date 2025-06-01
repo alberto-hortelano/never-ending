@@ -1,4 +1,4 @@
-import { ICell, ICharacter } from "../interfaces";
+import { ICell, ICharacter } from "../common/interfaces";
 
 const cell: ICell = {
     position: { x: 4, y: 4 },

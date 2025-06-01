@@ -39,6 +39,27 @@ export const setWalls = (map: IState['map'], wallPositions: ICell['position'][])
     });
 };
 
+const getNeighbors = (pos: ICoord): ICoord[] => [
+    { x: pos.x, y: pos.y - 1 }, // up
+    { x: pos.x, y: pos.y + 1 }, // down
+    { x: pos.x - 1, y: pos.y }, // left
+    { x: pos.x + 1, y: pos.y }  // right
+];
+
+const isValidCell = (pos: ICoord, map: DeepReadonly<IState['map']>): boolean => {
+    const mapHeight = map.length;
+    const mapWidth = map[0]?.length || 0;
+    
+    if (pos.x < 0 || pos.x >= mapWidth || pos.y < 0 || pos.y >= mapHeight) {
+        return false;
+    }
+    
+    const cell = map[pos.y]?.[pos.x];
+    return !cell?.content?.blocker;
+};
+
+const coordToKey = (pos: ICoord): string => `${pos.x},${pos.y}`;
+
 export const getReachableCells = (start: ICoord, range: number, map: DeepReadonly<IState['map']>): ICoord[] => {
     const reachable: ICoord[] = [];
     const visited = new Set<string>();
@@ -46,7 +67,7 @@ export const getReachableCells = (start: ICoord, range: number, map: DeepReadonl
 
     while (queue.length > 0) {
         const { pos, distance } = queue.shift()!;
-        const key = `${pos.x},${pos.y}`;
+        const key = coordToKey(pos);
 
         if (visited.has(key) || distance > range) continue;
         visited.add(key);
@@ -54,22 +75,9 @@ export const getReachableCells = (start: ICoord, range: number, map: DeepReadonl
         if (distance > 0) reachable.push(pos);
 
         if (distance < range) {
-            const neighbors = [
-                { x: pos.x, y: pos.y - 1 }, // up
-                { x: pos.x, y: pos.y + 1 }, // down
-                { x: pos.x - 1, y: pos.y }, // left
-                { x: pos.x + 1, y: pos.y }  // right
-            ];
-
-            const mapLength = map[0]?.length || 0
-
-            for (const neighbor of neighbors) {
-                if (neighbor.x >= 0 && neighbor.x < mapLength &&
-                    neighbor.y >= 0 && neighbor.y < map.length) {
-                    const cell = map[neighbor.y]?.[neighbor.x];
-                    if (!cell?.content?.blocker) {
-                        queue.push({ pos: neighbor, distance: distance + 1 });
-                    }
+            for (const neighbor of getNeighbors(pos)) {
+                if (isValidCell(neighbor, map)) {
+                    queue.push({ pos: neighbor, distance: distance + 1 });
                 }
             }
         }
@@ -85,12 +93,10 @@ export const calculatePath = (start: ICoord, destination: ICoord, map: DeepReado
 
     const visited = new Set<string>();
     const queue: { pos: ICoord; path: ICoord[] }[] = [{ pos: start, path: [] }];
-    const mapHeight = map.length;
-    const mapWidth = map[0]?.length || 0;
 
     while (queue.length > 0) {
         const { pos, path } = queue.shift()!;
-        const key = `${pos.x},${pos.y}`;
+        const key = coordToKey(pos);
 
         if (visited.has(key)) continue;
         visited.add(key);
@@ -99,23 +105,12 @@ export const calculatePath = (start: ICoord, destination: ICoord, map: DeepReado
             return path;
         }
 
-        const neighbors = [
-            { x: pos.x, y: pos.y - 1 }, // up
-            { x: pos.x, y: pos.y + 1 }, // down
-            { x: pos.x - 1, y: pos.y }, // left
-            { x: pos.x + 1, y: pos.y }  // right
-        ];
-
-        for (const neighbor of neighbors) {
-            if (neighbor.x >= 0 && neighbor.x < mapWidth &&
-                neighbor.y >= 0 && neighbor.y < mapHeight) {
-                const cell = map[neighbor.y]?.[neighbor.x];
-                if (!cell?.content?.blocker) {
-                    queue.push({
-                        pos: neighbor,
-                        path: [...path, neighbor]
-                    });
-                }
+        for (const neighbor of getNeighbors(pos)) {
+            if (isValidCell(neighbor, map)) {
+                queue.push({
+                    pos: neighbor,
+                    path: [...path, neighbor]
+                });
             }
         }
     }
