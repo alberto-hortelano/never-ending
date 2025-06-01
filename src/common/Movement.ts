@@ -92,6 +92,7 @@ export class Movement extends EventBus<
             this.dispatch(UpdateStateEvent.characterPath, { ...character, path });
             if (position) {
                 this.dispatch(UpdateStateEvent.characterPosition, { ...character, position });
+                this.dispatch(GUIEvent.cellReset, position, JSON.stringify(position))
             }
         }
     }

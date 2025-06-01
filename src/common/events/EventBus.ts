@@ -51,7 +51,7 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
             console.warn(`${this.constructor.name}: no listeners for "${key}"`);
             return;
         }
-        console.log('>>> - EventBus - eventName:', eventName)
+        console.log(eventName)
         for (const [, cb] of bucket) {
             try {
                 cb(structuredClone(eventData));
