@@ -10,7 +10,7 @@ export enum ControlsEvent {
 }
 
 export interface ControlsEventsMap {
-    [ControlsEvent.showMovement]: DeepReadonly<ICharacter>;
+    [ControlsEvent.showMovement]: ICharacter['name'];
     [ControlsEvent.direction]: IMovable['direction'];
     [ControlsEvent.cellClick]: DeepReadonly<ICoord>;
     [ControlsEvent.moveCharacter]: DeepReadonly<ICharacter>;

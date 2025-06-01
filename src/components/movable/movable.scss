@@ -5,6 +5,6 @@
     height: var(--cell-width);
     top: calc(var(--cell-width) * var(--y));
     left: calc(var(--cell-width) * var(--x));
-    transition: top 400ms ease, left 400ms ease;
+    transition: top 400ms linear, left 400ms linear;
     z-index: 10;
 }

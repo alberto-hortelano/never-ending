@@ -5,7 +5,7 @@ import { playerData } from "./common/__tests__/data";
 import { Controls } from "./common/Controls";
 import { IMovement, Movement } from "./common/Movement";
 import { State } from "./common/State";
-import { GameEvent, EventBus, ControlsEvent } from "./common/events";
+import { GameEvent, EventBus } from "./common/events";
 import { fillMap, getBorders, setWalls } from "./common/helpers/map";
 
 const play = () => {
@@ -50,11 +50,6 @@ const play = () => {
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).di = (e: string, data: any) => eventBus.dispatch(e, data)
-
-    console.log('>>> - setTimeout - state.player:', state.player)
-    setTimeout(() => {
-        eventBus.dispatch(ControlsEvent.showMovement, state.player)
-    }, 400);
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const eventBus = new EventBus<any, any>();

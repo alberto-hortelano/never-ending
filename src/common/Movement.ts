@@ -1,5 +1,5 @@
 import type { DeepReadonly } from "./helpers/types";
-import type { ICoord, IPositionable, Speed } from "./interfaces";
+import type { ICharacter, ICoord, IPositionable, Speed } from "./interfaces";
 import type { State } from "./State";
 
 import { getReachableCells, calculatePath } from "./helpers/map";
@@ -17,14 +17,14 @@ export class Movement extends EventBus<
     UpdateStateEventsMap & GUIEventsMap & ControlsEventsMap
 > {
     static readonly speed: Record<Speed, number> = {
-        'verySlow': 1,
-        'slow': 2,
-        'medium': 3,
-        'fast': 4,
-        'veryFast': 5,
+        'verySlow': 2,
+        'slow': 3,
+        'medium': 4,
+        'fast': 5,
+        'veryFast': 6,
     };
 
-    private movingCharacter?: ControlsEventsMap[ControlsEvent.showMovement];
+    private movingCharacter?: DeepReadonly<ICharacter>;
     private reachableCells?: ICoord[];
 
     constructor(
@@ -52,39 +52,40 @@ export class Movement extends EventBus<
         }
     }
     private onCharacterPath(character: StateChangeEventsMap[StateChangeEvent.characterPath]) {
-        console.log('>>> - onCharacterPath - character:', character)
         const path = [...character.path];
         const position = path.shift();
         if (position) {
             this.dispatch(ControlsEvent.moveCharacter, { ...character, path, position })
         }
     }
-    private onShowMovement(character: ControlsEventsMap[ControlsEvent.showMovement]) {
-        this.showMovement(character);
+    private onShowMovement(characterName: ControlsEventsMap[ControlsEvent.showMovement]) {
+        const character = this.state.findCharacter(characterName);
+        if (character) {
+            this.showMovement(character);
+        }
     }
     private onMovementEnd(characterName: GUIEventsMap[GUIEvent.movementEnd]) {
-        console.log('>>> - onMoveCharacter - characterName:', characterName);
         const character = this.state.findCharacter(characterName);
         if (character) {
             this.moveCharacter(character);
         }
     }
     // Helpers
-    private selectDestination(character: ControlsEventsMap[ControlsEvent.showMovement], reachableCells: ICoord[], destination: ICoord) {
+    private selectDestination(character: DeepReadonly<ICharacter>, reachableCells: ICoord[], destination: ICoord) {
         const path = calculatePath(character.position, destination, this.state.map);
         this.reachableCells = reachableCells.filter(c => !path.find(({ x, y }) => c.x === x && c.y === y));
         this.reachableCells?.forEach(c => this.dispatch(GUIEvent.cellReset, c, JSON.stringify(c)));
         delete this.reachableCells;
         this.dispatch(UpdateStateEvent.characterPath, { ...character, path });
     }
-    private showMovement(character: ControlsEventsMap[ControlsEvent.showMovement]) {
+    private showMovement(character: DeepReadonly<ICharacter>) {
         const speedValue = Movement.speed[character.speed];
         const reachableCells = getReachableCells(character.position, speedValue, this.state.map);
         this.movingCharacter = character;
         this.reachableCells = reachableCells;
         reachableCells.forEach(c => this.dispatch(GUIEvent.cellHighlight, c, JSON.stringify(c)));
     }
-    private moveCharacter(character: ControlsEventsMap[ControlsEvent.showMovement]) {
+    private moveCharacter(character: DeepReadonly<ICharacter>) {
         if (character.path.length > 0) {
             const path = [...character.path];
             const position = path.shift();

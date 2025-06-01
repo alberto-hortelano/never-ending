@@ -18,10 +18,10 @@ export default class Character extends Component {
         this.movable = root?.getElementById('movable') as Movable;
         this.movable.dataset.x = `${this.dataset.x}`;
         this.movable.dataset.y = `${this.dataset.y}`;
-        this.movable.addEventListener("transitionend", () => {
-            console.log('#####################################')
-            this.dispatch(GUIEvent.movementEnd, this.id)
-        });
+        this.movable.addEventListener("transitionend", () => this.dispatch(GUIEvent.movementEnd, this.id));
+        this.addEventListener('click', () => {
+            this.dispatch(ControlsEvent.showMovement, this.id)
+        })
         return root;
     }
 
