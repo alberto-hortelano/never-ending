@@ -1,8 +1,7 @@
 import type { IState, ICoord } from "../interfaces";
 import type { DeepReadonly } from "./types";
 
-
-const getNeighbors = (pos: ICoord): ICoord[] => [
+export const getNeighbors = (pos: ICoord): ICoord[] => [
     { x: pos.x, y: pos.y - 1 }, // up
     { x: pos.x, y: pos.y + 1 }, // down
     { x: pos.x - 1, y: pos.y }, // left

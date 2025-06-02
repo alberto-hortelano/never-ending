@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run:*)",
+      "Bash(npm start)",
+      "Bash(npm test)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(rm:*)"
+    ],
+    "deny": []
+  }
+}

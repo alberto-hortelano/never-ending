@@ -1,7 +1,6 @@
-
-import { addObstacles, fillMap, getBorders, setWalls } from "./helpers";
 import { IPositionable, IState, ICharacter, IMessage } from "../common/interfaces";
 import { IMovement } from "../common/Movement";
+import { MapGenerator } from "../common/helpers/MapGenerator";
 
 // Mocks
 const locate = (positionable: IPositionable) => {
@@ -36,8 +35,20 @@ const createCharacter = (character?: Partial<ICharacter>) => ({ ...baseCharacter
 
 export const initialState = (x: number, y: number, playerData: Partial<ICharacter> = {}, charactersData: Partial<ICharacter>[] = []): IState => {
     // State
+    const mapGenerator = new MapGenerator(x, y);
     const player = createCharacter(playerData);
-    const map = fillMap(x, y);
+    mapGenerator.generateMap([
+        { size: 3 as const },
+        { size: 5 as const },
+        { size: 7 as const },
+        { size: 3 as const },
+        { size: 9 as const },
+        { size: 7 as const },
+        { size: 3 as const },
+        { size: 5 as const },
+        { size: 7 as const },
+    ])
+    const map = mapGenerator.getCells();
     const characters: ICharacter[] = [playerData, ...charactersData].map(createCharacter);
     const messages: IMessage[] = [];
     const initialState: IState = {
@@ -46,9 +57,6 @@ export const initialState = (x: number, y: number, playerData: Partial<ICharacte
         player,
         messages,
     };
-    const borders = getBorders(initialState.map);
-    setWalls(initialState.map, borders.map(cell => cell.position));
-    addObstacles(initialState.map, 40);
     return initialState;
 }
 

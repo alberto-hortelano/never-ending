@@ -39,6 +39,7 @@ export default class Cell extends Component {
         }
     }
     private onClick() {
+        // this.classList.toggle('wall');
         this.dispatch(ControlsEvent.cellClick, this.coords);
     }
     private onHighlight() {
