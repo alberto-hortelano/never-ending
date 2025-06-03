@@ -35,18 +35,18 @@ const createCharacter = (character?: Partial<ICharacter>) => ({ ...baseCharacter
 
 export const initialState = (x: number, y: number, playerData: Partial<ICharacter> = {}, charactersData: Partial<ICharacter>[] = []): IState => {
     // State
-    const mapGenerator = new MapGenerator(x, y);
+    const mapGenerator = new MapGenerator(x, y, playerData.position);
     const player = createCharacter(playerData);
     mapGenerator.generateMap([
-        { size: 3 as const },
-        { size: 5 as const },
-        { size: 7 as const },
-        { size: 3 as const },
-        { size: 9 as const },
-        { size: 7 as const },
-        { size: 3 as const },
-        { size: 5 as const },
-        { size: 7 as const },
+        { size: 3 },
+        { size: 5 },
+        { size: 7 },
+        { size: 3 },
+        { size: 9 },
+        { size: 7 },
+        { size: 3 },
+        { size: 5 },
+        { size: 7 },
     ])
     const map = mapGenerator.getCells();
     const characters: ICharacter[] = [playerData, ...charactersData].map(createCharacter);

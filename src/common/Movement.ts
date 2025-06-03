@@ -19,7 +19,7 @@ export class Movement extends EventBus<
     static readonly speed: Record<Speed, number> = {
         'verySlow': 2,
         'slow': 3,
-        'medium': 4,
+        'medium': 14,
         'fast': 5,
         'veryFast': 6,
     };

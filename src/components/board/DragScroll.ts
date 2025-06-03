@@ -2,16 +2,29 @@ export class DragScroll {
     private prevX = 0;
     private prevY = 0;
     private isDragging = false;
+    private scrollSpeed = 10;
+    private activeKeys = new Set<string>();
+    private animationId: number | null = null;
 
     constructor(private el: HTMLElement) {
         this.onTouchStart = this.onTouchStart.bind(this);
         this.onTouchMove = this.onTouchMove.bind(this);
         this.onTouchEnd = this.onTouchEnd.bind(this);
+        this.onKeyDown = this.onKeyDown.bind(this);
+        this.onKeyUp = this.onKeyUp.bind(this);
+        this.animate = this.animate.bind(this);
 
         this.el.addEventListener("touchstart", this.onTouchStart, { passive: true });
         this.el.addEventListener("touchmove", this.onTouchMove, { passive: false });
         this.el.addEventListener("touchend", this.onTouchEnd, { passive: true });
         this.el.addEventListener("touchcancel", this.onTouchEnd, { passive: true });
+
+        // Make element focusable for keyboard events
+        if (!this.el.hasAttribute('tabindex')) {
+            this.el.setAttribute('tabindex', '0');
+        }
+        this.el.addEventListener("keydown", this.onKeyDown);
+        this.el.addEventListener("keyup", this.onKeyUp);
     }
 
     private onTouchStart(e: TouchEvent): void {
@@ -41,5 +54,81 @@ export class DragScroll {
 
     private onTouchEnd(): void {
         this.isDragging = false;
+    }
+
+    private onKeyDown(e: KeyboardEvent): void {
+        const key = e.key.toLowerCase();
+        const validKeys = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'];
+
+        if (!validKeys.includes(key)) return;
+
+        e.preventDefault();
+
+        if (!this.activeKeys.has(key)) {
+            this.activeKeys.add(key);
+            if (this.activeKeys.size === 1) {
+                this.startAnimation();
+            }
+        }
+    }
+
+    private onKeyUp(e: KeyboardEvent): void {
+        const key = e.key.toLowerCase();
+
+        if (this.activeKeys.has(key)) {
+            this.activeKeys.delete(key);
+            if (this.activeKeys.size === 0) {
+                this.stopAnimation();
+            }
+        }
+    }
+
+    private startAnimation(): void {
+        if (this.animationId === null) {
+            this.animate();
+        }
+    }
+
+    private stopAnimation(): void {
+        if (this.animationId !== null) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+    }
+
+    private animate(): void {
+        if (this.activeKeys.size === 0) {
+            this.stopAnimation();
+            return;
+        }
+
+        let scrollX = 0;
+        let scrollY = 0;
+
+        // Calculate movement based on active keys
+        if (this.activeKeys.has('arrowup') || this.activeKeys.has('w')) {
+            scrollY -= this.scrollSpeed;
+        }
+        if (this.activeKeys.has('arrowdown') || this.activeKeys.has('s')) {
+            scrollY += this.scrollSpeed;
+        }
+        if (this.activeKeys.has('arrowleft') || this.activeKeys.has('a')) {
+            scrollX -= this.scrollSpeed;
+        }
+        if (this.activeKeys.has('arrowright') || this.activeKeys.has('d')) {
+            scrollX += this.scrollSpeed;
+        }
+
+        // Apply diagonal movement normalization
+        if (scrollX !== 0 && scrollY !== 0) {
+            const factor = Math.sqrt(2) / 2; // ~0.707 to maintain consistent speed
+            scrollX *= factor;
+            scrollY *= factor;
+        }
+
+        this.el.scrollLeft += scrollX;
+        this.el.scrollTop += scrollY;
+
+        this.animationId = requestAnimationFrame(this.animate);
     }
 }

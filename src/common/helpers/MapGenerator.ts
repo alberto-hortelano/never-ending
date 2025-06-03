@@ -11,7 +11,11 @@ export class MapGenerator {
     private map: number[][];
     private roomCenters: ICoord[] = [];
 
-    constructor(private width: number = 50, private height: number = 50) {
+    constructor(
+        private width: number = 50,
+        private height: number = 50,
+        private startingPoint = { x: Math.floor(this.width / 2), y: Math.floor(this.height / 2) }
+    ) {
         this.width = width;
         this.height = height;
         this.map = Array(height).fill(null).map(() => Array(width).fill(0));
@@ -38,7 +42,7 @@ export class MapGenerator {
             return this.map;
         }
 
-        let currentCenter: ICoord = { x: Math.floor(this.width / 2), y: Math.floor(this.height / 2) };
+        let currentCenter: ICoord = this.startingPoint;
         let previousDirection: Direction | null = null;
 
         for (let i = 0; i < rooms.length; i++) {
