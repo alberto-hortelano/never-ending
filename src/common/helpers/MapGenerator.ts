@@ -41,12 +41,28 @@ export class MapGenerator {
         })))
     }
 
-    generateMap(rooms: Room[]): number[][] {
+    generateMap(roomsOrBuildings: Room[] | Room[][]): number[][] {
         this.roomCenters = [];
         this.map = Array(this.height).fill(null).map(() => Array(this.width).fill(0));
 
-        if (rooms.length === 0) {
+        if (roomsOrBuildings.length === 0) {
             return this.map;
+        }
+
+        const rooms: Room[] = [];
+        const buildingStarts: number[] = [];
+
+        if (Array.isArray(roomsOrBuildings[0])) {
+            let index = 0;
+            for (const building of roomsOrBuildings as Room[][]) {
+                if (building.length > 0) {
+                    buildingStarts.push(index);
+                    rooms.push(...building);
+                    index += building.length;
+                }
+            }
+        } else {
+            rooms.push(...roomsOrBuildings as Room[]);
         }
 
         let currentCenter: ICoord = this.startingPoint;
@@ -77,8 +93,10 @@ export class MapGenerator {
                 this.carveRoom(room);
                 this.printMap(this.map);
 
-                // Connect rooms with corridor
-                this.carveCorridorBetween(currentCenter, newCenter);
+                // Connect rooms with corridor unless this is the first room of a new building
+                if (!buildingStarts.includes(i)) {
+                    this.carveCorridorBetween(currentCenter, newCenter);
+                }
 
                 // Update previous direction
                 previousDirection = this.getDirection(currentCenter, newCenter);
