@@ -39,13 +39,17 @@ export const initialState = (x: number, y: number, playerData: Partial<ICharacte
     const player = createCharacter(playerData);
     mapGenerator.generateMap([
         { size: 3 },
-        { size: 5 },
-        { size: 7 },
         { size: 3 },
-        { size: 9 },
-        { size: 7 },
         { size: 3 },
+        { size: 0 },
+        { size: 0 },
         { size: 5 },
+        { size: 5 },
+        { size: 5 },
+        { size: 0 },
+        { size: 0 },
+        { size: 7 },
+        { size: 7 },
         { size: 7 },
     ])
     const map = mapGenerator.getCells();

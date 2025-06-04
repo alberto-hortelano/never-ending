@@ -37,7 +37,7 @@
 }
 
 :host::before {
-    content: attr(data-x) "-" attr(data-y);
+    // content: attr(data-x) "-" attr(data-y);
     position: absolute;
     font-size: 1.2dvh;
     color: rgba(255, 255, 255, 0.4);

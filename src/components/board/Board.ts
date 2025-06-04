@@ -34,7 +34,7 @@ export default class Board extends Component {
     this.id = 'board';
 
     this.style.setProperty('--map-width', this.mapData[0]?.length.toString() || null);
-    this.style.setProperty('--cell-width', '5dvh');
+    this.style.setProperty('--cell-width', '2dvh');
 
     this.innerHTML = '';
 

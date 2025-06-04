@@ -1,7 +1,7 @@
 import type { ICoord } from "../interfaces";
 
 interface Room {
-    size: 3 | 5 | 7 | 9 | 11;
+    size: 0 | 3 | 5 | 7 | 9 | 11;
     center?: ICoord;
 }
 
@@ -14,11 +14,18 @@ export class MapGenerator {
     constructor(
         private width: number = 50,
         private height: number = 50,
-        private startingPoint = { x: Math.floor(this.width / 2), y: Math.floor(this.height / 2) }
+        private startingPoint = { x: Math.floor(width / 2), y: Math.floor(height / 2) }
     ) {
         this.width = width;
         this.height = height;
         this.map = Array(height).fill(null).map(() => Array(width).fill(0));
+
+        // Ensure starting point is safe (at least 6 units from edges for largest room)
+        const minBorder = 5;
+        this.startingPoint = {
+            x: Math.max(minBorder, Math.min(this.width - minBorder, this.startingPoint.x)),
+            y: Math.max(minBorder, Math.min(this.height - minBorder, this.startingPoint.y))
+        };
     }
 
     public getCells() {
@@ -93,7 +100,7 @@ export class MapGenerator {
     ): ICoord {
         const currentRoomRadius = Math.ceil(currentRoom.size / 2);
         const nextRoomRadius = nextRoom ? Math.ceil(nextRoom.size / 2) : currentRoomRadius;
-        const minDistance = currentRoomRadius + nextRoomRadius; // Sum of radii for proper separation
+        const minDistance = 2 * currentRoomRadius + 2 * nextRoomRadius; // Sum of radii for proper separation
         const maxDistance = minDistance * 3; // n times the min distance (using 3 as default)
 
         const availableDirections: Direction[] = ['up', 'right', 'down', 'left'];
@@ -128,8 +135,47 @@ export class MapGenerator {
             attempts++;
         }
 
-        // Fallback: just move right by min distance
-        return this.moveInDirection(currentCenter, 'right', minDistance);
+        // Fallback: find a safe position within bounds
+        return this.findSafePosition(currentCenter, currentRoom, minDistance);
+    }
+
+    private findSafePosition(currentCenter: ICoord, room: Room, minDistance: number): ICoord {
+        const roomRadius = Math.ceil(room.size / 2);
+
+        // Try all directions with progressively smaller distances
+        const directions: Direction[] = ['right', 'down', 'left', 'up'];
+
+        for (const direction of directions) {
+            for (let distance = minDistance; distance >= roomRadius * 2; distance -= 2) {
+                const newCenter = this.moveInDirection(currentCenter, direction, distance);
+
+                // Check bounds with room radius
+                if (newCenter.x - roomRadius >= 0 &&
+                    newCenter.x + roomRadius < this.width &&
+                    newCenter.y - roomRadius >= 0 &&
+                    newCenter.y + roomRadius < this.height) {
+
+                    // Check distance from existing rooms
+                    let validDistance = true;
+                    for (const existingCenter of this.roomCenters) {
+                        const dist = Math.abs(newCenter.x - existingCenter.x) + Math.abs(newCenter.y - existingCenter.y);
+                        if (dist < minDistance) {
+                            validDistance = false;
+                            break;
+                        }
+                    }
+
+                    if (validDistance) {
+                        return newCenter;
+                    }
+                }
+            }
+        }
+
+        // Ultimate fallback: clamp to safe bounds
+        const safeX = Math.max(roomRadius, Math.min(this.width - roomRadius - 1, currentCenter.x));
+        const safeY = Math.max(roomRadius, Math.min(this.height - roomRadius - 1, currentCenter.y));
+        return { x: safeX, y: safeY };
     }
 
     private moveInDirection(center: ICoord, direction: Direction, distance: number): ICoord {
