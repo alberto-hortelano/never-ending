@@ -76,7 +76,6 @@ export class MapGenerator {
                 this.roomCenters.push(newCenter);
                 this.carveRoom(room);
                 this.printMap(this.map);
-
                 // Connect rooms with corridor
                 this.carveCorridorBetween(currentCenter, newCenter);
 
@@ -87,6 +86,7 @@ export class MapGenerator {
             if (room.center) {
                 currentCenter = room.center;
             }
+            console.log('>>> - MapGenerator - generateMap - room:', room.size, room.center)
         }
 
         return this.map;
@@ -100,8 +100,8 @@ export class MapGenerator {
     ): ICoord {
         const currentRoomRadius = Math.ceil(currentRoom.size / 2);
         const nextRoomRadius = nextRoom ? Math.ceil(nextRoom.size / 2) : currentRoomRadius;
-        const minDistance = 2 * currentRoomRadius + 2 * nextRoomRadius; // Sum of radii for proper separation
-        const maxDistance = minDistance * 3; // n times the min distance (using 3 as default)
+        const minDistance = currentRoomRadius + nextRoomRadius + 3; // Just enough separation plus small buffer
+        const maxDistance = Math.min(minDistance * 2, Math.min(this.width, this.height) / 3); // Cap at reasonable distance
 
         const availableDirections: Direction[] = ['up', 'right', 'down', 'left'];
 
@@ -146,7 +146,7 @@ export class MapGenerator {
         const directions: Direction[] = ['right', 'down', 'left', 'up'];
 
         for (const direction of directions) {
-            for (let distance = minDistance; distance >= roomRadius * 2; distance -= 2) {
+            for (let distance = minDistance; distance >= 3; distance -= 1) {
                 const newCenter = this.moveInDirection(currentCenter, direction, distance);
 
                 // Check bounds with room radius
@@ -159,7 +159,7 @@ export class MapGenerator {
                     let validDistance = true;
                     for (const existingCenter of this.roomCenters) {
                         const dist = Math.abs(newCenter.x - existingCenter.x) + Math.abs(newCenter.y - existingCenter.y);
-                        if (dist < minDistance) {
+                        if (dist < Math.max(3, minDistance / 2)) { // Relaxed distance requirement
                             validDistance = false;
                             break;
                         }
@@ -172,9 +172,31 @@ export class MapGenerator {
             }
         }
 
-        // Ultimate fallback: clamp to safe bounds
-        const safeX = Math.max(roomRadius, Math.min(this.width - roomRadius - 1, currentCenter.x));
-        const safeY = Math.max(roomRadius, Math.min(this.height - roomRadius - 1, currentCenter.y));
+        // Final fallback: try a grid search for any valid position
+        for (let x = roomRadius; x < this.width - roomRadius; x += 2) {
+            for (let y = roomRadius; y < this.height - roomRadius; y += 2) {
+                const candidate = { x, y };
+                let validDistance = true;
+
+                for (const existingCenter of this.roomCenters) {
+                    const dist = Math.abs(candidate.x - existingCenter.x) + Math.abs(candidate.y - existingCenter.y);
+                    if (dist < 3) { // Minimum separation
+                        validDistance = false;
+                        break;
+                    }
+                }
+
+                if (validDistance) {
+                    return candidate;
+                }
+            }
+        }
+
+        // Ultimate fallback: offset from current center slightly
+        const offsetX = currentCenter.x + (Math.random() > 0.5 ? 1 : -1) * 3;
+        const offsetY = currentCenter.y + (Math.random() > 0.5 ? 1 : -1) * 3;
+        const safeX = Math.max(roomRadius, Math.min(this.width - roomRadius - 1, offsetX));
+        const safeY = Math.max(roomRadius, Math.min(this.height - roomRadius - 1, offsetY));
         return { x: safeX, y: safeY };
     }
 
@@ -294,5 +316,7 @@ export class MapGenerator {
         return [...this.roomCenters];
     }
 
-    private printMap = (map: number[][]) => console.log(map.map(row => row.map(cell => cell ? ' ' : '#').join('')).join('\n'));
+    private printMap = (map: number[][]) => {
+        // console.log(map.map(row => row.map(cell => cell ? ' ' : '#').join('')).join('\n'));
+    }
 }

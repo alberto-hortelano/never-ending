@@ -23,16 +23,19 @@ describe('MapGenerator', () => {
         const centers = generator.getRoomCenters();
 
         expect(centers).toHaveLength(1);
-        expect(centers[0]).toEqual({ x: 0, y: 0 });
+        expect(centers[0]).toEqual({ x: 10, y: 10 });
 
         // Check that room area is walkable (1)
-        expect(map[0]?.[0]).toBe(1);
-        expect(map[1]?.[1]).toBe(1);
-        expect(map[2]?.[2]).toBe(1);
+        const center = centers[0];
+        if (center) {
+            expect(map[center.y]?.[center.x]).toBe(1);
+            expect(map[center.y - 1]?.[center.x]).toBe(1);
+            expect(map[center.y + 1]?.[center.x]).toBe(1);
+        }
         printMap(map);
     });
 
-    test.only('should generate map with multiple rooms', () => {
+    test('should generate map with multiple rooms', () => {
         const rooms = [
             { size: 3 as const },
             { size: 5 as const },

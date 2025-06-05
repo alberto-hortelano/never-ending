@@ -4,9 +4,10 @@ import { Movement } from "./common/Movement";
 import { State } from "./common/State";
 import { GameEvent, EventBus } from "./common/events";
 import { mockHelpers } from './data/state';
-import { baseState } from './data';
+import { initialState } from './data';
 
 const play = () => {
+    const baseState = initialState(40, 50, { name: 'player', position: { x: 4, y: 5 } });
     const state = new State(baseState);
     const movement = new Movement(mockHelpers.movement, state);
     const controls = new Controls();
