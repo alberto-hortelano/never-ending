@@ -62,7 +62,6 @@ export class MapGenerator {
                 room.center = currentCenter;
                 this.roomCenters.push(currentCenter);
                 this.carveRoom(room);
-                this.printMap(this.map);
             } else {
                 // Find next position
                 const newCenter = this.findNextRoomPosition(
@@ -75,7 +74,6 @@ export class MapGenerator {
                 room.center = newCenter;
                 this.roomCenters.push(newCenter);
                 this.carveRoom(room);
-                this.printMap(this.map);
                 // Connect rooms with corridor
                 this.carveCorridorBetween(currentCenter, newCenter);
 
@@ -317,6 +315,6 @@ export class MapGenerator {
     }
 
     private printMap = (map: number[][]) => {
-        // console.log(map.map(row => row.map(cell => cell ? ' ' : '#').join('')).join('\n'));
+        console.log(map.map(row => row.map(cell => cell ? ' ' : '#').join('')).join('\n'));
     }
 }
