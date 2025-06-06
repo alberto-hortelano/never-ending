@@ -6,6 +6,10 @@ import { GameEvent, EventBus } from "./common/events";
 import { mockHelpers } from './data/state';
 import { initialState } from './data';
 
+// Initialize global CSS variables
+document.documentElement.style.setProperty('--cell-width', '4dvh');
+document.documentElement.style.setProperty('--size', 'calc(var(--cell-width, 2dvh) * 0.01)');
+
 const play = () => {
     const baseState = initialState(40, 50, { name: 'player', position: { x: 4, y: 5 } });
     const state = new State(baseState);

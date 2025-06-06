@@ -1,0 +1,128 @@
+@use '../_variables' as *;
+@use 'sass:map';
+$duration: .2s;
+$delay: 0.5 * $duration;
+
+@keyframes walk-head {
+    0% {
+        transform: none;
+    }
+
+    25% {
+        transform: translateX(calc(-2 * var(--size))) skewY(2deg) rotateY(-2deg);
+    }
+
+    50% {
+        transform: none;
+    }
+
+    75% {
+        transform: translateX(calc(2 * var(--size))) skewY(-2deg) rotateY(2deg);
+    }
+
+    100% {
+        transform: none;
+    }
+}
+
+@keyframes walk-rifle {
+    0% {
+        transform: none;
+    }
+
+    25% {
+        transform: rotate(-1deg);
+    }
+
+    50% {
+        transform: none;
+    }
+
+    75% {
+        transform: rotate(1deg);
+    }
+
+    100% {
+        transform: none;
+    }
+}
+
+.character.walk {
+    @for $i from 0 through $orientations - 1 {
+        $angle: $i * $degrees;
+        $x: map.get($cosine-values, $angle);
+        $y: map.get($cosine-values, normalizeAngle($angle + 90));
+
+        @keyframes walk-legs-#{$angle} {
+            0% {
+                transform: translateY(0) rotate(0);
+            }
+
+            25% {
+                transform: translateY(calc(2*#{$y} * var(--size))) rotate(calc(-5*#{$x} * 1deg));
+            }
+
+            50% {
+                transform: translateY(0) rotate(0);
+            }
+
+            75% {
+                transform: translateY(calc(-2*#{$y} * var(--size))) rotate(calc(5*#{$x} * 1deg));
+            }
+
+            100% {
+                transform: translateY(0) rotate(0);
+            }
+        }
+
+        @keyframes walk-arms-#{$angle} {
+            0% {
+                transform: translateY(0) rotate(0);
+            }
+
+            25% {
+                transform: translateY(calc(#{$y} * var(--size))) rotate(calc(-5*#{$x} * 1deg));
+            }
+
+            50% {
+                transform: translateY(0) rotate(0);
+            }
+
+            75% {
+                transform: translateY(calc(-#{$y} * var(--size))) rotate(calc(5*#{$x} * 1deg));
+            }
+
+            100% {
+                transform: translateY(0) rotate(0);
+            }
+        }
+
+
+        &.rotate-#{$angle} {
+            .arm {
+                &.right {
+                    animation: walk-arms-#{$angle} $duration linear $delay infinite;
+
+                    // .rifle {
+                    //     transform-origin: left;
+                    //     animation: walk-rifle $duration linear $delay infinite;
+                    // }
+                }
+
+                &.left {
+                    animation: walk-arms-#{$angle} $duration linear infinite;
+                }
+            }
+
+            .leg {
+                &.right {
+                    animation: walk-legs-#{$angle} $duration linear infinite;
+                }
+
+                &.left {
+                    animation: walk-legs-#{$angle} $duration linear $delay infinite;
+                }
+            }
+        }
+    }
+}

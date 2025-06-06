@@ -2,8 +2,8 @@ import { EventBus, GUIEventsMap, GameEventsMap, ControlsEventsMap, StateChangeEv
 
 export abstract class Component extends HTMLElement {
     protected name = this.constructor.name.toLowerCase();
-    protected hasCss = false;
-    protected hasHtml = false;
+    protected hasCss: boolean | string[] = false;
+    protected hasHtml: boolean | string[] = false;
     protected eventBus = new EventBus<
         GUIEventsMap & GameEventsMap & ControlsEventsMap & StateChangeEventsMap,
         GUIEventsMap & GameEventsMap & ControlsEventsMap & UpdateStateEventsMap

@@ -1,0 +1,20 @@
+@use '../_variables' as *;
+@use 'sass:map';
+
+.character.iddle {
+    @for $i from 0 through $orientations - 1 {
+        $angle: $i * $degrees;
+        $x: map.get($cosine-values, $angle);
+        $y: map.get($cosine-values, normalizeAngle($angle + 90));
+
+        &.rotate-#{$angle} {
+            .arm {
+                &.right {
+                    transform: rotate(normalizeAngle(-$angle + 1deg));
+                    height: 2.8vmin;
+                }
+
+            }
+        }
+    }
+}

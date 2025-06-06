@@ -1,0 +1,27 @@
+@use 'sass:math';
+$orientations: 8;
+$degrees: 45;
+
+// Define cosine values for specific angles
+$cosine-values: (
+    0: 0,
+    45: 0.7,
+    90: 1,
+    135: 0.7,
+    180: 0,
+    225: -0.7,
+    270: -1,
+    315: -0.7,
+);
+
+@function normalizeAngle($angle) {
+    @while $angle>=360 {
+        $angle: $angle - 360;
+    }
+
+    @while $angle<0 {
+        $angle: 360 + $angle;
+    }
+
+    @return $angle;
+}
