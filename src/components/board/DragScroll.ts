@@ -2,7 +2,7 @@ export class DragScroll {
     private prevX = 0;
     private prevY = 0;
     private isDragging = false;
-    private scrollSpeed = 10;
+    private scrollSpeed = 20;
     private activeKeys = new Set<string>();
     private animationId: number | null = null;
 

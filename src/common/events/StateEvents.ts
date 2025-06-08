@@ -18,8 +18,6 @@ export enum StateChangeEvent {
     /** Update character position */
     map = 'StateChangeEvent.map',
     characters = 'StateChangeEvent.characters',
-    player = 'StateChangeEvent.player',
-    messages = 'StateChangeEvent.messages',
     characterPosition = 'StateChangeEvent.characterPosition',
     characterPath = 'StateChangeEvent.characterPath',
 }
@@ -27,8 +25,6 @@ export enum StateChangeEvent {
 export interface StateChangeEventsMap {
     [StateChangeEvent.map]: DeepReadonly<IState['map']>;
     [StateChangeEvent.characters]: DeepReadonly<IState['characters']>;
-    [StateChangeEvent.player]: DeepReadonly<ICharacter>;
-    [StateChangeEvent.messages]: DeepReadonly<IState['messages']>;
     [StateChangeEvent.characterPosition]: DeepReadonly<ICharacter>;
     [StateChangeEvent.characterPath]: DeepReadonly<ICharacter>;
 }

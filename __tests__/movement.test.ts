@@ -10,7 +10,6 @@ describe('Move character', () => {
     const testFn = jest.fn((...args) => console.log(args))
     superEventBus.listen(StateChangeEvent.map, testFn);
     superEventBus.listen(StateChangeEvent.characters, testFn);
-    superEventBus.listen(StateChangeEvent.player, testFn);
     const state = new State(miniState);
     new Movement(mockHelpers.movement, state);
 

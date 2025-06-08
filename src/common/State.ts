@@ -51,13 +51,9 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> 
     private set messages(messages: IState['messages']) {
         this.#messages = messages;
         console.log('>>> - State - setmessages - this.#messages:', this.#messages)
-        // this.dispatch(StateChangeEvent.messages, structuredClone(this.#messages));
     }
     private set player(player: ICharacter | undefined) {
         this.#player = player;
-        if (this.#player) {
-            this.dispatch(StateChangeEvent.player, structuredClone(this.#player));
-        }
     }
     // Getters
     get map(): DeepReadonly<IState['map']> {

@@ -84,7 +84,6 @@ export class MapGenerator {
             if (room.center) {
                 currentCenter = room.center;
             }
-            console.log('>>> - MapGenerator - generateMap - room:', room.size, room.center)
         }
 
         return this.map;
