@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "npx concurrently 'npm run build' 'npm run sync:files' 'npm run serve' 'npm run scss'",
-    "serve": "tsx ./src/server.ts",
+    "serve": "tsx ./src/server/index.ts",
     "terminal": "tsx ./src/terminal.ts",
     "build": "tsc --watch",
     "scss": "npx sass --watch ./src:./public/css",
@@ -30,5 +30,8 @@
     "tsx": "^4.19.2",
     "typescript": "^5.3.3",
     "typescript-eslint": "^8.29.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.53.0"
   }
 }

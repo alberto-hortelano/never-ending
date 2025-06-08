@@ -55,7 +55,7 @@ export class Movement extends EventBus<
         const path = [...character.path];
         const position = path.shift();
         if (position) {
-            this.dispatch(ControlsEvent.moveCharacter, { ...character, path, position })
+            this.dispatch(ControlsEvent.moveCharacter, { ...character, path, position }, character.name);
         }
     }
     private onShowMovement(characterName: ControlsEventsMap[ControlsEvent.showMovement]) {

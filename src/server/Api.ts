@@ -1,0 +1,90 @@
+import type { Express } from 'express';
+
+import express from 'express';
+import { dirname, resolve, extname, join } from 'path';
+import { existsSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { IMessage } from '../common/interfaces';
+import { initialSetup } from '../prompts/shortPrompts';
+import { SendMessage } from '../models/claude';
+
+export class Api {
+    private dirname = dirname(fileURLToPath(import.meta.url));
+    private publicDir = resolve(this.dirname, '../../public');
+
+    constructor(
+        private app: Express,
+        private port = 3000,
+        private sendMessage: SendMessage,
+    ) {
+        this.start();
+        this.listen();
+    }
+
+    private listen() {
+        this.app.listen(this.port, () => {
+            console.log(`Static server running at http://localhost:${this.port}`);
+        });
+    }
+
+    private start() {
+        this.jsFiles();
+        this.staticFiles();
+        this.gameEngine();
+    }
+
+    private jsFiles() {
+        this.app.use((req, res, next) => {
+            if (req.url.startsWith('/js')) {
+                if (!extname(req.url)) {
+                    if (existsSync(join(this.publicDir, req.url + '.js'))) {
+                        req.url += '.js';
+                    } else {
+                        const dirPath = req.url.endsWith('/') ? req.url : req.url + '/';
+                        const indexPath = join(this.publicDir, dirPath, 'index.js');
+
+                        if (existsSync(indexPath)) {
+                            req.url = dirPath + 'index.js';
+                            return res.redirect(302, join(dirPath, 'index.js'));
+                        } else {
+                            console.log('>>> - EEEEEEE - indexPath:', indexPath, join(dirPath, 'index.js'))
+                        }
+                    }
+                }
+            }
+
+            next();
+        });
+    }
+
+    private staticFiles() {
+        this.app.use(express.static(this.publicDir, {
+            dotfiles: 'ignore'
+        }));
+    }
+
+    private gameEngine() {
+        this.app.post('/gameEngine', async (req, res) => {
+            const body: IMessage[] = req.body;
+
+            const messages: IMessage[] = body.length ? body : [{
+                role: 'user',
+                content: initialSetup,
+            }];
+
+            try {
+                const response = await this.sendMessage(messages);
+                const message: IMessage = {
+                    role: 'assistant',
+                    content: response,
+                }
+
+                messages.push(message);
+                res.send(messages);
+            } catch (error) {
+                console.error('>>> - Api - this.app.post - error:', error)
+                res.send(messages);
+            }
+        });
+    }
+}

@@ -11,6 +11,9 @@ $transparent-black: rgba(0, 0, 0, 0.2);
     display: block;
     position: absolute;
     background: transparent;
+    --helmet: #d7d7d7;
+    --suit: #d7d7d7;
+    --skin: #d7a55f;
 }
 
 body {
@@ -36,7 +39,7 @@ body {
     width: calc(70 * var(--size));
     height: calc(60 * var(--size));
     border-radius: 100%;
-    background-color: #d7d7d7;
+    background-color: var(--helmet);
     background-image: radial-gradient(circle at calc(1 * var(--size)) calc(4 * var(--size)), $transparent-white, $transparent-black);
     z-index: 35;
 
@@ -91,7 +94,7 @@ body {
     height: calc(50 * var(--size));
     width: calc(60 * var(--size));
     left: calc(-30 * var(--size));
-    background-color: #d7d7d7;
+    background-color: var(--suit);
     background-image: linear-gradient(90deg, $transparent-white 0%, $transparent-black 100%);
     border-radius: 100% / 50%;
     z-index: 29;
@@ -104,7 +107,7 @@ body {
     width: calc(10 * var(--size));
     top: calc(10 * var(--size));
     perspective: calc(200 * var(--size));
-    background-color: #d7d7d7;
+    background-color: var(--suit);
     background-image: linear-gradient(90deg, $transparent-white 0%, $transparent-black 100%);
     border-radius: calc(10 * var(--size)) calc(10 * var(--size)) 0 0;
     border-bottom: calc(8 * var(--size)) solid #d7a55f;
@@ -128,7 +131,7 @@ body {
     width: calc(30 * var(--size));
     top: calc(30 * var(--size));
     border-radius: 0 0 calc(10 * var(--size)) calc(10 * var(--size));
-    background-color: #d7d7d7;
+    background-color: var(--suit);
     background-image: linear-gradient(90deg, $transparent-white 0%, $transparent-black 100%);
     z-index: 1;
 
@@ -166,8 +169,6 @@ body {
 
 .robot {
     .head {
-        background-color: transparent;
-
         .face {
             box-shadow: none !important;
             background: none;

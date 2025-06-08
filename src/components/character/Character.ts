@@ -1,4 +1,5 @@
 import { ControlsEvent, GUIEvent, ControlsEventsMap } from "../../common/events";
+import { ICharacter } from "../../common/interfaces";
 import { Component } from "../Component";
 import type Movable from "../movable/Movable";
 import "../movable/Movable";
@@ -9,17 +10,29 @@ export default class Character extends Component {
     protected override hasHtml = true;
     private movable?: HTMLElement;
     private characterElement?: HTMLElement;
+    private race: ICharacter['race'] = 'human';
+    private palette = {
+        skin: 'black',
+        helmet: 'black',
+        suit: 'black',
+    }
 
     constructor() {
         super();
-        this.listen(ControlsEvent.moveCharacter, caracter => this.onMoveCharacter(caracter));
     }
 
     override async connectedCallback() {
         const root = await super.connectedCallback();
+        this.listen(ControlsEvent.moveCharacter, caracter => this.onMoveCharacter(caracter), this.id);
+        this.characterElement = root?.getElementById('character') as HTMLElement;
+        if (this.dataset.race) {
+            this.race = this.dataset.race as ICharacter['race'];
+            this.characterElement.classList.add(this.race);
+        }
         this.movable = root?.getElementById('movable') as Movable;
         this.movable.dataset.x = `${this.dataset.x}`;
         this.movable.dataset.y = `${this.dataset.y}`;
+        this.palette = this.setPalette();
         this.movable.addEventListener("transitionend", () => {
             this.characterElement?.classList.remove('walk');
             this.dispatch(GUIEvent.movementEnd, this.id);
@@ -27,8 +40,24 @@ export default class Character extends Component {
         this.addEventListener('click', () => {
             this.dispatch(ControlsEvent.showMovement, this.id)
         });
-        this.characterElement = root?.getElementById('character') as HTMLElement;
+        this.style.setProperty('--skin', this.palette.skin);
+        this.style.setProperty('--helmet', this.palette.helmet);
+        this.style.setProperty('--suit', this.palette.suit);
+        this.style.backgroundColor = this.palette.helmet;
         return root;
+    }
+
+    private setPalette() {
+        try {
+            const palette = JSON.parse(this.dataset.palette || '{}');
+            return {
+                ...this.palette,
+                ...palette
+            };
+        } catch (error) {
+            console.error('>>> - Character - getPalette - error:', error);
+            return this.palette;
+        }
     }
 
     private onMoveCharacter(character: ControlsEventsMap[ControlsEvent.moveCharacter]) {
