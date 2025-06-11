@@ -1,7 +1,7 @@
-import { MapGenerator } from '../src/common/helpers/MapGenerator';
+import { MapGenerator2 } from '../src/common/helpers/MapGenerator2';
 
-describe('MapGenerator', () => {
-    let generator: MapGenerator;
+describe('MapGenerator2', () => {
+    let generator: MapGenerator2;
 
     const printMap = (map: number[][]) => console.log(map.map(row => row.map(cell => cell ? ' ' : '#').join('')).join('\n'));
 

@@ -1,6 +1,6 @@
 import { IPositionable, IState, ICharacter, IMessage } from "../common/interfaces";
 import { IMovement } from "../common/Movement";
-import { MapGenerator } from "../common/helpers/MapGenerator";
+import { MapGenerator2 } from "../common/helpers/MapGenerator2";
 
 // Mocks
 const locate = (positionable: IPositionable) => {
@@ -53,27 +53,19 @@ const player: Partial<ICharacter> = {
         suit: 'white',
     }
 };
-export const initialState = (x: number, y: number, playerData: Partial<ICharacter> = {}, charactersData: Partial<ICharacter>[] = []): IState => {
+export const initialState = (x: number, y: number, playerData: Partial<ICharacter> = player, charactersData: Partial<ICharacter>[] = [data]): IState => {
     // State
-    const mapGenerator = new MapGenerator(x, y, playerData.position);
+    const mapGenerator = new MapGenerator2(x, y);
     const player = createCharacter(playerData);
     mapGenerator.generateMap([
         { size: 3 },
-        { size: 0 },
         { size: 3 },
-        { size: 0 },
         { size: 3 },
-        { size: 0 },
         { size: 5 },
-        { size: 0 },
         { size: 5 },
-        { size: 0 },
         { size: 5 },
-        { size: 0 },
         { size: 7 },
-        { size: 0 },
         { size: 7 },
-        { size: 0 },
         { size: 7 },
     ])
     const map = mapGenerator.getCells();
