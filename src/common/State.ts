@@ -2,6 +2,7 @@ import type { ICoord, ICell, ICharacter, IState } from "./interfaces";
 
 import { UpdateStateEvent, EventBus, UpdateStateEventsMap, StateChangeEventsMap, StateChangeEvent } from "./events";
 import { DeepReadonly } from "./helpers/types";
+import { baseState } from '../data/state';
 
 export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> {
     #map: IState['map'] = [];
@@ -9,15 +10,12 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> 
     #player?: ICharacter;
     #messages: IState['messages'] = [];
 
+    private readonly storageName = 'state'; // could be random to hide from others
     private cellMap = new Map<ICoord, ICell>();
 
-    constructor(initialState: IState) {
+    constructor(initialState?: IState) {
         super();
-        this.map = initialState.map;
-        this.characters = initialState.characters;
-        this.player = initialState.player;
-        this.messages = initialState.messages;
-
+        this.load(initialState);
         this.listen(UpdateStateEvent.characterPosition, (ch) => this.onCharacterPosition(ch));
         this.listen(UpdateStateEvent.characterPath, (ch) => this.onCharacterPath(ch));
     }
@@ -29,6 +27,7 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> 
         }
         character.position = characterData.position;
         this.dispatch(StateChangeEvent.characterPosition, structuredClone(character));
+        this.save();
     }
     private onCharacterPath(characterData: UpdateStateEventsMap[UpdateStateEvent.characterPosition]) {
         const character = this.#characters.find(character => character.name === characterData.name);
@@ -43,14 +42,17 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> 
         this.#map = map;
         this.#map.forEach(row => row.forEach(cell => this.cellMap.set(cell.position, cell)));
         this.dispatch(StateChangeEvent.map, structuredClone(this.#map));
+        this.save();
     }
     private set characters(characters: IState['characters']) {
         this.#characters = characters;
         this.dispatch(StateChangeEvent.characters, structuredClone(this.#characters));
+        this.save();
     }
     private set messages(messages: IState['messages']) {
         this.#messages = messages;
         console.log('>>> - State - setmessages - this.#messages:', this.#messages)
+        this.save();
     }
     private set player(player: ICharacter | undefined) {
         this.#player = player;
@@ -74,6 +76,35 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> 
     }
     #findCell(coord: ICell['position']) {
         return this.cellMap.get(coord);
+    }
+    // Storage
+    private save() {
+        const state: IState = {
+            map: this.#map,
+            characters: this.#characters,
+            player: this.#player,
+            messages: this.#messages,
+        }
+        localStorage.setItem(this.storageName, JSON.stringify(state));
+    }
+    private load(initialState?: IState) {
+        let state = initialState;
+        if (!state) {
+            try {
+                const raw = localStorage.getItem(this.storageName);
+                state ||= raw && JSON.parse(raw);
+            } catch (error) {
+                console.error('Game#constructor - localStorage parse error:', error);
+            }
+        }
+        state ||= baseState;
+        this.map = state.map;
+        this.characters = state.characters;
+        this.player = state.player;
+        this.messages = state.messages;
+    }
+    private clear() {
+        localStorage.removeItem(this.storageName);
     }
     // Public Helpers
     findCharacter(name: ICharacter['name']): DeepReadonly<ICharacter> | undefined {

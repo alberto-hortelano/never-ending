@@ -7,6 +7,7 @@
   "scripts": {
     "start": "npx concurrently 'npm run build' 'npm run sync:files' 'npm run serve' 'npm run scss'",
     "serve": "tsx ./src/server/index.ts",
+    "img": "tsx ./src/models/openAi.ts",
     "terminal": "tsx ./src/terminal.ts",
     "build": "tsc --watch",
     "scss": "npx sass --watch ./src:./public/css",
@@ -32,6 +33,7 @@
     "typescript-eslint": "^8.29.0"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.53.0"
+    "@anthropic-ai/sdk": "^0.53.0",
+    "openai": "^5.1.1"
   }
 }

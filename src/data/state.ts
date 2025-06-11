@@ -33,6 +33,26 @@ const baseCharacter: ICharacter = {
 
 const createCharacter = (character?: Partial<ICharacter>) => ({ ...baseCharacter, ...character });
 
+const data: Partial<ICharacter> = {
+    name: 'data',
+    race: 'robot',
+    position: { x: 5, y: 5 },
+    palette: {
+        skin: 'gold',
+        helmet: 'gold',
+        suit: 'gold',
+    }
+};
+const player: Partial<ICharacter> = {
+    name: 'player',
+    race: 'human',
+    position: { x: 4, y: 5 },
+    palette: {
+        skin: '#d7a55f',
+        helmet: 'white',
+        suit: 'white',
+    }
+};
 export const initialState = (x: number, y: number, playerData: Partial<ICharacter> = {}, charactersData: Partial<ICharacter>[] = []): IState => {
     // State
     const mapGenerator = new MapGenerator(x, y, playerData.position);
@@ -68,3 +88,4 @@ export const initialState = (x: number, y: number, playerData: Partial<ICharacte
     return initialState;
 }
 
+export const baseState = initialState(40, 50, player, [data]);
