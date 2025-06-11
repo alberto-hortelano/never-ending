@@ -1,13 +1,6 @@
 import type { ICoord } from "../interfaces";
-import { CorridorGenerator, type Corridor } from "./CorridorGenerator";
-import { RoomPlacer } from "./RoomPlacer";
-
-interface Room {
-    size: 0 | 3 | 5 | 7 | 9 | 11;
-    center?: ICoord;
-}
-
-type CorridorPattern = 'random' | 'star' | 'grid' | 'linear';
+import { CorridorGenerator, CorridorPattern, type Corridor } from "./CorridorGenerator";
+import { Room, RoomPlacer } from "./RoomPlacer";
 
 export class MapGenerator2 {
     private map: number[][];
@@ -38,11 +31,11 @@ export class MapGenerator2 {
         })))
     }
 
-    public generateMap(rooms: Room[]): number[][] {
+    public generateMap(rooms: Room[], startingPoint: ICoord): number[][] {
         this.reset();
         if (rooms.length === 0) return this.map;
 
-        this.corridors = this.corridorGenerator.generateCorridors(rooms.length, this.corridorPattern);
+        this.corridors = this.corridorGenerator.generateCorridors(rooms.length, this.corridorPattern, startingPoint);
         this.roomPlacer.placeAllRooms(rooms.filter(room => room && room.size > 0), this.corridors);
         this.carveEverything();
 

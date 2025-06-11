@@ -1,7 +1,7 @@
-import type { ICoord } from "../interfaces";
+import type { Direction, ICoord } from "../interfaces";
 import type { Corridor, CorridorGenerator } from "./CorridorGenerator";
 
-interface Room {
+export interface Room {
     size: 0 | 3 | 5 | 7 | 9 | 11;
     center?: ICoord;
 }
@@ -13,8 +13,6 @@ interface RoomPlacement {
     corridorIndex: number;
     connectionPoint: ICoord;
 }
-
-type Direction = 'up' | 'right' | 'down' | 'left';
 
 export class RoomPlacer {
     private roomPlacements: RoomPlacement[] = [];

@@ -1,7 +1,6 @@
-import type { ICoord } from "../interfaces";
+import type { Direction, ICoord } from "../interfaces";
 
-type Direction = 'up' | 'right' | 'down' | 'left';
-type CorridorPattern = 'random' | 'star' | 'grid' | 'linear';
+export type CorridorPattern = 'random' | 'star' | 'grid' | 'linear';
 
 export interface Corridor {
     start: ICoord;
@@ -19,11 +18,14 @@ export class CorridorGenerator {
         private height: number
     ) { }
 
-    public generateCorridors(roomCount: number, pattern: CorridorPattern): Corridor[] {
+    public generateCorridors(
+        roomCount: number,
+        pattern: CorridorPattern,
+        center: ICoord = { x: Math.floor(this.width / 2), y: Math.floor(this.height / 2) }
+    ): Corridor[] {
         this.corridors = [];
         const corridorCount = Math.max(2, Math.ceil(roomCount * 0.8));
         const avgLength = Math.min(this.width, this.height) / 4;
-        const center = { x: Math.floor(this.width / 2), y: Math.floor(this.height / 2) };
 
         const generators = {
             random: () => this.generateRandomCorridors(corridorCount, avgLength, center),

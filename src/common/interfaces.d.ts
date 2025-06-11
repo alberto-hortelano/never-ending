@@ -20,7 +20,7 @@ export interface IPositionable {
     blocker: boolean;
 }
 export type Speed = 'verySlow' | 'slow' | 'medium' | 'fast' | 'veryFast';
-export type Direction = 'down' | 'down-right' | 'right' | 'up-right' | 'up' | 'up-left' | 'left' | 'down-left';
+export type Direction = 'down' | 'right' | 'up' | 'left';
 export interface IMovable extends IPositionable {
     speed: Speed;
     direction: Direction;

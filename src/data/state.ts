@@ -36,7 +36,7 @@ const createCharacter = (character?: Partial<ICharacter>) => ({ ...baseCharacter
 const data: Partial<ICharacter> = {
     name: 'data',
     race: 'robot',
-    position: { x: 5, y: 5 },
+    position: { x: 15, y: 15 },
     palette: {
         skin: 'gold',
         helmet: 'gold',
@@ -46,7 +46,7 @@ const data: Partial<ICharacter> = {
 const player: Partial<ICharacter> = {
     name: 'player',
     race: 'human',
-    position: { x: 4, y: 5 },
+    position: { x: 14, y: 15 },
     palette: {
         skin: '#d7a55f',
         helmet: 'white',
@@ -67,7 +67,7 @@ export const initialState = (x: number, y: number, playerData: Partial<ICharacte
         { size: 7 },
         { size: 7 },
         { size: 7 },
-    ])
+    ], player.position)
     const map = mapGenerator.getCells();
     const characters: ICharacter[] = [playerData, ...charactersData].map(createCharacter);
     const messages: IMessage[] = [];

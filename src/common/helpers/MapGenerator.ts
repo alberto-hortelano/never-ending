@@ -1,11 +1,9 @@
-import type { ICoord } from "../interfaces";
+import type { Direction, ICoord } from "../interfaces";
 
 interface Room {
     size: 0 | 3 | 5 | 7 | 9 | 11;
     center?: ICoord;
 }
-
-type Direction = 'up' | 'right' | 'down' | 'left';
 
 export class MapGenerator {
     private map: number[][];
