@@ -136,15 +136,25 @@ export class RoomPlacer {
 
         // Try placing at corridor endpoints and intersections
         for (const { room, index } of failedRooms) {
-            const placement = this.tryPlaceAtSpecialPoints(room, corridors) ||
-                this.tryPlaceWithRelaxedConstraints(room, corridors);
+            let placement = this.tryPlaceAtSpecialPoints(room, corridors) ||
+                this.tryPlaceWithRelaxedConstraints(room, corridors) ||
+                this.tryPlaceWithOverlap(room, corridors) ||
+                this.forceCreateSpaceForRoom(room, corridors);
 
             if (placement) {
                 this.roomPlacements.push(placement);
                 room.center = placement.position;
                 console.log(`Successfully force-placed room ${index} (size ${room.size})`);
             } else {
-                console.error(`CRITICAL: Failed to place room ${index} (size ${room.size}) even with force placement!`);
+                // Last resort: place at any valid boundary position
+                placement = this.placeAtAnyValidPosition(room, corridors);
+                if (placement) {
+                    this.roomPlacements.push(placement);
+                    room.center = placement.position;
+                    console.log(`Emergency placement for room ${index} (size ${room.size})`);
+                } else {
+                    console.error(`CRITICAL: Failed to place room ${index} (size ${room.size}) even with force placement!`);
+                }
             }
         }
     }
@@ -410,5 +420,92 @@ export class RoomPlacer {
             const row = map[cell.y];
             if (row) row[cell.x] = 1;
         }
+    }
+
+    private tryPlaceWithOverlap(room: Room, corridors: Corridor[]): RoomPlacement | null {
+        // Allow slight overlap with other rooms
+        const originalIsValid = this.isValidRoomPosition.bind(this);
+        this.isValidRoomPosition = (center: ICoord, room: Room) => {
+            return this.isValidRoomPositionRelaxed(center, room, -1); // Allow 1 tile overlap
+        };
+
+        const placement = this.tryPlaceRoom(room, 0, 0, corridors, true);
+
+        this.isValidRoomPosition = originalIsValid;
+        return placement;
+    }
+
+    private forceCreateSpaceForRoom(room: Room, corridors: Corridor[]): RoomPlacement | null {
+        // Find the best position even if it requires moving other rooms
+        const halfSize = Math.floor(room.size / 2);
+        
+        // Try placing at regular intervals across the map
+        for (let y = halfSize + 2; y < this.height - halfSize - 2; y += room.size + 2) {
+            for (let x = halfSize + 2; x < this.width - halfSize - 2; x += room.size + 2) {
+                const position = { x, y };
+                
+                // Check if this position is near any corridor
+                const nearCorridor = corridors.some(corridor => 
+                    corridor.cells.some(cell => 
+                        Math.abs(cell.x - x) + Math.abs(cell.y - y) <= room.size
+                    )
+                );
+                
+                if (nearCorridor && this.isValidRoomPositionRelaxed(position, room, -2)) {
+                    // Find nearest corridor point
+                    let minDist = Infinity;
+                    let bestCorridorIndex = 0;
+                    let connectionPoint = position;
+                    
+                    corridors.forEach((corridor, idx) => {
+                        corridor.cells.forEach(cell => {
+                            const dist = Math.abs(cell.x - x) + Math.abs(cell.y - y);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                bestCorridorIndex = idx;
+                                connectionPoint = cell;
+                            }
+                        });
+                    });
+                    
+                    return { room, position, connectionType: 'side', corridorIndex: bestCorridorIndex, connectionPoint };
+                }
+            }
+        }
+        
+        return null;
+    }
+
+    private placeAtAnyValidPosition(room: Room, corridors: Corridor[]): RoomPlacement | null {
+        const halfSize = Math.floor(room.size / 2);
+        
+        // Scan entire map for any valid position
+        for (let y = halfSize + 1; y < this.height - halfSize - 1; y++) {
+            for (let x = halfSize + 1; x < this.width - halfSize - 1; x++) {
+                const position = { x, y };
+                
+                if (this.isValidRoomPosition(position, room)) {
+                    // Find nearest corridor
+                    let minDist = Infinity;
+                    let bestCorridorIndex = 0;
+                    let connectionPoint = position;
+                    
+                    corridors.forEach((corridor, idx) => {
+                        corridor.cells.forEach(cell => {
+                            const dist = Math.abs(cell.x - x) + Math.abs(cell.y - y);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                bestCorridorIndex = idx;
+                                connectionPoint = cell;
+                            }
+                        });
+                    });
+                    
+                    return { room, position, connectionType: 'side', corridorIndex: bestCorridorIndex, connectionPoint };
+                }
+            }
+        }
+        
+        return null;
     }
 }

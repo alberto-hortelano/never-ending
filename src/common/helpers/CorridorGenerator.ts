@@ -35,6 +35,12 @@ export class CorridorGenerator {
         };
 
         generators[pattern]();
+        
+        // Ensure at least one corridor is generated
+        if (this.corridors.length === 0) {
+            this.generateFallbackCorridor(center);
+        }
+        
         return [...this.corridors];
     }
 
@@ -141,10 +147,17 @@ export class CorridorGenerator {
     }
 
     private generateLinearCorridors(count: number, avgLength: number, center: ICoord): void {
-        const totalLength = avgLength * count;
-        const start = { x: Math.max(5, center.x - totalLength / 2), y: center.y };
-        const end = { x: Math.min(this.width - 5, start.x + totalLength), y: center.y };
-        this.addCorridorDirect(start, end, 'right');
+        const totalLength = Math.min(avgLength * count, this.width - 10);
+        const halfLength = Math.floor(totalLength / 2);
+        const start = { x: Math.max(5, center.x - halfLength), y: center.y };
+        const end = { x: Math.min(this.width - 5, center.x + halfLength), y: center.y };
+        
+        if (!this.addCorridorDirect(start, end, 'right')) {
+            // Try vertical if horizontal fails
+            const vStart = { x: center.x, y: Math.max(5, center.y - halfLength) };
+            const vEnd = { x: center.x, y: Math.min(this.height - 5, center.y + halfLength) };
+            this.addCorridorDirect(vStart, vEnd, 'down');
+        }
     }
 
     private addCorridor(start: ICoord, direction: Direction, length: number): boolean {
@@ -153,15 +166,35 @@ export class CorridorGenerator {
     }
 
     private addCorridorDirect(start: ICoord, end: ICoord, direction: Direction): boolean {
-        if (!this.isValidCorridorEnd(end) || !this.isValidCorridorPlacement(start, end, direction)) {
+        // Ensure start and end are valid
+        const validStart = {
+            x: Math.max(5, Math.min(this.width - 5, start.x)),
+            y: Math.max(5, Math.min(this.height - 5, start.y))
+        };
+        const validEnd = {
+            x: Math.max(5, Math.min(this.width - 5, end.x)),
+            y: Math.max(5, Math.min(this.height - 5, end.y))
+        };
+        
+        // Ensure corridor has at least some length
+        if (validStart.x === validEnd.x && validStart.y === validEnd.y) {
+            // Create a minimal corridor
+            if (direction === 'right' || direction === 'left') {
+                validEnd.x = Math.min(this.width - 5, validStart.x + 5);
+            } else {
+                validEnd.y = Math.min(this.height - 5, validStart.y + 5);
+            }
+        }
+        
+        if (!this.isValidCorridorEnd(validEnd) || !this.isValidCorridorPlacement(validStart, validEnd, direction)) {
             return false;
         }
 
         this.corridors.push({
-            start,
-            end,
+            start: validStart,
+            end: validEnd,
             direction,
-            cells: this.getCorridorCells(start, end)
+            cells: this.getCorridorCells(validStart, validEnd)
         });
         return true;
     }
@@ -282,5 +315,27 @@ export class CorridorGenerator {
             const row = map[cell.y];
             if (row) row[cell.x] = 1;
         }
+    }
+    
+    private generateFallbackCorridor(center: ICoord): void {
+        // Try to generate a simple corridor in any valid direction
+        const minLength = Math.min(10, Math.floor(Math.min(this.width, this.height) / 4));
+        
+        for (const direction of this.directions) {
+            const end = this.moveInDirection(center, direction, minLength);
+            if (this.addCorridorDirect(center, end, direction)) {
+                return;
+            }
+        }
+        
+        // Last resort: create a minimal corridor
+        const safeStart = { x: 10, y: Math.floor(this.height / 2) };
+        const safeEnd = { x: Math.min(20, this.width - 10), y: Math.floor(this.height / 2) };
+        this.corridors.push({
+            start: safeStart,
+            end: safeEnd,
+            direction: 'right',
+            cells: this.getCorridorCells(safeStart, safeEnd)
+        });
     }
 }
