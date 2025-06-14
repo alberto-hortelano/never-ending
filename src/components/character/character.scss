@@ -177,8 +177,8 @@ body {
             .eye {
                 border-radius: 0;
                 animation: none;
-                border: 1px solid #c17000;
-                background-color: yellow;
+                border: 1px solid black;
+                background-color: var(--skin);
                 box-sizing: border-box;
             }
         }

@@ -36,9 +36,9 @@ const createCharacter = (character?: Partial<ICharacter>) => ({ ...baseCharacter
 const data: Partial<ICharacter> = {
     name: 'data',
     race: 'robot',
-    position: { x: 15, y: 15 },
+    position: { x: 25, y: 25 },
     palette: {
-        skin: 'gold',
+        skin: 'yellow',
         helmet: 'gold',
         suit: 'gold',
     }
@@ -46,27 +46,46 @@ const data: Partial<ICharacter> = {
 const player: Partial<ICharacter> = {
     name: 'player',
     race: 'human',
-    position: { x: 14, y: 15 },
+    position: { x: 24, y: 25 },
     palette: {
         skin: '#d7a55f',
         helmet: 'white',
         suit: 'white',
     }
 };
-export const initialState = (x: number, y: number, playerData: Partial<ICharacter> = player, charactersData: Partial<ICharacter>[] = [data]): IState => {
+const enemy: Partial<ICharacter> = {
+    name: 'enemy',
+    race: 'robot',
+    position: { x: 23, y: 25 },
+    palette: {
+        skin: 'yellow',
+        helmet: 'red',
+        suit: 'red',
+    }
+};
+export const initialState = (x: number, y: number, playerData: Partial<ICharacter> = player, charactersData: Partial<ICharacter>[] = [data, enemy]): IState => {
     // State
     const mapGenerator = new MapGenerator2(x, y);
     const player = createCharacter(playerData);
     mapGenerator.generateMap([
-        { size: 3 },
-        { size: 3 },
-        { size: 3 },
-        { size: 5 },
-        { size: 5 },
+        { size: 7 },
         { size: 5 },
         { size: 7 },
+        { size: 3 },
         { size: 7 },
+        { size: 3 },
+        { size: 5 },
+        { size: 3 },
+        { size: 5 },
         { size: 7 },
+        { size: 5 },
+        { size: 7 },
+        { size: 3 },
+        { size: 7 },
+        { size: 3 },
+        { size: 5 },
+        { size: 3 },
+        { size: 5 },
     ], player.position)
     const map = mapGenerator.getCells();
     const characters: ICharacter[] = [playerData, ...charactersData].map(createCharacter);

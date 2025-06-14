@@ -1,3 +1,5 @@
+import type { ICoord } from "../interfaces";
+
 export class DragScroll {
     private prevX = 0;
     private prevY = 0;
@@ -18,13 +20,18 @@ export class DragScroll {
         this.el.addEventListener("touchmove", this.onTouchMove, { passive: false });
         this.el.addEventListener("touchend", this.onTouchEnd, { passive: true });
         this.el.addEventListener("touchcancel", this.onTouchEnd, { passive: true });
+        this.el.addEventListener("keydown", this.onKeyDown);
+        this.el.addEventListener("keyup", this.onKeyUp);
 
         // Make element focusable for keyboard events
         if (!this.el.hasAttribute('tabindex')) {
             this.el.setAttribute('tabindex', '0');
         }
-        this.el.addEventListener("keydown", this.onKeyDown);
-        this.el.addEventListener("keyup", this.onKeyUp);
+    }
+
+    public scrollTo(position: ICoord) {
+        this.el.scrollLeft = position.x;
+        this.el.scrollTop = position.y;
     }
 
     private onTouchStart(e: TouchEvent): void {

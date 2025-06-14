@@ -1,15 +1,23 @@
 import { GameEvent, StateChangeEvent, StateChangeEventsMap } from "../../common/events";
 import { Component } from "../Component";
-import { DragScroll } from "./DragScroll";
+import { DragScroll } from "../../common/helpers/DragScroll";
+import { ICoord } from "../../common/interfaces";
 
 export default class Board extends Component {
   private mapData: StateChangeEventsMap[StateChangeEvent.map] = [];
+  private dragger?: DragScroll;
   protected override hasCss = true;
   protected override hasHtml = true;
 
   constructor() {
     super();
     this.listen(StateChangeEvent.map, (newMap) => this.updateMap(newMap));
+    this.listen(StateChangeEvent.characters, (characters) => {
+      const player = characters.find(c => c.name === 'player');
+      if (player) {
+        this.centerScreen(player.position);
+      }
+    });
   }
 
   override async connectedCallback() {
@@ -25,7 +33,7 @@ export default class Board extends Component {
       }
     });
     this.dispatch(GameEvent.play, true);
-    new DragScroll(this);
+    this.dragger = new DragScroll(this);
     return root;
   }
 
@@ -46,6 +54,10 @@ export default class Board extends Component {
         this.appendChild(cellElement);
       });
     });
+  }
+
+  private centerScreen(position: ICoord) {
+    this.dragger?.scrollTo(position);
   }
 }
 

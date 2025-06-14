@@ -11,7 +11,7 @@ export class MapGenerator2 {
     constructor(
         private width: number = 50,
         private height: number = 50,
-        private corridorPattern: CorridorPattern = 'random'
+        private corridorPattern: CorridorPattern = 'random',
     ) {
         this.map = Array(height).fill(null).map(() => Array(width).fill(0));
         this.corridorGenerator = new CorridorGenerator(width, height);
