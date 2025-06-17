@@ -19,6 +19,11 @@ export interface IPositionable {
     location: string;
     blocker: boolean;
 }
+export interface IRoom {
+    size: number;
+    name: string;
+    center?: ICoord;
+}
 export type Speed = 'verySlow' | 'slow' | 'medium' | 'fast' | 'veryFast';
 export type Direction = 'down' | 'right' | 'up' | 'left';
 export interface IMovable extends IPositionable {

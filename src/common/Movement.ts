@@ -28,10 +28,10 @@ export class Movement extends EventBus<
     private reachableCells?: ICoord[];
 
     constructor(
-        private movement: IMovement,
         private state: State,
     ) {
         super();
+        this.onCharacters(this.state.characters);
         this.listen(GameEvent.characters, characters => this.onCharacters(characters));
         this.listen(ControlsEvent.cellClick, position => this.onCellClick(position));
         this.listen(ControlsEvent.showMovement, character => this.onShowMovement(character));
@@ -40,10 +40,29 @@ export class Movement extends EventBus<
     }
     // Listeners
     private onCharacters(characters: GameEventsMap[GameEvent.characters]) {
+        console.log('>>> - onCharacters - characters:', characters)
         characters.forEach(character => {
-            const position = this.movement.locate(character);
-            const positionedCharacter = { ...character, ...position };
-            this.dispatch(UpdateStateEvent.characterPosition, positionedCharacter);
+            console.log('>>> - onCharacters - position:', character.name, character.location)
+            const candidateCells = this.state.map.reduce((
+                cells,
+                row
+            ) => cells.concat(row.filter(
+                cell => {
+                    if (cell.locations.includes(character.location)) {
+                        console.log('>>> - onCharacters - cell.locations:', cell.locations, character.location)
+
+                    }
+                    return cell.locations.includes(character.location)
+                }
+            )), []).filter(
+                cell => !characters.find(char => char.position.x !== cell.position.x && char.position.y !== cell.position.y)
+            );
+            console.log('>>> - onCharacters - candidateCells:', candidateCells)
+            if (candidateCells.length) {
+                const position = candidateCells[Math.floor(Math.random() * candidateCells.length)];
+                const positionedCharacter = { ...character, ...position };
+                this.dispatch(UpdateStateEvent.characterPosition, positionedCharacter);
+            }
         });
     }
     private onCellClick(position: ControlsEventsMap[ControlsEvent.cellClick]) {

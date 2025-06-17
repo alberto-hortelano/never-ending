@@ -3,15 +3,15 @@ import './components';
 import { Movement } from "./common/Movement";
 import { State } from "./common/State";
 import { GameEvent, EventBus } from "./common/events";
-import { initialState, mockHelpers } from './data/state';
+import { initialState } from './data/state';
 
 // Initialize global CSS variables
 document.documentElement.style.setProperty('--cell-width', '4dvh');
 document.documentElement.style.setProperty('--size', 'calc(var(--cell-width, 2dvh) * 0.007)');
 
 const play = () => {
-    const state = new State(initialState(100, 100));
-    const movement = new Movement(mockHelpers.movement, state);
+    const state = new State(initialState(50, 50));
+    const movement = new Movement(state);
 
     (window as any).game = {
         state,

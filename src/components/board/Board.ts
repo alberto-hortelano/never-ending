@@ -2,6 +2,7 @@ import { GameEvent, StateChangeEvent, StateChangeEventsMap } from "../../common/
 import { Component } from "../Component";
 import { DragScroll } from "../../common/helpers/DragScroll";
 import { ICoord } from "../../common/interfaces";
+import Cell from "../cell/Cell";
 
 export default class Board extends Component {
   private mapData: StateChangeEventsMap[StateChangeEvent.map] = [];
@@ -11,6 +12,7 @@ export default class Board extends Component {
 
   constructor() {
     super();
+    this.dragger = new DragScroll(this);
     this.listen(StateChangeEvent.map, (newMap) => this.updateMap(newMap));
     this.listen(StateChangeEvent.characters, (characters) => {
       const player = characters.find(c => c.name === 'player');
@@ -33,8 +35,11 @@ export default class Board extends Component {
       }
     });
     this.dispatch(GameEvent.play, true);
-    this.dragger = new DragScroll(this);
     return root;
+  }
+
+  private generateCellId(x: number, y: number) {
+    return `cell-${x}-${y}`;
   }
 
   private updateMap(newMap: StateChangeEventsMap[StateChangeEvent.map]) {
@@ -50,14 +55,20 @@ export default class Board extends Component {
         const cellElement = document.createElement('cell-component');
         cellElement.dataset.x = x.toString();
         cellElement.dataset.y = y.toString();
+        cellElement.id = this.generateCellId(x, y);
         cellElement.setAttribute('content', cell.content?.blocker ? 'wall' : 'floor');
         this.appendChild(cellElement);
       });
     });
   }
 
-  private centerScreen(position: ICoord) {
-    this.dragger?.scrollTo(position);
+  private centerScreen({ x, y }: ICoord) {
+    const cellElement: Cell | null = this.querySelector(`#${this.generateCellId(x, y)}`);
+    if (cellElement) {
+      const centerX = cellElement.offsetLeft - (this.clientWidth / 2) + (cellElement.offsetWidth / 2);
+      const centerY = cellElement.offsetTop - (this.clientHeight / 2) + (cellElement.offsetHeight / 2);
+      this.dragger?.scrollTo({ x: centerX, y: centerY });
+    }
   }
 }
 

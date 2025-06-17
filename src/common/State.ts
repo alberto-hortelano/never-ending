@@ -2,7 +2,7 @@ import type { ICoord, ICell, ICharacter, IState } from "./interfaces";
 
 import { UpdateStateEvent, EventBus, UpdateStateEventsMap, StateChangeEventsMap, StateChangeEvent } from "./events";
 import { DeepReadonly } from "./helpers/types";
-import { baseState } from '../data/state';
+import { getBaseState } from '../data/state';
 
 export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> {
     #map: IState['map'] = [];
@@ -51,7 +51,6 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> 
     }
     private set messages(messages: IState['messages']) {
         this.#messages = messages;
-        console.log('>>> - State - setmessages - this.#messages:', this.#messages)
         this.save();
     }
     private set player(player: ICharacter | undefined) {
@@ -79,13 +78,13 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> 
     }
     // Storage
     private save() {
-        const state: IState = {
-            map: this.#map,
-            characters: this.#characters,
-            player: this.#player,
-            messages: this.#messages,
-        }
-        localStorage.setItem(this.storageName, JSON.stringify(state));
+        // const state: IState = {
+        //     map: this.#map,
+        //     characters: this.#characters,
+        //     player: this.#player,
+        //     messages: this.#messages,
+        // }
+        // localStorage.setItem(this.storageName, JSON.stringify(state));
     }
     private load(initialState?: IState) {
         let state = initialState;
@@ -97,7 +96,7 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> 
                 console.error('Game#constructor - localStorage parse error:', error);
             }
         }
-        state ||= baseState;
+        state ||= getBaseState();
         this.map = state.map;
         this.characters = state.characters;
         this.player = state.player;

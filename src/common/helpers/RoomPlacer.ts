@@ -1,13 +1,8 @@
-import type { Direction, ICoord } from "../interfaces";
+import type { Direction, ICoord, IRoom } from "../interfaces";
 import type { Corridor, CorridorGenerator } from "./CorridorGenerator";
 
-export interface Room {
-    size: 0 | 3 | 5 | 7 | 9 | 11;
-    center?: ICoord;
-}
-
 interface RoomPlacement {
-    room: Room;
+    room: IRoom;
     position: ICoord;
     connectionType: 'side' | 'through';
     corridorIndex: number;
@@ -24,7 +19,7 @@ export class RoomPlacer {
         private corridorGenerator: CorridorGenerator,
     ) { }
 
-    public placeAllRooms(rooms: Room[], corridors: Corridor[]): RoomPlacement[] {
+    public placeAllRooms(rooms: IRoom[], corridors: Corridor[]): RoomPlacement[] {
         this.roomPlacements = [];
         let currentCorridors = [...corridors];
 
@@ -67,8 +62,8 @@ export class RoomPlacer {
             });
     }
 
-    private placeRoomsInitially(rooms: Room[], corridors: Corridor[]): { room: Room; index: number }[] {
-        const failedRooms: { room: Room; index: number }[] = [];
+    private placeRoomsInitially(rooms: IRoom[], corridors: Corridor[]): { room: IRoom; index: number }[] {
+        const failedRooms: { room: IRoom; index: number }[] = [];
         let corridorIndex = 0;
         let position = 0;
 
@@ -90,7 +85,7 @@ export class RoomPlacer {
         return failedRooms;
     }
 
-    private expandMapWithNewCorridors(failedRooms: { room: Room; index: number }[], corridors: Corridor[]): Corridor[] {
+    private expandMapWithNewCorridors(failedRooms: { room: IRoom; index: number }[], corridors: Corridor[]): Corridor[] {
         const roomCount = failedRooms.length;
 
         // Add corridor extensions for better room placement
@@ -111,8 +106,8 @@ export class RoomPlacer {
         return this.corridorGenerator.getCorridors();
     }
 
-    private retryWithExpandedMap(failedRooms: { room: Room; index: number }[], corridors: Corridor[]): { room: Room; index: number }[] {
-        const stillFailed: { room: Room; index: number }[] = [];
+    private retryWithExpandedMap(failedRooms: { room: IRoom; index: number }[], corridors: Corridor[]): { room: IRoom; index: number }[] {
+        const stillFailed: { room: IRoom; index: number }[] = [];
 
         // Sort by size for better placement
         failedRooms.sort((a, b) => b.room.size - a.room.size);
@@ -131,7 +126,7 @@ export class RoomPlacer {
         return stillFailed;
     }
 
-    private forcePlaceRemainingRooms(failedRooms: { room: Room; index: number }[], corridors: Corridor[]): void {
+    private forcePlaceRemainingRooms(failedRooms: { room: IRoom; index: number }[], corridors: Corridor[]): void {
         if (failedRooms.length === 0) return;
 
         // Try placing at corridor endpoints and intersections
@@ -159,7 +154,7 @@ export class RoomPlacer {
         }
     }
 
-    private tryPlaceRoom(room: Room, startCorridorIndex: number, startPosition: number, corridors: Corridor[], exhaustive = false): RoomPlacement | null {
+    private tryPlaceRoom(room: IRoom, startCorridorIndex: number, startPosition: number, corridors: Corridor[], exhaustive = false): RoomPlacement | null {
         // First pass: try every few positions
         for (let ci = 0; ci < corridors.length; ci++) {
             const corridorIndex = (startCorridorIndex + ci) % corridors.length;
@@ -190,7 +185,7 @@ export class RoomPlacer {
         return null;
     }
 
-    private tryPlaceAtSpecialPoints(room: Room, corridors: Corridor[]): RoomPlacement | null {
+    private tryPlaceAtSpecialPoints(room: IRoom, corridors: Corridor[]): RoomPlacement | null {
         // Try corridor endpoints
         for (let corridorIndex = 0; corridorIndex < corridors.length; corridorIndex++) {
             const corridor = corridors[corridorIndex];
@@ -215,10 +210,10 @@ export class RoomPlacer {
         return null;
     }
 
-    private tryPlaceWithRelaxedConstraints(room: Room, corridors: Corridor[]): RoomPlacement | null {
+    private tryPlaceWithRelaxedConstraints(room: IRoom, corridors: Corridor[]): RoomPlacement | null {
         // Try with reduced buffer between rooms
         const originalIsValid = this.isValidRoomPosition.bind(this);
-        this.isValidRoomPosition = (center: ICoord, room: Room) => {
+        this.isValidRoomPosition = (center: ICoord, room: IRoom) => {
             return this.isValidRoomPositionRelaxed(center, room, 0); // No buffer
         };
 
@@ -230,7 +225,7 @@ export class RoomPlacer {
         return placement;
     }
 
-    private tryPlaceAtPoint(room: Room, point: ICoord, corridorIndex: number): RoomPlacement | null {
+    private tryPlaceAtPoint(room: IRoom, point: ICoord, corridorIndex: number): RoomPlacement | null {
         // Try placing room centered at point
         if (this.isValidRoomPosition(point, room)) {
             return { room, position: point, connectionType: 'through', corridorIndex, connectionPoint: point };
@@ -277,7 +272,7 @@ export class RoomPlacer {
         return intersections;
     }
 
-    private isValidRoomPositionRelaxed(center: ICoord, room: Room, buffer: number): boolean {
+    private isValidRoomPositionRelaxed(center: ICoord, room: IRoom, buffer: number): boolean {
         const halfSize = Math.floor(room.size / 2);
 
         // Check boundaries
@@ -309,7 +304,7 @@ export class RoomPlacer {
         });
     }
 
-    private findRoomPlacement(room: Room, corridorIndex: number, positionIndex: number, corridors: Corridor[]): RoomPlacement | null {
+    private findRoomPlacement(room: IRoom, corridorIndex: number, positionIndex: number, corridors: Corridor[]): RoomPlacement | null {
         const corridor = corridors[corridorIndex];
         const connectionPoint = corridor?.cells[positionIndex];
         if (!corridor || !connectionPoint) return null;
@@ -330,13 +325,13 @@ export class RoomPlacer {
         return null;
     }
 
-    private getBothSidePositions(connectionPoint: ICoord, corridorDirection: Direction, room: Room): ICoord[] {
+    private getBothSidePositions(connectionPoint: ICoord, corridorDirection: Direction, room: IRoom): ICoord[] {
         const distance = Math.floor(room.size / 2) + 2;
         const perpendiculars = this.getBothPerpendicularDirections(corridorDirection);
         return perpendiculars.map(dir => this.moveInDirection(connectionPoint, dir, distance));
     }
 
-    private getNextPosition(corridorIndex: number, position: number, room: Room, corridors: Corridor[]): { corridorIndex: number; position: number } {
+    private getNextPosition(corridorIndex: number, position: number, room: IRoom, corridors: Corridor[]): { corridorIndex: number; position: number } {
         position += Math.max(3, Math.ceil(room.size / 2) + 1);
         const corridor = corridors[corridorIndex];
 
@@ -347,7 +342,7 @@ export class RoomPlacer {
         return { corridorIndex, position };
     }
 
-    private isValidRoomPosition(center: ICoord, room: Room): boolean {
+    private isValidRoomPosition(center: ICoord, room: IRoom): boolean {
         const halfSize = Math.floor(room.size / 2);
 
         // Check boundaries
@@ -422,10 +417,10 @@ export class RoomPlacer {
         }
     }
 
-    private tryPlaceWithOverlap(room: Room, corridors: Corridor[]): RoomPlacement | null {
+    private tryPlaceWithOverlap(room: IRoom, corridors: Corridor[]): RoomPlacement | null {
         // Allow slight overlap with other rooms
         const originalIsValid = this.isValidRoomPosition.bind(this);
-        this.isValidRoomPosition = (center: ICoord, room: Room) => {
+        this.isValidRoomPosition = (center: ICoord, room: IRoom) => {
             return this.isValidRoomPositionRelaxed(center, room, -1); // Allow 1 tile overlap
         };
 
@@ -435,28 +430,28 @@ export class RoomPlacer {
         return placement;
     }
 
-    private forceCreateSpaceForRoom(room: Room, corridors: Corridor[]): RoomPlacement | null {
+    private forceCreateSpaceForRoom(room: IRoom, corridors: Corridor[]): RoomPlacement | null {
         // Find the best position even if it requires moving other rooms
         const halfSize = Math.floor(room.size / 2);
-        
+
         // Try placing at regular intervals across the map
         for (let y = halfSize + 2; y < this.height - halfSize - 2; y += room.size + 2) {
             for (let x = halfSize + 2; x < this.width - halfSize - 2; x += room.size + 2) {
                 const position = { x, y };
-                
+
                 // Check if this position is near any corridor
-                const nearCorridor = corridors.some(corridor => 
-                    corridor.cells.some(cell => 
+                const nearCorridor = corridors.some(corridor =>
+                    corridor.cells.some(cell =>
                         Math.abs(cell.x - x) + Math.abs(cell.y - y) <= room.size
                     )
                 );
-                
+
                 if (nearCorridor && this.isValidRoomPositionRelaxed(position, room, -2)) {
                     // Find nearest corridor point
                     let minDist = Infinity;
                     let bestCorridorIndex = 0;
                     let connectionPoint = position;
-                    
+
                     corridors.forEach((corridor, idx) => {
                         corridor.cells.forEach(cell => {
                             const dist = Math.abs(cell.x - x) + Math.abs(cell.y - y);
@@ -467,29 +462,29 @@ export class RoomPlacer {
                             }
                         });
                     });
-                    
+
                     return { room, position, connectionType: 'side', corridorIndex: bestCorridorIndex, connectionPoint };
                 }
             }
         }
-        
+
         return null;
     }
 
-    private placeAtAnyValidPosition(room: Room, corridors: Corridor[]): RoomPlacement | null {
+    private placeAtAnyValidPosition(room: IRoom, corridors: Corridor[]): RoomPlacement | null {
         const halfSize = Math.floor(room.size / 2);
-        
+
         // Scan entire map for any valid position
         for (let y = halfSize + 1; y < this.height - halfSize - 1; y++) {
             for (let x = halfSize + 1; x < this.width - halfSize - 1; x++) {
                 const position = { x, y };
-                
+
                 if (this.isValidRoomPosition(position, room)) {
                     // Find nearest corridor
                     let minDist = Infinity;
                     let bestCorridorIndex = 0;
                     let connectionPoint = position;
-                    
+
                     corridors.forEach((corridor, idx) => {
                         corridor.cells.forEach(cell => {
                             const dist = Math.abs(cell.x - x) + Math.abs(cell.y - y);
@@ -500,12 +495,12 @@ export class RoomPlacer {
                             }
                         });
                     });
-                    
+
                     return { room, position, connectionType: 'side', corridorIndex: bestCorridorIndex, connectionPoint };
                 }
             }
         }
-        
+
         return null;
     }
 }
