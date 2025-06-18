@@ -7,6 +7,7 @@ export class MapGenerator {
     private corridorGenerator: CorridorGenerator;
     private roomPlacer: RoomPlacer;
     private corridors: Corridor[] = [];
+    private placedRooms: { room: IRoom; position: ICoord; size: number }[] = [];
 
     constructor(
         private width: number = 50,
@@ -20,16 +21,19 @@ export class MapGenerator {
 
     public getCells(): ICell[][] {
         this.printMap(this.map);
-        return this.map.map((row, y) => row.map((cell, x) => ({
-            position: { x, y },
-            locations: [],
-            elements: [],
-            content: {
+        return this.map.map((row, y) => row.map((cell, x) => {
+            const roomNames = this.getRoomNamesForCell({ x, y });
+            return {
                 position: { x, y },
-                location: '',
-                blocker: !cell,
-            },
-        })))
+                locations: roomNames,
+                elements: [],
+                content: {
+                    position: { x, y },
+                    location: roomNames[0] || '',
+                    blocker: !cell,
+                },
+            };
+        }))
     }
 
     public generateMap(rooms: IRoom[], startingPoint: ICoord): number[][] {
@@ -37,7 +41,12 @@ export class MapGenerator {
         if (rooms.length === 0) return this.map;
 
         this.corridors = this.corridorGenerator.generateCorridors(rooms.length, this.corridorPattern, startingPoint);
-        this.roomPlacer.placeAllRooms(rooms, this.corridors);
+        const roomPlacements = this.roomPlacer.placeAllRooms(rooms, this.corridors);
+        this.placedRooms = roomPlacements.map(placement => ({
+            room: placement.room,
+            position: placement.position,
+            size: placement.room.size
+        }));
         this.carveEverything();
 
         return this.map;
@@ -45,6 +54,7 @@ export class MapGenerator {
 
     private reset(): void {
         this.corridors = [];
+        this.placedRooms = [];
         this.map = Array(this.height).fill(null).map(() => Array(this.width).fill(0));
     }
 
@@ -52,6 +62,25 @@ export class MapGenerator {
         this.corridorGenerator.carveCorridors(this.map);
         this.roomPlacer.carveRooms(this.map);
         this.roomPlacer.carveRoomConnections(this.map);
+    }
+
+    private getRoomNamesForCell(coord: ICoord): string[] {
+        const roomNames: string[] = [];
+        
+        for (const placedRoom of this.placedRooms) {
+            const { room, position } = placedRoom;
+            const halfSize = Math.floor(room.size / 2);
+            
+            // Check if this cell is within the room's bounds
+            if (coord.x >= position.x - halfSize && 
+                coord.x <= position.x + halfSize &&
+                coord.y >= position.y - halfSize && 
+                coord.y <= position.y + halfSize) {
+                roomNames.push(room.name);
+            }
+        }
+        
+        return roomNames;
     }
 
     private printMap = (map: number[][]) => {

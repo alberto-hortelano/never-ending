@@ -1,4 +1,4 @@
-import type { IState, ICoord } from "../interfaces";
+import type { IState, ICoord, ICharacter } from "../interfaces";
 import type { DeepReadonly } from "./types";
 
 export const getNeighbors = (pos: ICoord): ICoord[] => [
@@ -79,3 +79,26 @@ export const calculatePath = (start: ICoord, destination: ICoord, map: DeepReado
 
     return [];
 };
+
+export const positionCharacters = (characters: ICharacter[], map: DeepReadonly<IState['map']>): ICharacter[] => characters.map(character => {
+    const candidateCells = map.reduce(
+        (cells, row) => cells.concat(
+            row.filter(
+                cell => cell.locations.includes(character.location)
+            )
+        ), []
+    ).filter(
+        cell => characters.find(
+            char => char.position.x !== cell.position.x && char.position.y !== cell.position.y
+        )
+    );
+    if (candidateCells.length) {
+        const cell = candidateCells[Math.floor(Math.random() * candidateCells.length)];
+        if (!cell) {
+            return character;
+        }
+        const positionedCharacter = { ...character, path: [cell.position], position: cell.position };
+        return positionedCharacter;
+    }
+    return character;
+});

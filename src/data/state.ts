@@ -1,5 +1,6 @@
 import { IState, ICharacter, IMessage } from "../common/interfaces";
 import { MapGenerator } from "../common/helpers/MapGenerator";
+import { positionCharacters } from "../common/helpers/map";
 
 const baseCharacter: ICharacter = {
     name: 'test',
@@ -24,7 +25,7 @@ const createCharacter = (character?: Partial<ICharacter>) => ({ ...baseCharacter
 const data: Partial<ICharacter> = {
     name: 'data',
     race: 'robot',
-    location: 'room1',
+    location: 'room4',
     position: { x: 25, y: 25 },
     palette: {
         skin: 'yellow',
@@ -83,7 +84,7 @@ export const initialState = (x: number, y: number, playerData: Partial<ICharacte
     const messages: IMessage[] = [];
     const initialState: IState = {
         map,
-        characters,
+        characters: positionCharacters(characters, map),
         player,
         messages,
     };

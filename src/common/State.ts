@@ -26,7 +26,8 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> 
             throw new Error(`No character "${characterData.name}" found`);
         }
         character.position = characterData.position;
-        this.dispatch(StateChangeEvent.characterPosition, structuredClone(character));
+        // No one is listening
+        // this.dispatch(StateChangeEvent.characterPosition, structuredClone(character));
         this.save();
     }
     private onCharacterPath(characterData: UpdateStateEventsMap[UpdateStateEvent.characterPosition]) {
