@@ -10,6 +10,7 @@ export class Popup extends Component {
     private dragHelper?: Draggable;
     private isPinned = false;
     private headerElement?: HTMLElement;
+    private titleElement?: HTMLElement;
     private pinButton?: HTMLElement;
     private closeButton?: HTMLElement;
 
@@ -19,6 +20,7 @@ export class Popup extends Component {
 
         // Store shadow DOM element references immediately (Pattern 1)
         this.headerElement = root.querySelector('.popup-header') as HTMLElement;
+        this.titleElement = root.querySelector('.popup-header h3') as HTMLElement;
         this.pinButton = root.querySelector('.pin-button') as HTMLElement;
         this.closeButton = root.querySelector('.close-button') as HTMLElement;
 
@@ -94,6 +96,11 @@ export class Popup extends Component {
 
             this.style.left = `${leftPos}px`;
             this.style.top = `${topPos}px`;
+        }
+
+        // Update popup title with character name
+        if (this.titleElement) {
+            this.titleElement.textContent = `${characterName} - Actions`;
         }
 
         // Set character name on actions component
