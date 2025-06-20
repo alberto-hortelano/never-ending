@@ -2,12 +2,11 @@ import { Component } from "../Component";
 import { ControlsEvent, ControlsEventsMap } from "../../common/events";
 import { Draggable } from "../../common/helpers/Draggable";
 
-export class ActionsPopup extends Component {
+export class Popup extends Component {
     protected override hasCss = true;
     protected override hasHtml = true;
     private dragHelper?: Draggable;
     private isPinned = false;
-    private characterName?: string;
     private headerElement?: HTMLElement;
     private pinButton?: HTMLElement;
     private closeButton?: HTMLElement;
@@ -20,17 +19,6 @@ export class ActionsPopup extends Component {
         this.headerElement = root.querySelector('.popup-header') as HTMLElement;
         this.pinButton = root.querySelector('.pin-button') as HTMLElement;
         this.closeButton = root.querySelector('.close-button') as HTMLElement;
-
-        // Setup event listeners for action buttons
-        const actionButtons = root.querySelectorAll('.action-button');
-        actionButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const action = button.getAttribute('data-action');
-                if (action) {
-                    this.handleActionClick(action);
-                }
-            });
-        });
 
         // Setup pin and close button listeners
         this.pinButton?.addEventListener('click', () => this.togglePin());
@@ -45,9 +33,8 @@ export class ActionsPopup extends Component {
         let isShowing = false;
 
         this.listen(ControlsEvent.showActions, (characterName: ControlsEventsMap[ControlsEvent.showActions]) => {
-            this.characterName = characterName;
             isShowing = true;
-            this.show();
+            this.show(characterName);
 
             // Reset the flag after a short delay to allow the click event to finish bubbling
             setTimeout(() => {
@@ -66,6 +53,14 @@ export class ActionsPopup extends Component {
         this.addEventListener('click', (e) => {
             e.stopPropagation();
         });
+
+        // Listen for action selections from child Actions component
+        this.addEventListener('action-selected', (e: Event) => {
+            const customEvent = e as CustomEvent;
+            if (!this.isPinned) {
+                this.hide();
+            }
+        });
     }
 
     private setupDraggable() {
@@ -77,7 +72,7 @@ export class ActionsPopup extends Component {
         }
     }
 
-    private show() {
+    private show(characterName: string) {
         this.classList.remove('hidden');
 
         // Setup draggable on first show when shadow DOM is ready
@@ -92,6 +87,12 @@ export class ActionsPopup extends Component {
 
         this.style.left = `${leftPos}px`;
         this.style.top = `${topPos}px`;
+
+        // Set character name on actions component
+        const actionsComponent = this.querySelector('actions-component') as any;
+        if (actionsComponent && actionsComponent.setCharacterName) {
+            actionsComponent.setCharacterName(characterName);
+        }
     }
 
     private hide() {
@@ -113,19 +114,10 @@ export class ActionsPopup extends Component {
         this.hide();
     }
 
-    private handleActionClick(action: string) {
-        // TODO: Dispatch appropriate action event based on action type
-        console.log(`Action clicked: ${action} for character: ${this.characterName}`);
-
-        if (!this.isPinned) {
-            this.hide();
-        }
-    }
-
     // Custom element setup
     static {
-        if (!customElements.get('actions-popup')) {
-            customElements.define('actions-popup', ActionsPopup);
+        if (!customElements.get('popup-component')) {
+            customElements.define('popup-component', Popup);
         }
     }
 }
