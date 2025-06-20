@@ -10,13 +10,8 @@ GameEvents: Dinamica del juego como play, pause, save...
 StateEvents: Peticion de modificacion del estado. Solo la clase State puede escucharlos, cualquiera puede lanzarlos.
 ComponentEvent: Eventos de la interfaz. Solo los componentes pueden lanzarlos
 
-### Carga del juego:
-1. GameEvent.play: Inicia el juego cargando el estado inicial. Podemos esperar las cosas que haya que cargar antes de lanzar este evento.
-1. StateEvent: Un evento con cualquier parte del estado. 
- 
 ## TODO:
-1. Print characters
-1. Move characters
+1. Show actions
 
 ## Actions
 Hay 100 puntos por turno y cada accion consume n puntos, dependiendo de la habilidad del personaje
@@ -27,7 +22,7 @@ Hay 100 puntos por turno y cada accion consume n puntos, dependiendo de la habil
 1. Movimiento
 1. Cobertura: Se coloca en una cobertura adyacente
 1. Lanzar granada
-1. Sprint: Se declara al principio del turno y solo se puede mover pero mas barato
+1. Talk: Hablar con alguien
 1. Ataque CC: Se abre un selector con los ataques disponibles:
     1. Fuerte
     1. Medio
@@ -37,5 +32,3 @@ Hay 100 puntos por turno y cada accion consume n puntos, dependiendo de la habil
 
 ## Daño
 Daño base del arma 
-
-

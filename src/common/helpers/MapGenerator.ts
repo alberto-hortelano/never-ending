@@ -20,7 +20,7 @@ export class MapGenerator {
     }
 
     public getCells(): ICell[][] {
-        this.printMap(this.map);
+        // this.printMap(this.map);
         return this.map.map((row, y) => row.map((cell, x) => {
             const roomNames = this.getRoomNamesForCell({ x, y });
             return {
@@ -66,20 +66,20 @@ export class MapGenerator {
 
     private getRoomNamesForCell(coord: ICoord): string[] {
         const roomNames: string[] = [];
-        
+
         for (const placedRoom of this.placedRooms) {
             const { room, position } = placedRoom;
             const halfSize = Math.floor(room.size / 2);
-            
+
             // Check if this cell is within the room's bounds
-            if (coord.x >= position.x - halfSize && 
+            if (coord.x >= position.x - halfSize &&
                 coord.x <= position.x + halfSize &&
-                coord.y >= position.y - halfSize && 
+                coord.y >= position.y - halfSize &&
                 coord.y <= position.y + halfSize) {
                 roomNames.push(room.name);
             }
         }
-        
+
         return roomNames;
     }
 

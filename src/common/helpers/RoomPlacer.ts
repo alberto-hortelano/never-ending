@@ -139,7 +139,6 @@ export class RoomPlacer {
             if (placement) {
                 this.roomPlacements.push(placement);
                 room.center = placement.position;
-                console.log(`Successfully force-placed room ${index} (size ${room.size})`);
             } else {
                 // Last resort: place at any valid boundary position
                 placement = this.placeAtAnyValidPosition(room, corridors);

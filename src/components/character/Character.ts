@@ -38,7 +38,7 @@ export default class Character extends Component {
             this.dispatch(GUIEvent.movementEnd, this.id);
         });
         this.addEventListener('click', () => {
-            this.dispatch(ControlsEvent.showMovement, this.id)
+            this.dispatch(ControlsEvent.showActions, this.id)
         });
         this.style.setProperty('--skin', this.palette.skin);
         this.style.setProperty('--helmet', this.palette.helmet);

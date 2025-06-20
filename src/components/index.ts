@@ -4,3 +4,4 @@ export * from './cell/Cell';
 export * from './characters/Characters';
 export * from './character/Character';
 export * from './movable/Movable';
+export * from './actionspopup/ActionsPopup';
