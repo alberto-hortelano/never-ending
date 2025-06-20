@@ -8,7 +8,7 @@ export class Popup extends Component {
     protected override hasCss = true;
     protected override hasHtml = true;
     private dragHelper?: Draggable;
-    private isPinned = true;
+    private isPinned = false;
     private headerElement?: HTMLElement;
     private pinButton?: HTMLElement;
     private closeButton?: HTMLElement;
