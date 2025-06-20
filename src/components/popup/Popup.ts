@@ -1,3 +1,5 @@
+import type { Actions } from "../actions/Actions";
+
 import { Component } from "../Component";
 import { ControlsEvent, ControlsEventsMap } from "../../common/events";
 import { Draggable } from "../../common/helpers/Draggable";
@@ -6,7 +8,7 @@ export class Popup extends Component {
     protected override hasCss = true;
     protected override hasHtml = true;
     private dragHelper?: Draggable;
-    private isPinned = false;
+    private isPinned = true;
     private headerElement?: HTMLElement;
     private pinButton?: HTMLElement;
     private closeButton?: HTMLElement;
@@ -55,12 +57,15 @@ export class Popup extends Component {
         });
 
         // Listen for action selections from child Actions component
-        this.addEventListener('action-selected', (e: Event) => {
-            const customEvent = e as CustomEvent;
+        this.addEventListener('action-selected', () => {
             if (!this.isPinned) {
                 this.hide();
             }
         });
+    }
+
+    private isMobile(): boolean {
+        return window.innerWidth <= 768;
     }
 
     private setupDraggable() {
@@ -75,21 +80,24 @@ export class Popup extends Component {
     private show(characterName: string) {
         this.classList.remove('hidden');
 
-        // Setup draggable on first show when shadow DOM is ready
-        if (!this.dragHelper) {
+        // Setup draggable on first show when shadow DOM is ready (desktop only)
+        if (!this.dragHelper && !this.isMobile()) {
             this.setupDraggable();
         }
 
-        // Position popup at center of screen
-        const rect = this.getBoundingClientRect();
-        const leftPos = Math.max(0, (window.innerWidth - rect.width) / 2);
-        const topPos = Math.max(0, (window.innerHeight - rect.height) / 2);
+        // Position popup - mobile uses fixed bottom positioning via CSS
+        if (!this.isMobile()) {
+            // Desktop: center the popup
+            const rect = this.getBoundingClientRect();
+            const leftPos = Math.max(0, (window.innerWidth - rect.width) / 2);
+            const topPos = Math.max(0, (window.innerHeight - rect.height) / 2);
 
-        this.style.left = `${leftPos}px`;
-        this.style.top = `${topPos}px`;
+            this.style.left = `${leftPos}px`;
+            this.style.top = `${topPos}px`;
+        }
 
         // Set character name on actions component
-        const actionsComponent = this.querySelector('actions-component') as any;
+        const actionsComponent = this.querySelector('actions-component') as Actions;
         if (actionsComponent && actionsComponent.setCharacterName) {
             actionsComponent.setCharacterName(characterName);
         }

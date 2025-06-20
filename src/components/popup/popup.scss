@@ -5,6 +5,18 @@
     display: block; /* Explicitly set display */
 }
 
+/* Mobile styles - position at bottom with full width */
+@media (max-width: 768px) {
+    :host {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        top: auto !important;
+    }
+}
+
 :host(.hidden) {
     display: none !important;
 }
@@ -16,6 +28,17 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     min-width: 400px;
     color: #fff;
+}
+
+/* Mobile popup container adjustments */
+@media (max-width: 768px) {
+    .popup-container {
+        width: 100%;
+        min-width: unset;
+        border-radius: 8px 8px 0 0; /* Only round top corners on mobile */
+        border-bottom: none;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.5);
+    }
 }
 
 .popup-header {
