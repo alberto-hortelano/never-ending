@@ -4,9 +4,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
+    position: absolute;
+    left: calc(var(--cell-x, 0) * var(--cell-width));
+    top: calc(var(--cell-y, 0) * var(--cell-width));
     box-sizing: border-box;
     box-shadow: inset 0px 0px 0px 1px #333;
+    background: #969696;
 }
 
 :host(.wall) {
