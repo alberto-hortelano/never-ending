@@ -16,10 +16,7 @@ export default class Board extends Component {
     this.listen(StateChangeEvent.characters, (characters) => {
       const player = characters.find(c => c.name === 'player');
       if (player) {
-        // Delay centering to ensure DOM elements are rendered
-        setTimeout(() => {
-          this.centerScreen(player.position);
-        }, 100);
+        this.centerScreen(player.position);
       }
     });
   }
