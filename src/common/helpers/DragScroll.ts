@@ -32,20 +32,19 @@ export class DragScroll {
     public scrollTo(position: ICoord, retries = 10) {
         const attemptScroll = () => {
             this.el.scroll(position.x, position.y);
-
             // Check if scroll was successful after a short delay
-            setTimeout(() => {
+            requestAnimationFrame(() => {
                 const scrolled = this.el.scrollTop > 0 || this.el.scrollLeft > 0;
                 const targetIsZero = position.x === 0 && position.y === 0;
 
                 if (!scrolled && !targetIsZero && retries > 0) {
                     this.scrollTo(position, retries - 1);
                 }
-            }, 50);
+            });
         };
 
         // Initial attempt with small delay
-        setTimeout(attemptScroll, 10);
+        requestAnimationFrame(attemptScroll);
     }
 
     private onTouchStart(e: TouchEvent): void {
