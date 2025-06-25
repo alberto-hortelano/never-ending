@@ -13,7 +13,8 @@
       "Bash(npx tsc --noEmit)",
       "Bash(rm:*)",
       "Bash(npm test:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(npx sass:*)"
     ],
     "deny": []
   }

@@ -1,5 +1,5 @@
 import type { Actions } from "../actions/Actions";
-import type { TalkCharacterList } from "../talkcharacterlist/TalkCharacterList";
+import type { SelectCharacter } from "../selectcharacter/SelectCharacter";
 
 import { Component } from "../Component";
 import { ControlsEvent, ControlsEventsMap } from "../../common/events";
@@ -115,16 +115,27 @@ export class Popup extends Component {
     private showTalk(data: ControlsEventsMap[ControlsEvent.showTalk]) {
         this.clearContent();
 
-        // Create and append talk character list component
-        const talkListComponent = document.createElement('talk-character-list') as TalkCharacterList;
-        this.appendChild(talkListComponent);
+        // Create and append select character component
+        const selectCharacterComponent = document.createElement('select-character') as SelectCharacter;
+        this.appendChild(selectCharacterComponent);
 
         this.show(`${data.talkingCharacter.name} - Talk to...`);
 
-        // Set characters on talk list component
-        if (talkListComponent && talkListComponent.setCharacters) {
-            talkListComponent.setCharacters(data.talkingCharacter, data.availableCharacters);
+        // Set options on select character component
+        if (selectCharacterComponent && selectCharacterComponent.setOptions) {
+            selectCharacterComponent.setOptions({
+                characters: [...data.availableCharacters, data.talkingCharacter],
+                excludeByName: data.talkingCharacter.name,
+                emptyMessage: 'No one else is around to talk to.'
+            });
         }
+
+        // Listen for character selection and log the interaction
+        selectCharacterComponent.addEventListener('character-selected', (e: Event) => {
+            const customEvent = e as CustomEvent;
+            const { selectedCharacter } = customEvent.detail;
+            console.log(`${data.talkingCharacter.name} talks to ${selectedCharacter.name}`);
+        });
     }
 
     private clearContent() {

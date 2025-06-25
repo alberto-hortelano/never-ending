@@ -6,4 +6,4 @@ export * from './character/Character';
 export * from './movable/Movable';
 export * from './actions/Actions';
 export * from './popup/Popup';
-export * from './talkcharacterlist/TalkCharacterList';
+export * from './selectcharacter/SelectCharacter';
