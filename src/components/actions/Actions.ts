@@ -4,6 +4,7 @@ import { Component } from "../Component";
 interface ActionItem {
     id: string;
     label: string;
+    icon: string;
     event: ControlsEvent;
 }
 
@@ -20,27 +21,27 @@ export class Actions extends Component {
     private actionsData: ActionCategory[] = [{
         name: "General",
         actions: [
-            { id: "move", label: "Move", event: ControlsEvent.showMovement },
-            { id: "talk", label: "Talk", event: ControlsEvent.talk },
-            { id: "use", label: "Use", event: ControlsEvent.use }
+            { id: "move", label: "Move", icon: "🚶", event: ControlsEvent.showMovement },
+            { id: "talk", label: "Talk", icon: "💬", event: ControlsEvent.talk },
+            { id: "use", label: "Use", icon: "✋", event: ControlsEvent.use }
         ]
     }, {
         name: "Ranged Combat",
         actions: [
-            { id: "shoot", label: "Shoot", event: ControlsEvent.showMovement },
-            { id: "aim", label: "Aim", event: ControlsEvent.showMovement },
-            { id: "suppress", label: "Suppress", event: ControlsEvent.showMovement },
-            { id: "cover", label: "Cover", event: ControlsEvent.showMovement },
-            { id: "throw", label: "Throw", event: ControlsEvent.showMovement }
+            { id: "shoot", label: "Shoot", icon: "🔫", event: ControlsEvent.showMovement },
+            { id: "aim", label: "Aim", icon: "🎯", event: ControlsEvent.showMovement },
+            { id: "suppress", label: "Suppress", icon: "💥", event: ControlsEvent.showMovement },
+            { id: "cover", label: "Cover", icon: "🛡️", event: ControlsEvent.showMovement },
+            { id: "throw", label: "Throw", icon: "🤾", event: ControlsEvent.showMovement }
         ]
     }, {
         name: "Close Combat",
         actions: [
-            { id: "power-strike", label: "Power Strike", event: ControlsEvent.showMovement },
-            { id: "slash", label: "Slash", event: ControlsEvent.showMovement },
-            { id: "fast-attack", label: "Fast Attack", event: ControlsEvent.showMovement },
-            { id: "feint", label: "Feint", event: ControlsEvent.showMovement },
-            { id: "break-guard", label: "Break Guard", event: ControlsEvent.showMovement }
+            { id: "power-strike", label: "Power Strike", icon: "💪", event: ControlsEvent.showMovement },
+            { id: "slash", label: "Slash", icon: "⚔️", event: ControlsEvent.showMovement },
+            { id: "fast-attack", label: "Fast Attack", icon: "⚡", event: ControlsEvent.showMovement },
+            { id: "feint", label: "Feint", icon: "🎭", event: ControlsEvent.showMovement },
+            { id: "break-guard", label: "Break Guard", icon: "🔨", event: ControlsEvent.showMovement }
         ]
     }];
 
@@ -69,7 +70,17 @@ export class Actions extends Component {
             category.actions.forEach(action => {
                 const button = document.createElement('button');
                 button.className = 'action-button';
-                button.textContent = action.label;
+
+                const icon = document.createElement('span');
+                icon.className = 'action-icon';
+                icon.textContent = action.icon;
+
+                const label = document.createElement('span');
+                label.className = 'action-label';
+                label.textContent = action.label;
+
+                button.appendChild(icon);
+                button.appendChild(label);
                 button.addEventListener('click', () => this.handleActionClick(action));
                 column.appendChild(button);
             });

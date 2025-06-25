@@ -18,7 +18,9 @@
 }
 
 .action-button {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     width: 100%;
     background: #404040;
     border: 1px solid #555;
@@ -29,18 +31,29 @@
     cursor: pointer;
     font-size: 11px;
     transition: all 0.2s ease;
-    
+
+    .action-icon {
+        font-size: 16px;
+        line-height: 1;
+        flex-shrink: 0;
+        padding: 8px;
+        filter: grayscale(1);
+    }
+
+    .action-label {
+        flex: 1;
+        text-align: left;
+    }
+
     &:hover {
         background: #505050;
         border-color: #666;
-        transform: translateY(-1px);
     }
-    
+
     &:active {
         background: #606060;
-        transform: translateY(0);
     }
-    
+
     &:last-child {
         margin-bottom: 0;
     }
