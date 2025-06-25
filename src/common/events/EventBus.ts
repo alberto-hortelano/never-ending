@@ -53,7 +53,7 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
             console.warn(`${this.constructor.name}: no listeners for "${key}"`);
             return;
         }
-        // console.log(eventName);
+        console.log(eventName);
         if (bucket && filterKey !== key) {
             for (const [, cb] of bucket) {
                 try {

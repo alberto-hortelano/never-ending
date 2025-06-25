@@ -62,10 +62,30 @@ export default class Board extends Component {
           cellElement.setAttribute('content', 'floor');
           cellElement.style.setProperty('--cell-x', x.toString());
           cellElement.style.setProperty('--cell-y', y.toString());
+          this.addWallClass(cellElement, x, y);
+
           this.appendChild(cellElement);
         }
       });
     });
+  }
+
+  private addWallClass(cellElement: HTMLElement, x: number, y: number) {
+    // Add wall classes based on adjacent cells
+    const mapWidth = this.mapData[0]?.length || 0;
+    const mapHeight = this.mapData.length;
+
+    // Check if adjacent cells are walls (blocker = true) or out of bounds
+    const hasWallTop = y === 0 || this.mapData[y - 1]?.[x]?.content?.blocker === true;
+    const hasWallRight = x === mapWidth - 1 || this.mapData[y]?.[x + 1]?.content?.blocker === true;
+    const hasWallBottom = y === mapHeight - 1 || this.mapData[y + 1]?.[x]?.content?.blocker === true;
+    const hasWallLeft = x === 0 || this.mapData[y]?.[x - 1]?.content?.blocker === true;
+
+    // Add wall classes as needed
+    if (hasWallTop) cellElement.classList.add('wall', 'wall-top');
+    if (hasWallRight) cellElement.classList.add('wall', 'wall-right');
+    if (hasWallBottom) cellElement.classList.add('wall', 'wall-bottom');
+    if (hasWallLeft) cellElement.classList.add('wall', 'wall-left');
   }
 
   private centerScreen({ x, y }: ICoord) {

@@ -10,17 +10,11 @@
     box-sizing: border-box;
     box-shadow: inset 0px 0px 0px 1px #333;
     background: #969696;
+    transform-style: preserve-3d;
+    perspective: 30vmin;
 }
 
-:host(.wall) {
-    background-color: #333;
-    color: #666;
-}
-
-:host.wall {
-    background-color: #333;
-    color: #666;
-}
+:host(.wall) {}
 
 :host(.floor) {
     background-color: #111;
@@ -37,13 +31,4 @@
 :host(.path) {
     background-color: rgba(255, 255, 0, 0.3);
     border: 1px solid rgba(255, 255, 0, 0.7);
-}
-
-:host::before {
-    // content: attr(data-x) "-" attr(data-y);
-    position: absolute;
-    font-size: 1.2dvh;
-    color: rgba(255, 255, 255, 0.4);
-    pointer-events: none;
-    z-index: 1;
 }
