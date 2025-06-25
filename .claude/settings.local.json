@@ -12,7 +12,8 @@
       "Bash(npm test)",
       "Bash(npx tsc --noEmit)",
       "Bash(rm:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(mv:*)"
     ],
     "deny": []
   }

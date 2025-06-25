@@ -21,8 +21,8 @@ export class Actions extends Component {
         name: "General",
         actions: [
             { id: "move", label: "Move", event: ControlsEvent.showMovement },
-            { id: "talk", label: "Talk", event: ControlsEvent.showMovement },
-            { id: "use", label: "Use", event: ControlsEvent.showMovement }
+            { id: "talk", label: "Talk", event: ControlsEvent.talk },
+            { id: "use", label: "Use", event: ControlsEvent.use }
         ]
     }, {
         name: "Ranged Combat",

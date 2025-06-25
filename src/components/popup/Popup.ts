@@ -1,4 +1,5 @@
 import type { Actions } from "../actions/Actions";
+import type { TalkCharacterList } from "../talkcharacterlist/TalkCharacterList";
 
 import { Component } from "../Component";
 import { ControlsEvent, ControlsEventsMap } from "../../common/events";
@@ -38,7 +39,17 @@ export class Popup extends Component {
 
         this.listen(ControlsEvent.showActions, (characterName: ControlsEventsMap[ControlsEvent.showActions]) => {
             isShowing = true;
-            this.show(characterName);
+            this.showActions(characterName);
+
+            // Reset the flag after a short delay to allow the click event to finish bubbling
+            setTimeout(() => {
+                isShowing = false;
+            }, 50);
+        });
+
+        this.listen(ControlsEvent.showTalk, (data: ControlsEventsMap[ControlsEvent.showTalk]) => {
+            isShowing = true;
+            this.showTalk(data);
 
             // Reset the flag after a short delay to allow the click event to finish bubbling
             setTimeout(() => {
@@ -64,6 +75,13 @@ export class Popup extends Component {
                 this.hide();
             }
         });
+
+        // Listen for character selections from TalkCharacterList component
+        this.addEventListener('character-selected', () => {
+            if (!this.isPinned) {
+                this.hide();
+            }
+        });
     }
 
     private isMobile(): boolean {
@@ -79,7 +97,44 @@ export class Popup extends Component {
         }
     }
 
-    private show(characterName: string) {
+    private showActions(characterName: string) {
+        this.clearContent();
+
+        // Create and append actions component
+        const actionsComponent = document.createElement('actions-component') as Actions;
+        this.appendChild(actionsComponent);
+
+        this.show(`${characterName} - Actions`);
+
+        // Set character name on actions component
+        if (actionsComponent && actionsComponent.setCharacterName) {
+            actionsComponent.setCharacterName(characterName);
+        }
+    }
+
+    private showTalk(data: ControlsEventsMap[ControlsEvent.showTalk]) {
+        this.clearContent();
+
+        // Create and append talk character list component
+        const talkListComponent = document.createElement('talk-character-list') as TalkCharacterList;
+        this.appendChild(talkListComponent);
+
+        this.show(`${data.talkingCharacter.name} - Talk to...`);
+
+        // Set characters on talk list component
+        if (talkListComponent && talkListComponent.setCharacters) {
+            talkListComponent.setCharacters(data.talkingCharacter, data.availableCharacters);
+        }
+    }
+
+    private clearContent() {
+        // Remove all child components
+        while (this.firstChild) {
+            this.removeChild(this.firstChild);
+        }
+    }
+
+    private show(title: string) {
         this.classList.remove('hidden');
 
         // Setup draggable on first show when shadow DOM is ready (desktop only)
@@ -98,15 +153,9 @@ export class Popup extends Component {
             this.style.top = `${topPos}px`;
         }
 
-        // Update popup title with character name
+        // Update popup title
         if (this.titleElement) {
-            this.titleElement.textContent = `${characterName} - Actions`;
-        }
-
-        // Set character name on actions component
-        const actionsComponent = this.querySelector('actions-component') as Actions;
-        if (actionsComponent && actionsComponent.setCharacterName) {
-            actionsComponent.setCharacterName(characterName);
+            this.titleElement.textContent = title;
         }
     }
 

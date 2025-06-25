@@ -1,7 +1,7 @@
 import { EventBus, GUIEventsMap, GameEventsMap, ControlsEventsMap, StateChangeEventsMap, UpdateStateEventsMap } from "../common/events";
 
 export abstract class Component extends HTMLElement {
-    protected name = this.constructor.name.toLowerCase();
+    protected name = this.constructor.name;
     protected hasCss: boolean | string[] = false;
     protected hasHtml: boolean | string[] = false;
     protected eventBus = new EventBus<
@@ -41,7 +41,7 @@ export abstract class Component extends HTMLElement {
         if (!this.hasCss) {
             return;
         }
-        const cssUrl = new URL(`./${this.name}/${this.name}.css`, import.meta.url).href.replace('/js/', '/css/');
+        const cssUrl = new URL(`./${this.name.toLowerCase()}/${this.name}.css`, import.meta.url).href.replace('/js/', '/css/');
         let cssPromise = Component.styleSheetCache.get(this.name);
         if (!cssPromise) {
             cssPromise = this.createStyleSheet(cssUrl);
@@ -77,7 +77,7 @@ export abstract class Component extends HTMLElement {
 
     // Helper to fetch and build an HTMLTemplateElement
     private async createTemplate(): Promise<HTMLTemplateElement> {
-        const url = new URL(`./${this.name}/${this.name}.html`, import.meta.url).href.replace('/js/', '/html/');
+        const url = new URL(`./${this.name.toLowerCase()}/${this.name}.html`, import.meta.url).href.replace('/js/', '/html/');
         const res = await fetch(url);
         if (!res.ok) {
             console.error(`Failed to load template ${url}: ${res.statusText}`);
