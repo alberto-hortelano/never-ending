@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Auto update
+
+After important changes review this document and update it if necessary.
+
 ## Project Overview
 
 This is "Never Ending", a turn-based strategy game with AI integration built using TypeScript, Web Components, and an event-driven architecture.
@@ -56,6 +60,7 @@ All UI components extend the base `Component` class which provides:
 
 ### File Structure
 - `/src/components/` - Web Components (each has .ts, .scss, .html)
+- `/src/components/_variables.scss` - Global SCSS variables and mixins
 - `/src/common/` - Core game logic and shared code
 - `/src/common/events/` - Event definitions and EventBus
 - `/src/models/` - AI integrations (Claude, OpenAI)
@@ -75,6 +80,32 @@ All UI components extend the base `Component` class which provides:
 - Components should be self-contained with Shadow DOM
 - System services contain business logic, components handle UI
 - Use TypeScript strict mode - all types must be explicit
+
+### SCSS Styling Guidelines
+
+**Variables & Design System:**
+- All styles use centralized variables from `/src/components/_variables.scss`
+- Mobile-first approach using rem units instead of pixels
+- Percentage-based spacing for flexible layouts
+- Consistent color palette with semantic naming
+- Use provided mixins for responsive breakpoints
+
+**When styling components:**
+1. Import variables: `@use '../variables' as *;`
+2. Use semantic color variables (e.g., `$color-bg-primary`, `$color-text-primary`)
+3. Use spacing scale: `$spacing-xs` through `$spacing-3xl`
+4. Use typography scale: `$font-size-xs` through `$font-size-xl`
+5. Use consistent borders: `$border-width`, `$border-radius-*`
+6. Use transition variables: `$transition-all`, `$transition-duration-base`
+7. Follow z-index scale for layering
+
+**Key SCSS Variables:**
+- Colors: `$gray-*` scale, semantic colors like `$color-bg-*`, `$color-text-*`
+- Spacing: rem-based scale and percentage options
+- Typography: rem-based sizes, weights, line heights
+- Borders: consistent widths and radius options
+- Shadows: predefined shadow styles
+- Breakpoints: mobile-first mixins (`@include md-up`, etc.)
 
 ### Server Endpoints
 - `/` - Serves the game
