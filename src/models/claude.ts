@@ -55,5 +55,16 @@ export const sendMessage: SendMessage = async (messages: IMessage[]) => {
     if (!response || response.type !== 'text') {
         return 'Error: Wrong response type';
     }
-    return response.text;
+
+    // Extract JSON from markdown code blocks if present
+    const text = response.text;
+    console.log(text)
+    const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+
+    if (jsonMatch && jsonMatch[1]) {
+        return jsonMatch[1].trim();
+    }
+
+    // Return as-is if no code block found
+    return text;
 }

@@ -130,7 +130,7 @@ export class Popup extends Component {
             });
         }
 
-        // Listen for character selection and log the interaction
+        // Listen for character selection and log the conversation
         selectCharacterComponent.addEventListener('character-selected', (e: Event) => {
             const customEvent = e as CustomEvent;
             const { selectedCharacter } = customEvent.detail;

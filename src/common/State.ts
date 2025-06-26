@@ -18,6 +18,7 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> 
         this.load(initialState);
         this.listen(UpdateStateEvent.characterPosition, (ch) => this.onCharacterPosition(ch));
         this.listen(UpdateStateEvent.characterPath, (ch) => this.onCharacterPath(ch));
+        this.listen(UpdateStateEvent.updateMessages, (messages) => this.onUpdateMessages(messages));
     }
     // Listeners
     private onCharacterPosition(characterData: UpdateStateEventsMap[UpdateStateEvent.characterPosition]) {
@@ -37,6 +38,11 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> 
         }
         character.path = [...characterData.path];
         this.dispatch(StateChangeEvent.characterPath, structuredClone(character));
+    }
+    private onUpdateMessages(messages: UpdateStateEventsMap[UpdateStateEvent.updateMessages]) {
+        this.#messages = [...messages];
+        this.dispatch(StateChangeEvent.messages, structuredClone(this.#messages));
+        this.save();
     }
     // Setters
     private set map(map: IState['map']) {
