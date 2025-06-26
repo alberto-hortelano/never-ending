@@ -1,3 +1,5 @@
+@use '../variables' as *;
+
 :host {
     position: absolute;
     inset: 0;
@@ -5,9 +7,9 @@
     margin: 0;
     overflow: auto;
     touch-action: pan-x pan-y pinch-zoom;
-    background-color: #111;
-    border: 2px solid #444;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    background-color: $color-bg-secondary;
+    border: $border-width-thick solid $color-border-primary;
+    box-shadow: $shadow-lg;
 }
 
 #grid {
@@ -15,7 +17,7 @@
     grid-template-columns: repeat(var(--map-width, 20), var(--cell-width));
     grid-auto-rows: var(--cell-width);
     gap: 0;
-    font-family: monospace;
-    font-size: 20px;
+    font-family: $font-family-mono;
+    font-size: $font-size-xl;
     line-height: 1;
 }

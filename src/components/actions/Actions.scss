@@ -1,42 +1,44 @@
+@use '../variables' as *;
+
 .actions-grid {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 16px;
+    gap: $spacing-lg;
 }
 
 .action-column {
     h4 {
-        margin: 0 0 8px 0;
-        font-size: 12px;
-        font-weight: bold;
-        color: #aaa;
+        margin: 0 0 $spacing-sm 0;
+        font-size: $font-size-sm;
+        font-weight: $font-weight-bold;
+        color: $color-text-muted;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-bottom: 1px solid #444;
-        padding-bottom: 4px;
+        letter-spacing: $letter-spacing-wide;
+        border-bottom: $border-width solid $color-border-primary;
+        padding-bottom: $spacing-xs;
     }
 }
 
 .action-button {
     display: flex;
     align-items: center;
-    gap: 8px;
-    width: 100%;
-    background: #404040;
-    border: 1px solid #555;
-    color: #fff;
-    padding: 8px 12px;
-    margin-bottom: 4px;
-    border-radius: 4px;
+    gap: $spacing-sm;
+    width: $spacing-100;
+    background: $gray-600;
+    border: $border-width solid $gray-450;
+    color: $color-text-primary;
+    padding: $spacing-sm $spacing-md;
+    margin-bottom: $spacing-xs;
+    border-radius: $border-radius-base;
     cursor: pointer;
-    font-size: 11px;
-    transition: all 0.2s ease;
+    font-size: $font-size-xs;
+    transition: $transition-all;
 
     .action-icon {
-        font-size: 16px;
+        font-size: $font-size-lg;
         line-height: 1;
         flex-shrink: 0;
-        padding: 8px;
+        padding: $spacing-sm;
         filter: grayscale(1);
     }
 
@@ -46,12 +48,12 @@
     }
 
     &:hover {
-        background: #505050;
-        border-color: #666;
+        background: $color-bg-hover;
+        border-color: $color-border-hover;
     }
 
     &:active {
-        background: #606060;
+        background: $color-bg-active;
     }
 
     &:last-child {

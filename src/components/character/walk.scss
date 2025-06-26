@@ -1,6 +1,6 @@
 @use '../_variables' as *;
 @use 'sass:map';
-$duration: .2s;
+$duration: $transition-duration-base;
 $delay: 0.5 * $duration;
 
 @keyframes walk-head {

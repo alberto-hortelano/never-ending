@@ -1,4 +1,162 @@
 @use 'sass:math';
+@use 'sass:color';
+
+// ===== BASE UNITS =====
+// Using rem for scalable sizing (1rem = 16px default)
+$base-unit: 1rem;
+
+// ===== LAYOUT & SPACING =====
+// Fluid spacing scale using percentages and rem
+$spacing-xs: 0.25rem;    // 4px
+$spacing-sm: 0.5rem;     // 8px
+$spacing-md: 0.75rem;    // 12px
+$spacing-lg: 1rem;       // 16px
+$spacing-xl: 1.25rem;    // 20px
+$spacing-2xl: 1.5rem;    // 24px
+$spacing-3xl: 2rem;      // 32px
+
+// Percentage-based spacing for layouts
+$spacing-5: 5%;
+$spacing-10: 10%;
+$spacing-15: 15%;
+$spacing-20: 20%;
+$spacing-25: 25%;
+$spacing-50: 50%;
+$spacing-100: 100%;
+
+// ===== COLORS =====
+// Primary colors
+$color-primary: #00ff42;
+$color-primary-dark: color.adjust($color-primary, $lightness: -10%);
+$color-primary-light: color.adjust($color-primary, $lightness: 10%);
+
+// Neutral colors
+$color-black: #000;
+$color-white: #fff;
+
+// Dark theme grays
+$gray-950: #111;
+$gray-900: #1a1a1a;
+$gray-850: #222;
+$gray-800: #2a2a2a;
+$gray-700: #333;
+$gray-600: #404040;
+$gray-550: #444;
+$gray-500: #505050;
+$gray-450: #555;
+$gray-400: #606060;
+$gray-350: #666;
+$gray-300: #888;
+$gray-200: #969696;
+$gray-150: #aaa;
+$gray-100: #ccc;
+$gray-50: #d7d7d7;
+$gray-25: #eee;
+
+// Semantic colors
+$color-bg-primary: $gray-850;
+$color-bg-secondary: $gray-950;
+$color-bg-tertiary: $gray-800;
+$color-bg-hover: $gray-500;
+$color-bg-active: $gray-400;
+
+$color-text-primary: $gray-25;
+$color-text-secondary: $gray-100;
+$color-text-muted: $gray-150;
+$color-text-dim: $gray-300;
+
+$color-border-primary: $gray-550;
+$color-border-secondary: $gray-700;
+$color-border-hover: $gray-350;
+
+// Game-specific colors
+$color-highlight: rgba(0, 255, 0, 0.2);
+$color-highlight-border: rgba(0, 255, 66, 0.09);
+$color-path: rgba(255, 255, 0, 0.3);
+$color-path-border: rgba(255, 255, 0, 0.7);
+
+// Character colors
+$color-skin: #d7a55f;
+$color-helmet: $gray-50;
+$color-suit: $gray-50;
+$color-robot-hand: #cf7800;
+$color-weapon-dark: darkslategrey;
+$color-weapon-light: lightgray;
+$color-weapon-shield: gray;
+
+// ===== TYPOGRAPHY =====
+$font-family-mono: monospace;
+
+// Mobile-first font sizes using rem
+$font-size-xs: 0.6875rem;   // 11px
+$font-size-sm: 0.75rem;     // 12px
+$font-size-base: 0.875rem;  // 14px
+$font-size-lg: 1rem;        // 16px
+$font-size-xl: 1.25rem;     // 20px
+
+$font-weight-normal: 400;
+$font-weight-bold: 700;
+
+$line-height-tight: 1;
+$line-height-normal: 1.5;
+
+$letter-spacing-wide: 0.05em;
+
+// ===== BORDERS =====
+$border-width: 0.0625rem;      // 1px
+$border-width-thick: 0.125rem; // 2px
+
+$border-radius-sm: 0.1875rem;  // 3px
+$border-radius-base: 0.25rem;  // 4px
+$border-radius-md: 0.375rem;   // 6px
+$border-radius-lg: 0.5rem;     // 8px
+$border-radius-xl: 1.25rem;    // 20px
+$border-radius-full: 50%;
+
+// ===== SHADOWS =====
+$shadow-xs: 0 0 0 $border-width $gray-800;
+$shadow-sm: 0 0.125rem 0.25rem rgba($color-black, 0.1);
+$shadow-base: 0 0.25rem 0.75rem rgba($color-black, 0.5);
+$shadow-lg: 0 0 0.625rem rgba($color-black, 0.5);
+$shadow-xl: 0 0 1.25rem 0.625rem rgba($color-black, 0.5);
+$shadow-inner: inset 0 0 0 $border-width $gray-700;
+$shadow-inner-highlight: inset 0 0 0 $border-width $color-highlight-border;
+
+// Mobile shadow (upward)
+$shadow-mobile: 0 -0.25rem 0.75rem rgba($color-black, 0.5);
+
+// ===== TRANSITIONS =====
+$transition-duration-fast: 0.15s;
+$transition-duration-base: 0.2s;
+$transition-duration-slow: 0.3s;
+
+$transition-easing: ease;
+$transition-easing-out: ease-out;
+$transition-easing-in-out: ease-in-out;
+
+// Common transitions
+$transition-all: all $transition-duration-base $transition-easing;
+$transition-colors: background-color $transition-duration-base $transition-easing, 
+                   color $transition-duration-base $transition-easing,
+                   border-color $transition-duration-base $transition-easing;
+$transition-transform: transform $transition-duration-base $transition-easing;
+
+// ===== Z-INDEX =====
+// Z-index scale
+$z-index-base: 0;
+$z-index-leg: 1;
+$z-index-arm-left: 15;
+$z-index-arm-right: 16;
+$z-index-body: 29;
+$z-index-face: 30;
+$z-index-head: 35;
+$z-index-arm-front: 40;
+$z-index-shield: 45;
+$z-index-weapon: 47;
+$z-index-popup: 1000;
+
+// ===== GAME SPECIFIC =====
+// Game orientations
 $orientations: 8;
 $degrees: 45;
 
@@ -14,6 +172,79 @@ $cosine-values: (
     315: -0.7,
 );
 
+// ===== UTILITY VARIABLES =====
+$transparent-white: rgba($color-white, 0.2);
+$transparent-black: rgba($color-black, 0.2);
+
+// ===== BREAKPOINTS =====
+// Mobile-first breakpoints
+$breakpoint-sm: 576px;   // Small devices
+$breakpoint-md: 768px;   // Medium devices
+$breakpoint-lg: 992px;   // Large devices
+$breakpoint-xl: 1200px;  // Extra large devices
+
+// ===== MIXINS =====
+// Mobile-first media queries
+@mixin sm-up {
+    @media (min-width: $breakpoint-sm) {
+        @content;
+    }
+}
+
+@mixin md-up {
+    @media (min-width: $breakpoint-md) {
+        @content;
+    }
+}
+
+@mixin lg-up {
+    @media (min-width: $breakpoint-lg) {
+        @content;
+    }
+}
+
+@mixin xl-up {
+    @media (min-width: $breakpoint-xl) {
+        @content;
+    }
+}
+
+// Button interactions
+@mixin button-hover {
+    &:hover {
+        background-color: $color-bg-hover;
+        border-color: $color-border-hover;
+    }
+    
+    &:active {
+        background-color: $color-bg-active;
+    }
+}
+
+// Container width constraints
+@mixin container {
+    width: 100%;
+    margin: 0 auto;
+    padding: 0 $spacing-lg;
+    
+    @include sm-up {
+        max-width: 540px;
+    }
+    
+    @include md-up {
+        max-width: 720px;
+    }
+    
+    @include lg-up {
+        max-width: 960px;
+    }
+    
+    @include xl-up {
+        max-width: 1140px;
+    }
+}
+
+// ===== FUNCTIONS =====
 @function normalizeAngle($angle) {
     @while $angle>=360 {
         $angle: $angle - 360;
@@ -24,4 +255,25 @@ $cosine-values: (
     }
 
     @return $angle;
+}
+
+// Convert px to rem
+@function to-rem($px, $base: 16) {
+    @return math.div($px, $base) * 1rem;
+}
+
+// Fluid typography
+@function fluid-size($min-size, $max-size, $min-vw: $breakpoint-sm, $max-vw: $breakpoint-xl) {
+    $min-size-rem: to-rem($min-size);
+    $max-size-rem: to-rem($max-size);
+    
+    @return calc(#{$min-size-rem} + #{strip-unit($max-size-rem - $min-size-rem)} * ((100vw - #{$min-vw}) / #{strip-unit($max-vw - $min-vw)}));
+}
+
+// Strip unit helper
+@function strip-unit($number) {
+    @if type-of($number) == 'number' and not unitless($number) {
+        @return math.div($number, $number * 0 + 1);
+    }
+    @return $number;
 }

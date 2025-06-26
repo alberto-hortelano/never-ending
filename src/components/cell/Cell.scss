@@ -1,3 +1,5 @@
+@use '../variables' as *;
+
 :host {
     width: var(--cell-width);
     height: var(--cell-width);
@@ -8,8 +10,8 @@
     left: calc(var(--cell-x, 0) * var(--cell-width));
     top: calc(var(--cell-y, 0) * var(--cell-width));
     box-sizing: border-box;
-    box-shadow: inset 0px 0px 0px 1px #333;
-    background: #969696;
+    box-shadow: $shadow-inner;
+    background: $gray-200;
     transform-style: preserve-3d;
     perspective: 30vmin;
 }
@@ -17,18 +19,17 @@
 :host(.wall) {}
 
 :host(.floor) {
-    background-color: #111;
-    color: #888;
+    background-color: $color-bg-secondary;
+    color: $color-text-dim;
 }
 
 :host(.highlight) {
-    background-color: rgba(0, 255, 0, 0.2);
-    box-shadow: inset 0px 0px 0px 1px #00ff4217;
-    ;
+    background-color: $color-highlight;
+    box-shadow: $shadow-inner-highlight;
     cursor: pointer;
 }
 
 :host(.path) {
-    background-color: rgba(255, 255, 0, 0.3);
-    border: 1px solid rgba(255, 255, 0, 0.7);
+    background-color: $color-path;
+    border: $border-width solid $color-path-border;
 }

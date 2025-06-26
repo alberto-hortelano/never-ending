@@ -1,44 +1,46 @@
+@use '../variables' as *;
+
 :host {
     display: block;
-    width: 100%;
+    width: $spacing-100;
 }
 
 .character-list-container {
-    padding: 16px;
-    min-width: 300px;
+    padding: $spacing-lg;
+    min-width: 18.75rem;
 }
 
 .character-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    max-height: 400px;
+    gap: $spacing-md;
+    max-height: 25rem;
     overflow-y: auto;
 }
 
 .character-item {
-    width: 100%;
+    width: $spacing-100;
 }
 
 .character-button {
-    width: 100%;
-    padding: 12px;
+    width: $spacing-100;
+    padding: $spacing-md;
     background: var(--button-bg, #f5f5f5);
-    border: 1px solid var(--button-border, #ddd);
-    border-radius: 8px;
+    border: $border-width solid var(--button-border, #ddd);
+    border-radius: $border-radius-lg;
     cursor: pointer;
     font-family: var(--font-family);
-    transition: all 0.2s;
+    transition: $transition-all;
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: $spacing-lg;
     text-align: left;
     
     &:hover {
         background: var(--button-hover-bg, #e8e8e8);
         border-color: var(--button-hover-border, #bbb);
-        transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        transform: translateY(-0.0625rem);
+        box-shadow: 0 0.125rem 0.5rem rgba($color-black, 0.1);
     }
     
     &:active {
@@ -48,11 +50,11 @@
 
 .character-icon-wrapper {
     position: relative;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
+    width: 3.75rem;
+    height: 3.75rem;
+    border-radius: $border-radius-full;
     background: var(--icon-bg, #fff);
-    border: 2px solid var(--icon-border, #ddd);
+    border: $border-width-thick solid var(--icon-border, #ddd);
     overflow: hidden;
     flex-shrink: 0;
     display: flex;
@@ -82,15 +84,15 @@
 }
 
 .character-name {
-    margin: 0 0 4px 0;
-    font-size: 16px;
-    font-weight: 600;
+    margin: 0 0 $spacing-xs 0;
+    font-size: $font-size-lg;
+    font-weight: $font-weight-bold;
     color: var(--text-color, #333);
 }
 
 .character-description {
     margin: 0;
-    font-size: 14px;
+    font-size: $font-size-base;
     color: var(--text-muted, #666);
     white-space: nowrap;
     overflow: hidden;
@@ -101,15 +103,15 @@
     text-align: center;
     color: var(--text-muted, #666);
     font-style: italic;
-    padding: 20px;
+    padding: $spacing-xl;
     margin: 0;
 }
 
 // Mobile adjustments
-@media (max-width: 768px) {
+@media (max-width: #{$breakpoint-md}) {
     .character-list-container {
         min-width: auto;
-        width: 100%;
+        width: $spacing-100;
     }
     
     .character-list {

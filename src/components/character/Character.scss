@@ -3,17 +3,16 @@
 @use './shoot';
 @use './walk';
 
-$transition-duration: .2s;
-$transparent-white: rgba(255, 255, 255, 0.2);
-$transparent-black: rgba(0, 0, 0, 0.2);
+$transition-duration: $transition-duration-base;
+// Using from global variables
 
 :host {
     display: block;
     position: absolute;
     background: transparent;
-    --helmet: #d7d7d7;
-    --suit: #d7d7d7;
-    --skin: #d7a55f;
+    --helmet: #{$color-helmet};
+    --suit: #{$color-suit};
+    --skin: #{$color-skin};
 }
 
 body {
@@ -50,8 +49,8 @@ body {
         width: calc(60 * var(--size));
         left: calc(5 * var(--size));
         height: calc(40 * var(--size));
-        box-shadow: 0 calc(-4 * var(--size)) calc(7 * var(--size)) calc(1 * var(--size)) inset black, 0 0 0 calc(4 * var(--size)) #6d6d6d;
-        background-color: #d7a55f;
+        box-shadow: 0 calc(-4 * var(--size)) calc(7 * var(--size)) calc(1 * var(--size)) inset $color-black, 0 0 0 calc(4 * var(--size)) #6d6d6d;
+        background-color: $color-skin;
         background-image: radial-gradient(circle at calc(24 * var(--size)) calc(0.8 * var(--size)), $transparent-white, $transparent-black);
         border-radius: 100%;
 
@@ -63,7 +62,7 @@ body {
             width: calc(10 * var(--size));
             height: calc(8 * var(--size));
             border-radius: 100%;
-            background-color: black;
+            background-color: $color-black;
             z-index: 30;
 
             &.right {
@@ -82,7 +81,7 @@ body {
             left: calc(20 * var(--size));
             width: calc(20 * var(--size));
             height: calc(2 * var(--size));
-            background-color: black;
+            background-color: $color-black;
             z-index: 30;
         }
     }
@@ -151,7 +150,7 @@ body {
     .arm,
     .leg {
         background-image: linear-gradient(90deg, $transparent-white 0%, $transparent-black 100%);
-        box-shadow: 0 0 0 1px #2a2a2a;
+        box-shadow: $shadow-xs;
     }
 
     &::after {
@@ -185,7 +184,7 @@ body {
     }
 
     .arm {
-        border-bottom: calc(0.64 * var(--size)) solid #cf7800;
+        border-bottom: calc(0.64 * var(--size)) solid $color-robot-hand;
     }
 
     .body {
@@ -225,7 +224,7 @@ body {
     left: calc(-05 * var(--size));
     width: calc(100 * var(--size));
     height: calc(10 * var(--size));
-    background-color: darkslategrey;
+    background-color: $color-weapon-dark;
     z-index: 47;
 }
 
@@ -236,7 +235,7 @@ body {
     right: calc(5 * var(--size));
     width: calc(60 * var(--size));
     height: calc(10 * var(--size));
-    background-color: lightgray;
+    background-color: $color-weapon-light;
     transform: rotateZ(45deg);
     transform-origin: 100% 50%;
     z-index: 47;
@@ -251,7 +250,7 @@ body {
     height: calc(60 * var(--size));
     border-radius: calc(20 * var(--size));
     transform: rotateY(25deg);
-    background-color: gray;
+    background-color: $color-weapon-shield;
     z-index: 45;
 }
 

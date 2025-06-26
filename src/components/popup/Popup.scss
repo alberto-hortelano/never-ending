@@ -1,18 +1,20 @@
+@use '../variables' as *;
+
 :host {
     position: absolute;
-    z-index: 1000;
+    z-index: $z-index-popup;
     font-family: inherit;
     display: block; /* Explicitly set display */
 }
 
 /* Mobile styles - position at bottom with full width */
-@media (max-width: 768px) {
+@media (max-width: #{$breakpoint-md}) {
     :host {
         position: fixed !important;
         bottom: 0 !important;
         left: 0 !important;
         right: 0 !important;
-        width: 100% !important;
+        width: $spacing-100 !important;
         top: auto !important;
     }
 }
@@ -22,30 +24,30 @@
 }
 
 .popup-container {
-    background: #2a2a2a;
-    border: 2px solid #444;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    min-width: 400px;
-    color: #fff;
+    background: $color-bg-tertiary;
+    border: $border-width-thick solid $color-border-primary;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-base;
+    min-width: 25rem;
+    color: $color-text-primary;
 }
 
 /* Mobile popup container adjustments */
-@media (max-width: 768px) {
+@media (max-width: #{$breakpoint-md}) {
     .popup-container {
-        width: 100%;
+        width: $spacing-100;
         min-width: unset;
-        border-radius: 8px 8px 0 0; /* Only round top corners on mobile */
+        border-radius: $border-radius-lg $border-radius-lg 0 0; /* Only round top corners on mobile */
         border-bottom: none;
-        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.5);
+        box-shadow: $shadow-mobile;
     }
 }
 
 .popup-header {
-    background: #333;
-    padding: 8px 12px;
-    border-bottom: 1px solid #444;
-    border-radius: 6px 6px 0 0;
+    background: $color-border-secondary;
+    padding: $spacing-sm $spacing-md;
+    border-bottom: $border-width solid $color-border-primary;
+    border-radius: $border-radius-md $border-radius-md 0 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -54,31 +56,31 @@
 
     h3 {
         margin: 0;
-        font-size: 14px;
-        font-weight: bold;
+        font-size: $font-size-base;
+        font-weight: $font-weight-bold;
     }
 }
 
 .header-buttons {
     display: flex;
-    gap: 4px;
+    gap: $spacing-xs;
 
     button {
         background: transparent;
         border: none;
-        color: #ccc;
+        color: $color-text-secondary;
         cursor: pointer;
-        padding: 2px 6px;
-        border-radius: 3px;
-        font-size: 12px;
+        padding: calc($spacing-xs / 2) calc($spacing-sm * 0.75);
+        border-radius: $border-radius-sm;
+        font-size: $font-size-sm;
         
         &:hover {
-            background: #555;
-            color: #fff;
+            background: $gray-450;
+            color: $color-text-primary;
         }
     }
 }
 
 .popup-content {
-    padding: 12px;
+    padding: $spacing-md;
 }

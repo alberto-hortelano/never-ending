@@ -1,8 +1,10 @@
+@use '../variables' as *;
+
 :host {
     display: block;
     margin: 0;
     padding: 0;
-    background-color: #222;
-    color: #eee;
-    font-family: monospace;
+    background-color: $color-bg-primary;
+    color: $color-text-primary;
+    font-family: $font-family-mono;
 }
