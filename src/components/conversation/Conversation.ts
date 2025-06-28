@@ -10,6 +10,8 @@ export class Conversation extends Component {
     private contentElement?: HTMLElement;
     private answersElement?: HTMLElement;
     private loadingElement?: HTMLElement;
+    private freeTextInput?: HTMLInputElement;
+    private freeTextSubmit?: HTMLButtonElement;
     private currentData?: ConversationUpdateData;
 
     override async connectedCallback() {
@@ -21,9 +23,12 @@ export class Conversation extends Component {
         this.contentElement = root.querySelector('.conversation-content') as HTMLElement;
         this.answersElement = root.querySelector('.conversation-answers') as HTMLElement;
         this.loadingElement = root.querySelector('.conversation-loading') as HTMLElement;
+        this.freeTextInput = root.querySelector('.free-text-input') as HTMLInputElement;
+        this.freeTextSubmit = root.querySelector('.free-text-submit') as HTMLButtonElement;
 
         // Listen for conversation updates
         this.setupEventListeners();
+        this.setupFreeTextHandlers();
 
         return root;
     }
@@ -87,6 +92,14 @@ export class Conversation extends Component {
             });
         }
 
+        // Re-enable free text input for new conversation
+        if (this.freeTextInput) {
+            this.freeTextInput.disabled = false;
+        }
+        if (this.freeTextSubmit) {
+            this.freeTextSubmit.disabled = false;
+        }
+
         // Dispatch event to notify parent that conversation has been updated
         this.dispatchEvent(new CustomEvent('conversation-updated', {
             detail: { data },
@@ -132,6 +145,55 @@ export class Conversation extends Component {
         errorElement.textContent = error;
 
         this.contentElement.appendChild(errorElement);
+    }
+
+    private setupFreeTextHandlers() {
+        if (!this.freeTextInput || !this.freeTextSubmit) return;
+
+        // Handle submit button click
+        this.freeTextSubmit.addEventListener('click', () => {
+            this.handleFreeTextSubmit();
+        });
+
+        // Handle Enter key press in input
+        this.freeTextInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                this.handleFreeTextSubmit();
+            }
+        });
+    }
+
+    private handleFreeTextSubmit() {
+        if (!this.freeTextInput) return;
+
+        const text = this.freeTextInput.value.trim();
+        if (!text) return;
+
+        // Dispatch continue event with the free text
+        this.dispatch(ConversationEvent.continue, text);
+
+        // Clear the input
+        this.freeTextInput.value = '';
+
+        // Disable input and button to prevent multiple submissions
+        this.freeTextInput.disabled = true;
+        if (this.freeTextSubmit) {
+            this.freeTextSubmit.disabled = true;
+        }
+
+        // Disable all answer buttons too
+        if (this.answersElement) {
+            const buttons = this.answersElement.querySelectorAll('button');
+            buttons.forEach(button => {
+                if (button instanceof HTMLButtonElement) {
+                    button.disabled = true;
+                    button.classList.add('disabled');
+                }
+            });
+        }
+
+        // Show loading state
+        this.showLoading();
     }
 
     // Custom element setup

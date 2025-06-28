@@ -4,7 +4,8 @@
     position: absolute;
     z-index: $z-index-popup;
     font-family: inherit;
-    display: block; /* Explicitly set display */
+    display: block;
+    /* Explicitly set display */
 }
 
 /* Mobile styles - position at bottom with full width */
@@ -38,7 +39,9 @@
     .popup-container {
         width: $spacing-100;
         min-width: unset;
-        border-radius: $border-radius-lg $border-radius-lg 0 0; /* Only round top corners on mobile */
+        max-width: unset;
+        border-radius: $border-radius-lg $border-radius-lg 0 0;
+        /* Only round top corners on mobile */
         border-bottom: none;
         box-shadow: $shadow-mobile;
     }
@@ -74,7 +77,7 @@
         padding: calc($spacing-xs / 2) calc($spacing-sm * 0.75);
         border-radius: $border-radius-sm;
         font-size: $font-size-sm;
-        
+
         &:hover {
             background: $gray-450;
             color: $color-text-primary;

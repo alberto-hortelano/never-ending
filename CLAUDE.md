@@ -111,3 +111,6 @@ All UI components extend the base `Component` class which provides:
 - `/` - Serves the game
 - `/gameEngine` - AI-powered game narrative endpoint
 - Static files served with smart ES module resolution
+
+## Notes:
+Don't run npm start, if you want to see the output of the build run one of the build commands

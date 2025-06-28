@@ -54,15 +54,6 @@
     &.speech {
         background: $color-bg-tertiary;
         border-color: $color-border-primary;
-        
-        &::before {
-            content: '"';
-            position: absolute;
-            left: -$spacing-sm;
-            top: $spacing-sm;
-            font-size: $font-size-xl;
-            color: $color-text-dim;
-        }
     }
 
     &.narration {
@@ -108,12 +99,10 @@
     &:hover:not(:disabled) {
         background: $color-bg-hover;
         border-color: $color-border-hover;
-        transform: translateX($spacing-xs);
     }
 
     &:active:not(:disabled) {
         background: $color-bg-active;
-        transform: translateX(0);
     }
 
     &:disabled,
@@ -130,6 +119,62 @@
     }
 }
 
+.conversation-free-text {
+    display: flex;
+    gap: $spacing-md;
+    margin-top: $spacing-lg;
+    padding: $spacing-lg 0;
+    border-top: $border-width solid $color-border-primary;
+}
+
+.free-text-input {
+    flex: 1;
+    padding: $spacing-sm $spacing-md;
+    font-size: $font-size-base;
+    color: $color-text-primary;
+    background: $color-bg-primary;
+    border: $border-width solid $color-border-primary;
+    border-radius: $border-radius-sm;
+    transition: $transition-all;
+
+    &:focus {
+        outline: none;
+        border-color: $color-primary;
+        box-shadow: 0 0 0 2px rgba($color-primary, 0.2);
+    }
+
+    &::placeholder {
+        color: $color-text-secondary;
+    }
+}
+
+.free-text-submit {
+    background: $color-bg-tertiary;
+    color: $color-text-primary;
+    border: $border-width solid $color-border-primary;
+    border-radius: $border-radius-sm;
+    padding: $spacing-sm $spacing-lg;
+    font-size: $font-size-base;
+    font-weight: $font-weight-bold;
+    cursor: pointer;
+    transition: $transition-all;
+
+    &:hover:not(:disabled) {
+        background: $color-bg-hover;
+        border-color: $color-border-hover;
+        transform: scale(1.05);
+    }
+
+    &:active:not(:disabled) {
+        transform: scale(0.98);
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+}
+
 .conversation-loading {
     display: flex;
     justify-content: center;
@@ -137,7 +182,7 @@
     padding: $spacing-xl;
     color: $color-text-secondary;
     font-size: $font-size-base;
-    
+
     .loading-text {
         animation: fadeIn $transition-duration-base ease-out;
     }
@@ -181,6 +226,7 @@
         opacity: 0;
         transform: translateY(-$spacing-sm);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -188,10 +234,14 @@
 }
 
 @keyframes pulse {
-    0%, 80%, 100% {
+
+    0%,
+    80%,
+    100% {
         transform: scale(0);
         opacity: 0.5;
     }
+
     40% {
         transform: scale(1);
         opacity: 1;
@@ -199,18 +249,33 @@
 }
 
 // Mobile adjustments
-@include sm-down {
+.conversation-container {
+    padding: $spacing-md;
+    gap: $spacing-md;
+}
+
+.conversation-content {
+    max-height: 200px;
+}
+
+.answer-button {
+    padding: $spacing-sm $spacing-md;
+    font-size: $font-size-sm;
+}
+
+// Desktop adjustments
+@include md-up {
     .conversation-container {
-        padding: $spacing-md;
-        gap: $spacing-md;
+        padding: $spacing-lg;
+        gap: $spacing-lg;
     }
 
     .conversation-content {
-        max-height: 200px;
+        max-height: 300px;
     }
 
     .answer-button {
-        padding: $spacing-sm $spacing-md;
-        font-size: $font-size-sm;
+        padding: $spacing-sm $spacing-lg;
+        font-size: $font-size-base;
     }
 }
