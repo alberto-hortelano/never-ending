@@ -3,7 +3,7 @@ import './components';
 import { Movement } from "./common/Movement";
 import { Talk } from "./common/Talk";
 import { State } from "./common/State";
-import { ConversationService } from "./common/ConversationService";
+import { Conversation } from "./common/Conversation";
 import { GameEvent, EventBus } from "./common/events";
 import { initialState } from './data/state';
 
@@ -15,7 +15,7 @@ const play = () => {
     const state = new State(initialState(50, 50));
     const movement = new Movement(state);
     const talk = new Talk(state);
-    const conversationService = new ConversationService();
+    const conversationService = new Conversation();
     // Only for debugging
     (window as any).game = {
         state,

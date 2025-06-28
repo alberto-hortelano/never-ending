@@ -6,7 +6,7 @@ import {
     ConversationEvent, ConversationEventsMap, ConversationStartData, ConversationUpdateData
 } from "./events";
 
-export class ConversationService extends EventBus<
+export class Conversation extends EventBus<
     StateChangeEventsMap & ConversationEventsMap,
     UpdateStateEventsMap & ConversationEventsMap
 > {
