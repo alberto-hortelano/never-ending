@@ -73,7 +73,15 @@ export class Api {
             }];
 
             try {
-                const response = await this.sendMessage(messages);
+                await new Promise(r => setTimeout(r, 1000))
+                // const response = await this.sendMessage(messages);
+                const response = `{
+  "type": "speech",
+  "source": "Data",
+  "content": "Capitán, mis sensores detectan múltiples señales de comunicación interceptadas desde que abandonamos la base. Creo que nos están rastreando activamente. Debemos tomar medidas evasivas inmediatas.",
+  "answers": ["¿Qué tipo de señales?", "¿Cuánto tiempo tenemos?", "Prepara un salto de emergencia", "Déjalo por ahora"]
+}
+`
                 const message: IMessage = {
                     role: 'assistant',
                     content: response,

@@ -5,6 +5,7 @@ import {
     EventBus, StateChangeEvent, StateChangeEventsMap, UpdateStateEvent, UpdateStateEventsMap,
     ConversationEvent, ConversationEventsMap, ConversationStartData, ConversationUpdateData
 } from "./events";
+import { conversationSystemPrompt, characterContext } from "../prompts/conversationPrompts";
 
 export class Conversation extends EventBus<
     StateChangeEventsMap & ConversationEventsMap,
@@ -32,23 +33,34 @@ export class Conversation extends EventBus<
         });
     }
 
-    async startConversation(talkingCharacter: DeepReadonly<ICharacter>, targetCharacter: DeepReadonly<ICharacter>) {
+    private async startConversation(talkingCharacter: DeepReadonly<ICharacter>, targetCharacter: DeepReadonly<ICharacter>) {
         if (this.isLoading) return;
 
         this.isLoading = true;
 
         try {
-            // Create context message
+            // Create context message with better prompt
             const contextMessage: IMessage = {
                 role: 'user',
-                content: `${talkingCharacter.name} wants to talk to ${targetCharacter.name}.`
+                content: characterContext(talkingCharacter.name, targetCharacter.name)
             };
 
+            // Include system prompt in the context message if this is the first conversation
+            const fullContextMessage: IMessage = {
+                role: 'user',
+                content: this.messages.length === 0
+                    ? `${conversationSystemPrompt}\n\n${contextMessage.content}`
+                    : contextMessage.content
+            };
+
+            const messages = [...this.messages, fullContextMessage];
+
             // Call API
-            const response = await this.callGameEngine([...this.messages, contextMessage]);
+            const response = await this.callGameEngine(messages);
 
             // Parse and dispatch update
             const conversationData = this.parseResponse(response.content);
+            console.log('>>> - dispatch - startConversation:', conversationData)
             this.dispatch(ConversationEvent.update, conversationData);
 
             // Update messages state
@@ -57,10 +69,16 @@ export class Conversation extends EventBus<
         } catch (error) {
             console.error('Error starting conversation:', error);
             this.dispatch(ConversationEvent.error, 'Failed to start conversation');
+        } finally {
+            this.isLoading = false;
         }
     }
 
-    async continueConversation(answer: string) {
+    private async continueConversation(answer: string) {
+        if (this.isLoading) return;
+
+        this.isLoading = true;
+
         try {
             // Create player message
             const playerMessage: IMessage = {
@@ -73,6 +91,7 @@ export class Conversation extends EventBus<
 
             // Parse and dispatch update
             const conversationData = this.parseResponse(response.content);
+            console.log('>>> - dispatch - continueConversation:', conversationData)
             this.dispatch(ConversationEvent.update, conversationData);
 
             // Update messages state
@@ -81,6 +100,8 @@ export class Conversation extends EventBus<
         } catch (error) {
             console.error('Error continuing conversation:', error);
             this.dispatch(ConversationEvent.error, 'Failed to continue conversation');
+        } finally {
+            this.isLoading = false;
         }
     }
 
@@ -112,7 +133,19 @@ export class Conversation extends EventBus<
 
     private parseResponse(response: string): ConversationUpdateData {
         try {
-            return JSON.parse(response);
+            // Try to extract JSON from the response
+            const jsonMatch = response.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]);
+
+                // Validate required fields
+                if (!parsed.type || !parsed.source || !parsed.content || !parsed.answers) {
+                    throw new Error('Missing required fields in response');
+                }
+
+                return parsed;
+            }
+            throw new Error('No JSON found in response');
         } catch (error) {
             console.error('Error parsing response:', error, 'Original response:', response);
             return {

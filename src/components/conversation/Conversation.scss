@@ -1,0 +1,216 @@
+@use '../variables' as *;
+
+:host {
+    display: block;
+    width: 100%;
+    min-height: 200px;
+}
+
+.conversation-container {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-lg;
+    padding: $spacing-lg;
+    min-height: 200px;
+}
+
+.conversation-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: $spacing-sm;
+
+    // Custom scrollbar
+    &::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: $color-bg-secondary;
+        border-radius: $border-radius-sm;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: $color-border-primary;
+        border-radius: $border-radius-sm;
+
+        &:hover {
+            background: $color-border-hover;
+        }
+    }
+}
+
+.conversation-bubble {
+    background: $color-bg-secondary;
+    border: $border-width solid $color-border-secondary;
+    border-radius: $border-radius-md;
+    padding: $spacing-md;
+    position: relative;
+    animation: fadeIn $transition-duration-base ease-out;
+
+    &.speech {
+        background: $color-bg-tertiary;
+        border-color: $color-border-primary;
+        
+        &::before {
+            content: '"';
+            position: absolute;
+            left: -$spacing-sm;
+            top: $spacing-sm;
+            font-size: $font-size-xl;
+            color: $color-text-dim;
+        }
+    }
+
+    &.narration {
+        font-style: italic;
+        color: $color-text-secondary;
+    }
+}
+
+.conversation-source {
+    font-weight: $font-weight-bold;
+    color: $color-primary;
+    margin-bottom: $spacing-xs;
+    font-size: $font-size-sm;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.conversation-text {
+    color: $color-text-primary;
+    line-height: $line-height-normal;
+    font-size: $font-size-base;
+}
+
+.conversation-answers {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    border-top: $border-width solid $color-border-secondary;
+    padding-top: $spacing-md;
+}
+
+.answer-button {
+    background: $color-bg-tertiary;
+    border: $border-width solid $color-border-primary;
+    border-radius: $border-radius-sm;
+    color: $color-text-primary;
+    padding: $spacing-md $spacing-lg;
+    font-size: $font-size-base;
+    cursor: pointer;
+    transition: $transition-all;
+    text-align: left;
+
+    &:hover:not(:disabled) {
+        background: $color-bg-hover;
+        border-color: $color-border-hover;
+        transform: translateX($spacing-xs);
+    }
+
+    &:active:not(:disabled) {
+        background: $color-bg-active;
+        transform: translateX(0);
+    }
+
+    &:disabled,
+    &.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    &::before {
+        content: '▶';
+        margin-right: $spacing-sm;
+        font-size: $font-size-xs;
+        color: $color-primary;
+    }
+}
+
+.conversation-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: $spacing-xl;
+    color: $color-text-secondary;
+    font-size: $font-size-base;
+    
+    .loading-text {
+        animation: fadeIn $transition-duration-base ease-out;
+    }
+}
+
+.conversation-error {
+    background: rgba(255, 0, 0, 0.1);
+    border: $border-width solid rgba(255, 0, 0, 0.3);
+    border-radius: $border-radius-sm;
+    padding: $spacing-md;
+    color: #ff6666;
+    text-align: center;
+}
+
+.loading-indicator {
+    display: flex;
+    justify-content: center;
+    gap: $spacing-xs;
+    padding: $spacing-md;
+
+    span {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: $color-primary;
+        border-radius: 50%;
+        animation: pulse 1.4s infinite ease-in-out both;
+
+        &:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        &:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-$spacing-sm);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 80%, 100% {
+        transform: scale(0);
+        opacity: 0.5;
+    }
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+// Mobile adjustments
+@include sm-down {
+    .conversation-container {
+        padding: $spacing-md;
+        gap: $spacing-md;
+    }
+
+    .conversation-content {
+        max-height: 200px;
+    }
+
+    .answer-button {
+        padding: $spacing-sm $spacing-md;
+        font-size: $font-size-sm;
+    }
+}

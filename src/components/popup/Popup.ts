@@ -1,8 +1,9 @@
 import type { Actions } from "../actions/Actions";
 import type { SelectCharacter } from "../selectcharacter/SelectCharacter";
+import type { Conversation } from "../conversation/Conversation";
 
 import { Component } from "../Component";
-import { ControlsEvent, ControlsEventsMap } from "../../common/events";
+import { ControlsEvent, ControlsEventsMap, ConversationEvent, ConversationEventsMap } from "../../common/events";
 import { Draggable } from "../../common/helpers/Draggable";
 
 export class Popup extends Component {
@@ -57,6 +58,32 @@ export class Popup extends Component {
             }, 50);
         });
 
+        // Listen for conversation start to create the conversation UI with loading state
+        this.listen(ConversationEvent.start, (data: ConversationEventsMap[ConversationEvent.start]) => {
+            isShowing = true;
+            this.showConversationLoading(data);
+
+            // Reset the flag after a short delay to allow the click event to finish bubbling
+            setTimeout(() => {
+                isShowing = false;
+            }, 50);
+        });
+
+        // Listen for conversation updates to show the conversation UI
+        this.listen(ConversationEvent.update, (data: ConversationEventsMap[ConversationEvent.update]) => {
+            // Only create new conversation UI if one doesn't exist
+            const existingConversation = this.querySelector('conversation-ui');
+            if (!existingConversation) {
+                isShowing = true;
+                this.showConversation(data);
+
+                // Reset the flag after a short delay to allow the click event to finish bubbling
+                setTimeout(() => {
+                    isShowing = false;
+                }, 50);
+            }
+        });
+
         // Close popup when clicking outside (if not pinned)
         document.addEventListener('click', (e) => {
             if (!isShowing && !this.isPinned && !this.contains(e.target as Node)) {
@@ -78,9 +105,12 @@ export class Popup extends Component {
 
         // Listen for character selections from TalkCharacterList component
         this.addEventListener('character-selected', () => {
-            if (!this.isPinned) {
-                this.hide();
-            }
+            console.log('>>> - Popup - this.addEventListener - character-selected:')
+        });
+
+        // Listen for conversation updates from Conversation component
+        this.addEventListener('conversation-updated', () => {
+            // Keep popup open during conversations
         });
     }
 
@@ -135,7 +165,35 @@ export class Popup extends Component {
             const customEvent = e as CustomEvent;
             const { selectedCharacter } = customEvent.detail;
             console.log(`${data.talkingCharacter.name} talks to ${selectedCharacter.name}`);
+            this.dispatch(ConversationEvent.start, { talkingCharacter: data.talkingCharacter, targetCharacter: selectedCharacter })
         });
+    }
+
+    private showConversationLoading(data: ConversationEventsMap[ConversationEvent.start]) {
+        console.log('>>> - Popup - showConversationLoading - data:', data)
+        this.clearContent();
+
+        // Create and append conversation UI component
+        const conversationComponent = document.createElement('conversation-ui') as Conversation;
+        this.appendChild(conversationComponent);
+
+        const title = `${data.talkingCharacter.name} - Conversation`;
+        this.show(title);
+    }
+
+    private showConversation(data: ConversationEventsMap[ConversationEvent.update]) {
+        this.clearContent();
+
+        // Create and append conversation UI component
+        const conversationComponent = document.createElement('conversation-ui') as Conversation;
+        this.appendChild(conversationComponent);
+
+        // Determine title based on conversation type
+        const title = data.type === 'speech' && data.source
+            ? `${data.source} - Conversation`
+            : 'Conversation';
+
+        this.show(title);
     }
 
     private clearContent() {
@@ -146,6 +204,7 @@ export class Popup extends Component {
     }
 
     private show(title: string) {
+        console.log('>>> - Popup - show - title:', title)
         this.classList.remove('hidden');
 
         // Setup draggable on first show when shadow DOM is ready (desktop only)
@@ -171,6 +230,7 @@ export class Popup extends Component {
     }
 
     private hide() {
+        console.log('>>> - Popup - hide:', this.title)
         if (!this.isPinned) {
             this.classList.add('hidden');
         }
