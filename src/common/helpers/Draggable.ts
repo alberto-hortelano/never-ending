@@ -82,10 +82,13 @@ export class Draggable {
         const newX = this.elementStartX + deltaX;
         const newY = this.elementStartY + deltaY;
         
+        // Get element dimensions
+        const elementWidth = this.element.offsetWidth;
+        const elementHeight = this.element.offsetHeight;
+        
         // Keep element within viewport bounds
-        const rect = this.element.getBoundingClientRect();
-        const maxX = window.innerWidth - rect.width;
-        const maxY = window.innerHeight - rect.height;
+        const maxX = window.innerWidth - elementWidth;
+        const maxY = window.innerHeight - elementHeight;
         
         const boundedX = Math.max(0, Math.min(newX, maxX));
         const boundedY = Math.max(0, Math.min(newY, maxY));
