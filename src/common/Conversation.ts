@@ -60,7 +60,6 @@ export class Conversation extends EventBus<
 
             // Parse and dispatch update
             const conversationData = this.parseResponse(response.content);
-            console.log('>>> - dispatch - startConversation:', conversationData)
             this.dispatch(ConversationEvent.update, conversationData);
 
             // Update messages state
@@ -68,7 +67,8 @@ export class Conversation extends EventBus<
 
         } catch (error) {
             console.error('Error starting conversation:', error);
-            this.dispatch(ConversationEvent.error, 'Failed to start conversation');
+            const errorMessage = error instanceof Error ? error.message : 'Failed to start conversation';
+            this.dispatch(ConversationEvent.error, errorMessage);
         } finally {
             this.isLoading = false;
         }
@@ -91,7 +91,6 @@ export class Conversation extends EventBus<
 
             // Parse and dispatch update
             const conversationData = this.parseResponse(response.content);
-            console.log('>>> - dispatch - continueConversation:', conversationData)
             this.dispatch(ConversationEvent.update, conversationData);
 
             // Update messages state
@@ -99,7 +98,8 @@ export class Conversation extends EventBus<
 
         } catch (error) {
             console.error('Error continuing conversation:', error);
-            this.dispatch(ConversationEvent.error, 'Failed to continue conversation');
+            const errorMessage = error instanceof Error ? error.message : 'Failed to continue conversation';
+            this.dispatch(ConversationEvent.error, errorMessage);
         } finally {
             this.isLoading = false;
         }
@@ -115,7 +115,8 @@ export class Conversation extends EventBus<
         });
 
         if (!response.ok) {
-            throw new Error(`API request failed: ${response.statusText}`);
+            const errorData = await response.json();
+            throw new Error(errorData.error || `API request failed: ${response.statusText}`);
         }
 
         const updatedMessages: IMessage[] = await response.json();

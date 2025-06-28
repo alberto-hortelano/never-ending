@@ -117,7 +117,6 @@ export class DragScroll {
     }
 
     private animate(): void {
-        console.log('>>> - DragScroll - animate - animate:')
         if (this.activeKeys.size === 0) {
             this.stopAnimation();
             return;

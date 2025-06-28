@@ -47,7 +47,7 @@ export class Api {
                             req.url = dirPath + 'index.js';
                             return res.redirect(302, join(dirPath, 'index.js'));
                         } else {
-                            console.log('>>> - EEEEEEE - indexPath:', indexPath, join(dirPath, 'index.js'))
+                            console.error('Error: Path not found', indexPath, join(dirPath, 'index.js'))
                         }
                     }
                 }
@@ -90,8 +90,10 @@ export class Api {
                 messages.push(message);
                 res.send(messages);
             } catch (error) {
-                console.error('>>> - Api - this.app.post - error:', error)
-                res.send(messages);
+                console.error('Api - /gameEngine - error:', error);
+                res.status(500).json({
+                    error: error instanceof Error ? error.message : String(error)
+                });
             }
         });
     }

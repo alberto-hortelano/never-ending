@@ -104,9 +104,9 @@ export class Popup extends Component {
         });
 
         // Listen for character selections from TalkCharacterList component
-        this.addEventListener('character-selected', () => {
-            console.log('>>> - Popup - this.addEventListener - character-selected:')
-        });
+        // this.addEventListener('character-selected', () => {
+        //     console.log('>>> - Popup - this.addEventListener - character-selected:')
+        // });
 
         // Listen for conversation updates from Conversation component
         this.addEventListener('conversation-updated', () => {
@@ -170,7 +170,6 @@ export class Popup extends Component {
     }
 
     private showConversationLoading(data: ConversationEventsMap[ConversationEvent.start]) {
-        console.log('>>> - Popup - showConversationLoading - data:', data)
         this.clearContent();
 
         // Create and append conversation UI component
@@ -204,7 +203,6 @@ export class Popup extends Component {
     }
 
     private show(title: string) {
-        console.log('>>> - Popup - show - title:', title)
         this.classList.remove('hidden');
 
         // Setup draggable on first show when shadow DOM is ready (desktop only)
@@ -230,7 +228,6 @@ export class Popup extends Component {
     }
 
     private hide() {
-        console.log('>>> - Popup - hide:', this.title)
         if (!this.isPinned) {
             this.classList.add('hidden');
         }

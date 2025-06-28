@@ -12,11 +12,9 @@ export class Conversation extends Component {
     private loadingElement?: HTMLElement;
     private freeTextInput?: HTMLInputElement;
     private freeTextSubmit?: HTMLButtonElement;
-    private currentData?: ConversationUpdateData;
 
     override async connectedCallback() {
         const root = await super.connectedCallback();
-        console.log('>>> - Conversation - overrideconnectedCallback - root:', root)
         if (!root) return root;
 
         // Get references to shadow DOM elements
@@ -34,7 +32,6 @@ export class Conversation extends Component {
     }
 
     private setupEventListeners() {
-        console.log('>>> - Conversation - setupEventListeners - setupEventListeners:', ConversationEvent.update)
         this.listen(ConversationEvent.update, (data: ConversationEventsMap[ConversationEvent.update]) => {
             this.updateConversation(data);
         });
@@ -45,10 +42,6 @@ export class Conversation extends Component {
     }
 
     private updateConversation(data: ConversationUpdateData) {
-        console.log('>>> - Conversation - updateConversation - data:', data)
-        this.currentData = data;
-
-        console.log('>>> - Conversation - updateConversation - this.contentElement:', this.contentElement, this.answersElement)
         if (!this.contentElement || !this.answersElement) return;
 
         // Hide loading message
