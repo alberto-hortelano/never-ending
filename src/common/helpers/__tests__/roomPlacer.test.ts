@@ -1,9 +1,9 @@
-import { RoomPlacer, Room } from '../src/common/helpers/RoomPlacer';
-import { CorridorGenerator, Corridor } from '../src/common/helpers/CorridorGenerator';
-import type { Direction, ICoord } from '../src/common/interfaces';
+import { RoomPlacer } from '../RoomPlacer';
+import { CorridorGenerator, Corridor } from '../CorridorGenerator';
+import type { Direction, ICoord, IRoom } from '../../interfaces';
 
 // Mock CorridorGenerator
-jest.mock('../src/common/helpers/CorridorGenerator');
+jest.mock('../CorridorGenerator');
 
 describe('RoomPlacer', () => {
     let roomPlacer: RoomPlacer;
@@ -15,7 +15,7 @@ describe('RoomPlacer', () => {
     function createMockCorridor(start: ICoord, end: ICoord, direction: Direction): Corridor {
         const cells: ICoord[] = [];
         const current = { ...start };
-        
+
         while (current.x !== end.x || current.y !== end.y) {
             cells.push({ ...current });
             if (current.x < end.x) current.x++;
@@ -24,7 +24,7 @@ describe('RoomPlacer', () => {
             else if (current.y > end.y) current.y--;
         }
         cells.push({ ...end });
-        
+
         return { start, end, cells, direction };
     }
 
@@ -35,7 +35,7 @@ describe('RoomPlacer', () => {
 
     describe('placeAllRooms', () => {
         test('should place a single small room along a corridor', () => {
-            const rooms: Room[] = [{ size: 3 }];
+            const rooms: IRoom[] = [{ size: 3, name: 'Room 1' }];
             const corridors: Corridor[] = [
                 createMockCorridor({ x: 10, y: 25 }, { x: 40, y: 25 }, 'right')
             ];
@@ -49,10 +49,10 @@ describe('RoomPlacer', () => {
         });
 
         test('should place multiple rooms along corridors', () => {
-            const rooms: Room[] = [
-                { size: 3 },
-                { size: 5 },
-                { size: 7 }
+            const rooms: IRoom[] = [
+                { size: 3, name: 'Room 1' },
+                { size: 5, name: 'Room 2' },
+                { size: 7, name: 'Room 3' }
             ];
             const corridors: Corridor[] = [
                 createMockCorridor({ x: 5, y: 25 }, { x: 45, y: 25 }, 'right'),
@@ -70,10 +70,10 @@ describe('RoomPlacer', () => {
         });
 
         test('should handle rooms that dont fit initially by expanding corridors', () => {
-            const rooms: Room[] = [
-                { size: 11 },
-                { size: 11 },
-                { size: 11 }
+            const rooms: IRoom[] = [
+                { size: 11, name: 'Room 1' },
+                { size: 11, name: 'Room 2' },
+                { size: 11, name: 'Room 3' }
             ];
             const corridors: Corridor[] = [
                 createMockCorridor({ x: 20, y: 25 }, { x: 30, y: 25 }, 'right')
@@ -102,18 +102,18 @@ describe('RoomPlacer', () => {
         });
 
         test('should force place rooms even with tight constraints', () => {
-            const rooms: Room[] = [
-                { size: 9 },
-                { size: 9 },
-                { size: 9 },
-                { size: 9 }
+            const rooms: IRoom[] = [
+                { size: 9, name: 'Room 1' },
+                { size: 9, name: 'Room 2' },
+                { size: 9, name: 'Room 3' },
+                { size: 9, name: 'Room 4' }
             ];
             const corridors: Corridor[] = [
                 createMockCorridor({ x: 15, y: 25 }, { x: 35, y: 25 }, 'right')
             ];
 
             mockCorridorGenerator.getCorridors.mockReturnValue(corridors);
-            mockCorridorGenerator.addLongCorridors.mockImplementation(() => {});
+            mockCorridorGenerator.addLongCorridors.mockImplementation(() => { });
 
             const placements = roomPlacer.placeAllRooms(rooms, corridors);
 
@@ -125,7 +125,7 @@ describe('RoomPlacer', () => {
         });
 
         test('should place rooms at corridor intersections', () => {
-            const rooms: Room[] = [{ size: 5 }];
+            const rooms: IRoom[] = [{ size: 5, name: 'Room 1' }];
             const corridors: Corridor[] = [
                 createMockCorridor({ x: 10, y: 25 }, { x: 40, y: 25 }, 'right'),
                 createMockCorridor({ x: 25, y: 10 }, { x: 25, y: 40 }, 'down')
@@ -134,15 +134,15 @@ describe('RoomPlacer', () => {
             const placements = roomPlacer.placeAllRooms(rooms, corridors);
 
             expect(placements).toHaveLength(1);
-            // Room could be placed at intersection or along corridors
+            // IRoom could be placed at intersection or along corridors
             expect(placements[0]?.position).toBeDefined();
         });
 
         test('should not overlap rooms', () => {
-            const rooms: Room[] = [
-                { size: 7 },
-                { size: 7 },
-                { size: 7 }
+            const rooms: IRoom[] = [
+                { size: 7, name: 'Room 1' },
+                { size: 7, name: 'Room 2' },
+                { size: 7, name: 'Room 3' }
             ];
             const corridors: Corridor[] = [
                 createMockCorridor({ x: 5, y: 25 }, { x: 45, y: 25 }, 'right')
@@ -158,20 +158,20 @@ describe('RoomPlacer', () => {
                     if (!room1 || !room2) continue;
                     const halfSize1 = Math.floor(room1.room.size / 2);
                     const halfSize2 = Math.floor(room2.room.size / 2);
-                    
-                    const distance = Math.abs(room1.position.x - room2.position.x) + 
-                                   Math.abs(room1.position.y - room2.position.y);
+
+                    const distance = Math.abs(room1.position.x - room2.position.x) +
+                        Math.abs(room1.position.y - room2.position.y);
                     const minDistance = halfSize1 + halfSize2 + 1;
-                    
+
                     expect(distance).toBeGreaterThanOrEqual(minDistance);
                 }
             }
         });
 
         test('should respect map boundaries', () => {
-            const rooms: Room[] = [
-                { size: 11 },
-                { size: 11 }
+            const rooms: IRoom[] = [
+                { size: 11, name: 'Room 1' },
+                { size: 11, name: 'Room 2' }
             ];
             const corridors: Corridor[] = [
                 createMockCorridor({ x: 2, y: 2 }, { x: 48, y: 2 }, 'right'),
@@ -190,7 +190,7 @@ describe('RoomPlacer', () => {
         });
 
         test('should handle empty room list', () => {
-            const rooms: Room[] = [];
+            const rooms: IRoom[] = [];
             const corridors: Corridor[] = [
                 createMockCorridor({ x: 10, y: 25 }, { x: 40, y: 25 }, 'right')
             ];
@@ -201,7 +201,7 @@ describe('RoomPlacer', () => {
         });
 
         test('should handle empty corridor list by creating new corridors', () => {
-            const rooms: Room[] = [{ size: 5 }];
+            const rooms: IRoom[] = [{ size: 5, name: 'Room 1' }];
             const corridors: Corridor[] = [];
 
             mockCorridorGenerator.getCorridors.mockReturnValue([
@@ -218,7 +218,7 @@ describe('RoomPlacer', () => {
     describe('carveRooms', () => {
         test('should carve rooms into the map', () => {
             const map: number[][] = Array(mapHeight).fill(null).map(() => Array(mapWidth).fill(0));
-            const rooms: Room[] = [{ size: 3 }];
+            const rooms: IRoom[] = [{ size: 3, name: 'Room 1' }];
             const corridors: Corridor[] = [
                 createMockCorridor({ x: 10, y: 25 }, { x: 40, y: 25 }, 'right')
             ];
@@ -227,7 +227,9 @@ describe('RoomPlacer', () => {
             roomPlacer.carveRooms(map);
 
             // Check that room cells are carved (set to 1)
+            // eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain
             const center = rooms[0]?.center!;
+            // eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain
             const radius = Math.floor(rooms[0]?.size! / 2);
             for (let y = center.y - radius; y <= center.y + radius; y++) {
                 for (let x = center.x - radius; x <= center.x + radius; x++) {
@@ -238,9 +240,9 @@ describe('RoomPlacer', () => {
 
         test('should carve multiple rooms without overlap', () => {
             const map: number[][] = Array(mapHeight).fill(null).map(() => Array(mapWidth).fill(0));
-            const rooms: Room[] = [
-                { size: 5 },
-                { size: 5 }
+            const rooms: IRoom[] = [
+                { size: 5, name: 'Room 1' },
+                { size: 5, name: 'Room 2' }
             ];
             const corridors: Corridor[] = [
                 createMockCorridor({ x: 5, y: 25 }, { x: 45, y: 25 }, 'right')
@@ -265,13 +267,13 @@ describe('RoomPlacer', () => {
     describe('carveRoomConnections', () => {
         test('should carve connections for side-placed rooms', () => {
             const map: number[][] = Array(mapHeight).fill(null).map(() => Array(mapWidth).fill(0));
-            const rooms: Room[] = [{ size: 5 }];
+            const rooms: IRoom[] = [{ size: 5, name: 'Room 1' }];
             const corridors: Corridor[] = [
                 createMockCorridor({ x: 10, y: 25 }, { x: 40, y: 25 }, 'right')
             ];
 
             const placements = roomPlacer.placeAllRooms(rooms, corridors);
-            
+
             // Force a side placement for testing
             if (placements[0]?.connectionType === 'through') {
                 // Re-run to get a side placement
@@ -288,7 +290,7 @@ describe('RoomPlacer', () => {
 
         test('should not carve connections for through-placed rooms', () => {
             const map: number[][] = Array(mapHeight).fill(null).map(() => Array(mapWidth).fill(0));
-            const rooms: Room[] = [{ size: 3 }];
+            const rooms: IRoom[] = [{ size: 3, name: 'Room 1' }];
             const corridors: Corridor[] = [
                 createMockCorridor({ x: 10, y: 25 }, { x: 40, y: 25 }, 'right')
             ];
@@ -304,7 +306,7 @@ describe('RoomPlacer', () => {
 
     describe('edge cases', () => {
         test('should handle very large rooms', () => {
-            const rooms: Room[] = [{ size: 11 }];
+            const rooms: IRoom[] = [{ size: 11, name: 'Room 1' }];
             const corridors: Corridor[] = [
                 createMockCorridor({ x: 25, y: 25 }, { x: 25, y: 25 }, 'right')
             ];
@@ -320,12 +322,12 @@ describe('RoomPlacer', () => {
         });
 
         test('should handle rooms with all different sizes', () => {
-            const rooms: Room[] = [
-                { size: 3 },
-                { size: 5 },
-                { size: 7 },
-                { size: 9 },
-                { size: 11 }
+            const rooms: IRoom[] = [
+                { size: 3, name: 'Room 1' },
+                { size: 5, name: 'Room 2' },
+                { size: 7, name: 'Room 3' },
+                { size: 9, name: 'Room 4' },
+                { size: 11, name: 'Room 5' }
             ];
             const corridors: Corridor[] = [
                 createMockCorridor({ x: 5, y: 15 }, { x: 45, y: 15 }, 'right'),
@@ -346,7 +348,7 @@ describe('RoomPlacer', () => {
 
         test('should always find or create space for rooms', () => {
             // This is the critical test - ensure rooms are ALWAYS placed
-            const rooms: Room[] = Array(10).fill(null).map(() => ({ size: 7 as Room['size'] }));
+            const rooms: IRoom[] = Array(10).fill(null).map((_, i) => ({ size: 7 as IRoom['size'], name: `Room ${i + 1}` }));
             const corridors: Corridor[] = [
                 createMockCorridor({ x: 25, y: 25 }, { x: 25, y: 25 }, 'right')
             ];

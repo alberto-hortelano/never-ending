@@ -1,5 +1,5 @@
-import { CorridorGenerator, Corridor, CorridorPattern } from '../src/common/helpers/CorridorGenerator';
-import type { Direction, ICoord } from '../src/common/interfaces';
+import { CorridorGenerator, CorridorPattern } from '../CorridorGenerator';
+import type { Direction, ICoord } from '../../interfaces';
 
 describe('CorridorGenerator', () => {
     let corridorGenerator: CorridorGenerator;
@@ -36,7 +36,7 @@ describe('CorridorGenerator', () => {
 
             expect(corridors.length).toBeGreaterThan(0);
             expect(corridors.length).toBeLessThanOrEqual(4); // Max 4 directions from center
-            
+
             // All corridors should start from the same center point
             const center = corridors[0]?.start;
             corridors.forEach(corridor => {
@@ -48,11 +48,11 @@ describe('CorridorGenerator', () => {
             const corridors = corridorGenerator.generateCorridors(5, 'grid');
 
             expect(corridors.length).toBe(2); // Horizontal and vertical
-            
+
             // Should have one horizontal and one vertical corridor
             const horizontalCorridor = corridors.find(c => c.direction === 'right');
             const verticalCorridor = corridors.find(c => c.direction === 'down');
-            
+
             expect(horizontalCorridor).toBeDefined();
             expect(verticalCorridor).toBeDefined();
         });
@@ -83,12 +83,12 @@ describe('CorridorGenerator', () => {
                 expect(corridor.start.x).toBeLessThan(mapWidth - 5);
                 expect(corridor.start.y).toBeGreaterThanOrEqual(5);
                 expect(corridor.start.y).toBeLessThan(mapHeight - 5);
-                
+
                 expect(corridor.end.x).toBeGreaterThanOrEqual(5);
                 expect(corridor.end.x).toBeLessThan(mapWidth - 5);
                 expect(corridor.end.y).toBeGreaterThanOrEqual(5);
                 expect(corridor.end.y).toBeLessThan(mapHeight - 5);
-                
+
                 // Check all cells are within map bounds
                 corridor.cells.forEach(cell => {
                     expect(cell.x).toBeGreaterThanOrEqual(0);
@@ -138,21 +138,21 @@ describe('CorridorGenerator', () => {
         test('should not extend in opposite direction', () => {
             corridorGenerator.generateCorridors(1, 'linear');
             const initialCorridor = corridorGenerator.getCorridors()[0];
-            
+
             if (initialCorridor) {
                 for (let i = 0; i < 10; i++) {
                     corridorGenerator.extendCorridor(0);
                 }
-                
+
                 const corridors = corridorGenerator.getCorridors();
                 // Should not have any corridors going in the opposite direction
                 const oppositeDirection = getOppositeDirection(initialCorridor.direction);
-                const hasOpposite = corridors.some(c => 
-                    c.start.x === initialCorridor.end.x && 
-                    c.start.y === initialCorridor.end.y && 
+                const hasOpposite = corridors.some(c =>
+                    c.start.x === initialCorridor.end.x &&
+                    c.start.y === initialCorridor.end.y &&
                     c.direction === oppositeDirection
                 );
-                
+
                 expect(hasOpposite).toBe(false);
             }
         });
@@ -173,11 +173,11 @@ describe('CorridorGenerator', () => {
             // Create a horizontal corridor first
             corridorGenerator.generateCorridors(1, 'linear');
             const baseCorridor = corridorGenerator.getCorridors()[0];
-            
+
             if (baseCorridor && baseCorridor.direction === 'right') {
                 corridorGenerator.addNewCorridorBranch();
                 const corridors = corridorGenerator.getCorridors();
-                
+
                 // New corridors should be vertical (up or down)
                 const newCorridors = corridors.slice(1);
                 newCorridors.forEach(corridor => {
@@ -209,10 +209,10 @@ describe('CorridorGenerator', () => {
         test('should create corridors with significant length', () => {
             corridorGenerator.generateCorridors(1, 'star');
             corridorGenerator.addLongCorridors();
-            
+
             const corridors = corridorGenerator.getCorridors();
             const longCorridors = corridors.filter(c => c.cells.length > Math.min(mapWidth, mapHeight) / 4);
-            
+
             expect(longCorridors.length).toBeGreaterThan(0);
         });
     });
@@ -235,7 +235,7 @@ describe('CorridorGenerator', () => {
 
         test('should handle empty corridor list', () => {
             const map: number[][] = Array(mapHeight).fill(null).map(() => Array(mapWidth).fill(0));
-            
+
             expect(() => {
                 corridorGenerator.carveCorridors(map);
             }).not.toThrow();
@@ -256,7 +256,7 @@ describe('CorridorGenerator', () => {
                 for (let i = 0; i < corridor.cells.length - 1; i++) {
                     const current = corridor.cells[i];
                     const next = corridor.cells[i + 1];
-                    
+
                     if (current && next) {
                         const distance = Math.abs(current.x - next.x) + Math.abs(current.y - next.y);
                         expect(distance).toBe(1); // Adjacent cells
@@ -281,7 +281,7 @@ describe('CorridorGenerator', () => {
                 for (let j = i + 1; j < corridors.length; j++) {
                     const corridor1 = corridors[i];
                     const corridor2 = corridors[j];
-                    
+
                     if (corridor1 && corridor2 && areParallel(corridor1.direction, corridor2.direction)) {
                         // Check minimum perpendicular distance
                         corridor1.cells.forEach(cell1 => {
@@ -322,9 +322,9 @@ describe('CorridorGenerator', () => {
                 const generator = new CorridorGenerator(mapWidth, mapHeight);
                 const patterns: CorridorPattern[] = ['random', 'star', 'grid', 'linear'];
                 const pattern = patterns[i % patterns.length]!;
-                
+
                 const corridors = generator.generateCorridors(5, pattern);
-                
+
                 expect(corridors.length).toBeGreaterThan(0);
                 corridors.forEach(corridor => {
                     expect(corridor.cells.length).toBeGreaterThan(0);
@@ -339,15 +339,15 @@ describe('CorridorGenerator', () => {
             // This is the critical test - ensure corridors are ALWAYS generated
             const patterns: CorridorPattern[] = ['random', 'star', 'grid', 'linear'];
             const roomCounts = [1, 10, 25, 50];
-            
+
             patterns.forEach(pattern => {
                 roomCounts.forEach(roomCount => {
                     const generator = new CorridorGenerator(mapWidth, mapHeight);
                     const corridors = generator.generateCorridors(roomCount, pattern);
-                    
+
                     // CRITICAL: Must always generate at least one corridor
                     expect(corridors.length).toBeGreaterThan(0);
-                    
+
                     // Each corridor must have cells
                     corridors.forEach(corridor => {
                         expect(corridor.cells.length).toBeGreaterThan(0);
