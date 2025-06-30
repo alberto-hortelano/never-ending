@@ -64,20 +64,12 @@ export default class Character extends Component {
         if (!this.movable) {
             return;
         }
-
-        const previousX = parseInt(this.movable.dataset.x || '0');
-        const previousY = parseInt(this.movable.dataset.y || '0');
-        const currentX = character.position.x;
-        const currentY = character.position.y;
-
-        const dx = currentX - previousX;
-        const dy = currentY - previousY;
-
         let direction = '';
-        if (dx > 0) direction = 'rotate-90';
-        else if (dx < 0) direction = 'rotate-270';
-        else if (dy > 0) direction = 'rotate-0';
-        else if (dy < 0) direction = 'rotate-180';
+        if (character.direction === 'right') direction = 'rotate-90';
+        else if (character.direction === 'left') direction = 'rotate-270';
+        else if (character.direction === 'down') direction = 'rotate-0';
+        else if (character.direction === 'up') direction = 'rotate-180';
+        console.log('>>> - Character - onMoveCharacter - character.direction:', character.direction, direction)
 
         if (direction) {
             this.characterElement?.classList.remove(...Character.directions);

@@ -259,7 +259,8 @@ describe('Movement', () => {
                 expect.objectContaining({
                     ...characterWithPath,
                     path: [{ x: 3, y: 1 }], // Path without first position
-                    position: { x: 2, y: 1 } // First position from path
+                    position: { x: 2, y: 1 }, // First position from path
+                    direction: 'right' // Moving right from x:1 to x:2
                 })
             );
         });
@@ -303,11 +304,13 @@ describe('Movement', () => {
             // Trigger movement end
             superEventBus.dispatch(GUIEvent.movementEnd, movingCharacter.name);
 
-            // Verify path was updated (first position removed)
+            // Verify path was updated (first position removed) with new position
             expect(updatePathSpy).toHaveBeenCalledWith(
                 expect.objectContaining({
                     ...movingCharacter,
-                    path: [{ x: 3, y: 1 }]
+                    path: [{ x: 3, y: 1 }],
+                    position: { x: 2, y: 1 }, // Now includes the updated position
+                    direction: 'right' // Moving right from x:1 to x:2
                 })
             );
 
@@ -315,7 +318,8 @@ describe('Movement', () => {
             expect(updatePositionSpy).toHaveBeenCalledWith(
                 expect.objectContaining({
                     ...movingCharacter,
-                    position: { x: 2, y: 1 }
+                    position: { x: 2, y: 1 },
+                    direction: 'right' // Moving right from x:1 to x:2
                 })
             );
 

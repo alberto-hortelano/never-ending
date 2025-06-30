@@ -46,7 +46,17 @@ export class Movement extends EventBus<
         const path = [...character.path];
         const position = path.shift();
         if (position) {
-            this.dispatch(ControlsEvent.moveCharacter, { ...character, path, position }, character.name);
+            // Get the latest character from state to ensure we have the current position
+            const currentCharacter = this.state.findCharacter(character.name) || character;
+            const dx = position.x - currentCharacter.position.x;
+            const dy = position.y - currentCharacter.position.y;
+            let direction = currentCharacter.direction;
+            if (dx > 0) direction = 'right';
+            else if (dx < 0) direction = 'left';
+            else if (dy > 0) direction = 'down';
+            else if (dy < 0) direction = 'up';
+            console.log('>>> - onCharacterPath - direction:', currentCharacter.direction, direction)
+            this.dispatch(ControlsEvent.moveCharacter, { ...character, path, position, direction }, character.name);
         }
     }
     private onShowMovement(characterName: ControlsEventsMap[ControlsEvent.showMovement]) {
@@ -80,10 +90,26 @@ export class Movement extends EventBus<
         if (character.path.length > 0) {
             const path = [...character.path];
             const position = path.shift();
-            this.dispatch(UpdateStateEvent.characterPath, { ...character, path });
+            
             if (position) {
-                this.dispatch(UpdateStateEvent.characterPosition, { ...character, position });
+                // Calculate direction based on current position to new position
+                const dx = position.x - character.position.x;
+                const dy = position.y - character.position.y;
+                let direction = character.direction;
+                if (dx > 0) direction = 'right';
+                else if (dx < 0) direction = 'left';
+                else if (dy > 0) direction = 'down';
+                else if (dy < 0) direction = 'up';
+                
+                // Update position first, then path
+                this.dispatch(UpdateStateEvent.characterPosition, { ...character, position, direction });
+                // Update character object with new position for the path update
+                const updatedCharacter = { ...character, position, direction };
+                this.dispatch(UpdateStateEvent.characterPath, { ...updatedCharacter, path });
                 this.dispatch(GUIEvent.cellReset, position, JSON.stringify(position))
+            } else {
+                // No position to move to, just update the path
+                this.dispatch(UpdateStateEvent.characterPath, { ...character, path });
             }
         }
     }
