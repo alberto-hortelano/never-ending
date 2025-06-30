@@ -5,6 +5,7 @@ import type { DeepReadonly } from "../helpers/types";
 export enum ControlsEvent {
     showActions = 'ControlsEvent.showActions',
     showMovement = 'ControlsEvent.showMovement',
+    showShooting = 'ControlsEvent.showShooting',
     talk = 'ControlsEvent.talk',
     use = 'ControlsEvent.use',
     cellClick = 'ControlsEvent.cellClick',
@@ -15,6 +16,7 @@ export enum ControlsEvent {
 export interface ControlsEventsMap {
     [ControlsEvent.showActions]: ICharacter['name'];
     [ControlsEvent.showMovement]: ICharacter['name'];
+    [ControlsEvent.showShooting]: ICharacter['name'];
     [ControlsEvent.talk]: ICharacter['name'];
     [ControlsEvent.use]: ICharacter['name'];
     [ControlsEvent.cellClick]: DeepReadonly<ICoord>;

@@ -23,10 +23,50 @@
     color: $color-text-dim;
 }
 
-:host(.highlight) {
+:host(.highlight):after {
+    content: '';
     background-color: $color-highlight;
     box-shadow: $shadow-inner-highlight;
     cursor: pointer;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+:host(.highlight-intensity):before {
+    content: '';
+    // Red-based color for shooting/targeting
+    $shooting-color: rgba(255, 0, 0, 0.6);
+    background-color: rgba($shooting-color, var(--highlight-intensity, 0.5));
+    box-shadow: 0 0 calc(15px * var(--highlight-intensity, 0.5)) rgba($shooting-color, calc(var(--highlight-intensity, 0.5) * 0.6)) inset;
+    cursor: crosshair;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transition: background-color $transition-duration-base ease-in-out;
+
+    // Add a subtle pulsing effect for high intensity cells
+    &:where([style*="--highlight-intensity: 0.9"],
+        [style*="--highlight-intensity: 0.8"],
+        [style*="--highlight-intensity: 1"]) {
+        animation: pulse 1s ease-in-out infinite;
+    }
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.8;
+    }
 }
 
 :host(.path) {

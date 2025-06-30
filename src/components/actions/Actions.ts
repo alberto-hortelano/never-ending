@@ -28,7 +28,7 @@ export class Actions extends Component {
     }, {
         name: "Ranged Combat",
         actions: [
-            { id: "shoot", label: "Shoot", icon: "🔫", event: ControlsEvent.showMovement },
+            { id: "shoot", label: "Shoot", icon: "🔫", event: ControlsEvent.showShooting },
             { id: "aim", label: "Aim", icon: "🎯", event: ControlsEvent.showMovement },
             { id: "suppress", label: "Suppress", icon: "💥", event: ControlsEvent.showMovement },
             { id: "cover", label: "Cover", icon: "🛡️", event: ControlsEvent.showMovement },

@@ -5,13 +5,14 @@
   "main": "start",
   "type": "module",
   "scripts": {
-    "start": "npx concurrently 'npm run build:watch' 'npm run sync:files' 'npm run serve' 'npm run scss'",
+    "start": "npx concurrently 'npm run build:watch' 'npm run sync:files' 'npm run serve' 'npm run sass:watch'",
     "serve": "tsx ./src/server/index.ts",
     "img": "tsx ./src/models/openAi.ts",
     "terminal": "tsx ./src/terminal.ts",
     "build": "tsc",
     "build:watch": "tsc --watch",
-    "scss": "npx sass --watch ./src:./public/css",
+    "sass": "npx sass ./src:./public/css",
+    "sass:watch": "npx sass --watch ./src:./public/css",
     "sync:files": "tsx ./scripts/syncFiles.ts --source ./src --destination ./public/html --extensions .html --watch",
     "web:test": "npm --prefix web-test start",
     "test": "jest"

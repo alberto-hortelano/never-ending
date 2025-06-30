@@ -17,6 +17,7 @@ ComponentEvent: Eventos de la interfaz. Solo los componentes pueden lanzarlos
 Hay 100 puntos por turno y cada accion consume n puntos, dependiendo de la habilidad del personaje
 
 1. Disparo: Hace daño en base a la precision, el angulo de impacto.
+Lets build the shoot action. When the user clicks the shoot button, the cells in front of the character should highlight in the direction the character is looking. With a given angle of vision. The cells that are partially visible should be highlighted with an intensity showing the percentage of cell that is visible. It should also get a max range and the highlight should also dimm with the distance. For this you will create a class Shoot that has a method that gets the map, the position and orientation of the character that is shooting and the range of the weapon. The method should return an array of reachable cells with the percentage given by the distance and visibility. Any questions?
 1. Apuntar: Mejora la precision del siguiente disparo, reduce el angulo.
 1. Supresion: Guardo acciones y disparo en cada accion del otro.
 1. Movimiento
