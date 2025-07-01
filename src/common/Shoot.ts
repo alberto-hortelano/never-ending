@@ -44,7 +44,6 @@ export class Shoot extends EventBus<
 
     // Helpers
     private showShootingRange(character: DeepReadonly<ICharacter>) {
-        console.log('>>> - showShootingRange - character:', character)
         const range = 10; // Default weapon range
         const angleOfVision = 90; // Default field of vision
 

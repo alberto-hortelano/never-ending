@@ -33,6 +33,20 @@ export default class Character extends Component {
         this.movable.dataset.x = `${this.dataset.x}`;
         this.movable.dataset.y = `${this.dataset.y}`;
         this.palette = this.setPalette();
+
+        // Set initial direction
+        if (this.dataset.direction && this.characterElement) {
+            const initialDirection = this.dataset.direction;
+            let directionClass = '';
+            if (initialDirection === 'right') directionClass = 'rotate-90';
+            else if (initialDirection === 'left') directionClass = 'rotate-270';
+            else if (initialDirection === 'down') directionClass = 'rotate-0';
+            else if (initialDirection === 'up') directionClass = 'rotate-180';
+
+            if (directionClass) {
+                this.characterElement.classList.add(directionClass);
+            }
+        }
         this.movable.addEventListener("transitionend", () => {
             this.characterElement?.classList.remove('walk');
             this.dispatch(GUIEvent.movementEnd, this.id);
@@ -64,16 +78,25 @@ export default class Character extends Component {
         if (!this.movable) {
             return;
         }
+
+        // Check if position changed (character is moving) or just rotating
+        const currentX = parseInt(this.movable.dataset.x || '0');
+        const currentY = parseInt(this.movable.dataset.y || '0');
+        const isMoving = currentX !== character.position.x || currentY !== character.position.y;
+
         let direction = '';
         if (character.direction === 'right') direction = 'rotate-90';
         else if (character.direction === 'left') direction = 'rotate-270';
         else if (character.direction === 'down') direction = 'rotate-0';
         else if (character.direction === 'up') direction = 'rotate-180';
-        console.log('>>> - Character - onMoveCharacter - character.direction:', character.direction, direction)
 
         if (direction) {
             this.characterElement?.classList.remove(...Character.directions);
-            this.characterElement?.classList.add(direction, 'walk');
+            this.characterElement?.classList.add(direction);
+            // Only add 'walk' class if actually moving
+            if (isMoving) {
+                this.characterElement?.classList.add('walk');
+            }
         }
 
         this.movable.dataset.x = `${character.position.x}`;

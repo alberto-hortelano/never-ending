@@ -55,7 +55,6 @@ export class Movement extends EventBus<
             else if (dx < 0) direction = 'left';
             else if (dy > 0) direction = 'down';
             else if (dy < 0) direction = 'up';
-            console.log('>>> - onCharacterPath - direction:', currentCharacter.direction, direction)
             this.dispatch(ControlsEvent.moveCharacter, { ...character, path, position, direction }, character.name);
         }
     }
@@ -90,7 +89,7 @@ export class Movement extends EventBus<
         if (character.path.length > 0) {
             const path = [...character.path];
             const position = path.shift();
-            
+
             if (position) {
                 // Calculate direction based on current position to new position
                 const dx = position.x - character.position.x;
@@ -100,7 +99,7 @@ export class Movement extends EventBus<
                 else if (dx < 0) direction = 'left';
                 else if (dy > 0) direction = 'down';
                 else if (dy < 0) direction = 'up';
-                
+
                 // Update position first, then path
                 this.dispatch(UpdateStateEvent.characterPosition, { ...character, position, direction });
                 // Update character object with new position for the path update

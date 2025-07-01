@@ -1,4 +1,4 @@
-import type { ICharacter, IState, IMessage } from '../interfaces';
+import type { ICharacter, IState, IMessage, Direction } from '../interfaces';
 import type { DeepReadonly } from "../helpers/types";
 
 /** Events to update state. Only State can listen. All can dispatch */
@@ -6,6 +6,8 @@ export enum UpdateStateEvent {
     /** Update character position */
     characterPosition = 'UpdateStateEvent.characterPosition',
     characterPath = 'UpdateStateEvent.characterPath',
+    /** Update character direction */
+    characterDirection = 'UpdateStateEvent.characterDirection',
     /** Update messages history */
     updateMessages = 'UpdateStateEvent.updateMessages',
 }
@@ -13,6 +15,7 @@ export enum UpdateStateEvent {
 export interface UpdateStateEventsMap {
     [UpdateStateEvent.characterPosition]: DeepReadonly<ICharacter>;
     [UpdateStateEvent.characterPath]: DeepReadonly<ICharacter>;
+    [UpdateStateEvent.characterDirection]: { characterName: string; direction: Direction };
     [UpdateStateEvent.updateMessages]: DeepReadonly<IMessage[]>;
 }
 
@@ -23,6 +26,7 @@ export enum StateChangeEvent {
     characters = 'StateChangeEvent.characters',
     characterPosition = 'StateChangeEvent.characterPosition',
     characterPath = 'StateChangeEvent.characterPath',
+    characterDirection = 'StateChangeEvent.characterDirection',
     messages = 'StateChangeEvent.messages',
 }
 
@@ -31,5 +35,6 @@ export interface StateChangeEventsMap {
     [StateChangeEvent.characters]: DeepReadonly<IState['characters']>;
     [StateChangeEvent.characterPosition]: DeepReadonly<ICharacter>;
     [StateChangeEvent.characterPath]: DeepReadonly<ICharacter>;
+    [StateChangeEvent.characterDirection]: DeepReadonly<ICharacter>;
     [StateChangeEvent.messages]: DeepReadonly<IState['messages']>;
 }

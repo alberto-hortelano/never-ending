@@ -39,6 +39,12 @@ User Action → Component → ControlsEvent → System Service → UpdateStateEv
 - `ControlsEvents` - User interactions
 - `UIEvents` - UI-specific events
 
+**IMPORTANT - Event Bus is Shared:**
+- The EventBus uses a static listeners Map, so ALL EventBus instances share the same event system
+- Components and services can communicate even though they have separate EventBus instances
+- Events are dispatched globally - any listener anywhere in the app will receive them
+- This is why components MUST exist before they can receive events (can't listen if not created yet)
+
 ### Component Architecture
 All UI components extend the base `Component` class which provides:
 - Shadow DOM encapsulation
@@ -51,6 +57,56 @@ All UI components extend the base `Component` class which provides:
 2. Set `hasCss` and `hasHtml` flags
 3. Create matching `.scss` and `.html` files in same directory
 4. Register with `customElements.define()`
+
+**IMPORTANT - Component Initialization Pattern:**
+When creating components that receive data via `setOptions` or similar methods:
+
+1. **DO NOT** wait for async initialization before calling `setOptions`
+2. **DO NOT** make the parent's show method async
+3. **DO** follow this pattern (see SelectCharacter.ts as example):
+   ```typescript
+   // In your component:
+   override async connectedCallback() {
+       const root = await super.connectedCallback();
+       if (!root) return root;
+       
+       // Render with current options if they exist
+       if (this.options) {
+           this.renderContent(root);
+       }
+       return root;
+   }
+   
+   public setOptions(options: YourOptions) {
+       this.options = options;
+       
+       // Try to render immediately if shadowRoot exists
+       const root = this.shadowRoot;
+       if (root) {
+           root.innerHTML = '';
+           this.renderContent(root);
+       }
+   }
+   ```
+
+4. **In the parent component (e.g., Popup):**
+   ```typescript
+   private showYourComponent(data: any) {  // NOT async!
+       this.clearContent();
+       
+       const component = document.createElement('your-component') as YourComponent;
+       this.appendChild(component);
+       
+       this.show(`Title`);
+       
+       // Call setOptions immediately - no await needed
+       if (component && component.setOptions) {
+           component.setOptions(data);
+       }
+   }
+   ```
+
+This pattern ensures the component renders correctly regardless of initialization timing.
 
 ### State Management
 - Centralized in `State` class with private fields and readonly getters

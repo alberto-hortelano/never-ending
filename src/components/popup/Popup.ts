@@ -1,9 +1,10 @@
 import type { Actions } from "../actions/Actions";
 import type { SelectCharacter } from "../selectcharacter/SelectCharacter";
 import type { Conversation } from "../conversation/Conversation";
+import type { RotateSelector } from "../rotateselector/RotateSelector";
 
 import { Component } from "../Component";
-import { ControlsEvent, ControlsEventsMap, ConversationEvent, ConversationEventsMap } from "../../common/events";
+import { ControlsEvent, ControlsEventsMap, ConversationEvent, ConversationEventsMap, UpdateStateEvent } from "../../common/events";
 import { Draggable } from "../../common/helpers/Draggable";
 
 export class Popup extends Component {
@@ -51,6 +52,16 @@ export class Popup extends Component {
         this.listen(ControlsEvent.showTalk, (data: ControlsEventsMap[ControlsEvent.showTalk]) => {
             isShowing = true;
             this.showTalk(data);
+
+            // Reset the flag after a short delay to allow the click event to finish bubbling
+            setTimeout(() => {
+                isShowing = false;
+            }, 50);
+        });
+
+        this.listen(ControlsEvent.showRotate, (character: ControlsEventsMap[ControlsEvent.showRotate]) => {
+            isShowing = true;
+            this.showRotate(character);
 
             // Reset the flag after a short delay to allow the click event to finish bubbling
             setTimeout(() => {
@@ -166,6 +177,37 @@ export class Popup extends Component {
             const { selectedCharacter } = customEvent.detail;
             console.log(`${data.talkingCharacter.name} talks to ${selectedCharacter.name}`);
             this.dispatch(ConversationEvent.start, { talkingCharacter: data.talkingCharacter, targetCharacter: selectedCharacter })
+        });
+    }
+
+    private showRotate(character: ControlsEventsMap[ControlsEvent.showRotate]) {
+        this.clearContent();
+
+        // Create and append rotate selector component
+        const rotateSelectorComponent = document.createElement('rotate-selector') as RotateSelector;
+        this.appendChild(rotateSelectorComponent);
+
+        this.show(`${character.name} - Rotate`);
+
+        // Set options on rotate selector component
+        if (rotateSelectorComponent && rotateSelectorComponent.setOptions) {
+            rotateSelectorComponent.setOptions({
+                character: character
+            });
+        }
+
+        // Listen for direction selection
+        rotateSelectorComponent.addEventListener('direction-selected', (e: Event) => {
+            const customEvent = e as CustomEvent;
+            const { character, direction } = customEvent.detail;
+            // Dispatch event to update character direction
+            this.dispatch(UpdateStateEvent.characterDirection, {
+                characterName: character.name,
+                direction: direction
+            });
+            if (!this.isPinned) {
+                this.hide();
+            }
         });
     }
 

@@ -8,3 +8,4 @@ export * from './actions/Actions';
 export * from './popup/Popup';
 export * from './selectcharacter/SelectCharacter';
 export * from './conversation/Conversation';
+export * from './rotateselector/RotateSelector';

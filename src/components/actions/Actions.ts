@@ -23,7 +23,8 @@ export class Actions extends Component {
         actions: [
             { id: "move", label: "Move", icon: "🚶", event: ControlsEvent.showMovement },
             { id: "talk", label: "Talk", icon: "💬", event: ControlsEvent.talk },
-            { id: "use", label: "Use", icon: "✋", event: ControlsEvent.use }
+            { id: "use", label: "Use", icon: "✋", event: ControlsEvent.use },
+            { id: "rotate", label: "Rotate", icon: "🔄", event: ControlsEvent.rotate }
         ]
     }, {
         name: "Ranged Combat",
@@ -96,7 +97,6 @@ export class Actions extends Component {
     }
 
     private handleActionClick(action: ActionItem) {
-        console.log(`Action clicked: ${action.id} for character: ${this.characterName} - ${action.event}`);
         if (!this.characterName) {
             throw new Error('Missing character name at Actions');
         }

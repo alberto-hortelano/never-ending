@@ -3,6 +3,7 @@ import './components';
 import { Movement } from "./common/Movement";
 import { Talk } from "./common/Talk";
 import { Shoot } from "./common/Shoot";
+import { Rotate } from "./common/Rotate";
 import { State } from "./common/State";
 import { Conversation } from "./common/Conversation";
 import { GameEvent, EventBus } from "./common/events";
@@ -17,6 +18,7 @@ const play = () => {
     const movement = new Movement(state);
     const talk = new Talk(state);
     const shoot = new Shoot(state);
+    const rotate = new Rotate(state);
     const conversationService = new Conversation();
     // Only for debugging
     (window as any).game = {
@@ -24,6 +26,7 @@ const play = () => {
         movement,
         talk,
         shoot,
+        rotate,
         conversationService,
         eventBus,
     };

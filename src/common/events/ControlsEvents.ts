@@ -11,6 +11,8 @@ export enum ControlsEvent {
     cellClick = 'ControlsEvent.cellClick',
     moveCharacter = 'ControlsEvent.moveCharacter',
     showTalk = 'ControlsEvent.showTalk',
+    rotate = 'ControlsEvent.rotate',
+    showRotate = 'ControlsEvent.showRotate',
 }
 
 export interface ControlsEventsMap {
@@ -25,4 +27,6 @@ export interface ControlsEventsMap {
         talkingCharacter: DeepReadonly<ICharacter>;
         availableCharacters: DeepReadonly<ICharacter[]>;
     };
+    [ControlsEvent.rotate]: ICharacter['name'];
+    [ControlsEvent.showRotate]: DeepReadonly<ICharacter>;
 }

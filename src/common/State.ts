@@ -1,10 +1,10 @@
 import type { ICoord, ICell, ICharacter, IState } from "./interfaces";
 
-import { UpdateStateEvent, EventBus, UpdateStateEventsMap, StateChangeEventsMap, StateChangeEvent } from "./events";
+import { UpdateStateEvent, EventBus, UpdateStateEventsMap, StateChangeEventsMap, StateChangeEvent, ControlsEvent, ControlsEventsMap } from "./events";
 import { DeepReadonly } from "./helpers/types";
 import { getBaseState } from '../data/state';
 
-export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> {
+export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap & ControlsEventsMap> {
     #map: IState['map'] = [];
     #characters: IState['characters'] = [];
     #player?: ICharacter;
@@ -18,6 +18,7 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> 
         this.load(initialState);
         this.listen(UpdateStateEvent.characterPosition, (ch) => this.onCharacterPosition(ch));
         this.listen(UpdateStateEvent.characterPath, (ch) => this.onCharacterPath(ch));
+        this.listen(UpdateStateEvent.characterDirection, (data) => this.onCharacterDirection(data));
         this.listen(UpdateStateEvent.updateMessages, (messages) => this.onUpdateMessages(messages));
     }
     // Listeners
@@ -28,7 +29,6 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> 
         }
         character.position = characterData.position;
         character.direction = characterData.direction;
-        console.log('>>> - State - onCharacterPosition - character.position:', character.position)
         // No one is listening
         // this.dispatch(StateChangeEvent.characterPosition, structuredClone(character));
         this.save();
@@ -40,6 +40,17 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> 
         }
         character.path = [...characterData.path];
         this.dispatch(StateChangeEvent.characterPath, structuredClone(character));
+    }
+    private onCharacterDirection(data: UpdateStateEventsMap[UpdateStateEvent.characterDirection]) {
+        const character = this.#findCharacter(data.characterName);
+        if (!character) {
+            throw new Error(`No character "${data.characterName}" found`);
+        }
+        character.direction = data.direction;
+        // No one is listening
+        // this.dispatch(StateChangeEvent.characterDirection, structuredClone(character));
+        this.dispatch(ControlsEvent.moveCharacter, structuredClone(character), character.name);
+        this.save();
     }
     private onUpdateMessages(messages: UpdateStateEventsMap[UpdateStateEvent.updateMessages]) {
         this.#messages = [...messages];
