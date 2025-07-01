@@ -2,7 +2,7 @@
 import type { GameEventsMap } from "./GameEvents";
 import type { StateChangeEventsMap, UpdateStateEventsMap } from "./StateEvents";
 import type { ControlsEventsMap } from "./ControlsEvents";
-import type { GUIEventsMap } from "./UIEvents";
+import type { GUIEventsMap } from "./GUIEvents";
 
 type EventsMap =
     GameEventsMap &

@@ -65,7 +65,7 @@ export class Shoot extends EventBus<
     private clearShootingHighlights() {
         if (this.visibleCells) {
             this.visibleCells.forEach(vc => {
-                this.dispatch(GUIEvent.cellReset, vc.coord);
+                this.dispatch(GUIEvent.cellReset, vc.coord, JSON.stringify(vc.coord));
             });
             this.visibleCells = undefined;
             this.shootingCharacter = undefined;
