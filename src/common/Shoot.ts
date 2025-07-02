@@ -44,8 +44,8 @@ export class Shoot extends EventBus<
 
     // Helpers
     private showShootingRange(character: DeepReadonly<ICharacter>) {
-        const range = 10; // Default weapon range
-        const angleOfVision = 90; // Default field of vision
+        const range = 20; // Default weapon range
+        const angleOfVision = 120; // Default field of vision
 
         this.shootingCharacter = character;
         this.visibleCells = this.calculateVisibleCells(
@@ -83,9 +83,13 @@ export class Shoot extends EventBus<
         const halfAngle = angleOfVision / 2;
         const directionAngles: Record<Direction, number> = {
             'up': -90,
+            'up-right': -45,
             'right': 0,
+            'down-right': 45,
             'down': 90,
-            'left': 180
+            'down-left': 135,
+            'left': 180,
+            'up-left': -135
         };
 
         const baseAngle = directionAngles[direction];

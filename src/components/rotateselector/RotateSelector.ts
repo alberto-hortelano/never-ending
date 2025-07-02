@@ -65,12 +65,16 @@ export class RotateSelector extends Component {
         
         centerDisplay.appendChild(characterIcon);
 
-        // Direction buttons
+        // Direction buttons - 8 directions
         const directions: { direction: Direction; label: string; position: string }[] = [
             { direction: 'up', label: '↑', position: 'top' },
+            { direction: 'up-right', label: '↗', position: 'top-right' },
             { direction: 'right', label: '→', position: 'right' },
+            { direction: 'down-right', label: '↘', position: 'bottom-right' },
             { direction: 'down', label: '↓', position: 'bottom' },
-            { direction: 'left', label: '←', position: 'left' }
+            { direction: 'down-left', label: '↙', position: 'bottom-left' },
+            { direction: 'left', label: '←', position: 'left' },
+            { direction: 'up-left', label: '↖', position: 'top-left' }
         ];
 
         directions.forEach(({ direction, label, position }) => {

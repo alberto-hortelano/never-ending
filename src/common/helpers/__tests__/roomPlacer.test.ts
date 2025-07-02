@@ -1,6 +1,6 @@
 import { RoomPlacer } from '../RoomPlacer';
 import { CorridorGenerator, Corridor } from '../CorridorGenerator';
-import type { Direction, ICoord, IRoom } from '../../interfaces';
+import type { BasicDirection, ICoord, IRoom } from '../../interfaces';
 
 // Mock CorridorGenerator
 jest.mock('../CorridorGenerator');
@@ -12,7 +12,7 @@ describe('RoomPlacer', () => {
     const mapHeight = 50;
 
     // Helper function to create a mock corridor
-    function createMockCorridor(start: ICoord, end: ICoord, direction: Direction): Corridor {
+    function createMockCorridor(start: ICoord, end: ICoord, direction: BasicDirection): Corridor {
         const cells: ICoord[] = [];
         const current = { ...start };
 

@@ -1,11 +1,11 @@
 import { ControlsEvent, GUIEvent, ControlsEventsMap } from "../../common/events";
-import { ICharacter } from "../../common/interfaces";
+import { ICharacter, Direction } from "../../common/interfaces";
 import { Component } from "../Component";
 import type Movable from "../movable/Movable";
 import "../movable/Movable";
 
 export default class Character extends Component {
-    static readonly directions = ['rotate-0', 'rotate-90', 'rotate-180', 'rotate-270'];
+    static readonly directions = ['rotate-0', 'rotate-45', 'rotate-90', 'rotate-135', 'rotate-180', 'rotate-225', 'rotate-270', 'rotate-315'];
     protected override hasCss = true;
     protected override hasHtml = true;
     private movable?: HTMLElement;
@@ -36,13 +36,7 @@ export default class Character extends Component {
 
         // Set initial direction
         if (this.dataset.direction && this.characterElement) {
-            const initialDirection = this.dataset.direction;
-            let directionClass = '';
-            if (initialDirection === 'right') directionClass = 'rotate-90';
-            else if (initialDirection === 'left') directionClass = 'rotate-270';
-            else if (initialDirection === 'down') directionClass = 'rotate-0';
-            else if (initialDirection === 'up') directionClass = 'rotate-180';
-
+            const directionClass = this.getDirectionClass(this.dataset.direction as Direction);
             if (directionClass) {
                 this.characterElement.classList.add(directionClass);
             }
@@ -84,15 +78,11 @@ export default class Character extends Component {
         const currentY = parseInt(this.movable.dataset.y || '0');
         const isMoving = currentX !== character.position.x || currentY !== character.position.y;
 
-        let direction = '';
-        if (character.direction === 'right') direction = 'rotate-90';
-        else if (character.direction === 'left') direction = 'rotate-270';
-        else if (character.direction === 'down') direction = 'rotate-0';
-        else if (character.direction === 'up') direction = 'rotate-180';
-
-        if (direction) {
+        const directionClass = this.getDirectionClass(character.direction);
+        
+        if (directionClass) {
             this.characterElement?.classList.remove(...Character.directions);
-            this.characterElement?.classList.add(direction);
+            this.characterElement?.classList.add(directionClass);
             // Only add 'walk' class if actually moving
             if (isMoving) {
                 this.characterElement?.classList.add('walk');
@@ -101,6 +91,20 @@ export default class Character extends Component {
 
         this.movable.dataset.x = `${character.position.x}`;
         this.movable.dataset.y = `${character.position.y}`;
+    }
+
+    private getDirectionClass(direction: Direction): string {
+        const directionMap: Record<Direction, string> = {
+            'down': 'rotate-0',
+            'down-right': 'rotate-45',
+            'right': 'rotate-90',
+            'up-right': 'rotate-135',
+            'up': 'rotate-180',
+            'up-left': 'rotate-225',
+            'left': 'rotate-270',
+            'down-left': 'rotate-315'
+        };
+        return directionMap[direction] || 'rotate-0';
     }
 }
 

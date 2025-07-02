@@ -1,4 +1,4 @@
-import type { Direction, ICoord, IRoom } from "../interfaces";
+import type { BasicDirection, ICoord, IRoom } from "../interfaces";
 import type { Corridor, CorridorGenerator } from "./CorridorGenerator";
 
 interface RoomPlacement {
@@ -11,7 +11,7 @@ interface RoomPlacement {
 
 export class RoomPlacer {
     private roomPlacements: RoomPlacement[] = [];
-    private readonly directions: Direction[] = ['up', 'right', 'down', 'left'];
+    private readonly directions: BasicDirection[] = ['up', 'right', 'down', 'left'];
 
     constructor(
         private width: number,
@@ -324,7 +324,7 @@ export class RoomPlacer {
         return null;
     }
 
-    private getBothSidePositions(connectionPoint: ICoord, corridorDirection: Direction, room: IRoom): ICoord[] {
+    private getBothSidePositions(connectionPoint: ICoord, corridorDirection: BasicDirection, room: IRoom): ICoord[] {
         const distance = Math.floor(room.size / 2) + 2;
         const perpendiculars = this.getBothPerpendicularDirections(corridorDirection);
         return perpendiculars.map(dir => this.moveInDirection(connectionPoint, dir, distance));
@@ -373,7 +373,7 @@ export class RoomPlacer {
         });
     }
 
-    private moveInDirection(point: ICoord, direction: Direction, distance: number): ICoord {
+    private moveInDirection(point: ICoord, direction: BasicDirection, distance: number): ICoord {
         const moves = {
             up: { x: 0, y: -distance },
             right: { x: distance, y: 0 },
@@ -384,7 +384,7 @@ export class RoomPlacer {
         return { x: point.x + move.x, y: point.y + move.y };
     }
 
-    private getBothPerpendicularDirections(direction: Direction): Direction[] {
+    private getBothPerpendicularDirections(direction: BasicDirection): BasicDirection[] {
         if (direction === 'up' || direction === 'down') {
             return ['left', 'right'];
         } else {

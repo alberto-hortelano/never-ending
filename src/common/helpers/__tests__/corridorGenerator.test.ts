@@ -1,5 +1,5 @@
 import { CorridorGenerator, CorridorPattern } from '../CorridorGenerator';
-import type { Direction, ICoord } from '../../interfaces';
+import type { BasicDirection, ICoord } from '../../interfaces';
 
 describe('CorridorGenerator', () => {
     let corridorGenerator: CorridorGenerator;
@@ -146,11 +146,11 @@ describe('CorridorGenerator', () => {
 
                 const corridors = corridorGenerator.getCorridors();
                 // Should not have any corridors going in the opposite direction
-                const oppositeDirection = getOppositeDirection(initialCorridor.direction);
+                const oppositeBasicDirection = getOppositeBasicDirection(initialCorridor.direction);
                 const hasOpposite = corridors.some(c =>
                     c.start.x === initialCorridor.end.x &&
                     c.start.y === initialCorridor.end.y &&
-                    c.direction === oppositeDirection
+                    c.direction === oppositeBasicDirection
                 );
 
                 expect(hasOpposite).toBe(false);
@@ -359,25 +359,25 @@ describe('CorridorGenerator', () => {
 });
 
 // Helper functions
-function getOppositeDirection(direction: Direction): Direction {
+function getOppositeBasicDirection(direction: BasicDirection): BasicDirection {
     const opposites = { up: 'down', down: 'up', left: 'right', right: 'left' } as const;
     return opposites[direction];
 }
 
-function areParallel(dir1: Direction, dir2: Direction): boolean {
+function areParallel(dir1: BasicDirection, dir2: BasicDirection): boolean {
     const horizontal = ['left', 'right'];
     const vertical = ['up', 'down'];
     return (horizontal.includes(dir1) && horizontal.includes(dir2)) ||
         (vertical.includes(dir1) && vertical.includes(dir2));
 }
 
-function getPerpendicularDistance(point1: ICoord, point2: ICoord, direction: Direction): number {
+function getPerpendicularDistance(point1: ICoord, point2: ICoord, direction: BasicDirection): number {
     return ['left', 'right'].includes(direction)
         ? Math.abs(point1.y - point2.y)
         : Math.abs(point1.x - point2.x);
 }
 
-function areOnSameLine(point1: ICoord, point2: ICoord, direction: Direction): boolean {
+function areOnSameLine(point1: ICoord, point2: ICoord, direction: BasicDirection): boolean {
     const tolerance = 3;
     return ['left', 'right'].includes(direction)
         ? Math.abs(point1.y - point2.y) < tolerance

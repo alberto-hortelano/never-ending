@@ -159,7 +159,7 @@ describe('Shoot', () => {
 
         it('should handle different directions correctly', () => {
             const directions: Direction[] = ['up', 'right', 'down', 'left'];
-            const expectedCells: Record<Direction, ICoord> = {
+            const expectedCells: Partial<Record<Direction, ICoord>> = {
                 'up': { x: 5, y: 3 },
                 'right': { x: 7, y: 5 },
                 'down': { x: 5, y: 7 },
@@ -176,6 +176,9 @@ describe('Shoot', () => {
                 );
 
                 const expectedCell = expectedCells[direction];
+                if (!expectedCell) {
+                    throw new Error(`Expected cell not found for direction: ${direction}`);
+                }
                 const foundCell = visibleCells.find(vc =>
                     vc.coord.x === expectedCell.x && vc.coord.y === expectedCell.y
                 );

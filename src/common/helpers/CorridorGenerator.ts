@@ -1,17 +1,17 @@
-import type { Direction, ICoord } from "../interfaces";
+import type { BasicDirection, ICoord } from "../interfaces";
 
 export type CorridorPattern = 'random' | 'star' | 'grid' | 'linear';
 
 export interface Corridor {
     start: ICoord;
     end: ICoord;
-    direction: Direction;
+    direction: BasicDirection;
     cells: ICoord[];
 }
 
 export class CorridorGenerator {
     private corridors: Corridor[] = [];
-    private readonly directions: Direction[] = ['up', 'right', 'down', 'left'];
+    private readonly directions: BasicDirection[] = ['up', 'right', 'down', 'left'];
 
     constructor(
         private width: number,
@@ -160,12 +160,12 @@ export class CorridorGenerator {
         }
     }
 
-    private addCorridor(start: ICoord, direction: Direction, length: number): boolean {
+    private addCorridor(start: ICoord, direction: BasicDirection, length: number): boolean {
         const end = this.moveInDirection(start, direction, length);
         return this.addCorridorDirect(start, end, direction);
     }
 
-    private addCorridorDirect(start: ICoord, end: ICoord, direction: Direction): boolean {
+    private addCorridorDirect(start: ICoord, end: ICoord, direction: BasicDirection): boolean {
         // Ensure start and end are valid
         const validStart = {
             x: Math.max(5, Math.min(this.width - 5, start.x)),
@@ -203,7 +203,7 @@ export class CorridorGenerator {
         return end.x >= 5 && end.x < this.width - 5 && end.y >= 5 && end.y < this.height - 5;
     }
 
-    private isValidCorridorPlacement(start: ICoord, end: ICoord, direction: Direction): boolean {
+    private isValidCorridorPlacement(start: ICoord, end: ICoord, direction: BasicDirection): boolean {
         const proposedCells = this.getCorridorCells(start, end);
         const minDistance = 3;
 
@@ -219,7 +219,7 @@ export class CorridorGenerator {
         });
     }
 
-    private randomDirection(): Direction {
+    private randomDirection(): BasicDirection {
         return this.directions[Math.floor(Math.random() * this.directions.length)]!;
     }
 
@@ -248,7 +248,7 @@ export class CorridorGenerator {
         );
     }
 
-    private getValidExtensionDirections(corridor: Corridor): Direction[] {
+    private getValidExtensionDirections(corridor: Corridor): BasicDirection[] {
         return this.directions.filter(dir => {
             if (dir === this.getOppositeDirection(corridor.direction)) return false;
             const testEnd = this.moveInDirection(corridor.end, dir, 25);
@@ -257,7 +257,7 @@ export class CorridorGenerator {
         });
     }
 
-    private moveInDirection(point: ICoord, direction: Direction, distance: number): ICoord {
+    private moveInDirection(point: ICoord, direction: BasicDirection, distance: number): ICoord {
         const moves = {
             up: { x: 0, y: -distance },
             right: { x: distance, y: 0 },
@@ -268,25 +268,25 @@ export class CorridorGenerator {
         return { x: point.x + move.x, y: point.y + move.y };
     }
 
-    private getOppositeDirection(direction: Direction): Direction {
+    private getOppositeDirection(direction: BasicDirection): BasicDirection {
         const opposites = { up: 'down', down: 'up', left: 'right', right: 'left' } as const;
         return opposites[direction];
     }
 
-    private areDirectionsParallel(dir1: Direction, dir2: Direction): boolean {
+    private areDirectionsParallel(dir1: BasicDirection, dir2: BasicDirection): boolean {
         const horizontal = ['left', 'right'];
         const vertical = ['up', 'down'];
         return (horizontal.includes(dir1) && horizontal.includes(dir2)) ||
             (vertical.includes(dir1) && vertical.includes(dir2));
     }
 
-    private getPerpendicularDistance(point1: ICoord, point2: ICoord, direction: Direction): number {
+    private getPerpendicularDistance(point1: ICoord, point2: ICoord, direction: BasicDirection): number {
         return ['left', 'right'].includes(direction)
             ? Math.abs(point1.y - point2.y)
             : Math.abs(point1.x - point2.x);
     }
 
-    private areOnSameLine(point1: ICoord, point2: ICoord, direction: Direction): boolean {
+    private areOnSameLine(point1: ICoord, point2: ICoord, direction: BasicDirection): boolean {
         const tolerance = 3;
         return ['left', 'right'].includes(direction)
             ? Math.abs(point1.y - point2.y) < tolerance

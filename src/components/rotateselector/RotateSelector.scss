@@ -69,10 +69,20 @@
         transform: translateX(-50%);
     }
     
+    &.direction-top-right {
+        top: 15%;
+        right: 15%;
+    }
+    
     &.direction-right {
         top: 50%;
         right: 0;
         transform: translateY(-50%);
+    }
+    
+    &.direction-bottom-right {
+        bottom: 15%;
+        right: 15%;
     }
     
     &.direction-bottom {
@@ -81,10 +91,20 @@
         transform: translateX(-50%);
     }
     
+    &.direction-bottom-left {
+        bottom: 15%;
+        left: 15%;
+    }
+    
     &.direction-left {
         top: 50%;
         left: 0;
         transform: translateY(-50%);
+    }
+    
+    &.direction-top-left {
+        top: 15%;
+        left: 15%;
     }
 }
 

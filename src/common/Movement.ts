@@ -51,7 +51,13 @@ export class Movement extends EventBus<
             const dx = position.x - currentCharacter.position.x;
             const dy = position.y - currentCharacter.position.y;
             let direction = currentCharacter.direction;
-            if (dx > 0) direction = 'right';
+            
+            // Calculate direction including diagonals
+            if (dx > 0 && dy > 0) direction = 'down-right';
+            else if (dx > 0 && dy < 0) direction = 'up-right';
+            else if (dx < 0 && dy > 0) direction = 'down-left';
+            else if (dx < 0 && dy < 0) direction = 'up-left';
+            else if (dx > 0) direction = 'right';
             else if (dx < 0) direction = 'left';
             else if (dy > 0) direction = 'down';
             else if (dy < 0) direction = 'up';
@@ -95,7 +101,13 @@ export class Movement extends EventBus<
                 const dx = position.x - character.position.x;
                 const dy = position.y - character.position.y;
                 let direction = character.direction;
-                if (dx > 0) direction = 'right';
+                
+                // Calculate direction including diagonals
+                if (dx > 0 && dy > 0) direction = 'down-right';
+                else if (dx > 0 && dy < 0) direction = 'up-right';
+                else if (dx < 0 && dy > 0) direction = 'down-left';
+                else if (dx < 0 && dy < 0) direction = 'up-left';
+                else if (dx > 0) direction = 'right';
                 else if (dx < 0) direction = 'left';
                 else if (dy > 0) direction = 'down';
                 else if (dy < 0) direction = 'up';
