@@ -16,6 +16,17 @@ export class Shoot extends EventBus<
     GUIEventsMap & ControlsEventsMap & StateChangeEventsMap,
     GUIEventsMap & ControlsEventsMap
 > {
+    static readonly directionAngles: Record<Direction, number> = {
+        'up': -90,
+        'up-right': -45,
+        'right': 0,
+        'down-right': 45,
+        'down': 90,
+        'down-left': 135,
+        'left': 180,
+        'up-left': -135
+    };
+
     private shootingCharacter?: DeepReadonly<ICharacter>;
     private visibleCells?: VisibleCell[];
 
@@ -25,6 +36,61 @@ export class Shoot extends EventBus<
         super();
         this.listen(ControlsEvent.showShooting, characterName => this.onShowShooting(characterName));
         this.listen(ControlsEvent.cellClick, position => this.onCellClick(position));
+    }
+
+    private calculateVisibleCells(
+        map: DeepReadonly<ICell[][]>,
+        position: ICoord,
+        direction: Direction,
+        range: number,
+        angleOfVision: number = 90
+    ): VisibleCell[] {
+        const visibleCells: VisibleCell[] = [];
+        const halfAngle = angleOfVision / 2;
+
+        const baseAngle = Shoot.directionAngles[direction];
+
+        // Check each cell within range
+        for (let y = 0; y < map.length; y++) {
+            for (let x = 0; x < map[0]!.length; x++) {
+                const targetCoord = { x, y };
+                const distance = this.getDistance(position, targetCoord);
+
+                if (distance <= range && distance > 0) {
+                    // Check if target cell itself is blocked
+                    const targetCell = map[y]?.[x];
+                    if (targetCell?.content?.blocker) {
+                        continue; // Skip blocked cells
+                    }
+
+                    // Calculate angle to target
+                    const angleToTarget = this.getAngle(position, targetCoord);
+                    const relativeAngle = this.normalizeAngle(angleToTarget - baseAngle);
+
+                    // Check if within field of vision
+                    if (Math.abs(relativeAngle) <= halfAngle) {
+                        // Calculate visibility based on angle and distance
+                        const angleVisibility = this.calculateAngleVisibility(relativeAngle, halfAngle);
+                        const distanceVisibility = this.calculateDistanceVisibility(distance, range);
+
+                        // Check for obstacles blocking line of sight
+                        const hasLineOfSight = this.checkLineOfSight(map, position, targetCoord);
+
+                        if (hasLineOfSight) {
+                            const intensity = angleVisibility * distanceVisibility;
+                            if (intensity > 0.01) { // Threshold to avoid very dim cells
+                                visibleCells.push({
+                                    coord: targetCoord,
+                                    intensity
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return visibleCells;
     }
 
     // Listeners
@@ -70,71 +136,6 @@ export class Shoot extends EventBus<
             this.visibleCells = undefined;
             this.shootingCharacter = undefined;
         }
-    }
-
-    public calculateVisibleCells(
-        map: DeepReadonly<ICell[][]>,
-        position: ICoord,
-        direction: Direction,
-        range: number,
-        angleOfVision: number = 90
-    ): VisibleCell[] {
-        const visibleCells: VisibleCell[] = [];
-        const halfAngle = angleOfVision / 2;
-        const directionAngles: Record<Direction, number> = {
-            'up': -90,
-            'up-right': -45,
-            'right': 0,
-            'down-right': 45,
-            'down': 90,
-            'down-left': 135,
-            'left': 180,
-            'up-left': -135
-        };
-
-        const baseAngle = directionAngles[direction];
-
-        // Check each cell within range
-        for (let y = 0; y < map.length; y++) {
-            for (let x = 0; x < map[0]!.length; x++) {
-                const targetCoord = { x, y };
-                const distance = this.getDistance(position, targetCoord);
-
-                if (distance <= range && distance > 0) {
-                    // Check if target cell itself is blocked
-                    const targetCell = map[y]?.[x];
-                    if (targetCell?.content?.blocker) {
-                        continue; // Skip blocked cells
-                    }
-
-                    // Calculate angle to target
-                    const angleToTarget = this.getAngle(position, targetCoord);
-                    const relativeAngle = this.normalizeAngle(angleToTarget - baseAngle);
-
-                    // Check if within field of vision
-                    if (Math.abs(relativeAngle) <= halfAngle) {
-                        // Calculate visibility based on angle and distance
-                        const angleVisibility = this.calculateAngleVisibility(relativeAngle, halfAngle);
-                        const distanceVisibility = this.calculateDistanceVisibility(distance, range);
-
-                        // Check for obstacles blocking line of sight
-                        const hasLineOfSight = this.checkLineOfSight(map, position, targetCoord);
-
-                        if (hasLineOfSight) {
-                            const intensity = angleVisibility * distanceVisibility;
-                            if (intensity > 0.01) { // Threshold to avoid very dim cells
-                                visibleCells.push({
-                                    coord: targetCoord,
-                                    intensity
-                                });
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return visibleCells;
     }
 
     private getDistance(from: ICoord, to: ICoord): number {
