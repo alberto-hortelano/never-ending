@@ -1,8 +1,9 @@
-import { superEventBus, ControlsEvent, StateChangeEvent, GUIEvent, UpdateStateEvent } from "../../common/events";
-import { Movement } from "../../common/Movement";
-import { State } from "../../common/State";
-import type { ICharacter, ICell, IState } from "../../common/interfaces";
-import type { DeepReadonly } from "../../common/helpers/types";
+import type { ICharacter, ICell, IState } from "../common/interfaces";
+import type { DeepReadonly } from "../common/helpers/types";
+
+import { superEventBus, ControlsEvent, StateChangeEvent, GUIEvent, UpdateStateEvent } from "../common/events";
+import { Movement } from "../common/Movement";
+import { State } from "../common/State";
 
 describe('Movement State Integration', () => {
     let state: State;
@@ -209,7 +210,7 @@ describe('Movement State Integration', () => {
                 { x: 2, y: 1 }, // Move right
                 { x: 2, y: 0 }  // Then move up
             ];
-            
+
             let moveCount = 0;
             const expectedDirections = ['right', 'up'];
             const expectedPositions = [
@@ -220,18 +221,18 @@ describe('Movement State Integration', () => {
             const moveListener = createTestListener();
             moveListener.listen(ControlsEvent.moveCharacter, (data) => {
                 const character = data as DeepReadonly<ICharacter>;
-                
+
                 // Verify direction and position for each move
                 expect(character.direction).toBe(expectedDirections[moveCount]);
                 expect(character.position).toEqual(expectedPositions[moveCount]);
-                
+
                 // Simulate movement animation ending
                 setTimeout(() => {
                     superEventBus.dispatch(GUIEvent.movementEnd, character.name);
                 }, 10);
-                
+
                 moveCount++;
-                
+
                 if (moveCount === 2) {
                     // Verify character maintains correct direction after movement
                     setTimeout(() => {
@@ -323,7 +324,7 @@ describe('Movement State Integration', () => {
             // Clean up existing state and movement first
             superEventBus.remove(movement);
             superEventBus.remove(state);
-            
+
             const character1 = createMockCharacter({
                 name: 'test-character-1',
                 position: { x: 1, y: 1 }
@@ -368,7 +369,7 @@ describe('Movement State Integration', () => {
             // Cleanup
             superEventBus.remove(multiState);
             superEventBus.remove(multiMovement);
-            
+
             // Restore original state and movement for afterEach cleanup
             state = new State({
                 map: testMap,
