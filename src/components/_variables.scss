@@ -7,6 +7,7 @@ $base-unit: 1rem;
 
 // ===== LAYOUT & SPACING =====
 // Fluid spacing scale using percentages and rem
+$spacing-2xs: 0.125rem; // 2px
 $spacing-xs: 0.25rem; // 4px
 $spacing-sm: 0.5rem; // 8px
 $spacing-md: 0.75rem; // 12px
@@ -75,6 +76,10 @@ $color-highlight-border: rgba(0, 255, 66, 0.09);
 $color-path: rgba(255, 255, 0, 0.3);
 $color-path-border: rgba(255, 255, 0, 0.7);
 
+// Status colors
+$color-danger: #dc3545;
+$color-info: #0dcaf0;
+
 // Character colors
 $color-skin: #d7a55f;
 $color-helmet: $gray-50;
@@ -95,6 +100,7 @@ $font-size-lg: 1rem; // 16px
 $font-size-xl: 1.25rem; // 20px
 
 $font-weight-normal: 400;
+$font-weight-medium: 500;
 $font-weight-bold: 700;
 
 $line-height-tight: 1;
@@ -205,6 +211,31 @@ $breakpoint-xl: 1200px; // Extra large devices
 
 @mixin xl-up {
     @media (min-width: $breakpoint-xl) {
+        @content;
+    }
+}
+
+// Desktop-first media queries
+@mixin sm-down {
+    @media (max-width: #{$breakpoint-sm - 1px}) {
+        @content;
+    }
+}
+
+@mixin md-down {
+    @media (max-width: #{$breakpoint-md - 1px}) {
+        @content;
+    }
+}
+
+@mixin lg-down {
+    @media (max-width: #{$breakpoint-lg - 1px}) {
+        @content;
+    }
+}
+
+@mixin xl-down {
+    @media (max-width: #{$breakpoint-xl - 1px}) {
         @content;
     }
 }

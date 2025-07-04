@@ -1,6 +1,128 @@
-import { IState, ICharacter, IMessage } from "../common/interfaces";
+import { IState, ICharacter, IMessage, IItem, IWeapon, IInventory } from "../common/interfaces";
 import { MapGenerator } from "../common/helpers/MapGenerator";
 import { positionCharacters } from "../common/helpers/map";
+
+// Example weapons
+export const weapons: IWeapon[] = [
+    {
+        id: 'pistol-01',
+        name: 'Energy Pistol',
+        description: 'A compact energy weapon for close encounters',
+        weight: 1.2,
+        icon: '🔫',
+        type: 'weapon',
+        weaponType: 'oneHanded',
+        category: 'ranged',
+        damage: 15,
+        range: 10
+    },
+    {
+        id: 'sword-01',
+        name: 'Plasma Sword',
+        description: 'An elegant weapon for a more civilized age',
+        weight: 2.5,
+        icon: '⚔️',
+        type: 'weapon',
+        weaponType: 'oneHanded',
+        category: 'melee',
+        damage: 20,
+        range: 2
+    },
+    {
+        id: 'knife-01',
+        name: 'Combat Knife',
+        description: 'A sharp blade for quick strikes',
+        weight: 0.5,
+        icon: '🔪',
+        type: 'weapon',
+        weaponType: 'oneHanded',
+        category: 'melee',
+        damage: 10,
+        range: 1
+    },
+    {
+        id: 'rifle-01',
+        name: 'Pulse Rifle',
+        description: 'Standard issue military rifle with high accuracy',
+        weight: 4.5,
+        icon: '🔫',
+        type: 'weapon',
+        weaponType: 'twoHanded',
+        category: 'ranged',
+        damage: 30,
+        range: 20
+    },
+    {
+        id: 'spear-01',
+        name: 'Energy Spear',
+        description: 'Long reach weapon with energy tip',
+        weight: 3.0,
+        icon: '🔱',
+        type: 'weapon',
+        weaponType: 'twoHanded',
+        category: 'melee',
+        damage: 25,
+        range: 3
+    },
+    {
+        id: 'hammer-01',
+        name: 'Heavy Hammer',
+        description: 'Devastating two-handed weapon',
+        weight: 6.0,
+        icon: '🔨',
+        type: 'weapon',
+        weaponType: 'twoHanded',
+        category: 'melee',
+        damage: 35,
+        range: 2
+    }
+];
+
+// Example items
+export const items: IItem[] = [
+    {
+        id: 'medkit-01',
+        name: 'Medkit',
+        description: 'Restores health when used',
+        weight: 0.8,
+        icon: '🏥',
+        type: 'consumable'
+    },
+    {
+        id: 'ammo-01',
+        name: 'Energy Cell',
+        description: 'Ammunition for energy weapons',
+        weight: 0.2,
+        icon: '🔋',
+        type: 'consumable'
+    },
+    {
+        id: 'ration-01',
+        name: 'Food Ration',
+        description: 'Standard military food ration',
+        weight: 0.5,
+        icon: '🍱',
+        type: 'consumable'
+    },
+    {
+        id: 'keycard-01',
+        name: 'Security Keycard',
+        description: 'Opens locked doors',
+        weight: 0.1,
+        icon: '🗝️',
+        type: 'misc'
+    }
+];
+
+// Default inventory for new characters
+const defaultInventory: IInventory = {
+    items: [],
+    maxWeight: 50,
+    equippedWeapons: {
+        primary: null,
+        secondary: null
+    }
+};
 
 const baseCharacter: ICharacter = {
     name: 'test',
@@ -18,6 +140,7 @@ const baseCharacter: ICharacter = {
     location: '',
     position: { x: 1, y: 1 },
     blocker: true,
+    inventory: { ...defaultInventory }
 };
 
 const createCharacter = (character?: Partial<ICharacter>) => ({ ...baseCharacter, ...character });
@@ -31,6 +154,14 @@ const data: Partial<ICharacter> = {
         skin: 'yellow',
         helmet: 'gold',
         suit: 'gold',
+    },
+    inventory: {
+        items: [...weapons.slice(3, 4), ...items.slice(1, 2), ...items.slice(1, 2)], // Rifle and 2 energy cells
+        maxWeight: 50,
+        equippedWeapons: {
+            primary: weapons[3] ?? null, // Rifle equipped
+            secondary: null
+        }
     }
 };
 const player: Partial<ICharacter> = {
@@ -42,6 +173,14 @@ const player: Partial<ICharacter> = {
         skin: '#d7a55f',
         helmet: 'white',
         suit: 'white',
+    },
+    inventory: {
+        items: [...weapons.slice(0, 2), ...items.slice(0, 1), ...items.slice(2, 3)], // Pistol, sword, medkit, ration
+        maxWeight: 50,
+        equippedWeapons: {
+            primary: weapons[0] ?? null, // Pistol
+            secondary: weapons[1] ?? null  // Sword
+        }
     }
 };
 const enemy: Partial<ICharacter> = {
@@ -53,6 +192,14 @@ const enemy: Partial<ICharacter> = {
         skin: 'yellow',
         helmet: 'red',
         suit: 'red',
+    },
+    inventory: {
+        items: [...weapons.slice(2, 3), ...weapons.slice(4, 5), ...items.slice(3, 4)], // Knife, spear, keycard
+        maxWeight: 50,
+        equippedWeapons: {
+            primary: weapons[4] ?? null, // Spear (two-handed)
+            secondary: null
+        }
     }
 };
 export const initialState = (x: number, y: number, playerData: Partial<ICharacter> = player, charactersData: Partial<ICharacter>[] = [data, enemy]): IState => {

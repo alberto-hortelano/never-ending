@@ -4,6 +4,9 @@ import type { StateChangeEventsMap, UpdateStateEventsMap } from "./StateEvents";
 import type { ControlsEventsMap } from "./ControlsEvents";
 import type { GUIEventsMap } from "./GUIEvents";
 
+// Browser-safe environment check
+const isTestEnvironment = typeof process !== 'undefined' && process?.env?.NODE_ENV === 'test';
+
 type EventsMap =
     GameEventsMap &
     UpdateStateEventsMap &
@@ -50,7 +53,7 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
         const bucket = EventBus.listeners.get(key);
         const filterBucket = EventBus.listeners.get(filterKey);
         if (!bucket && !filterBucket) {
-            if (process.env.NODE_ENV !== 'test') {
+            if (!isTestEnvironment) {
                 console.warn(`${this.constructor.name}: no listeners for "${key}"`);
             }
             return;
@@ -61,7 +64,7 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
                 try {
                     cb(structuredClone(eventData));
                 } catch (err) {
-                    if (process.env.NODE_ENV !== 'test') {
+                    if (!isTestEnvironment) {
                         console.error(`Error in listener for "${key}":`, err);
                     }
                 }
@@ -72,7 +75,7 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
                 try {
                     cb(structuredClone(eventData));
                 } catch (err) {
-                    if (process.env.NODE_ENV !== 'test') {
+                    if (!isTestEnvironment) {
                         console.error(`Error in listener for "${filterKey}":`, err);
                     }
                 }

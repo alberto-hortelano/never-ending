@@ -13,6 +13,9 @@ export enum ControlsEvent {
     showTalk = 'ControlsEvent.showTalk',
     rotate = 'ControlsEvent.rotate',
     showRotate = 'ControlsEvent.showRotate',
+    inventory = 'ControlsEvent.inventory',
+    showInventory = 'ControlsEvent.showInventory',
+    equipWeapon = 'ControlsEvent.equipWeapon',
 }
 
 export interface ControlsEventsMap {
@@ -29,4 +32,11 @@ export interface ControlsEventsMap {
     };
     [ControlsEvent.rotate]: ICharacter['name'];
     [ControlsEvent.showRotate]: DeepReadonly<ICharacter>;
+    [ControlsEvent.inventory]: ICharacter['name'];
+    [ControlsEvent.showInventory]: DeepReadonly<ICharacter>;
+    [ControlsEvent.equipWeapon]: {
+        characterName: string;
+        weaponId: string;
+        slot: 'primary' | 'secondary';
+    };
 }

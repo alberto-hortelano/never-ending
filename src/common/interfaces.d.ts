@@ -34,6 +34,36 @@ export interface IMovable extends IPositionable {
 }
 export type Race = 'human' | 'alien' | 'robot';
 export type Action = 'walk' | 'iddle';
+export type ItemType = 'consumable' | 'weapon' | 'armor' | 'misc';
+export type WeaponType = 'oneHanded' | 'twoHanded';
+export type WeaponCategory = 'melee' | 'ranged';
+
+export interface IItem {
+    id: string;
+    name: string;
+    description: string;
+    weight: number;
+    icon: string;
+    type: ItemType;
+}
+
+export interface IWeapon extends IItem {
+    type: 'weapon';
+    weaponType: WeaponType;
+    category: WeaponCategory;
+    damage: number;
+    range: number;
+}
+
+export interface IInventory {
+    items: IItem[];
+    maxWeight: number;
+    equippedWeapons: {
+        primary: IWeapon | null;
+        secondary: IWeapon | null;
+    };
+}
+
 export interface ICharacter extends IMovable {
     name: string;
     race: Race;
@@ -44,6 +74,7 @@ export interface ICharacter extends IMovable {
         helmet: string;
         suit: string;
     };
+    inventory: IInventory;
 }
 export interface IMessage {
     role: 'user' | 'assistant';

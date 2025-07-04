@@ -1,4 +1,4 @@
-import type { ICharacter, IState, IMessage, Direction } from '../interfaces';
+import type { ICharacter, IState, IMessage, Direction, IInventory, IItem } from '../interfaces';
 import type { DeepReadonly } from "../helpers/types";
 
 /** Events to update state. Only State can listen. All can dispatch */
@@ -10,6 +10,10 @@ export enum UpdateStateEvent {
     characterDirection = 'UpdateStateEvent.characterDirection',
     /** Update messages history */
     updateMessages = 'UpdateStateEvent.updateMessages',
+    /** Update character inventory */
+    updateInventory = 'UpdateStateEvent.updateInventory',
+    /** Equip/unequip weapon */
+    equipWeapon = 'UpdateStateEvent.equipWeapon',
 }
 
 export interface UpdateStateEventsMap {
@@ -17,6 +21,15 @@ export interface UpdateStateEventsMap {
     [UpdateStateEvent.characterPath]: DeepReadonly<ICharacter>;
     [UpdateStateEvent.characterDirection]: { characterName: string; direction: Direction };
     [UpdateStateEvent.updateMessages]: DeepReadonly<IMessage[]>;
+    [UpdateStateEvent.updateInventory]: { 
+        characterName: string; 
+        inventory: DeepReadonly<IInventory>;
+    };
+    [UpdateStateEvent.equipWeapon]: {
+        characterName: string;
+        weaponId: string | null;
+        slot: 'primary' | 'secondary';
+    };
 }
 
 /** Events when the state has changed. All can listen. Only State can dispatch */
@@ -28,6 +41,7 @@ export enum StateChangeEvent {
     characterPath = 'StateChangeEvent.characterPath',
     characterDirection = 'StateChangeEvent.characterDirection',
     messages = 'StateChangeEvent.messages',
+    characterInventory = 'StateChangeEvent.characterInventory',
 }
 
 export interface StateChangeEventsMap {
@@ -37,4 +51,5 @@ export interface StateChangeEventsMap {
     [StateChangeEvent.characterPath]: DeepReadonly<ICharacter>;
     [StateChangeEvent.characterDirection]: DeepReadonly<ICharacter>;
     [StateChangeEvent.messages]: DeepReadonly<IState['messages']>;
+    [StateChangeEvent.characterInventory]: DeepReadonly<ICharacter>;
 }

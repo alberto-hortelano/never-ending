@@ -1,0 +1,215 @@
+@use '../variables' as *;
+@use 'sass:color';
+
+.inventory-container {
+    padding: $spacing-lg;
+    width: 600px;
+    max-width: 90vw;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.inventory-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-xl;
+    padding-bottom: $spacing-md;
+    border-bottom: 1px solid $color-border-primary;
+
+    h3 {
+        margin: 0;
+        color: $color-text-primary;
+        font-size: $font-size-lg;
+    }
+
+    .weight-info {
+        display: flex;
+        align-items: center;
+        gap: $spacing-xs;
+        color: $color-text-secondary;
+        font-size: $font-size-sm;
+
+        .weight-icon {
+            font-size: $font-size-base;
+        }
+    }
+}
+
+.equipped-section {
+    margin-bottom: $spacing-xl;
+
+    h4 {
+        margin: 0 0 $spacing-md 0;
+        color: $color-text-primary;
+        font-size: $font-size-base;
+    }
+
+    .weapon-slots {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: $spacing-md;
+
+        @include sm-down {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .weapon-slot {
+        background: $color-bg-secondary;
+        border: 1px solid $color-border-primary;
+        border-radius: $border-radius-md;
+        padding: $spacing-md;
+
+        .slot-label {
+            font-size: $font-size-sm;
+            color: $color-text-secondary;
+            margin-bottom: $spacing-xs;
+            font-weight: $font-weight-medium;
+        }
+
+        .equipped-weapon {
+            display: flex;
+            align-items: center;
+            gap: $spacing-sm;
+            margin-bottom: $spacing-xs;
+
+            .weapon-icon {
+                font-size: $font-size-lg;
+            }
+
+            .weapon-name {
+                flex: 1;
+                font-weight: $font-weight-medium;
+                color: $color-text-primary;
+            }
+
+            .unequip-btn {
+                padding: $spacing-xs $spacing-sm;
+                background: $color-danger;
+                color: white;
+                border: none;
+                border-radius: $border-radius-sm;
+                font-size: $font-size-xs;
+                cursor: pointer;
+                transition: $transition-all;
+
+                &:hover {
+                    background: color.adjust($color-danger, $lightness: -10%);
+                }
+            }
+        }
+
+        .weapon-stats {
+            display: flex;
+            gap: $spacing-md;
+            font-size: $font-size-xs;
+            color: $color-text-secondary;
+        }
+
+        .empty-slot {
+            color: $color-text-muted;
+            font-style: italic;
+            padding: $spacing-sm 0;
+        }
+    }
+}
+
+.items-section {
+    h4 {
+        margin: 0 0 $spacing-md 0;
+        color: $color-text-primary;
+        font-size: $font-size-base;
+    }
+
+    .items-list {
+        .item-group {
+            margin-bottom: $spacing-lg;
+
+            h5 {
+                margin: 0 0 $spacing-sm 0;
+                color: $color-text-secondary;
+                font-size: $font-size-sm;
+                font-weight: $font-weight-medium;
+            }
+        }
+
+        .empty-message {
+            text-align: center;
+            color: $color-text-muted;
+            font-style: italic;
+            padding: $spacing-xl;
+        }
+    }
+}
+
+.inventory-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: $color-bg-secondary;
+    border: 1px solid $color-border-primary;
+    border-radius: $border-radius-md;
+    padding: $spacing-md;
+    margin-bottom: $spacing-sm;
+    transition: $transition-all;
+
+    &:hover {
+        border-color: $color-primary;
+    }
+
+    .item-info {
+        display: flex;
+        align-items: center;
+        gap: $spacing-md;
+        flex: 1;
+
+        .item-icon {
+            font-size: $font-size-xl;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .item-details {
+            flex: 1;
+
+            .item-name {
+                font-weight: $font-weight-medium;
+                color: $color-text-primary;
+                margin-bottom: $spacing-2xs;
+            }
+
+            .item-description {
+                font-size: $font-size-sm;
+                color: $color-text-secondary;
+            }
+
+            .item-stats {
+                font-size: $font-size-xs;
+                color: $color-info;
+                margin-top: $spacing-2xs;
+            }
+        }
+
+        .item-weight {
+            font-size: $font-size-sm;
+            color: $color-text-secondary;
+            margin-right: $spacing-md;
+        }
+    }
+
+    .equip-btn {
+        padding: $spacing-xs $spacing-md;
+        background: $color-primary;
+        color: white;
+        border: none;
+        border-radius: $border-radius-sm;
+        font-size: $font-size-sm;
+        cursor: pointer;
+        transition: $transition-all;
+
+        &:hover {
+            background: color.adjust($color-primary, $lightness: -10%);
+        }
+    }
+}

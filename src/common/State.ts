@@ -1,4 +1,4 @@
-import type { ICoord, ICell, ICharacter, IState } from "./interfaces";
+import type { ICoord, ICell, ICharacter, IState, IInventory, IWeapon } from "./interfaces";
 
 import { UpdateStateEvent, EventBus, UpdateStateEventsMap, StateChangeEventsMap, StateChangeEvent, ControlsEvent, ControlsEventsMap } from "./events";
 import { DeepReadonly } from "./helpers/types";
@@ -20,6 +20,8 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap &
         this.listen(UpdateStateEvent.characterPath, (ch) => this.onCharacterPath(ch));
         this.listen(UpdateStateEvent.characterDirection, (data) => this.onCharacterDirection(data));
         this.listen(UpdateStateEvent.updateMessages, (messages) => this.onUpdateMessages(messages));
+        this.listen(UpdateStateEvent.updateInventory, (data) => this.onUpdateInventory(data));
+        this.listen(UpdateStateEvent.equipWeapon, (data) => this.onEquipWeapon(data));
     }
     // Listeners
     private onCharacterPosition(characterData: UpdateStateEventsMap[UpdateStateEvent.characterPosition]) {
@@ -55,6 +57,62 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap &
     private onUpdateMessages(messages: UpdateStateEventsMap[UpdateStateEvent.updateMessages]) {
         this.#messages = [...messages];
         this.dispatch(StateChangeEvent.messages, structuredClone(this.#messages));
+        this.save();
+    }
+    private onUpdateInventory(data: UpdateStateEventsMap[UpdateStateEvent.updateInventory]) {
+        const character = this.#findCharacter(data.characterName);
+        if (!character) {
+            throw new Error(`No character "${data.characterName}" found`);
+        }
+        character.inventory = structuredClone(data.inventory) as IInventory;
+        this.dispatch(StateChangeEvent.characterInventory, structuredClone(character));
+        this.save();
+    }
+    private onEquipWeapon(data: UpdateStateEventsMap[UpdateStateEvent.equipWeapon]) {
+        const character = this.#findCharacter(data.characterName);
+        if (!character) {
+            throw new Error(`No character "${data.characterName}" found`);
+        }
+
+        const inventory = { ...character.inventory };
+        const equippedWeapons = { ...inventory.equippedWeapons };
+
+        if (data.weaponId === null) {
+            // Unequip weapon
+            equippedWeapons[data.slot] = null;
+        } else {
+            // Find the weapon in inventory
+            const weapon = inventory.items.find(item => 
+                item.id === data.weaponId && item.type === 'weapon'
+            ) as IWeapon | undefined;
+            
+            if (!weapon) {
+                console.error(`Weapon with id ${data.weaponId} not found in inventory`);
+                return;
+            }
+
+            // Handle two-handed weapons
+            if (weapon.weaponType === 'twoHanded') {
+                // Two-handed weapons take both slots
+                equippedWeapons.primary = weapon;
+                equippedWeapons.secondary = null;
+            } else {
+                // One-handed weapon
+                equippedWeapons[data.slot] = weapon;
+                
+                // If equipping in primary and there's a two-handed weapon, clear secondary
+                if (data.slot === 'primary' && equippedWeapons.primary?.weaponType === 'twoHanded') {
+                    equippedWeapons.secondary = null;
+                }
+            }
+        }
+
+        // Update inventory
+        inventory.equippedWeapons = equippedWeapons;
+        character.inventory = inventory;
+        
+        // Dispatch change event
+        this.dispatch(StateChangeEvent.characterInventory, structuredClone(character));
         this.save();
     }
     // Setters

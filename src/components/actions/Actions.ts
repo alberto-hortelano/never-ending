@@ -24,7 +24,8 @@ export class Actions extends Component {
             { id: "move", label: "Move", icon: "🚶", event: ControlsEvent.showMovement },
             { id: "talk", label: "Talk", icon: "💬", event: ControlsEvent.talk },
             { id: "use", label: "Use", icon: "✋", event: ControlsEvent.use },
-            { id: "rotate", label: "Rotate", icon: "🔄", event: ControlsEvent.rotate }
+            { id: "rotate", label: "Rotate", icon: "🔄", event: ControlsEvent.rotate },
+            { id: "inventory", label: "Inventory", icon: "🎒", event: ControlsEvent.inventory }
         ]
     }, {
         name: "Ranged Combat",
