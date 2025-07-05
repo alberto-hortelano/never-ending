@@ -3,6 +3,7 @@ import type { DeepReadonly } from "../../common/helpers/types";
 
 import { Component } from "../Component";
 import { UpdateStateEvent } from "../../common/events";
+import { Inventory as InventoryService } from "../../common/services/Inventory";
 
 interface InventoryOptions {
     character: DeepReadonly<ICharacter>;
@@ -42,7 +43,7 @@ export class Inventory extends Component {
         const inventory = character.inventory;
 
         // Calculate total weight
-        const totalWeight = inventory.items.reduce((sum, item) => sum + item.weight, 0);
+        const totalWeight = InventoryService.calculateTotalWeight(inventory.items);
 
         // Create inventory container
         const container = document.createElement('div');
@@ -88,8 +89,7 @@ export class Inventory extends Component {
         itemsList.className = 'items-list';
 
         // Group items by type
-        const weaponItems = inventory.items.filter(item => item.type === 'weapon') as IWeapon[];
-        const otherItems = inventory.items.filter(item => item.type !== 'weapon');
+        const { weapons: weaponItems, otherItems } = InventoryService.groupItemsByType(inventory.items);
 
         // Render weapons
         if (weaponItems.length > 0) {
@@ -199,25 +199,7 @@ export class Inventory extends Component {
         if (!this.options) return;
 
         const character = this.options.character;
-        const inventory = character.inventory;
-
-        // Determine which slot to use
-        let slot: 'primary' | 'secondary' = 'primary';
-
-        if (weapon.weaponType === 'twoHanded') {
-            // Two-handed weapons always go in primary and clear secondary
-            slot = 'primary';
-        } else {
-            // One-handed weapons: use primary if empty, otherwise secondary
-            if (!inventory.equippedWeapons.primary) {
-                slot = 'primary';
-            } else if (!inventory.equippedWeapons.secondary) {
-                slot = 'secondary';
-            } else {
-                // Both slots full, replace primary
-                slot = 'primary';
-            }
-        }
+        const slot = InventoryService.determineWeaponSlot(weapon, character.inventory.equippedWeapons);
 
         // Dispatch equip event
         this.dispatch(UpdateStateEvent.equipWeapon, {

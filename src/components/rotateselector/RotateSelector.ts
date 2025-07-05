@@ -2,6 +2,7 @@ import type { DeepReadonly } from "../../common/helpers/types";
 import type { ICharacter, Direction } from "../../common/interfaces";
 import { Component } from "../Component";
 import type Character from "../character/Character";
+import { DirectionsService } from "../../common/services/DirectionsService";
 
 export interface RotateSelectorOptions {
     character: DeepReadonly<ICharacter>;
@@ -66,23 +67,14 @@ export class RotateSelector extends Component {
         centerDisplay.appendChild(characterIcon);
 
         // Direction buttons - 8 directions
-        const directions: { direction: Direction; label: string; position: string }[] = [
-            { direction: 'up', label: '↑', position: 'top' },
-            { direction: 'up-right', label: '↗', position: 'top-right' },
-            { direction: 'right', label: '→', position: 'right' },
-            { direction: 'down-right', label: '↘', position: 'bottom-right' },
-            { direction: 'down', label: '↓', position: 'bottom' },
-            { direction: 'down-left', label: '↙', position: 'bottom-left' },
-            { direction: 'left', label: '←', position: 'left' },
-            { direction: 'up-left', label: '↖', position: 'top-left' }
-        ];
+        const directions = DirectionsService.getAllDirections();
 
-        directions.forEach(({ direction, label, position }) => {
+        directions.forEach((dirData) => {
             const button = document.createElement('button');
-            button.className = `direction-button direction-${position}`;
-            button.setAttribute('data-direction', direction);
-            button.textContent = label;
-            button.addEventListener('click', () => this.handleDirectionSelect(direction));
+            button.className = `direction-button direction-${dirData.position}`;
+            button.setAttribute('data-direction', dirData.direction);
+            button.textContent = dirData.label;
+            button.addEventListener('click', () => this.handleDirectionSelect(dirData.direction));
             crossContainer.appendChild(button);
         });
 

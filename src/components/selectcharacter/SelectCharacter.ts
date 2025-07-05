@@ -2,6 +2,7 @@ import type { DeepReadonly } from "../../common/helpers/types";
 import type { ICharacter } from "../../common/interfaces";
 import { Component } from "../Component";
 import type Character from "../character/Character";
+import { CharacterService } from "../../common/services/CharacterService";
 
 export interface SelectCharacterOptions {
     characters: DeepReadonly<ICharacter[]>;
@@ -38,13 +39,9 @@ export class SelectCharacter extends Component {
     }
 
     private getFilteredCharacters(): DeepReadonly<ICharacter[]> {
-        if (!this.options.excludeByName) {
-            return this.options.characters;
-        }
-        
-        return this.options.characters.filter(
-            char => char.name !== this.options.excludeByName
-        );
+        return CharacterService.filterCharacters(this.options.characters, {
+            excludeByName: this.options.excludeByName
+        });
     }
 
     private renderCharacterList(root: ShadowRoot | HTMLElement) {

@@ -115,10 +115,11 @@ This pattern ensures the component renders correctly regardless of initializatio
 - Uses `DeepReadonly` types to prevent accidental mutations
 
 ### File Structure
-- `/src/components/` - Web Components (each has .ts, .scss, .html)
+- `/src/components/` - Web Components (each has .ts, .scss, .html) - UI only, no business logic
 - `/src/components/_variables.scss` - Global SCSS variables and mixins
 - `/src/common/` - Core game logic and shared code
 - `/src/common/events/` - Event definitions and EventBus
+- `/src/common/services/` - Business logic services (isolated from DOM/browser)
 - `/src/models/` - AI integrations (Claude, OpenAI)
 - `/src/server/` - Express server and API
 - `/public/` - Compiled output (DO NOT EDIT DIRECTLY)
@@ -126,9 +127,11 @@ This pattern ensures the component renders correctly regardless of initializatio
 ### Adding New Features
 1. Define new event types in appropriate event file
 2. Add to event type maps
-3. Create system service if needed (extend EventBus)
-4. Update State interface if new data required
-5. Components dispatch/listen to events as needed
+3. Create system service if needed (extend EventBus or create static service class)
+4. Extract any business logic from components into services
+5. Update State interface if new data required
+6. Components dispatch/listen to events as needed
+7. Ensure services remain isolated from DOM/browser APIs
 
 ### Important Patterns
 - Always use events for component communication
@@ -136,6 +139,50 @@ This pattern ensures the component renders correctly regardless of initializatio
 - Components should be self-contained with Shadow DOM
 - System services contain business logic, components handle UI
 - Use TypeScript strict mode - all types must be explicit
+
+### Separation of Concerns
+
+**Components (UI Layer):**
+- Handle DOM manipulation and user interactions
+- Render UI based on data from services
+- Dispatch events for user actions
+- Listen to state changes and update display
+- Should NOT contain business logic, calculations, or data transformations
+
+**Services (Business Logic Layer):**
+- Contain all business logic and data transformations
+- Are completely isolated from DOM/browser APIs
+- Use static methods for stateless operations
+- Can be easily unit tested
+- Should NOT access window, document, or any browser-specific APIs
+
+**Key Services:**
+- `BoardService` - Map rendering calculations, cell generation, positioning
+- `CharacterService` - Character state, directions, filtering, movement calculations
+- `Inventory` - Weight calculations, item grouping, weapon slot logic
+- `ActionsRegistry` - Action definitions and event mappings
+- `DirectionsService` - Direction calculations, angles, rotations
+- `Conversation` - Conversation state management, retry logic
+
+**Example Pattern:**
+```typescript
+// Service (pure logic)
+export class BoardService {
+  static calculateCellWidth(cellWidthInVH: number, viewportHeight: number): number {
+    return cellWidthInVH * viewportHeight / 100;
+  }
+}
+
+// Component (UI handling)
+class Board extends Component {
+  private getCellWidth(): number {
+    const rootStyles = getComputedStyle(document.documentElement);
+    const cellWidthStr = rootStyles.getPropertyValue('--cell-width');
+    const cellWidthInVH = parseFloat(cellWidthStr);
+    return BoardService.calculateCellWidth(cellWidthInVH, window.innerHeight);
+  }
+}
+```
 
 ### SCSS Styling Guidelines
 
