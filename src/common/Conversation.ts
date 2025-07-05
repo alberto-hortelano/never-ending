@@ -7,34 +7,16 @@ import {
 } from "./events";
 import { conversationSystemPrompt, characterContext } from "../prompts/conversationPrompts";
 
-export interface ConversationState {
-    messages: IMessage[];
-    isLoading: boolean;
-    currentTalker?: string;
-    currentTarget?: string;
-    conversationId?: string;
-}
-
-export interface ConversationOptions {
-    maxRetries?: number;
-    retryDelay?: number;
-    maxMessageLength?: number;
-}
-
 export class Conversation extends EventBus<
     StateChangeEventsMap & ConversationEventsMap,
     UpdateStateEventsMap & ConversationEventsMap
 > {
     private messages: IMessage[] = [];
     private isLoading = false;
-    private currentTalker?: string;
     private currentTarget?: string;
-    private conversationId?: string;
-    private options: ConversationOptions = {
-        maxRetries: 3,
-        retryDelay: 1000,
-        maxMessageLength: 1000
-    };
+    private readonly maxRetries = 3;
+    private readonly retryDelay = 1000;
+    private readonly maxMessageLength = 1000;
 
     constructor() {
         super();
@@ -59,9 +41,7 @@ export class Conversation extends EventBus<
         if (this.isLoading) return;
 
         this.isLoading = true;
-        this.currentTalker = talkingCharacter.name;
         this.currentTarget = targetCharacter.name;
-        this.conversationId = `${Date.now()}-${talkingCharacter.name}-${targetCharacter.name}`;
 
         try {
             // Create context message with better prompt
@@ -157,8 +137,8 @@ export class Conversation extends EventBus<
                 content: lastMessage.content
             };
         } catch (error) {
-            if (retry < (this.options.maxRetries || 3)) {
-                await new Promise(resolve => setTimeout(resolve, this.options.retryDelay || 1000));
+            if (retry < this.maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, this.retryDelay));
                 return this.callGameEngine(messages, retry + 1);
             }
             throw error;
@@ -178,8 +158,8 @@ export class Conversation extends EventBus<
                 }
 
                 // Ensure content doesn't exceed max length
-                if (this.options.maxMessageLength && parsed.content.length > this.options.maxMessageLength) {
-                    parsed.content = parsed.content.substring(0, this.options.maxMessageLength) + '...';
+                if (parsed.content.length > this.maxMessageLength) {
+                    parsed.content = parsed.content.substring(0, this.maxMessageLength) + '...';
                 }
 
                 return parsed;
@@ -196,37 +176,4 @@ export class Conversation extends EventBus<
         }
     }
 
-    public getConversationState(): ConversationState {
-        return {
-            messages: [...this.messages],
-            isLoading: this.isLoading,
-            currentTalker: this.currentTalker,
-            currentTarget: this.currentTarget,
-            conversationId: this.conversationId
-        };
-    }
-
-    public clearConversation(): void {
-        this.messages = [];
-        this.currentTalker = undefined;
-        this.currentTarget = undefined;
-        this.conversationId = undefined;
-        this.dispatch(UpdateStateEvent.updateMessages, []);
-    }
-
-    public setOptions(options: Partial<ConversationOptions>): void {
-        this.options = { ...this.options, ...options };
-    }
-
-    public isConversationActive(): boolean {
-        return this.messages.length > 0 && !this.isLoading;
-    }
-
-    public getMessageCount(): number {
-        return this.messages.length;
-    }
-
-    public getLastMessage(): IMessage | undefined {
-        return this.messages[this.messages.length - 1];
-    }
 }
