@@ -215,5 +215,29 @@ class Board extends Component {
 - `/gameEngine` - AI-powered game narrative endpoint
 - Static files served with smart ES module resolution
 
+## Code Quality & Maintenance
+
+### Keeping Code Clean
+The project is configured with strict TypeScript settings to prevent unused code:
+- `noUnusedLocals: true` - Reports errors on unused local variables
+- `noUnusedParameters: true` - Reports errors on unused function parameters
+
+### Checking for Unused Code
+- `npm run check:unused` - Find unused exports using ts-prune
+- `npm run check:all` - Build and check for unused code
+- `npm run build` - TypeScript will report unused locals/parameters
+
+### Best Practices
+1. **Before committing**: Run `npm run check:all` to ensure no unused code
+2. **Remove unused code immediately**: Don't let it accumulate
+3. **Use underscore prefix**: For intentionally unused parameters (e.g., `_unused`)
+4. **Make internal methods private**: Use `private` for class methods only used internally
+5. **Delete unused files**: Remove entire files if all exports are unused
+
+### Tools Configured
+- **TypeScript Compiler**: Strict checks for unused locals and parameters
+- **ts-prune**: Finds unused exports across the codebase
+- **ESLint** (optional): Can be configured with `@typescript-eslint/no-unused-vars`
+
 ## Notes:
 Don't run npm start, if you want to see the output of the build run one of the build commands

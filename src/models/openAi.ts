@@ -9,18 +9,6 @@ export const openai = new OpenAI({
 
 const svgGenerator = getPrompt('svgGenerator');
 
-export const generateImg = async (prompt: string) => {
-    const img = await openai.images.generate({
-        prompt,
-        model: 'dall-e-3',
-        response_format: 'b64_json', // or url
-        n: 1,
-        quality: 'standard',
-        size: '1024x1024',
-        style: 'natural',
-    });
-    return img.data
-}
 export const generateSvg = async (content: string) => {
     const systemPrompt = await svgGenerator;
     const completion = await openai.chat.completions.create({

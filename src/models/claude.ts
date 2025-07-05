@@ -6,9 +6,6 @@ import { initialSetup } from '../prompts/shortPrompts';
 
 const anthropic = new Anthropic();
 
-export interface AgentOptions {
-    systemPrompt: string;
-}
 
 export type SendMessage = (messages: IMessage[]) => Promise<string>;
 

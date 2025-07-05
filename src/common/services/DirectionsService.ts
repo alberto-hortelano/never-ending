@@ -34,41 +34,10 @@ export class DirectionsService {
         return [...this.DIRECTION_DATA];
     }
 
-    private static getDirectionData(direction: Direction): DirectionData | undefined {
-        return this.DIRECTION_DATA.find(d => d.direction === direction);
-    }
 
     public static getOppositeDirection(direction: Direction): Direction {
         return this.OPPOSITE_DIRECTIONS[direction];
     }
 
-    private static getAngleForDirection(direction: Direction): number {
-        const data = this.getDirectionData(direction);
-        return data ? data.angle : 0;
-    }
-
-    private static getDirectionFromAngle(angle: number): Direction {
-        // Normalize angle to 0-360
-        angle = ((angle % 360) + 360) % 360;
-        
-        // Find closest direction
-        let closestDirection: Direction = 'down';
-        let minDiff = 360;
-        
-        for (const data of this.DIRECTION_DATA) {
-            const diff = Math.min(
-                Math.abs(angle - data.angle),
-                Math.abs(angle - data.angle + 360),
-                Math.abs(angle - data.angle - 360)
-            );
-            
-            if (diff < minDiff) {
-                minDiff = diff;
-                closestDirection = data.direction;
-            }
-        }
-        
-        return closestDirection;
-    }
 
 }

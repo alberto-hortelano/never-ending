@@ -1,4 +1,4 @@
-import type { ICharacter, IState, IMessage, Direction, IInventory, IItem } from '../interfaces';
+import type { ICharacter, IState, IMessage, Direction, IInventory } from '../interfaces';
 import type { DeepReadonly } from "../helpers/types";
 
 /** Events to update state. Only State can listen. All can dispatch */

@@ -1,5 +1,5 @@
 import type { DeepReadonly } from "./helpers/types";
-import type { ICharacter, ICoord, IPositionable, Speed } from "./interfaces";
+import type { ICharacter, ICoord, Speed } from "./interfaces";
 import type { State } from "./State";
 
 import { getReachableCells, calculatePath } from "./helpers/map";
@@ -8,9 +8,6 @@ import {
     UpdateStateEventsMap, GUIEvent, GUIEventsMap, StateChangeEvent, StateChangeEventsMap,
 } from "./events";
 
-export interface IMovement {
-    locate(positionable: DeepReadonly<IPositionable>): IPositionable;
-}
 
 export class Movement extends EventBus<
     GameEventsMap & GUIEventsMap & ControlsEventsMap & StateChangeEventsMap,

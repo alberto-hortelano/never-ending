@@ -145,7 +145,4 @@ export class MapGenerator {
         return roomNames;
     }
 
-    private printMap = (map: number[][]) => {
-        console.log(map.map(row => row.map(cell => cell ? ' ' : '#').join('')).join('\n'));
-    }
 }

@@ -6,7 +6,6 @@ import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { IMessage } from '../common/interfaces';
 import { initialSetup } from '../prompts/shortPrompts';
-import { SendMessage } from '../models/claude';
 
 export class Api {
     private dirname = dirname(fileURLToPath(import.meta.url));
@@ -15,7 +14,6 @@ export class Api {
     constructor(
         private app: Express,
         private port = 3000,
-        private sendMessage: SendMessage,
     ) {
         this.start();
         this.listen();
@@ -74,7 +72,7 @@ export class Api {
 
             try {
                 await new Promise(r => setTimeout(r, 1000))
-                // const response = await this.sendMessage(messages);
+                // const response = await sendMessage(messages);
                 const response = JSON.stringify({
                     "type": "speech",
                     "source": "Data",

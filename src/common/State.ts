@@ -180,9 +180,6 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap &
         this.player = state.player;
         this.messages = state.messages;
     }
-    private clear() {
-        localStorage.removeItem(this.storageName);
-    }
     // Public Helpers
     findCharacter(name: ICharacter['name']): DeepReadonly<ICharacter> | undefined {
         return this.#findCharacter(name);

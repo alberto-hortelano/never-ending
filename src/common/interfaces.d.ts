@@ -81,4 +81,3 @@ export interface IMessage {
     content: string;
 }
 
-export type IRow = IState['map'][number];
