@@ -109,6 +109,30 @@ function hasValidExtension(filePath: string, extensions: string[]): boolean {
     return extensions.includes(ext);
 }
 
+// Function to check if a directory contains any files with valid extensions (recursively)
+function directoryContainsTargetFiles(dirPath: string, extensions: string[]): boolean {
+    try {
+        const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+        
+        for (const entry of entries) {
+            const entryPath = path.join(dirPath, entry.name);
+            
+            if (entry.isFile() && hasValidExtension(entry.name, extensions)) {
+                return true;
+            } else if (entry.isDirectory()) {
+                if (directoryContainsTargetFiles(entryPath, extensions)) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    } catch (err) {
+        console.error(`Error checking directory ${dirPath}:`, err);
+        return false;
+    }
+}
+
 // Function to create directory if it doesn't exist
 function ensureDirectoryExists(dirPath: string): void {
     if (!fs.existsSync(dirPath)) {
@@ -133,9 +157,44 @@ async function copyFile(sourcePath: string, destPath: string): Promise<void> {
     });
 }
 
+// Function to recursively clean up empty directories
+async function cleanupDirectory(dirPath: string): Promise<void> {
+    try {
+        const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+        
+        for (const entry of entries) {
+            const entryPath = path.join(dirPath, entry.name);
+            
+            if (entry.isDirectory()) {
+                await cleanupDirectory(entryPath);
+                
+                // Try to remove if empty
+                try {
+                    fs.rmdirSync(entryPath);
+                    if (options.verbose) {
+                        console.log(`Removed empty directory: ${entryPath}`);
+                    }
+                } catch {
+                    // Directory not empty, that's fine
+                }
+            }
+        }
+    } catch (err) {
+        console.error(`Error cleaning up directory ${dirPath}:`, err);
+    }
+}
+
 // Function to process directories recursively
 async function processDirectory(sourcePath: string, destPath: string): Promise<void> {
     try {
+        // Check if this directory contains any target files
+        if (!directoryContainsTargetFiles(sourcePath, options.extensions)) {
+            if (options.verbose) {
+                console.log(`Skipping directory (no target files): ${sourcePath}`);
+            }
+            return;
+        }
+
         // Create destination directory if it doesn't exist
         ensureDirectoryExists(destPath);
 
@@ -201,8 +260,12 @@ async function processDirectory(sourcePath: string, destPath: string): Promise<v
                         }
                     }
                 } else if (destEntry.isDirectory()) {
-                    // Only remove empty directories that don't exist in source
-                    if (!fs.existsSync(srcEntryPath)) {
+                    // Remove directories that either don't exist in source or don't contain target files
+                    if (!fs.existsSync(srcEntryPath) || !directoryContainsTargetFiles(srcEntryPath, options.extensions)) {
+                        // Recursively clean up subdirectory first
+                        await cleanupDirectory(destEntryPath);
+                        
+                        // Try to remove the directory if it's empty
                         try {
                             fs.rmdirSync(destEntryPath);
                             if (options.verbose) {

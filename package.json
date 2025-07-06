@@ -5,7 +5,7 @@
   "main": "start",
   "type": "module",
   "scripts": {
-    "start": "npx concurrently 'npm run build:watch' 'npm run sync:files' 'npm run serve' 'npm run sass:watch'",
+    "start": "npx concurrently 'npm run build:watch' 'npm run sync:files:watch' 'npm run serve' 'npm run sass:watch'",
     "serve": "tsx ./src/server/index.ts",
     "img": "tsx ./src/models/openAi.ts",
     "terminal": "tsx ./src/terminal.ts",
@@ -13,7 +13,8 @@
     "build:watch": "tsc --watch",
     "sass": "npx sass ./src:./public/css",
     "sass:watch": "npx sass --watch ./src:./public/css",
-    "sync:files": "tsx ./scripts/syncFiles.ts --source ./src --destination ./public/html --extensions .html --watch",
+    "sync:files": "tsx ./scripts/syncFiles.ts --source ./src --destination ./public/html --extensions .html",
+    "sync:files:watch": "tsx ./scripts/syncFiles.ts --source ./src --destination ./public/html --extensions .html --watch",
     "web:test": "npm --prefix web-test start",
     "test": "jest",
     "check:unused": "npx ts-prune --project tsconfig.json | grep -v 'used in module'",
