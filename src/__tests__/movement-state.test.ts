@@ -39,6 +39,14 @@ describe('Movement State Integration', () => {
         location: 'cell-1-1',
         position: { x: 1, y: 1 },
         blocker: true,
+        inventory: {
+            items: [],
+            maxWeight: 100,
+            equippedWeapons: {
+                primary: null,
+                secondary: null
+            }
+        },
         ...overrides
     });
 
@@ -74,6 +82,9 @@ describe('Movement State Integration', () => {
         testMap = createMockMap(5, 5);
 
         const initialState: IState = {
+            game: {
+                turn: testCharacter.name
+            },
             map: testMap,
             characters: [testCharacter],
             player: testCharacter,
@@ -274,6 +285,9 @@ describe('Movement State Integration', () => {
 
                 // Update state with character at starting position
                 const testState = new State({
+                    game: {
+                        turn: character.name
+                    },
                     map: testMap,
                     characters: [character],
                     player: character,
@@ -336,6 +350,9 @@ describe('Movement State Integration', () => {
 
             // Create state with both characters
             const multiState = new State({
+                game: {
+                    turn: character1.name
+                },
                 map: testMap,
                 characters: [character1, character2],
                 player: character1,
@@ -372,6 +389,9 @@ describe('Movement State Integration', () => {
 
             // Restore original state and movement for afterEach cleanup
             state = new State({
+                game: {
+                    turn: testCharacter.name
+                },
                 map: testMap,
                 characters: [testCharacter],
                 player: testCharacter,

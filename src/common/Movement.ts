@@ -16,7 +16,7 @@ export class Movement extends EventBus<
     static readonly speed: Record<Speed, number> = {
         'verySlow': 2,
         'slow': 3,
-        'medium': 14,
+        'medium': 4,
         'fast': 5,
         'veryFast': 6,
     };
@@ -48,7 +48,7 @@ export class Movement extends EventBus<
             const dx = position.x - currentCharacter.position.x;
             const dy = position.y - currentCharacter.position.y;
             let direction = currentCharacter.direction;
-            
+
             // Calculate direction including diagonals
             if (dx > 0 && dy > 0) direction = 'down-right';
             else if (dx > 0 && dy < 0) direction = 'up-right';
@@ -98,7 +98,7 @@ export class Movement extends EventBus<
                 const dx = position.x - character.position.x;
                 const dy = position.y - character.position.y;
                 let direction = character.direction;
-                
+
                 // Calculate direction including diagonals
                 if (dx > 0 && dy > 0) direction = 'down-right';
                 else if (dx > 0 && dy < 0) direction = 'up-right';

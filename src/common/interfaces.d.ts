@@ -1,8 +1,12 @@
 export interface IState {
+    game: IGame;
     map: ICell[][];
     characters: ICharacter[];
     player?: ICharacter;
     messages: IMessage[];
+}
+export interface IGame {
+    turn: ICharacter['name'];
 }
 export interface ICoord {
     x: number;

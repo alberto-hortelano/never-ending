@@ -20,14 +20,14 @@ export default class Board extends Component {
         this.centerScreen(player.position);
       }
     });
-    
+
     // Listen for popup visibility events
     this.listen(GUIEvent.popupShow, () => {
       if (this.isMobile()) {
         this.classList.add('popup-active');
       }
     });
-    
+
     this.listen(GUIEvent.popupHide, () => {
       this.classList.remove('popup-active');
     });
@@ -41,6 +41,7 @@ export default class Board extends Component {
     const root = await super.connectedCallback();
     const fullScreenButton = root?.getElementById('full-screen');
     fullScreenButton?.addEventListener('click', () => {
+      fullScreenButton.remove();
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch((err) => {
           alert(
@@ -65,7 +66,7 @@ export default class Board extends Component {
     this.innerHTML = '';
 
     const cellsToRender = BoardService.getCellsToRender(this.mapData);
-    
+
     cellsToRender.forEach(cellData => {
       const cellElement = document.createElement('cell-component');
       cellElement.dataset.x = cellData.x.toString();
@@ -74,7 +75,7 @@ export default class Board extends Component {
       cellElement.setAttribute('content', cellData.content);
       cellElement.style.setProperty('--cell-x', cellData.x.toString());
       cellElement.style.setProperty('--cell-y', cellData.y.toString());
-      
+
       cellData.wallClasses.forEach(wallClass => {
         cellElement.classList.add(wallClass);
       });
@@ -90,7 +91,7 @@ export default class Board extends Component {
     const cellWidthStr = rootStyles.getPropertyValue('--cell-width');
     const cellWidthInVH = parseFloat(cellWidthStr);
     const cellWidth = BoardService.calculateCellWidthFromViewportHeight(cellWidthInVH, window.innerHeight);
-    
+
     const boardWidth = this.clientWidth || window.innerWidth;
     const boardHeight = this.clientHeight || window.innerHeight;
 

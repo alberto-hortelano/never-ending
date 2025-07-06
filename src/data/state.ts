@@ -1,4 +1,4 @@
-import { IState, ICharacter, IMessage, IItem, IWeapon, IInventory } from "../common/interfaces";
+import { IState, ICharacter, IMessage, IItem, IWeapon, IInventory, IGame } from "../common/interfaces";
 import { MapGenerator } from "../common/helpers/MapGenerator";
 import { positionCharacters } from "../common/helpers/map";
 
@@ -124,7 +124,7 @@ const defaultInventory: IInventory = {
     }
 };
 
-const baseCharacter: ICharacter = {
+export const baseCharacter: ICharacter = {
     name: 'test',
     race: 'human',
     description: 'test character',
@@ -204,6 +204,9 @@ const enemy: Partial<ICharacter> = {
 };
 export const initialState = (x: number, y: number, playerData: Partial<ICharacter> = player, charactersData: Partial<ICharacter>[] = [data, enemy]): IState => {
     // State
+    const game: IGame = {
+        turn: 'player',
+    }
     const mapGenerator = new MapGenerator(x, y);
     const player = createCharacter(playerData);
     mapGenerator.generateMap([
@@ -230,6 +233,7 @@ export const initialState = (x: number, y: number, playerData: Partial<ICharacte
     const characters: ICharacter[] = [playerData, ...charactersData].map(createCharacter);
     const messages: IMessage[] = [];
     const initialState: IState = {
+        game,
         map,
         characters: positionCharacters(characters, map),
         player,

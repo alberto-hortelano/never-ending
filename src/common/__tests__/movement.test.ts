@@ -13,6 +13,7 @@ jest.mock('../helpers/map', () => ({
 }));
 
 import { getReachableCells, calculatePath } from '../helpers/map';
+import { baseCharacter } from "../../data/state";
 
 describe('Movement', () => {
     let movement: Movement;
@@ -22,21 +23,7 @@ describe('Movement', () => {
 
     // Helper function to create a mock character
     const createMockCharacter = (overrides: Partial<ICharacter> = {}): ICharacter => ({
-        name: 'test-character',
-        race: 'human',
-        description: 'test character',
-        action: 'iddle',
-        palette: {
-            skin: 'green',
-            helmet: 'red',
-            suit: 'blue'
-        },
-        speed: 'medium',
-        direction: 'down',
-        path: [],
-        location: '',
-        position: { x: 1, y: 1 },
-        blocker: true,
+        ...baseCharacter,
         ...overrides
     });
 
@@ -373,7 +360,7 @@ describe('Movement', () => {
             expect(Movement.speed).toEqual({
                 'verySlow': 2,
                 'slow': 3,
-                'medium': 14,
+                'medium': 4,
                 'fast': 5,
                 'veryFast': 6
             });

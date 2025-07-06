@@ -25,3 +25,22 @@
     font-size: $font-size-xl;
     line-height: 1;
 }
+
+#full-screen {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999999;
+    width: 80%;
+    height: 20%;
+    background: darkseagreen;
+    font-size: 2rem;
+    border: none;
+    box-shadow: 2px 2px 20px;
+    font-family: inherit;
+
+    @include sm-up {
+        display: none;
+    }
+}

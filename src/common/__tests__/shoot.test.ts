@@ -4,6 +4,7 @@ import type { State } from "../State";
 
 import { superEventBus, ControlsEvent, GUIEvent } from "../events";
 import { Shoot } from "../Shoot";
+import { baseCharacter } from "../../data/state";
 
 // Mock the State class
 jest.mock('../State');
@@ -16,21 +17,7 @@ describe('Shoot', () => {
 
     // Helper function to create a mock character
     const createMockCharacter = (overrides: Partial<ICharacter> = {}): ICharacter => ({
-        name: 'test-character',
-        race: 'human',
-        description: 'test character',
-        action: 'iddle',
-        palette: {
-            skin: 'green',
-            helmet: 'red',
-            suit: 'blue'
-        },
-        speed: 'medium',
-        direction: 'right',
-        path: [],
-        location: '',
-        position: { x: 5, y: 5 },
-        blocker: true,
+        ...baseCharacter,
         ...overrides
     });
 
@@ -72,7 +59,10 @@ describe('Shoot', () => {
         jest.clearAllMocks();
 
         // Create test data
-        testCharacter = createMockCharacter();
+        testCharacter = createMockCharacter({
+            direction: 'right',
+            position: { x: 5, y: 5 },
+        });
         testMap = createMockMap(15, 15);
 
         // Create mock State
@@ -330,7 +320,10 @@ describe('Shoot', () => {
 
     describe('edge cases', () => {
         it('should handle character at map edge', () => {
-            const edgeCharacter = createMockCharacter({ position: { x: 0, y: 0 }, direction: 'down' });
+            const edgeCharacter = createMockCharacter({
+                position: { x: 0, y: 0 },
+                direction: 'down'
+            });
             mockState.findCharacter.mockReturnValue(edgeCharacter);
 
             const cellHighlightSpy = jest.fn();
