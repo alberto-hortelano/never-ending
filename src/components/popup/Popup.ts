@@ -5,7 +5,7 @@ import type { RotateSelector } from "../rotateselector/RotateSelector";
 import type { Inventory } from "../inventory/Inventory";
 
 import { Component } from "../Component";
-import { ControlsEvent, ControlsEventsMap, ConversationEvent, ConversationEventsMap, UpdateStateEvent } from "../../common/events";
+import { ControlsEvent, ControlsEventsMap, ConversationEvent, ConversationEventsMap, UpdateStateEvent, GUIEvent } from "../../common/events";
 import { Draggable } from "../../common/helpers/Draggable";
 
 export class Popup extends Component {
@@ -275,6 +275,9 @@ export class Popup extends Component {
     private show(title: string) {
         this.classList.remove('hidden');
 
+        // Dispatch popup show event
+        this.dispatch(GUIEvent.popupShow, undefined);
+
         // Setup draggable on first show when shadow DOM is ready (desktop only)
         if (!this.dragHelper && !this.isMobile()) {
             this.setupDraggable();
@@ -300,6 +303,8 @@ export class Popup extends Component {
     private hide() {
         if (!this.isPinned) {
             this.classList.add('hidden');
+            // Dispatch popup hide event
+            this.dispatch(GUIEvent.popupHide, undefined);
         }
     }
 
@@ -314,6 +319,8 @@ export class Popup extends Component {
     private close() {
         this.isPinned = false;
         this.hide();
+        // Dispatch popup hide event
+        this.dispatch(GUIEvent.popupHide, undefined);
     }
 
     // Custom element setup

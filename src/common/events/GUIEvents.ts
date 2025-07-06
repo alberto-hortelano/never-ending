@@ -7,6 +7,8 @@ export enum GUIEvent {
     cellHighlightIntensity = 'GUIEvent.cellHighlightIntensity',
     cellReset = 'GUIEvent.cellReset',
     movementEnd = 'GUIEvent.movementEnd',
+    popupShow = 'GUIEvent.popupShow',
+    popupHide = 'GUIEvent.popupHide',
 }
 
 export interface GUIEventsMap {
@@ -14,4 +16,6 @@ export interface GUIEventsMap {
     [GUIEvent.cellHighlightIntensity]: DeepReadonly<{ coord: ICoord; intensity: number }>;
     [GUIEvent.cellReset]: DeepReadonly<ICoord>;
     [GUIEvent.movementEnd]: ICharacter['name'];
+    [GUIEvent.popupShow]: void;
+    [GUIEvent.popupHide]: void;
 }

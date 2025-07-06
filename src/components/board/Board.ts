@@ -1,4 +1,4 @@
-import { GameEvent, StateChangeEvent, StateChangeEventsMap } from "../../common/events";
+import { GameEvent, StateChangeEvent, StateChangeEventsMap, GUIEvent } from "../../common/events";
 import { Component } from "../Component";
 import { DragScroll } from "../../common/helpers/DragScroll";
 import { ICoord } from "../../common/interfaces";
@@ -20,6 +20,21 @@ export default class Board extends Component {
         this.centerScreen(player.position);
       }
     });
+    
+    // Listen for popup visibility events
+    this.listen(GUIEvent.popupShow, () => {
+      if (this.isMobile()) {
+        this.classList.add('popup-active');
+      }
+    });
+    
+    this.listen(GUIEvent.popupHide, () => {
+      this.classList.remove('popup-active');
+    });
+  }
+
+  private isMobile(): boolean {
+    return window.innerWidth <= 768;
   }
 
   override async connectedCallback() {

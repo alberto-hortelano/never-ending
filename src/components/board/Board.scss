@@ -10,6 +10,12 @@
     background-color: $color-bg-secondary;
 }
 
+:host(.popup-active) {
+    @include md-down {
+        margin-bottom: var(--mobile-popup-height, 50vh);
+    }
+}
+
 #grid {
     display: grid;
     grid-template-columns: repeat(var(--map-width, 20), var(--cell-width));

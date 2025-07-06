@@ -13,6 +13,7 @@ import { initialState } from './data/state';
 // Initialize global CSS variables
 document.documentElement.style.setProperty('--cell-width', '4dvh');
 document.documentElement.style.setProperty('--size', 'calc(var(--cell-width, 2dvh) * 0.007)');
+document.documentElement.style.setProperty('--mobile-popup-height', '50vh');
 
 const play = () => {
     const state = new State(initialState(50, 50));

@@ -113,11 +113,6 @@
 
 // Mobile adjustments
 @media (max-width: #{$breakpoint-md}) {
-    .character-list-container {
-        min-width: auto;
-        width: $spacing-100;
-    }
-
     .character-list {
         max-height: 60vh;
     }
