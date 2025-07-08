@@ -96,9 +96,16 @@ export class Shoot extends EventBus<
     // Listeners
     private onShowShooting(characterName: ControlsEventsMap[ControlsEvent.showShooting]) {
         const character = this.state.findCharacter(characterName);
-        if (character) {
-            this.showShootingRange(character);
+        if (!character) return;
+
+        // Check if the character belongs to the current turn
+        const currentTurn = this.state.game.turn;
+        if (character.player !== currentTurn) {
+            console.log(`${characterName} cannot shoot by ${currentTurn} - belongs to ${character.player}`);
+            return;
         }
+
+        this.showShootingRange(character);
     }
 
     private onCellClick(position: ControlsEventsMap[ControlsEvent.cellClick]) {

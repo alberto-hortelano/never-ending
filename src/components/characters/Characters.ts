@@ -18,6 +18,7 @@ export default class Characters extends Component {
             characterElement.dataset.palette = JSON.stringify(characterData.palette);
             characterElement.dataset.race = characterData.race;
             characterElement.dataset.direction = characterData.direction;
+            characterElement.dataset.player = characterData.player;
             this.appendChild(characterElement);
         });
     }

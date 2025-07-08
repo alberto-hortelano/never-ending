@@ -210,6 +210,15 @@ class Board extends Component {
 - Shadows: predefined shadow styles
 - Breakpoints: mobile-first mixins (`@include md-up`, etc.)
 
+**IMPORTANT - Common SCSS Variable Names (always check _variables.scss before using):**
+- Background colors: `$color-bg-primary`, `$color-bg-secondary`, `$color-bg-tertiary` (NOT `$color-primary`)
+- Text colors: `$color-text-primary`, `$color-text-secondary`, `$color-text-muted` (NOT `$color-text-inverse`)
+- Border colors: `$color-border-primary`, `$color-border-secondary` (NOT `$color-border`)
+- Status colors: Only `$color-danger` and `$color-info` exist (NO `$color-success` or `$color-warning`)
+- Game colors: `$color-highlight`, `$color-path`
+- Font sizes: `$font-size-base`, `$font-size-lg`, etc. (NOT `$font-size-md`)
+- **ALWAYS** check `/src/components/_variables.scss` for exact variable names before using them
+
 ### Server Endpoints
 - `/` - Serves the game
 - `/gameEngine` - AI-powered game narrative endpoint

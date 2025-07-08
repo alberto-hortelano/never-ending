@@ -22,6 +22,13 @@ export class Talk extends EventBus<
         const talkingCharacter = this.state.findCharacter(characterName);
         if (!talkingCharacter) return;
 
+        // Check if the character belongs to the current turn
+        const currentTurn = this.state.game.turn;
+        if (talkingCharacter.player !== currentTurn) {
+            console.log(`${characterName} cannot be used by ${currentTurn} - belongs to ${talkingCharacter.player}`);
+            return;
+        }
+
         // Get all characters except the one who's talking
         const availableCharacters = this.state.characters.filter(
             char => char.name !== characterName

@@ -10,3 +10,4 @@ export * from './selectcharacter/SelectCharacter';
 export * from './conversation/Conversation';
 export * from './rotateselector/RotateSelector';
 export * from './inventory/Inventory';
+export * from './turnindicator/TurnIndicator';

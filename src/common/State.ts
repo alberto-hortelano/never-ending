@@ -1,13 +1,13 @@
 import type { ICoord, ICell, ICharacter, IState, IInventory, IWeapon } from "./interfaces";
 
-import { UpdateStateEvent, EventBus, UpdateStateEventsMap, StateChangeEventsMap, StateChangeEvent, ControlsEvent, ControlsEventsMap } from "./events";
+import { UpdateStateEvent, EventBus, UpdateStateEventsMap, StateChangeEventsMap, StateChangeEvent, ControlsEvent, ControlsEventsMap, GameEvent, GameEventsMap } from "./events";
 import { DeepReadonly } from "./helpers/types";
 import { getBaseState } from '../data/state';
 
-export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap & ControlsEventsMap> {
+export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateChangeEventsMap & ControlsEventsMap> {
+    #game: IState['game'] = { turn: '', players: [] };
     #map: IState['map'] = [];
     #characters: IState['characters'] = [];
-    #player?: ICharacter;
     #messages: IState['messages'] = [];
 
     private readonly storageName = 'state'; // could be random to hide from others
@@ -22,6 +22,7 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap &
         this.listen(UpdateStateEvent.updateMessages, (messages) => this.onUpdateMessages(messages));
         this.listen(UpdateStateEvent.updateInventory, (data) => this.onUpdateInventory(data));
         this.listen(UpdateStateEvent.equipWeapon, (data) => this.onEquipWeapon(data));
+        this.listen(GameEvent.changeTurn, (data) => this.onChangeTurn(data));
     }
     // Listeners
     private onCharacterPosition(characterData: UpdateStateEventsMap[UpdateStateEvent.characterPosition]) {
@@ -82,10 +83,10 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap &
             equippedWeapons[data.slot] = null;
         } else {
             // Find the weapon in inventory
-            const weapon = inventory.items.find(item => 
+            const weapon = inventory.items.find(item =>
                 item.id === data.weaponId && item.type === 'weapon'
             ) as IWeapon | undefined;
-            
+
             if (!weapon) {
                 console.error(`Weapon with id ${data.weaponId} not found in inventory`);
                 return;
@@ -99,7 +100,7 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap &
             } else {
                 // One-handed weapon
                 equippedWeapons[data.slot] = weapon;
-                
+
                 // If equipping in primary and there's a two-handed weapon, clear secondary
                 if (data.slot === 'primary' && equippedWeapons.primary?.weaponType === 'twoHanded') {
                     equippedWeapons.secondary = null;
@@ -110,12 +111,22 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap &
         // Update inventory
         inventory.equippedWeapons = equippedWeapons;
         character.inventory = inventory;
-        
+
         // Dispatch change event
         this.dispatch(StateChangeEvent.characterInventory, structuredClone(character));
         this.save();
     }
+    private onChangeTurn(data: GameEventsMap[GameEvent.changeTurn]) {
+        this.#game = { ...this.#game, ...data };
+        this.dispatch(StateChangeEvent.game, structuredClone(this.#game));
+        this.save();
+    }
     // Setters
+    private set game(game: IState['game']) {
+        this.#game = game;
+        this.dispatch(StateChangeEvent.game, structuredClone(this.#game));
+        this.save();
+    }
     private set map(map: IState['map']) {
         this.#map = map;
         this.#map.forEach(row => row.forEach(cell => this.cellMap.set(cell.position, cell)));
@@ -131,10 +142,10 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap &
         this.#messages = messages;
         this.save();
     }
-    private set player(player: ICharacter | undefined) {
-        this.#player = player;
-    }
     // Getters
+    get game(): DeepReadonly<IState['game']> {
+        return this.#game;
+    }
     get map(): DeepReadonly<IState['map']> {
         return this.#map;
     }
@@ -143,9 +154,6 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap &
     }
     get messages(): DeepReadonly<IState['messages']> {
         return this.#messages;
-    }
-    get player(): DeepReadonly<IState['player']> {
-        return this.#player;
     }
     // Helpers
     #findCharacter(name: ICharacter['name']) {
@@ -175,9 +183,9 @@ export class State extends EventBus<UpdateStateEventsMap, StateChangeEventsMap &
             }
         }
         state ||= getBaseState();
+        this.game = state.game;
         this.map = state.map;
         this.characters = state.characters;
-        this.player = state.player;
         this.messages = state.messages;
     }
     // Public Helpers

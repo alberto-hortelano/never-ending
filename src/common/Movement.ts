@@ -63,9 +63,16 @@ export class Movement extends EventBus<
     }
     private onShowMovement(characterName: ControlsEventsMap[ControlsEvent.showMovement]) {
         const character = this.state.findCharacter(characterName);
-        if (character) {
-            this.showMovement(character);
+        if (!character) return;
+
+        // Check if the character belongs to the current turn
+        const currentTurn = this.state.game.turn;
+        if (character.player !== currentTurn) {
+            console.log(`${characterName} cannot be moved by ${currentTurn} - belongs to ${character.player}`);
+            return;
         }
+
+        this.showMovement(character);
     }
     private onMovementEnd(characterName: GUIEventsMap[GUIEvent.movementEnd]) {
         const character = this.state.findCharacter(characterName);

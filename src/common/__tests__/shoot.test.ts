@@ -62,6 +62,7 @@ describe('Shoot', () => {
         testCharacter = createMockCharacter({
             direction: 'right',
             position: { x: 5, y: 5 },
+            player: 'human'
         });
         testMap = createMockMap(15, 15);
 
@@ -69,6 +70,10 @@ describe('Shoot', () => {
         mockState = {
             map: testMap,
             findCharacter: jest.fn(),
+            game: {
+                turn: 'human',
+                players: ['human', 'ai']
+            },
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any;
 
@@ -321,6 +326,7 @@ describe('Shoot', () => {
     describe('edge cases', () => {
         it('should handle character at map edge', () => {
             const edgeCharacter = createMockCharacter({
+                player: 'human',
                 position: { x: 0, y: 0 },
                 direction: 'down'
             });

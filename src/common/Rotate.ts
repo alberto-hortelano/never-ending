@@ -20,7 +20,12 @@ export class Rotate extends EventBus<
 
     private onRotate(characterName: ControlsEventsMap[ControlsEvent.rotate]) {
         const character = this.state.findCharacter(characterName);
-        if (!character) {
+        if (!character) return;
+
+        // Check if the character belongs to the current turn
+        const currentTurn = this.state.game.turn;
+        if (character.player !== currentTurn) {
+            console.log(`${characterName} cannot be rotated by ${currentTurn} - belongs to ${character.player}`);
             return;
         }
 

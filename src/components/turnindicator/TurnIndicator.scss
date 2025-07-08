@@ -1,0 +1,69 @@
+@use '../variables' as *;
+@use 'sass:color';
+
+:host {
+    display: block;
+    position: fixed;
+    top: $spacing-md;
+    left: $spacing-md;
+    background: $color-bg-secondary;
+    border: 2px solid $color-border-primary;
+    border-radius: $border-radius-md;
+    padding: $spacing-sm $spacing-md;
+    box-shadow: $shadow-base;
+    z-index: 1000;
+}
+
+.turn-indicator {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    font-size: $font-size-lg;
+}
+
+.end-turn-button {
+    padding: $spacing-xs $spacing-md;
+    background: $color-highlight;
+    color: $color-text-primary;
+    border: none;
+    border-radius: $border-radius-sm;
+    font-size: $font-size-base;
+    font-weight: $font-weight-medium;
+    cursor: pointer;
+    transition: $transition-all;
+    
+    &:hover {
+        background: color.adjust($color-highlight, $lightness: 10%);
+        transform: translateY(-1px);
+        box-shadow: $shadow-sm;
+    }
+    
+    &:active {
+        transform: translateY(0);
+        box-shadow: none;
+    }
+}
+
+.turn-label {
+    color: $color-text-secondary;
+    font-weight: $font-weight-medium;
+}
+
+.player-name {
+    color: $color-text-primary;
+    font-weight: $font-weight-bold;
+    text-transform: capitalize;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $border-radius-sm;
+    background: $color-bg-tertiary;
+    
+    &.human {
+        color: $color-player-human;
+        background: rgba($color-player-human, 0.1);
+    }
+    
+    &.ai {
+        color: $color-player-ai;
+        background: rgba($color-player-ai, 0.1);
+    }
+}

@@ -15,7 +15,8 @@
       "Bash(npm test:*)",
       "Bash(mv:*)",
       "Bash(npx sass:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }

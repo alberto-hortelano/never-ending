@@ -1,6 +1,17 @@
 @use '../variables' as *;
 
+:host {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+}
+
 .characters {
     padding: 0;
     margin: 0;
+    pointer-events: none;
+}
+
+::slotted(*) {
+    pointer-events: auto;
 }

@@ -57,16 +57,18 @@ describe('Movement State Integration', () => {
     beforeEach(() => {
         jest.clearAllMocks();
 
-        testCharacter = createMockCharacter();
+        testCharacter = createMockCharacter({
+            player: 'human'
+        });
         testMap = createMockMap(5, 5);
 
         const initialState: IState = {
             game: {
-                turn: testCharacter.name
+                turn: 'human',
+                players: ['human', 'ai']
             },
             map: testMap,
             characters: [testCharacter],
-            player: testCharacter,
             messages: []
         };
 
@@ -250,7 +252,7 @@ describe('Movement State Integration', () => {
             ];
 
             testCases.forEach(({ from, to, expectedDirection }) => {
-                const character = createMockCharacter({ position: from });
+                const character = createMockCharacter({ player: 'human', position: from });
 
                 let directionChecked = false;
                 const dirListener = createTestListener();
@@ -265,11 +267,11 @@ describe('Movement State Integration', () => {
                 // Update state with character at starting position
                 const testState = new State({
                     game: {
-                        turn: character.name
+                        turn: 'human',
+                        players: ['human', 'ai']
                     },
                     map: testMap,
                     characters: [character],
-                    player: character,
                     messages: []
                 });
                 const testMovement = new Movement(testState);
@@ -319,10 +321,12 @@ describe('Movement State Integration', () => {
             superEventBus.remove(state);
 
             const character1 = createMockCharacter({
+                player: 'human',
                 name: 'test-character-1',
                 position: { x: 1, y: 1 }
             });
             const character2 = createMockCharacter({
+                player: 'human',
                 name: 'test-character-2',
                 position: { x: 3, y: 3 }
             });
@@ -330,11 +334,11 @@ describe('Movement State Integration', () => {
             // Create state with both characters
             const multiState = new State({
                 game: {
-                    turn: character1.name
+                    turn: 'human',
+                    players: ['human', 'ai']
                 },
                 map: testMap,
                 characters: [character1, character2],
-                player: character1,
                 messages: []
             });
             const multiMovement = new Movement(multiState);
@@ -369,11 +373,11 @@ describe('Movement State Integration', () => {
             // Restore original state and movement for afterEach cleanup
             state = new State({
                 game: {
-                    turn: testCharacter.name
+                    turn: 'human',
+                    players: ['human', 'ai']
                 },
                 map: testMap,
                 characters: [testCharacter],
-                player: testCharacter,
                 messages: []
             });
             movement = new Movement(state);

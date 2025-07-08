@@ -13,6 +13,40 @@ $transition-duration: $transition-duration-base;
     --helmet: #{$color-helmet};
     --suit: #{$color-suit};
     --skin: #{$color-skin};
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+:host(.current-player) {
+    &::before {
+        content: '';
+        position: absolute;
+        top: calc(-60 * var(--size));
+        left: calc(-40 * var(--size));
+        width: calc(80 * var(--size));
+        height: calc(80 * var(--size));
+        border: 3px solid $color-highlight;
+        border-radius: 50%;
+        box-shadow: 0 0 10px $color-highlight;
+        pointer-events: none;
+        animation: pulse 2s infinite;
+        z-index: 100;
+    }
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.05);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 body {

@@ -64,13 +64,19 @@ describe('Movement', () => {
         jest.clearAllMocks();
 
         // Create test data
-        testCharacter = createMockCharacter();
+        testCharacter = createMockCharacter({
+            player: 'human'
+        });
         testMap = createMockMap(5, 5);
 
         // Create mock State
         mockState = {
             map: testMap,
             findCharacter: jest.fn(),
+            game: {
+                turn: 'human',
+                players: ['human', 'ai']
+            },
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any;
 
@@ -228,6 +234,7 @@ describe('Movement', () => {
     describe('characterPath', () => {
         it('should dispatch moveCharacter event when character has a path', () => {
             const characterWithPath: ICharacter = createMockCharacter({
+                player: 'human',
                 path: [
                     { x: 2, y: 1 },
                     { x: 3, y: 1 }
@@ -254,6 +261,7 @@ describe('Movement', () => {
 
         it('should not dispatch moveCharacter when character has empty path', () => {
             const characterWithEmptyPath: ICharacter = createMockCharacter({
+                player: 'human',
                 path: []
             });
 
@@ -272,6 +280,7 @@ describe('Movement', () => {
     describe('movementEnd', () => {
         it('should update character position when movement ends', () => {
             const movingCharacter: ICharacter = createMockCharacter({
+                player: 'human',
                 path: [
                     { x: 2, y: 1 },
                     { x: 3, y: 1 }
@@ -318,6 +327,7 @@ describe('Movement', () => {
 
         it('should handle character with empty path', () => {
             const characterWithEmptyPath: ICharacter = createMockCharacter({
+                player: 'human',
                 path: []
             });
 
@@ -370,7 +380,7 @@ describe('Movement', () => {
             const speeds: Array<ICharacter['speed']> = ['verySlow', 'slow', 'medium', 'fast', 'veryFast'];
 
             speeds.forEach(speed => {
-                const character = createMockCharacter({ speed });
+                const character = createMockCharacter({ player: 'human', speed });
                 mockState.findCharacter.mockReturnValue(character);
 
                 (getReachableCells as jest.Mock).mockReturnValue([]);
@@ -390,8 +400,8 @@ describe('Movement', () => {
 
     describe('event cleanup', () => {
         it('should properly handle multiple movement sequences', () => {
-            const character1 = createMockCharacter({ name: 'char1' });
-            const character2 = createMockCharacter({ name: 'char2', position: { x: 3, y: 3 } });
+            const character1 = createMockCharacter({ player: 'human', name: 'char1' });
+            const character2 = createMockCharacter({ player: 'human', name: 'char2', position: { x: 3, y: 3 } });
 
             const reachableCells1 = [{ x: 0, y: 1 }, { x: 1, y: 0 }];
             const reachableCells2 = [{ x: 3, y: 2 }, { x: 4, y: 3 }];

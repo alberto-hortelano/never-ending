@@ -34,6 +34,8 @@ export interface UpdateStateEventsMap {
 
 /** Events when the state has changed. All can listen. Only State can dispatch */
 export enum StateChangeEvent {
+    /** Game state changed (turn, players, etc) */
+    game = 'StateChangeEvent.game',
     /** Update character position */
     map = 'StateChangeEvent.map',
     characters = 'StateChangeEvent.characters',
@@ -45,6 +47,7 @@ export enum StateChangeEvent {
 }
 
 export interface StateChangeEventsMap {
+    [StateChangeEvent.game]: DeepReadonly<IState['game']>;
     [StateChangeEvent.map]: DeepReadonly<IState['map']>;
     [StateChangeEvent.characters]: DeepReadonly<IState['characters']>;
     [StateChangeEvent.characterPosition]: DeepReadonly<ICharacter>;

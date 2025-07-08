@@ -2,11 +2,11 @@ export interface IState {
     game: IGame;
     map: ICell[][];
     characters: ICharacter[];
-    player?: ICharacter;
     messages: IMessage[];
 }
 export interface IGame {
-    turn: ICharacter['name'];
+    turn: string;
+    players: string[];
 }
 export interface ICoord {
     x: number;
@@ -72,7 +72,8 @@ export interface ICharacter extends IMovable {
     name: string;
     race: Race;
     description: string;
-    action: Action
+    action: Action;
+    player: string;
     palette: {
         skin: string;
         helmet: string;

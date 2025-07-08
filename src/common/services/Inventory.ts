@@ -23,6 +23,13 @@ export class Inventory extends EventBus<
         const character = this.state.findCharacter(characterName);
         if (!character) return;
 
+        // Check if the character belongs to the current turn
+        const currentTurn = this.state.game.turn;
+        if (character.player !== currentTurn) {
+            console.log(`${characterName}'s inventory cannot be accessed by ${currentTurn} - belongs to ${character.player}`);
+            return;
+        }
+
         // Dispatch event to show the inventory popup
         this.dispatch(ControlsEvent.showInventory, character);
     }

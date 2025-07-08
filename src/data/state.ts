@@ -129,6 +129,7 @@ export const baseCharacter: ICharacter = {
     race: 'human',
     description: 'test character',
     action: 'iddle',
+    player: '',
     palette: {
         skin: 'green',
         helmet: 'red',
@@ -148,6 +149,7 @@ const createCharacter = (character?: Partial<ICharacter>) => ({ ...baseCharacter
 const data: Partial<ICharacter> = {
     name: 'data',
     race: 'robot',
+    player: 'ai',
     location: 'room4',
     position: { x: 25, y: 25 },
     palette: {
@@ -167,6 +169,7 @@ const data: Partial<ICharacter> = {
 const player: Partial<ICharacter> = {
     name: 'player',
     race: 'human',
+    player: 'human',
     location: 'room2',
     position: { x: 24, y: 25 },
     palette: {
@@ -186,6 +189,7 @@ const player: Partial<ICharacter> = {
 const enemy: Partial<ICharacter> = {
     name: 'enemy',
     race: 'robot',
+    player: 'ai',
     location: 'room3',
     position: { x: 23, y: 25 },
     palette: {
@@ -205,7 +209,8 @@ const enemy: Partial<ICharacter> = {
 export const initialState = (x: number, y: number, playerData: Partial<ICharacter> = player, charactersData: Partial<ICharacter>[] = [data, enemy]): IState => {
     // State
     const game: IGame = {
-        turn: 'player',
+        turn: 'human',
+        players: ['human', 'ai']
     }
     const mapGenerator = new MapGenerator(x, y);
     const player = createCharacter(playerData);
@@ -236,7 +241,6 @@ export const initialState = (x: number, y: number, playerData: Partial<ICharacte
         game,
         map,
         characters: positionCharacters(characters, map),
-        player,
         messages,
     };
     return initialState;

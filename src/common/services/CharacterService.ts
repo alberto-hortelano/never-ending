@@ -124,4 +124,71 @@ export class CharacterService {
     });
   }
 
+  /**
+   * Check if a character can be controlled based on the current turn
+   */
+  public static canControlCharacter(characterPlayer: string, currentTurn: string): boolean {
+    return characterPlayer === currentTurn;
+  }
+
+  /**
+   * Get the initial position from dataset attributes
+   */
+  public static getPositionFromDataset(dataset: DOMStringMap): ICoord {
+    return {
+      x: parseInt(dataset.x || '0'),
+      y: parseInt(dataset.y || '0')
+    };
+  }
+
+  /**
+   * Initialize character data from dataset attributes
+   */
+  public static initializeFromDataset(dataset: DOMStringMap): {
+    race: ICharacter['race'];
+    player: string;
+    palette: CharacterPalette;
+    direction?: Direction;
+    position: ICoord;
+  } {
+    const race = (dataset.race || 'human') as ICharacter['race'];
+    const player = dataset.player || '';
+    const palette = this.parseCharacterPalette(dataset.palette);
+    const direction = dataset.direction as Direction | undefined;
+    const position = this.getPositionFromDataset(dataset);
+
+    return {
+      race,
+      player,
+      palette,
+      direction,
+      position
+    };
+  }
+
+  /**
+   * Apply palette styles to an element
+   */
+  public static applyPaletteStyles(element: HTMLElement, palette: CharacterPalette): void {
+    element.style.setProperty('--skin', palette.skin);
+    element.style.setProperty('--helmet', palette.helmet);
+    element.style.setProperty('--suit', palette.suit);
+    element.style.backgroundColor = palette.helmet;
+  }
+
+  /**
+   * Check if character should show current turn indicator
+   */
+  public static shouldShowTurnIndicator(characterPlayer: string, currentTurn: string): boolean {
+    return characterPlayer === currentTurn;
+  }
+
+  /**
+   * Get current turn from game state
+   */
+  public static getCurrentTurnFromState(): string | null {
+    const state = (window as any).game?.state;
+    return state?.game?.turn || null;
+  }
+
 }
