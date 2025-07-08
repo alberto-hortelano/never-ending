@@ -4,6 +4,7 @@ import type { DeepReadonly } from "../common/helpers/types";
 import { superEventBus, ControlsEvent, StateChangeEvent, GUIEvent, UpdateStateEvent } from "../common/events";
 import { Movement } from "../common/Movement";
 import { State } from "../common/State";
+import { baseCharacter } from "../data/state";
 
 describe('Movement State Integration', () => {
     let state: State;
@@ -24,29 +25,7 @@ describe('Movement State Integration', () => {
     let testListeners: TestEventListener[] = [];
 
     const createMockCharacter = (overrides: Partial<ICharacter> = {}): ICharacter => ({
-        name: 'test-character',
-        race: 'human',
-        description: 'test character',
-        action: 'iddle',
-        palette: {
-            skin: 'green',
-            helmet: 'red',
-            suit: 'blue'
-        },
-        speed: 'medium',
-        direction: 'down',
-        path: [],
-        location: 'cell-1-1',
-        position: { x: 1, y: 1 },
-        blocker: true,
-        inventory: {
-            items: [],
-            maxWeight: 100,
-            equippedWeapons: {
-                primary: null,
-                secondary: null
-            }
-        },
+        ...baseCharacter,
         ...overrides
     });
 
