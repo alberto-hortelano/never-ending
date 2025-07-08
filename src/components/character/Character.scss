@@ -17,35 +17,31 @@ $transition-duration: $transition-duration-base;
     pointer-events: auto;
 }
 
-:host(.current-player) {
+.character.current-player {
     &::before {
         content: '';
         position: absolute;
-        top: calc(-60 * var(--size));
-        left: calc(-40 * var(--size));
-        width: calc(80 * var(--size));
-        height: calc(80 * var(--size));
-        border: 3px solid $color-highlight;
-        border-radius: 50%;
-        box-shadow: 0 0 10px $color-highlight;
+        top: calc(-120 * var(--size));
+        left: calc(-35 * var(--size));
+        width: 0;
+        height: 0;
+        border-left: calc(40 * var(--size)) solid transparent;
+        border-right: calc(40 * var(--size)) solid transparent;
+        border-top: calc(65 * var(--size)) solid rgba(0, 255, 0, 0.5);
         pointer-events: none;
-        animation: pulse 2s infinite;
-        z-index: 100;
+        animation: bounce 1.5s ease-in-out infinite;
     }
 }
 
-@keyframes pulse {
-    0% {
-        opacity: 1;
-        transform: scale(1);
-    }
-    50% {
-        opacity: 0.7;
-        transform: scale(1.05);
-    }
+@keyframes bounce {
+
+    0%,
     100% {
-        opacity: 1;
-        transform: scale(1);
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(calc(-10 * var(--size)));
     }
 }
 

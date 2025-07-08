@@ -96,7 +96,7 @@ export default class Character extends Component {
 
     private updateTurnIndicator() {
         const shouldShowIndicator = CharacterService.shouldShowTurnIndicator(this.player, this.currentTurn);
-        this.classList.toggle('current-player', shouldShowIndicator);
+        this.characterElement?.classList.toggle('current-player', shouldShowIndicator);
     }
 
 }
