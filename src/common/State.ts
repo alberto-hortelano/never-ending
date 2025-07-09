@@ -22,6 +22,8 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.listen(UpdateStateEvent.updateMessages, (messages) => this.onUpdateMessages(messages));
         this.listen(UpdateStateEvent.updateInventory, (data) => this.onUpdateInventory(data));
         this.listen(UpdateStateEvent.equipWeapon, (data) => this.onEquipWeapon(data));
+        this.listen(UpdateStateEvent.deductActionPoints, (data) => this.onDeductActionPoints(data));
+        this.listen(UpdateStateEvent.resetActionPoints, (data) => this.onResetActionPoints(data));
         this.listen(GameEvent.changeTurn, (data) => this.onChangeTurn(data));
     }
     // Listeners
@@ -53,6 +55,9 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         // No one is listening
         // this.dispatch(StateChangeEvent.characterDirection, structuredClone(character));
         this.dispatch(ControlsEvent.moveCharacter, structuredClone(character), character.name);
+        
+        // Rotation costs 0 action points, so no deduction needed
+        
         this.save();
     }
     private onUpdateMessages(messages: UpdateStateEventsMap[UpdateStateEvent.updateMessages]) {
@@ -119,6 +124,38 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
     private onChangeTurn(data: GameEventsMap[GameEvent.changeTurn]) {
         this.#game = { ...this.#game, ...data };
         this.dispatch(StateChangeEvent.game, structuredClone(this.#game));
+        
+        // Reset action points for the new player's characters
+        this.#characters.forEach(character => {
+            if (character.player === data.turn) {
+                character.actions.pointsLeft = 100;
+                this.dispatch(StateChangeEvent.characterActions, structuredClone(character));
+            }
+        });
+        
+        this.save();
+    }
+    private onDeductActionPoints(data: UpdateStateEventsMap[UpdateStateEvent.deductActionPoints]) {
+        const character = this.#findCharacter(data.characterName);
+        if (!character) {
+            throw new Error(`No character "${data.characterName}" found`);
+        }
+        
+        // Deduct the action points
+        character.actions.pointsLeft = Math.max(0, character.actions.pointsLeft - data.cost);
+        
+        // Dispatch change event
+        this.dispatch(StateChangeEvent.characterActions, structuredClone(character));
+        this.save();
+    }
+    private onResetActionPoints(data: UpdateStateEventsMap[UpdateStateEvent.resetActionPoints]) {
+        // Reset action points for all characters belonging to the specified player
+        this.#characters.forEach(character => {
+            if (character.player === data.player) {
+                character.actions.pointsLeft = 100;
+                this.dispatch(StateChangeEvent.characterActions, structuredClone(character));
+            }
+        });
         this.save();
     }
     // Setters

@@ -14,6 +14,10 @@ export enum UpdateStateEvent {
     updateInventory = 'UpdateStateEvent.updateInventory',
     /** Equip/unequip weapon */
     equipWeapon = 'UpdateStateEvent.equipWeapon',
+    /** Deduct action points from character */
+    deductActionPoints = 'UpdateStateEvent.deductActionPoints',
+    /** Reset action points for all characters of a player */
+    resetActionPoints = 'UpdateStateEvent.resetActionPoints',
 }
 
 export interface UpdateStateEventsMap {
@@ -30,6 +34,14 @@ export interface UpdateStateEventsMap {
         weaponId: string | null;
         slot: 'primary' | 'secondary';
     };
+    [UpdateStateEvent.deductActionPoints]: {
+        characterName: string;
+        actionId: string;
+        cost: number;
+    };
+    [UpdateStateEvent.resetActionPoints]: {
+        player: string;
+    };
 }
 
 /** Events when the state has changed. All can listen. Only State can dispatch */
@@ -44,6 +56,7 @@ export enum StateChangeEvent {
     characterDirection = 'StateChangeEvent.characterDirection',
     messages = 'StateChangeEvent.messages',
     characterInventory = 'StateChangeEvent.characterInventory',
+    characterActions = 'StateChangeEvent.characterActions',
 }
 
 export interface StateChangeEventsMap {
@@ -55,4 +68,5 @@ export interface StateChangeEventsMap {
     [StateChangeEvent.characterDirection]: DeepReadonly<ICharacter>;
     [StateChangeEvent.messages]: DeepReadonly<IState['messages']>;
     [StateChangeEvent.characterInventory]: DeepReadonly<ICharacter>;
+    [StateChangeEvent.characterActions]: DeepReadonly<ICharacter>;
 }

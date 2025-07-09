@@ -4,7 +4,7 @@ import type { State } from "../State";
 
 import {
     EventBus, ControlsEvent, GameEventsMap, ControlsEventsMap,
-    UpdateStateEventsMap, StateChangeEventsMap,
+    UpdateStateEventsMap, StateChangeEventsMap, UpdateStateEvent,
 } from "../events";
 
 export class Inventory extends EventBus<
@@ -32,6 +32,13 @@ export class Inventory extends EventBus<
 
         // Dispatch event to show the inventory popup
         this.dispatch(ControlsEvent.showInventory, character);
+        
+        // Deduct action points for accessing inventory
+        this.dispatch(UpdateStateEvent.deductActionPoints, {
+            characterName: character.name,
+            actionId: 'inventory',
+            cost: character.actions.general.inventory
+        });
     }
 
 

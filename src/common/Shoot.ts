@@ -5,6 +5,7 @@ import type { State } from "./State";
 import {
     EventBus, ControlsEvent, ControlsEventsMap,
     GUIEvent, GUIEventsMap, StateChangeEventsMap,
+    UpdateStateEvent, UpdateStateEventsMap,
 } from "./events";
 
 export interface VisibleCell {
@@ -14,7 +15,7 @@ export interface VisibleCell {
 
 export class Shoot extends EventBus<
     GUIEventsMap & ControlsEventsMap & StateChangeEventsMap,
-    GUIEventsMap & ControlsEventsMap
+    GUIEventsMap & ControlsEventsMap & UpdateStateEventsMap
 > {
     static readonly directionAngles: Record<Direction, number> = {
         'up': -90,
@@ -111,6 +112,15 @@ export class Shoot extends EventBus<
     private onCellClick(position: ControlsEventsMap[ControlsEvent.cellClick]) {
         if (this.shootingCharacter && this.visibleCells?.find(vc => vc.coord.x === position.x && vc.coord.y === position.y)) {
             // TODO: Implement shooting logic
+            
+            // Deduct action points for shooting
+            const shootCost = this.shootingCharacter.actions.rangedCombat.shoot;
+            this.dispatch(UpdateStateEvent.deductActionPoints, {
+                characterName: this.shootingCharacter.name,
+                actionId: 'shoot',
+                cost: shootCost
+            });
+            
             this.clearShootingHighlights();
         }
     }

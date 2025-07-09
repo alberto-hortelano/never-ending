@@ -141,7 +141,31 @@ export const baseCharacter: ICharacter = {
     location: '',
     position: { x: 1, y: 1 },
     blocker: true,
-    inventory: { ...defaultInventory }
+    inventory: { ...defaultInventory },
+    actions: {
+        pointsLeft: 100,
+        general: {
+            move: 20,
+            talk: 0,
+            use: 5,
+            rotate: 0,
+            inventory: 20,
+        },
+        rangedCombat: {
+            shoot: 20,
+            aim: 20,
+            suppress: 20,
+            cover: 20,
+            throw: 20,
+        },
+        closeCombat: {
+            powerStrike: 25,
+            slash: 20,
+            fastAttack: 15,
+            feint: 20,
+            breakGuard: 20,
+        }
+    }
 };
 
 const createCharacter = (character?: Partial<ICharacter>) => ({ ...baseCharacter, ...character });
@@ -164,7 +188,7 @@ const data: Partial<ICharacter> = {
             primary: weapons[3] ?? null, // Rifle equipped
             secondary: null
         }
-    }
+    },
 };
 const player: Partial<ICharacter> = {
     name: 'player',

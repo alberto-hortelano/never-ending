@@ -1,4 +1,42 @@
 @use '../variables' as *;
+@use 'sass:color';
+
+.points-display {
+    margin-bottom: $spacing-xl;
+    
+    .points-bar {
+        position: relative;
+        height: 2.5rem;
+        background: $gray-600;
+        border: $border-width solid $gray-450;
+        border-radius: $border-radius-base;
+        overflow: hidden;
+        
+        &::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: var(--points-percentage, 100%);
+            background: linear-gradient(90deg, $color-highlight 0%, color.adjust($color-highlight, $lightness: 10%) 100%);
+            transition: width $transition-duration-base ease-out;
+        }
+        
+        .points-text {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            font-size: $font-size-sm;
+            font-weight: $font-weight-medium;
+            color: $color-text-primary;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            z-index: 1;
+        }
+    }
+}
 
 .actions-grid {
     display: grid;
@@ -46,14 +84,39 @@
         flex: 1;
         text-align: left;
     }
+    
+    .action-cost {
+        font-size: $font-size-xs;
+        font-weight: $font-weight-bold;
+        color: $color-info;
+        padding: $spacing-xs $spacing-sm;
+        background: $gray-550;
+        border-radius: $border-radius-sm;
+        min-width: 2em;
+        text-align: center;
+    }
 
-    &:hover {
+    &:hover:not(.disabled) {
         background: $color-bg-hover;
         border-color: $color-border-hover;
     }
 
-    &:active {
+    &:active:not(.disabled) {
         background: $color-bg-active;
+    }
+    
+    &.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        
+        .action-cost {
+            color: $color-danger;
+        }
+        
+        &:hover {
+            background: $gray-600;
+            border-color: $gray-450;
+        }
     }
 
     &:last-child {

@@ -68,6 +68,31 @@ export interface IInventory {
     };
 }
 
+export interface ICharacterActions {
+    pointsLeft: number;
+    general: {
+        move: number;
+        talk: number;
+        use: number;
+        rotate: number;
+        inventory: number;
+    };
+    rangedCombat: {
+        shoot: number;
+        aim: number;
+        suppress: number;
+        cover: number;
+        throw: number;
+    };
+    closeCombat: {
+        powerStrike: number;
+        slash: number;
+        fastAttack: number;
+        feint: number;
+        breakGuard: number;
+    };
+}
+
 export interface ICharacter extends IMovable {
     name: string;
     race: Race;
@@ -80,6 +105,7 @@ export interface ICharacter extends IMovable {
         suit: string;
     };
     inventory: IInventory;
+    actions: ICharacterActions;
 }
 export interface IMessage {
     role: 'user' | 'assistant';

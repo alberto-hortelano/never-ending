@@ -78,6 +78,14 @@ export class Movement extends EventBus<
         const character = this.state.findCharacter(characterName);
         if (character) {
             this.moveCharacter(character);
+            
+            // Deduct action points for movement
+            const moveCost = character.actions.general.move;
+            this.dispatch(UpdateStateEvent.deductActionPoints, {
+                characterName: character.name,
+                actionId: 'move',
+                cost: moveCost
+            });
         }
     }
     // Helpers
