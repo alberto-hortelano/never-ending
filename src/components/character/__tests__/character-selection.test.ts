@@ -1,75 +1,54 @@
 import { State } from '../../../common/State';
-import { IState, ICharacter } from '../../../common/interfaces';
+import { ICharacter, IState } from '../../../common/interfaces';
+import { baseCharacter } from '../../../data/state';
 
 describe('Character Selection Restriction', () => {
     let state: State;
 
     beforeEach(() => {
+        // Create test characters using baseCharacter as template
         const humanCharacter: ICharacter = {
+            ...baseCharacter,
             name: 'player',
             race: 'human',
             player: 'human',
             description: 'Human player character',
-            action: 'iddle',
             position: { x: 1, y: 1 },
             location: 'room1',
-            blocker: true,
-            speed: 'medium',
-            direction: 'down',
-            path: [],
             palette: {
                 skin: 'white',
                 helmet: 'blue',
                 suit: 'blue',
-            },
-            inventory: {
-                items: [],
-                maxWeight: 50,
-                equippedWeapons: {
-                    primary: null,
-                    secondary: null
-                }
             }
         };
 
         const aiCharacter: ICharacter = {
+            ...baseCharacter,
             name: 'enemy',
             race: 'robot',
             player: 'ai',
             description: 'AI controlled enemy',
-            action: 'iddle',
             position: { x: 3, y: 3 },
             location: 'room1',
-            blocker: true,
-            speed: 'medium',
-            direction: 'down',
-            path: [],
             palette: {
                 skin: 'gray',
                 helmet: 'red',
                 suit: 'red',
-            },
-            inventory: {
-                items: [],
-                maxWeight: 50,
-                equippedWeapons: {
-                    primary: null,
-                    secondary: null
-                }
             }
         };
 
-        const initialState: IState = {
+        // Create a simple test state without using initialState to avoid map generation
+        const testState: IState = {
             game: {
                 turn: 'human',
                 players: ['human', 'ai']
             },
-            map: [],
+            map: [], // Empty map for testing - we don't need it for character selection tests
             characters: [humanCharacter, aiCharacter],
             messages: []
         };
 
-        state = new State(initialState);
+        state = new State(testState);
     });
 
     test('should only allow selection of characters belonging to current turn', () => {
