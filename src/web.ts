@@ -6,7 +6,9 @@ import { Shoot } from "./common/Shoot";
 import { Rotate } from "./common/Rotate";
 import { State } from "./common/State";
 import { Conversation } from "./common/Conversation";
+import { Action } from "./common/Action";
 import { Inventory } from "./common/services/Inventory";
+import { CharacterService } from "./common/services/CharacterService";
 import { GameEvent, EventBus } from "./common/events";
 import { initialState } from './data/state';
 
@@ -17,25 +19,17 @@ document.documentElement.style.setProperty('--mobile-popup-height', '50vh');
 
 const play = () => {
     const state = new State(initialState(50, 50));
-    const movement = new Movement(state);
-    const talk = new Talk(state);
-    const shoot = new Shoot(state);
-    const rotate = new Rotate(state);
-    const inventory = new Inventory(state);
-    const conversationService = new Conversation();
-    // Only for debugging
-    (window as any).game = {
-        state,
-        movement,
-        talk,
-        shoot,
-        rotate,
-        inventory,
-        conversationService,
-        eventBus,
-    };
-    // Only for debugging
-    (window as any).di = (e: string, data: any) => eventBus.dispatch(e, data)
+
+    // Initialize singleton services
+    CharacterService.initialize(state);
+
+    new Movement(state);
+    new Talk(state);
+    new Shoot(state);
+    new Rotate(state);
+    new Inventory(state);
+    new Conversation();
+    new Action(state);
 }
 const eventBus = new EventBus<any, any>();
 eventBus.listen(GameEvent.play, play);

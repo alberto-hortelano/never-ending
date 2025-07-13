@@ -15,33 +15,33 @@ export default class Character extends Component {
     override async connectedCallback() {
         const root = await super.connectedCallback();
         if (!root) return root;
-        
+
         // Initialize from dataset
         const { race, player, palette, direction, position } = CharacterService.initializeFromDataset(this.dataset);
         this.player = player;
-        
+
         // Set up DOM elements
         this.listen(ControlsEvent.moveCharacter, caracter => this.onMoveCharacter(caracter), this.id);
         this.characterElement = root.getElementById('character') as HTMLElement;
         this.movable = root.getElementById('movable') as Movable;
-        
+
         // Apply character race
         if (this.characterElement) {
             this.characterElement.classList.add(race);
-            
+
             // Set initial direction
             if (direction) {
                 const directionClass = CharacterService.getDirectionClass(direction);
                 this.characterElement.classList.add(directionClass);
             }
         }
-        
+
         // Set position
         if (this.movable) {
             this.movable.dataset.x = `${position.x}`;
             this.movable.dataset.y = `${position.y}`;
         }
-        
+
         // Apply palette styles
         CharacterService.applyPaletteStyles(this, palette);
         this.movable.addEventListener("transitionend", () => {
@@ -53,14 +53,20 @@ export default class Character extends Component {
                 this.dispatch(ControlsEvent.showActions, this.id);
             }
         });
-        
-        // Get the current turn from state
-        const currentTurn = CharacterService.getCurrentTurnFromState();
-        if (currentTurn) {
-            this.currentTurn = currentTurn;
-            this.updateTurnIndicator();
+
+        // Get initial turn from CharacterService singleton
+        try {
+            const characterService = CharacterService.getInstance();
+            const currentTurn = characterService.getCurrentTurn();
+            if (currentTurn) {
+                this.currentTurn = currentTurn;
+                this.updateTurnIndicator();
+            }
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (error) {
+            // CharacterService not initialized yet - will get turn from state change event
         }
-        
+
         // Listen for turn changes
         this.listen(StateChangeEvent.game, (game) => {
             this.currentTurn = game.turn;
@@ -79,11 +85,11 @@ export default class Character extends Component {
             character.position,
             character.direction
         );
-        
+
         // Update direction
         this.characterElement.classList.remove(...CharacterService.getDirectionClasses());
         this.characterElement.classList.add(movementData.directionClass);
-        
+
         // Add walk animation if moving
         if (movementData.isMoving) {
             this.characterElement.classList.add('walk');

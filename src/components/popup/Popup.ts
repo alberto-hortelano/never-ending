@@ -154,14 +154,10 @@ export class Popup extends Component {
 
         // Create and append actions component
         const actionsComponent = document.createElement('actions-component') as Actions;
+        actionsComponent.setAttribute('character-name', characterName);
         this.appendChild(actionsComponent);
 
         this.show(`${characterName} - Actions`);
-
-        // Set character name on actions component
-        if (actionsComponent && actionsComponent.setCharacterName) {
-            actionsComponent.setCharacterName(characterName);
-        }
     }
 
     private showTalk(data: ControlsEventsMap[ControlsEvent.showTalk]) {

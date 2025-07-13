@@ -1,6 +1,8 @@
 import { Direction, ICharacter } from "../interfaces";
 import { ICoord } from "../interfaces";
 import { DeepReadonly } from "../helpers/types";
+import { State } from "../State";
+import { EventBus } from "../events";
 
 export interface CharacterPalette {
   skin: string;
@@ -14,7 +16,9 @@ export interface MovementData {
   position: ICoord;
 }
 
-export class CharacterService {
+export class CharacterService extends EventBus {
+  private static instance: CharacterService | null = null;
+  
   private static readonly DIRECTION_CLASSES = [
     'rotate-0', 'rotate-45', 'rotate-90', 'rotate-135', 
     'rotate-180', 'rotate-225', 'rotate-270', 'rotate-315'
@@ -36,6 +40,23 @@ export class CharacterService {
     helmet: 'black',
     suit: 'black'
   };
+
+  private constructor(private state: State) {
+    super();
+  }
+
+  public static initialize(state: State): void {
+    if (!CharacterService.instance) {
+      CharacterService.instance = new CharacterService(state);
+    }
+  }
+
+  public static getInstance(): CharacterService {
+    if (!CharacterService.instance) {
+      throw new Error('CharacterService not initialized. Call CharacterService.initialize(state) first.');
+    }
+    return CharacterService.instance;
+  }
 
   public static getDirectionClasses(): string[] {
     return [...this.DIRECTION_CLASSES];
@@ -186,9 +207,15 @@ export class CharacterService {
   /**
    * Get current turn from game state
    */
-  public static getCurrentTurnFromState(): string | null {
-    const state = (window as any).game?.state;
-    return state?.game?.turn || null;
+  public getCurrentTurn(): string | null {
+    return this.state.game.turn || null;
+  }
+
+  /**
+   * Find a character by name from state
+   */
+  public findCharacter(name: string): DeepReadonly<ICharacter> | undefined {
+    return this.state.findCharacter(name);
   }
 
 }

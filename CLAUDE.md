@@ -160,7 +160,7 @@ This pattern ensures the component renders correctly regardless of initializatio
 - `BoardService` - Map rendering calculations, cell generation, positioning
 - `CharacterService` - Character state, directions, filtering, movement calculations
 - `Inventory` - Weight calculations, item grouping, weapon slot logic
-- `ActionsRegistry` - Action definitions and event mappings
+- `Action` - Action definitions, cost calculations, and event handling
 - `DirectionsService` - Direction calculations, angles, rotations
 - `Conversation` - Conversation state management, retry logic
 
