@@ -19,8 +19,11 @@ export class Actions extends Component {
 
         // Get character name from attribute and request actions
         const characterName = this.getAttribute('character-name');
+        console.log('Actions component: character-name attribute is', characterName);
         if (characterName) {
             this.dispatch(ActionEvent.request, characterName);
+        } else {
+            console.warn('Actions component: No character-name attribute found');
         }
 
         return root;

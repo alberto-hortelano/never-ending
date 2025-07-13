@@ -19,7 +19,7 @@ export class Action extends EventBus<
                 { id: "talk", label: "Talk", icon: "💬", event: ControlsEvent.talk },
                 { id: "use", label: "Use", icon: "✋", event: ControlsEvent.use },
                 { id: "rotate", label: "Rotate", icon: "🔄", event: ControlsEvent.rotate },
-                { id: "inventory", label: "Inventory", icon: "🎒", event: ControlsEvent.inventory }
+                { id: "inventory", label: "Inventory", icon: "🎒", event: ControlsEvent.showInventory }
             ]
         },
         {
@@ -148,7 +148,6 @@ export class Action extends EventBus<
 
         // Check if player has enough points
         if (cost > pointsLeft) {
-            console.warn(`Not enough action points for ${actionId}. Cost: ${cost}, Available: ${pointsLeft}`);
             this.dispatch(ActionEvent.error, `Not enough action points. Cost: ${cost}, Available: ${pointsLeft}`);
             return;
         }
@@ -161,7 +160,7 @@ export class Action extends EventBus<
         }
 
         // For actions that don't have their own handlers yet, deduct points here
-        if (cost > 0 && ['use', 'aim', 'suppress', 'cover', 'throw', 'power-strike', 'slash', 'fast-attack', 'feint', 'break-guard'].includes(actionId)) {
+        if (cost > 0 && ['use', 'inventory', 'aim', 'suppress', 'cover', 'throw', 'power-strike', 'slash', 'fast-attack', 'feint', 'break-guard'].includes(actionId)) {
             this.dispatch(UpdateStateEvent.deductActionPoints, {
                 characterName: characterName,
                 actionId: actionId,

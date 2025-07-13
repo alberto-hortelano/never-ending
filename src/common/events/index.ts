@@ -5,3 +5,4 @@ export * from './ControlsEvents';
 export * from './GUIEvents';
 export * from './ConversationEvents';
 export * from './ActionEvents';
+export * from './InventoryEvents';

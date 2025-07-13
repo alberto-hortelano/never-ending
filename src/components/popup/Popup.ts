@@ -70,9 +70,9 @@ export class Popup extends Component {
             }, 50);
         });
 
-        this.listen(ControlsEvent.showInventory, (character: ControlsEventsMap[ControlsEvent.showInventory]) => {
+        this.listen(ControlsEvent.showInventory, (characterName: ControlsEventsMap[ControlsEvent.showInventory]) => {
             isShowing = true;
-            this.showInventory(character);
+            this.showInventory(characterName);
 
             // Reset the flag after a short delay to allow the click event to finish bubbling
             setTimeout(() => {
@@ -124,10 +124,6 @@ export class Popup extends Component {
                 this.hide();
             }
         });
-
-        // Listen for character selections from TalkCharacterList component
-        // this.addEventListener('character-selected', () => {
-        // });
 
         // Listen for conversation updates from Conversation component
         this.addEventListener('conversation-updated', () => {
@@ -181,7 +177,6 @@ export class Popup extends Component {
         selectCharacterComponent.addEventListener('character-selected', (e: Event) => {
             const customEvent = e as CustomEvent;
             const { selectedCharacter } = customEvent.detail;
-            console.log(`${data.talkingCharacter.name} talks to ${selectedCharacter.name}`);
             this.dispatch(ConversationEvent.start, { talkingCharacter: data.talkingCharacter, targetCharacter: selectedCharacter })
         });
     }
@@ -217,21 +212,15 @@ export class Popup extends Component {
         });
     }
 
-    private showInventory(character: ControlsEventsMap[ControlsEvent.showInventory]) {
+    private showInventory(characterName: ControlsEventsMap[ControlsEvent.showInventory]) {
         this.clearContent();
 
         // Create and append inventory component
         const inventoryComponent = document.createElement('inventory-component') as Inventory;
+        inventoryComponent.setAttribute('character-name', characterName);
         this.appendChild(inventoryComponent);
 
-        this.show(`${character.name} - Inventory`);
-
-        // Set options on inventory component
-        if (inventoryComponent && inventoryComponent.setOptions) {
-            inventoryComponent.setOptions({
-                character: character
-            });
-        }
+        this.show(`${characterName} - Inventory`);
     }
 
     private showConversationLoading(data: ConversationEventsMap[ConversationEvent.start]) {

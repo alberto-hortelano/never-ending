@@ -33,7 +33,7 @@ export interface ControlsEventsMap {
     [ControlsEvent.rotate]: ICharacter['name'];
     [ControlsEvent.showRotate]: DeepReadonly<ICharacter>;
     [ControlsEvent.inventory]: ICharacter['name'];
-    [ControlsEvent.showInventory]: DeepReadonly<ICharacter>;
+    [ControlsEvent.showInventory]: ICharacter['name'];
     [ControlsEvent.equipWeapon]: {
         characterName: string;
         weaponId: string;

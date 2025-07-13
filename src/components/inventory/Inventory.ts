@@ -1,49 +1,59 @@
-import type { ICharacter, IItem, IWeapon } from "../../common/interfaces";
-import type { DeepReadonly } from "../../common/helpers/types";
+import type { IItem, IWeapon } from "../../common/interfaces";
+import type { InventoryUpdateData } from "../../common/events";
 
 import { Component } from "../Component";
-import { UpdateStateEvent } from "../../common/events";
-import { Inventory as InventoryService } from "../../common/services/Inventory";
-
-interface InventoryOptions {
-    character: DeepReadonly<ICharacter>;
-}
+import { InventoryEvent } from "../../common/events";
 
 export class Inventory extends Component {
     protected override hasCss = true;
     protected override hasHtml = false;
-    private options?: InventoryOptions;
+    private inventoryData?: InventoryUpdateData;
+    private characterName?: string;
+    private root?: ShadowRoot;
 
     override async connectedCallback() {
+        // Get character name from attribute BEFORE calling super
+        this.characterName = this.getAttribute('character-name') || undefined;
+        
+        // Listen for inventory updates BEFORE initializing shadow DOM
+        this.listen(InventoryEvent.update, data => this.onInventoryUpdate(data));
+        this.listen(InventoryEvent.error, error => this.onError(error));
+        
+        // Initialize shadow DOM
         const root = await super.connectedCallback();
         if (!root) return root;
-
-        // Render with current options if they exist
-        if (this.options) {
-            this.renderContent(root);
+        
+        // Store the shadow root reference
+        this.root = root;
+        
+        // Now that shadow DOM is ready, request inventory data
+        if (this.characterName) {
+            this.dispatch(InventoryEvent.request, this.characterName);
         }
+        
         return root;
     }
 
-    public setOptions(options: InventoryOptions) {
-        this.options = options;
-
-        // Try to render immediately if shadowRoot exists
-        const root = this.shadowRoot;
-        if (root) {
-            root.innerHTML = '';
-            this.renderContent(root);
+    private onInventoryUpdate(data: InventoryUpdateData) {
+        // Only update if this is for our character (case-insensitive comparison)
+        if (data.character.name.toLowerCase() !== this.characterName?.toLowerCase()) return;
+        
+        this.inventoryData = data;
+        if (this.root) {
+            this.root.innerHTML = '';
+            this.renderContent(this.root);
         }
+    }
+    
+    private onError(error: string) {
+        console.error('Inventory error:', error);
     }
 
     private renderContent(root: ShadowRoot | HTMLElement) {
-        if (!this.options) return;
+        if (!this.inventoryData) return;
 
-        const { character } = this.options;
+        const { character, totalWeight, groupedItems } = this.inventoryData;
         const inventory = character.inventory;
-
-        // Calculate total weight
-        const totalWeight = InventoryService.calculateTotalWeight(inventory.items);
 
         // Create inventory container
         const container = document.createElement('div');
@@ -88,8 +98,8 @@ export class Inventory extends Component {
         const itemsList = document.createElement('div');
         itemsList.className = 'items-list';
 
-        // Group items by type
-        const { weapons: weaponItems, otherItems } = InventoryService.groupItemsByType(inventory.items);
+        // Use pre-grouped items from service
+        const { weapons: weaponItems, otherItems } = groupedItems;
 
         // Render weapons
         if (weaponItems.length > 0) {
@@ -196,26 +206,21 @@ export class Inventory extends Component {
     }
 
     private handleEquip(weapon: IWeapon) {
-        if (!this.options) return;
+        if (!this.characterName) return;
 
-        const character = this.options.character;
-        const slot = InventoryService.determineWeaponSlot(weapon, character.inventory.equippedWeapons);
-
-        // Dispatch equip event
-        this.dispatch(UpdateStateEvent.equipWeapon, {
-            characterName: character.name,
-            weaponId: weapon.id,
-            slot: slot
+        // Dispatch equip event - let service determine the slot
+        this.dispatch(InventoryEvent.equipWeapon, {
+            characterName: this.characterName,
+            weaponId: weapon.id
         });
     }
 
     private handleUnequip(slot: 'primary' | 'secondary') {
-        if (!this.options) return;
+        if (!this.characterName) return;
 
-        // Dispatch unequip event (null weaponId means unequip)
-        this.dispatch(UpdateStateEvent.equipWeapon, {
-            characterName: this.options.character.name,
-            weaponId: null,
+        // Dispatch unequip event
+        this.dispatch(InventoryEvent.unequipWeapon, {
+            characterName: this.characterName,
             slot: slot
         });
     }

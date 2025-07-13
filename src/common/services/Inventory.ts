@@ -3,42 +3,101 @@ import type { ICharacter, IWeapon, IItem } from "../interfaces";
 import type { State } from "../State";
 
 import {
-    EventBus, ControlsEvent, GameEventsMap, ControlsEventsMap,
+    EventBus, GameEventsMap, ControlsEventsMap,
     UpdateStateEventsMap, StateChangeEventsMap, UpdateStateEvent,
+    StateChangeEvent, InventoryEvent, InventoryEventsMap, InventoryUpdateData
 } from "../events";
 
 export class Inventory extends EventBus<
-    GameEventsMap & ControlsEventsMap & StateChangeEventsMap,
-    UpdateStateEventsMap & ControlsEventsMap
+    GameEventsMap & ControlsEventsMap & StateChangeEventsMap & InventoryEventsMap,
+    UpdateStateEventsMap & ControlsEventsMap & InventoryEventsMap
 > {
+    private inventoryCache = new Map<string, InventoryUpdateData>();
+
     constructor(
         private state: State,
     ) {
         super();
-        // Listen for inventory action and convert to showInventory with full character
-        this.listen(ControlsEvent.inventory, characterName => this.onInventory(characterName));
+        
+        // Listen for inventory events
+        this.listen(InventoryEvent.request, characterName => this.onInventoryRequest(characterName));
+        this.listen(InventoryEvent.equipWeapon, data => this.onEquipWeapon(data));
+        this.listen(InventoryEvent.unequipWeapon, data => this.onUnequipWeapon(data));
+        
+        // Listen for state changes to update cache
+        this.listen(StateChangeEvent.characterInventory, () => this.updateCache());
     }
 
-    private onInventory(characterName: ControlsEventsMap[ControlsEvent.inventory]) {
-        const character = this.state.findCharacter(characterName);
-        if (!character) return;
 
-        // Check if the character belongs to the current turn
-        const currentTurn = this.state.game.turn;
-        if (character.player !== currentTurn) {
-            console.log(`${characterName}'s inventory cannot be accessed by ${currentTurn} - belongs to ${character.player}`);
+    private onInventoryRequest(characterName: string) {
+        const character = this.state.findCharacter(characterName);
+        if (!character) {
+            this.dispatch(InventoryEvent.error, `Character ${characterName} not found`);
             return;
         }
 
-        // Dispatch event to show the inventory popup
-        this.dispatch(ControlsEvent.showInventory, character);
-        
-        // Deduct action points for accessing inventory
-        this.dispatch(UpdateStateEvent.deductActionPoints, {
-            characterName: character.name,
-            actionId: 'inventory',
-            cost: character.actions.general.inventory
+        // Get data from cache or calculate it
+        let inventoryData = this.inventoryCache.get(characterName);
+        if (!inventoryData) {
+            inventoryData = this.calculateInventoryData(character);
+            this.inventoryCache.set(characterName, inventoryData);
+        }
+
+        this.dispatch(InventoryEvent.update, inventoryData);
+    }
+
+    private onEquipWeapon(data: { characterName: string; weaponId: string }) {
+        const character = this.state.findCharacter(data.characterName);
+        if (!character) {
+            this.dispatch(InventoryEvent.error, `Character ${data.characterName} not found`);
+            return;
+        }
+
+        const weapon = character.inventory.items.find(item => 
+            item.type === 'weapon' && item.id === data.weaponId
+        ) as IWeapon | undefined;
+
+        if (!weapon) {
+            this.dispatch(InventoryEvent.error, `Weapon ${data.weaponId} not found`);
+            return;
+        }
+
+        const slot = Inventory.determineWeaponSlot(weapon, character.inventory.equippedWeapons);
+        this.dispatch(UpdateStateEvent.equipWeapon, {
+            characterName: data.characterName,
+            weaponId: data.weaponId,
+            slot
         });
+    }
+
+    private onUnequipWeapon(data: { characterName: string; slot: 'primary' | 'secondary' }) {
+        this.dispatch(UpdateStateEvent.unequipWeapon, {
+            characterName: data.characterName,
+            slot: data.slot
+        });
+    }
+
+    private calculateInventoryData(character: DeepReadonly<ICharacter>): InventoryUpdateData {
+        const totalWeight = Inventory.calculateTotalWeight(character.inventory.items);
+        const groupedItems = Inventory.groupItemsByType(character.inventory.items);
+        
+        return {
+            character,
+            totalWeight,
+            groupedItems
+        };
+    }
+
+    private updateCache() {
+        // Update all cached inventory data
+        for (const characterName of this.inventoryCache.keys()) {
+            const character = this.state.findCharacter(characterName);
+            if (character) {
+                const inventoryData = this.calculateInventoryData(character);
+                this.inventoryCache.set(characterName, inventoryData);
+                this.dispatch(InventoryEvent.update, inventoryData);
+            }
+        }
     }
 
 

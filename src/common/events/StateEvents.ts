@@ -12,8 +12,10 @@ export enum UpdateStateEvent {
     updateMessages = 'UpdateStateEvent.updateMessages',
     /** Update character inventory */
     updateInventory = 'UpdateStateEvent.updateInventory',
-    /** Equip/unequip weapon */
+    /** Equip weapon */
     equipWeapon = 'UpdateStateEvent.equipWeapon',
+    /** Unequip weapon */
+    unequipWeapon = 'UpdateStateEvent.unequipWeapon',
     /** Deduct action points from character */
     deductActionPoints = 'UpdateStateEvent.deductActionPoints',
     /** Reset action points for all characters of a player */
@@ -31,7 +33,11 @@ export interface UpdateStateEventsMap {
     };
     [UpdateStateEvent.equipWeapon]: {
         characterName: string;
-        weaponId: string | null;
+        weaponId: string;
+        slot: 'primary' | 'secondary';
+    };
+    [UpdateStateEvent.unequipWeapon]: {
+        characterName: string;
         slot: 'primary' | 'secondary';
     };
     [UpdateStateEvent.deductActionPoints]: {

@@ -19,7 +19,8 @@ document.documentElement.style.setProperty('--mobile-popup-height', '50vh');
 
 const play = () => {
     const state = new State(initialState(50, 50));
-
+    // only for debugging purposes! Dont get state from window!!!
+    // (window as any).state = state;
     // Initialize singleton services
     CharacterService.initialize(state);
 

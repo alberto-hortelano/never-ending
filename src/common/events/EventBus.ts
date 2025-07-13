@@ -3,6 +3,9 @@ import type { GameEventsMap } from "./GameEvents";
 import type { StateChangeEventsMap, UpdateStateEventsMap } from "./StateEvents";
 import type { ControlsEventsMap } from "./ControlsEvents";
 import type { GUIEventsMap } from "./GUIEvents";
+import type { ActionEventsMap } from "./ActionEvents";
+import type { ConversationEventsMap } from "./ConversationEvents";
+import type { InventoryEventsMap } from "./InventoryEvents";
 
 // Browser-safe environment check
 const isTestEnvironment = typeof process !== 'undefined' && process?.env?.NODE_ENV === 'test';
@@ -12,7 +15,10 @@ type EventsMap =
     UpdateStateEventsMap &
     StateChangeEventsMap &
     ControlsEventsMap &
-    GUIEventsMap;
+    GUIEventsMap &
+    ActionEventsMap &
+    ConversationEventsMap &
+    InventoryEventsMap;
 
 export type EventCallback<T extends TypedEvent> = (data: EventsMap[T]) => void;
 export type TypedEvent = keyof EventsMap;

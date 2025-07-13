@@ -1,12 +1,12 @@
-import { EventBus, GUIEventsMap, GameEventsMap, ControlsEventsMap, StateChangeEventsMap, UpdateStateEventsMap, ConversationEventsMap, ActionEventsMap } from "../common/events";
+import { EventBus, GUIEventsMap, GameEventsMap, ControlsEventsMap, StateChangeEventsMap, UpdateStateEventsMap, ConversationEventsMap, ActionEventsMap, InventoryEventsMap } from "../common/events";
 
 export abstract class Component extends HTMLElement {
     protected name = this.constructor.name;
     protected hasCss: boolean | string[] = false;
     protected hasHtml: boolean | string[] = false;
     protected eventBus = new EventBus<
-        GUIEventsMap & GameEventsMap & ControlsEventsMap & StateChangeEventsMap & ConversationEventsMap & ActionEventsMap,
-        GUIEventsMap & GameEventsMap & ControlsEventsMap & UpdateStateEventsMap & ConversationEventsMap & ActionEventsMap
+        GUIEventsMap & GameEventsMap & ControlsEventsMap & StateChangeEventsMap & ConversationEventsMap & ActionEventsMap & InventoryEventsMap,
+        GUIEventsMap & GameEventsMap & ControlsEventsMap & UpdateStateEventsMap & ConversationEventsMap & ActionEventsMap & InventoryEventsMap
     >();
     protected listen = this.eventBus.listen.bind(this.eventBus);
     protected dispatch = this.eventBus.dispatch.bind(this.eventBus);
