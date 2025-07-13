@@ -28,11 +28,9 @@ export interface IRoom {
     name: string;
     center?: ICoord;
 }
-export type Speed = 'verySlow' | 'slow' | 'medium' | 'fast' | 'veryFast';
 export type BasicDirection = 'down' | 'right' | 'up' | 'left';
 export type Direction = BasicDirection | 'down-right' | 'up-right' | 'up-left' | 'down-left';
 export interface IMovable extends IPositionable {
-    speed: Speed;
     direction: Direction;
     path: ICoord[];
 }

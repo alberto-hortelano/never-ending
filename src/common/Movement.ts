@@ -1,5 +1,5 @@
 import type { DeepReadonly } from "./helpers/types";
-import type { ICharacter, ICoord, Speed } from "./interfaces";
+import type { ICharacter, ICoord } from "./interfaces";
 import type { State } from "./State";
 
 import { getReachableCells, calculatePath } from "./helpers/map";
@@ -13,13 +13,6 @@ export class Movement extends EventBus<
     GameEventsMap & GUIEventsMap & ControlsEventsMap & StateChangeEventsMap,
     UpdateStateEventsMap & GUIEventsMap & ControlsEventsMap
 > {
-    static readonly speed: Record<Speed, number> = {
-        'verySlow': 2,
-        'slow': 3,
-        'medium': 4,
-        'fast': 5,
-        'veryFast': 6,
-    };
 
     private movingCharacter?: DeepReadonly<ICharacter>;
     private reachableCells?: ICoord[];
@@ -97,8 +90,12 @@ export class Movement extends EventBus<
         this.dispatch(UpdateStateEvent.characterPath, { ...character, path });
     }
     private showMovement(character: DeepReadonly<ICharacter>) {
-        const speedValue = Movement.speed[character.speed];
-        const reachableCells = getReachableCells(character.position, speedValue, this.state.map);
+        // Calculate maximum movement distance based on action points and move cost
+        const moveCost = character.actions.general.move;
+        const pointsLeft = character.actions.pointsLeft;
+        const maxDistance = Math.floor(pointsLeft / moveCost);
+        
+        const reachableCells = getReachableCells(character.position, maxDistance, this.state.map);
         this.movingCharacter = character;
         this.reachableCells = reachableCells;
         reachableCells.forEach(c => this.dispatch(GUIEvent.cellHighlight, c, JSON.stringify(c)));

@@ -297,7 +297,6 @@ describe('Movement State Integration', () => {
             expect(character).toBeDefined();
             expect(character?.name).toBe(testCharacter.name);
             expect(character?.race).toBe(testCharacter.race);
-            expect(character?.speed).toBe(testCharacter.speed);
             expect(character?.palette).toEqual(testCharacter.palette);
 
             superEventBus.dispatch(UpdateStateEvent.characterPosition, {
@@ -309,7 +308,6 @@ describe('Movement State Integration', () => {
             const updatedCharacter = state.findCharacter(testCharacter.name);
             expect(updatedCharacter?.name).toBe(testCharacter.name);
             expect(updatedCharacter?.race).toBe(testCharacter.race);
-            expect(updatedCharacter?.speed).toBe(testCharacter.speed);
             expect(updatedCharacter?.palette).toEqual(testCharacter.palette);
             expect(updatedCharacter?.position).toEqual({ x: 3, y: 3 });
             expect(updatedCharacter?.direction).toBe('left');

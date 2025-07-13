@@ -135,7 +135,6 @@ export const baseCharacter: ICharacter = {
         helmet: 'red',
         suit: 'blue'
     },
-    speed: 'medium',
     direction: 'down',
     path: [],
     location: '',

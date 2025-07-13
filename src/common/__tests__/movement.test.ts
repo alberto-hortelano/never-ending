@@ -121,9 +121,12 @@ describe('Movement', () => {
             superEventBus.dispatch(ControlsEvent.showMovement, testCharacter.name);
 
             // Verify getReachableCells was called with correct parameters
+            const moveCost = testCharacter.actions.general.move;
+            const pointsLeft = testCharacter.actions.pointsLeft;
+            const maxDistance = Math.floor(pointsLeft / moveCost);
             expect(getReachableCells).toHaveBeenCalledWith(
                 testCharacter.position,
-                Movement.speed[testCharacter.speed],
+                maxDistance,
                 testMap
             );
 
@@ -365,22 +368,28 @@ describe('Movement', () => {
         });
     });
 
-    describe('speed values', () => {
-        it('should have correct speed values', () => {
-            expect(Movement.speed).toEqual({
-                'verySlow': 2,
-                'slow': 3,
-                'medium': 4,
-                'fast': 5,
-                'veryFast': 6
-            });
-        });
+    describe('action points based movement', () => {
+        it('should calculate movement distance based on action points and move cost', () => {
+            const testCases = [
+                { pointsLeft: 100, moveCost: 20, expectedDistance: 5 },
+                { pointsLeft: 60, moveCost: 20, expectedDistance: 3 },
+                { pointsLeft: 40, moveCost: 20, expectedDistance: 2 },
+                { pointsLeft: 30, moveCost: 20, expectedDistance: 1 },
+                { pointsLeft: 10, moveCost: 20, expectedDistance: 0 },
+            ];
 
-        it('should use correct speed value for different character speeds', () => {
-            const speeds: Array<ICharacter['speed']> = ['verySlow', 'slow', 'medium', 'fast', 'veryFast'];
-
-            speeds.forEach(speed => {
-                const character = createMockCharacter({ player: 'human', speed });
+            testCases.forEach(({ pointsLeft, moveCost, expectedDistance }) => {
+                const character = createMockCharacter({ 
+                    player: 'human', 
+                    actions: {
+                        ...baseCharacter.actions,
+                        pointsLeft,
+                        general: {
+                            ...baseCharacter.actions.general,
+                            move: moveCost
+                        }
+                    }
+                });
                 mockState.findCharacter.mockReturnValue(character);
 
                 (getReachableCells as jest.Mock).mockReturnValue([]);
@@ -388,10 +397,10 @@ describe('Movement', () => {
                 // Trigger showMovement
                 superEventBus.dispatch(ControlsEvent.showMovement, character.name);
 
-                // Verify correct speed value was used
+                // Verify correct distance was calculated
                 expect(getReachableCells).toHaveBeenCalledWith(
                     character.position,
-                    Movement.speed[speed],
+                    expectedDistance,
                     testMap
                 );
             });
