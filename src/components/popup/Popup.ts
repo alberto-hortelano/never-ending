@@ -127,7 +127,6 @@ export class Popup extends Component {
 
         // Listen for character selections from TalkCharacterList component
         // this.addEventListener('character-selected', () => {
-        //     console.log('>>> - Popup - this.addEventListener - character-selected:')
         // });
 
         // Listen for conversation updates from Conversation component

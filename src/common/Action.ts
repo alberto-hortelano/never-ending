@@ -53,13 +53,11 @@ export class Action extends EventBus<
 
         // Listen for action requests (when component needs actions for a character)
         this.listen(ActionEvent.request, (characterName: string) => {
-            console.log('>>> - ActionEvent.request - characterName:', characterName)
             this.handleActionRequest(characterName);
         });
 
         // Listen for character action updates from state
         this.listen(StateChangeEvent.characterActions, (character) => {
-            console.log('>>> - this.listen - character:', character)
             // Update our cache
             this.characterActionsMap.set(character.name, character.actions);
 
@@ -98,7 +96,6 @@ export class Action extends EventBus<
                 characterName: characterName,
                 characterActions: characterActions
             };
-            console.log('>>> - handleActionRequest - updateData:', updateData)
             this.dispatch(ActionEvent.update, updateData);
         } else {
             this.dispatch(ActionEvent.error, `Character ${characterName} not found`);

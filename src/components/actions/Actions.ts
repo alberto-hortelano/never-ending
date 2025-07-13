@@ -40,7 +40,6 @@ export class Actions extends Component {
 
     private setupEventListeners(): void {
         this.listen(ActionEvent.update, (data: ActionEventsMap[ActionEvent.update]) => {
-            console.log('>>> - Actions - this.listen - data:', data)
             this.updateDisplay(data);
         });
 
