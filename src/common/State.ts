@@ -22,6 +22,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.listen(UpdateStateEvent.updateMessages, (messages) => this.onUpdateMessages(messages));
         this.listen(UpdateStateEvent.updateInventory, (data) => this.onUpdateInventory(data));
         this.listen(UpdateStateEvent.equipWeapon, (data) => this.onEquipWeapon(data));
+        this.listen(UpdateStateEvent.unequipWeapon, (data) => this.onUnequipWeapon(data));
         this.listen(UpdateStateEvent.deductActionPoints, (data) => this.onDeductActionPoints(data));
         this.listen(UpdateStateEvent.resetActionPoints, (data) => this.onResetActionPoints(data));
         this.listen(GameEvent.changeTurn, (data) => this.onChangeTurn(data));
@@ -120,6 +121,14 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         // Dispatch change event
         this.dispatch(StateChangeEvent.characterInventory, structuredClone(character));
         this.save();
+    }
+    private onUnequipWeapon(data: UpdateStateEventsMap[UpdateStateEvent.unequipWeapon]) {
+        // Call onEquipWeapon with null weaponId to unequip
+        this.onEquipWeapon({
+            characterName: data.characterName,
+            weaponId: null,
+            slot: data.slot
+        });
     }
     private onChangeTurn(data: GameEventsMap[GameEvent.changeTurn]) {
         this.#game = { ...this.#game, ...data };

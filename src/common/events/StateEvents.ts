@@ -33,7 +33,7 @@ export interface UpdateStateEventsMap {
     };
     [UpdateStateEvent.equipWeapon]: {
         characterName: string;
-        weaponId: string;
+        weaponId: string | null;
         slot: 'primary' | 'secondary';
     };
     [UpdateStateEvent.unequipWeapon]: {
