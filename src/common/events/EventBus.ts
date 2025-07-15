@@ -94,6 +94,10 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
             bucket.delete(target);
         }
     }
+
+    static reset() {
+        EventBus.listeners = new Map<string, Map<object, (data: any) => void>>();
+    }
 }
 
 // For testing and development only
