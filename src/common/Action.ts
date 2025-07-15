@@ -77,24 +77,17 @@ export class Action extends EventBus<
     }
 
     private handleActionRequest(characterName: string): void {
-        // Try to get from cache first
-        let characterActions = this.characterActionsMap.get(characterName);
-
-        // If not in cache, try to find in state
-        if (!characterActions) {
-            const character = this.findCharacterInState(characterName);
-            if (character) {
-                characterActions = character.actions;
-                this.characterActionsMap.set(characterName, characterActions);
-            }
-        }
-
-        // Send update if we have the data
-        if (characterActions) {
+        // ALWAYS get fresh data from state, don't use cache for requests
+        const character = this.findCharacterInState(characterName);
+        
+        if (character) {
+            // Update cache with fresh data
+            this.characterActionsMap.set(characterName, character.actions);
+            
             const updateData: ActionUpdateData = {
                 categories: this.getActionsWithCosts(),
                 characterName: characterName,
-                characterActions: characterActions
+                characterActions: character.actions
             };
             this.dispatch(ActionEvent.update, updateData);
         } else {

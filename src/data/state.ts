@@ -167,7 +167,7 @@ export const baseCharacter: ICharacter = {
     }
 };
 
-const createCharacter = (character?: Partial<ICharacter>) => ({ ...baseCharacter, ...character });
+const createCharacter = (character?: Partial<ICharacter>): ICharacter => ({ ...structuredClone(baseCharacter), ...character });
 
 const data: Partial<ICharacter> = {
     name: 'data',
