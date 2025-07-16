@@ -9,6 +9,9 @@ export enum GUIEvent {
     movementEnd = 'GUIEvent.movementEnd',
     popupShow = 'GUIEvent.popupShow',
     popupHide = 'GUIEvent.popupHide',
+    shootProjectile = 'GUIEvent.shootProjectile',
+    shootingModeStart = 'GUIEvent.shootingModeStart',
+    shootingModeEnd = 'GUIEvent.shootingModeEnd',
 }
 
 export interface GUIEventsMap {
@@ -18,4 +21,11 @@ export interface GUIEventsMap {
     [GUIEvent.movementEnd]: ICharacter['name'];
     [GUIEvent.popupShow]: void;
     [GUIEvent.popupHide]: void;
+    [GUIEvent.shootProjectile]: DeepReadonly<{
+        from: ICoord;
+        to: ICoord;
+        type: 'bullet' | 'laser';
+    }>;
+    [GUIEvent.shootingModeStart]: void;
+    [GUIEvent.shootingModeEnd]: void;
 }

@@ -36,7 +36,10 @@ export class Shoot extends EventBus<
     ) {
         super();
         this.listen(ControlsEvent.showShooting, characterName => this.onShowShooting(characterName));
-        this.listen(ControlsEvent.cellClick, position => this.onCellClick(position));
+        this.listen(ControlsEvent.characterClick, data => this.onCharacterClick(data));
+        
+        // Clear shooting mode when popup is shown (other actions selected)
+        this.listen(GUIEvent.popupShow, () => this.clearShootingHighlights());
     }
 
     private calculateVisibleCells(
@@ -109,9 +112,51 @@ export class Shoot extends EventBus<
         this.showShootingRange(character);
     }
 
-    private onCellClick(position: ControlsEventsMap[ControlsEvent.cellClick]) {
-        if (this.shootingCharacter && this.visibleCells?.find(vc => vc.coord.x === position.x && vc.coord.y === position.y)) {
-            // TODO: Implement shooting logic
+    private onCharacterClick(data: ControlsEventsMap[ControlsEvent.characterClick]) {
+        if (!this.shootingCharacter || !this.visibleCells) return;
+        
+        const { characterName, position } = data;
+        
+        // Check if clicked position is in a visible cell
+        const isInVisibleCell = this.visibleCells.find(vc => 
+            vc.coord.x === position.x && vc.coord.y === position.y
+        );
+        
+        if (isInVisibleCell) {
+            // Get the target character
+            const targetCharacter = this.state.findCharacter(characterName);
+            
+            if (targetCharacter && targetCharacter.name !== this.shootingCharacter.name) {
+                // Show projectile animation
+                const weapon = this.getEquippedRangedWeapon(this.shootingCharacter);
+                const projectileType = weapon?.category === 'ranged' && weapon.damage > 20 ? 'laser' : 'bullet';
+                
+                this.dispatch(GUIEvent.shootProjectile, {
+                    from: this.shootingCharacter.position,
+                    to: position,
+                    type: projectileType
+                });
+                
+                // Calculate damage based on equipped weapon
+                const baseDamage = this.getWeaponDamage(this.shootingCharacter);
+                
+                // Get distance for damage falloff
+                const distance = this.getDistance(this.shootingCharacter.position, position);
+                const maxRange = this.getWeaponRange(this.shootingCharacter);
+                
+                // Apply distance falloff (100% damage at point blank, 50% at max range)
+                const distanceFactor = 1 - (distance / maxRange) * 0.5;
+                const finalDamage = Math.round(baseDamage * distanceFactor);
+                
+                // Apply damage to target immediately
+                this.dispatch(UpdateStateEvent.damageCharacter, {
+                    targetName: targetCharacter.name,
+                    damage: finalDamage,
+                    attackerName: this.shootingCharacter.name
+                });
+                
+                console.log(`${this.shootingCharacter.name} shoots ${targetCharacter.name} for ${finalDamage} damage`);
+            }
             
             // Deduct action points for shooting
             const shootCost = this.shootingCharacter.actions.rangedCombat.shoot;
@@ -127,7 +172,7 @@ export class Shoot extends EventBus<
 
     // Helpers
     private showShootingRange(character: DeepReadonly<ICharacter>) {
-        const range = 20; // Default weapon range
+        const range = this.getWeaponRange(character);
         const angleOfVision = 120; // Default field of vision
 
         this.shootingCharacter = character;
@@ -138,6 +183,9 @@ export class Shoot extends EventBus<
             range,
             angleOfVision
         );
+
+        // Notify UI that shooting mode has started
+        this.dispatch(GUIEvent.shootingModeStart, undefined);
 
         // Highlight visible cells with intensity
         this.visibleCells.forEach(vc => {
@@ -152,6 +200,9 @@ export class Shoot extends EventBus<
             });
             this.visibleCells = undefined;
             this.shootingCharacter = undefined;
+            
+            // Notify UI that shooting mode has ended
+            this.dispatch(GUIEvent.shootingModeEnd, undefined);
         }
     }
 
@@ -214,5 +265,30 @@ export class Shoot extends EventBus<
         }
 
         return true;
+    }
+
+    private getEquippedRangedWeapon(character: DeepReadonly<ICharacter>) {
+        const primaryWeapon = character.inventory.equippedWeapons.primary;
+        const secondaryWeapon = character.inventory.equippedWeapons.secondary;
+        
+        if (primaryWeapon && primaryWeapon.category === 'ranged') {
+            return primaryWeapon;
+        }
+        
+        if (secondaryWeapon && secondaryWeapon.category === 'ranged') {
+            return secondaryWeapon;
+        }
+        
+        return null;
+    }
+
+    private getWeaponDamage(character: DeepReadonly<ICharacter>): number {
+        const weapon = this.getEquippedRangedWeapon(character);
+        return weapon ? weapon.damage : 5; // Default unarmed damage
+    }
+
+    private getWeaponRange(character: DeepReadonly<ICharacter>): number {
+        const weapon = this.getEquippedRangedWeapon(character);
+        return weapon ? weapon.range : 10; // Default range for unarmed/throwing
     }
 }

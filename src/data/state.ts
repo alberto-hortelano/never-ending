@@ -164,7 +164,9 @@ export const baseCharacter: ICharacter = {
             feint: 20,
             breakGuard: 20,
         }
-    }
+    },
+    health: 100,
+    maxHealth: 100
 };
 
 const createCharacter = (character?: Partial<ICharacter>): ICharacter => ({ ...structuredClone(baseCharacter), ...character });

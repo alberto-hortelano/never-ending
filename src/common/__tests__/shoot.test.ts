@@ -2,7 +2,7 @@
 import type { ICharacter, ICell, ICoord, Direction } from "../interfaces";
 import type { State } from "../State";
 
-import { superEventBus, ControlsEvent, GUIEvent } from "../events";
+import { superEventBus, ControlsEvent, GUIEvent, UpdateStateEvent } from "../events";
 import { Shoot } from "../Shoot";
 import { baseCharacter } from "../../data/state";
 
@@ -18,6 +18,8 @@ describe('Shoot', () => {
     // Helper function to create a mock character
     const createMockCharacter = (overrides: Partial<ICharacter> = {}): ICharacter => ({
         ...baseCharacter,
+        health: 100,
+        maxHealth: 100,
         ...overrides
     });
 
@@ -74,7 +76,7 @@ describe('Shoot', () => {
                 turn: 'human',
                 players: ['human', 'ai']
             },
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            characters: [],
         } as any;
 
         // Create Shoot instance
@@ -287,9 +289,22 @@ describe('Shoot', () => {
         });
     });
 
-    describe('cellClick event', () => {
-        it('should clear highlights when clicking on a visible cell', () => {
-            mockState.findCharacter.mockReturnValue(testCharacter);
+    describe('characterClick event', () => {
+        it('should clear highlights when clicking on a visible character', () => {
+            // Create a target character at the click position
+            const targetCharacter = createMockCharacter({
+                name: 'target',
+                position: { x: 7, y: 5 },
+                player: 'ai'
+            });
+
+            mockState.findCharacter.mockImplementation((name: string) => {
+                if (name === testCharacter.name) return testCharacter;
+                if (name === targetCharacter.name) return targetCharacter;
+                return undefined;
+            });
+            // Update the characters array in the mock state
+            (mockState as any).characters = [testCharacter, targetCharacter];
 
             const cellResetSpy = jest.fn();
             const listener = createTestListener();
@@ -298,15 +313,29 @@ describe('Shoot', () => {
             // First show shooting range
             superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
 
-            // Then click on a visible cell (directly in front)
-            superEventBus.dispatch(ControlsEvent.cellClick, { x: 7, y: 5 });
+            // Then click on the target character
+            superEventBus.dispatch(ControlsEvent.characterClick, {
+                characterName: 'target',
+                position: { x: 7, y: 5 }
+            });
 
             // Verify highlights were cleared
             expect(cellResetSpy).toHaveBeenCalled();
         });
 
-        it('should not clear highlights when clicking on non-visible cell', () => {
-            mockState.findCharacter.mockReturnValue(testCharacter);
+        it('should not clear highlights when clicking on non-visible character', () => {
+            // Create a target character outside visible range
+            const targetCharacter = createMockCharacter({
+                name: 'target',
+                position: { x: 1, y: 5 },
+                player: 'ai'
+            });
+
+            mockState.findCharacter.mockImplementation((name: string) => {
+                if (name === testCharacter.name) return testCharacter;
+                if (name === targetCharacter.name) return targetCharacter;
+                return undefined;
+            });
 
             const cellResetSpy = jest.fn();
             const listener = createTestListener();
@@ -315,11 +344,260 @@ describe('Shoot', () => {
             // Show shooting range
             superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
 
-            // Click on a cell behind the character (not visible)
-            superEventBus.dispatch(ControlsEvent.cellClick, { x: 1, y: 5 });
+            // Click on a character behind the shooter (not visible)
+            superEventBus.dispatch(ControlsEvent.characterClick, {
+                characterName: 'target',
+                position: { x: 1, y: 5 }
+            });
 
             // Verify highlights were not cleared
             expect(cellResetSpy).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('damage calculation', () => {
+        it('should dispatch projectile event when shooting a character', () => {
+            const targetCharacter = createMockCharacter({
+                name: 'target',
+                position: { x: 7, y: 5 },
+                player: 'ai'
+            });
+
+            // Set up character with weapon
+            testCharacter.inventory.equippedWeapons.primary = {
+                id: 'test-pistol',
+                name: 'Test Pistol',
+                description: 'Test weapon',
+                weight: 1,
+                icon: '🔫',
+                type: 'weapon',
+                weaponType: 'oneHanded',
+                category: 'ranged',
+                damage: 20,
+                range: 15
+            };
+
+            mockState.findCharacter.mockImplementation((name: string) => {
+                if (name === testCharacter.name) return testCharacter;
+                if (name === targetCharacter.name) return targetCharacter;
+                return undefined;
+            });
+            (mockState as any).characters = [testCharacter, targetCharacter];
+
+            const projectileSpy = jest.fn();
+            const listener = createTestListener();
+            listener.listen(GUIEvent.shootProjectile, projectileSpy);
+
+            // Show shooting range and shoot
+            superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+            superEventBus.dispatch(ControlsEvent.characterClick, {
+                characterName: 'target',
+                position: { x: 7, y: 5 }
+            });
+
+            // Verify projectile was fired
+            expect(projectileSpy).toHaveBeenCalledWith(expect.objectContaining({
+                from: testCharacter.position,
+                to: { x: 7, y: 5 },
+                type: expect.any(String)
+            }));
+        });
+
+        it('should determine projectile type based on weapon damage', () => {
+            const targetCharacter = createMockCharacter({
+                name: 'target',
+                position: { x: 7, y: 5 },
+                player: 'ai'
+            });
+
+            // High damage weapon should use laser
+            testCharacter.inventory.equippedWeapons.primary = {
+                id: 'test-rifle',
+                name: 'Test Rifle',
+                description: 'Test weapon',
+                weight: 1,
+                icon: '🔫',
+                type: 'weapon',
+                weaponType: 'twoHanded',
+                category: 'ranged',
+                damage: 50,
+                range: 20
+            };
+
+            mockState.findCharacter.mockImplementation((name: string) => {
+                if (name === testCharacter.name) return testCharacter;
+                if (name === targetCharacter.name) return targetCharacter;
+                return undefined;
+            });
+            (mockState as any).characters = [testCharacter, targetCharacter];
+
+            const projectileSpy = jest.fn();
+            const listener = createTestListener();
+            listener.listen(GUIEvent.shootProjectile, projectileSpy);
+
+            superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+            superEventBus.dispatch(ControlsEvent.characterClick, {
+                characterName: 'target',
+                position: { x: 7, y: 5 }
+            });
+
+            // High damage weapon should fire laser
+            expect(projectileSpy).toHaveBeenCalledWith(expect.objectContaining({
+                type: 'laser'
+            }));
+        });
+
+        it('should use bullet projectile when no weapon equipped', () => {
+            const targetCharacter = createMockCharacter({
+                name: 'target',
+                position: { x: 7, y: 5 },
+                player: 'ai'
+            });
+
+            // No weapon equipped
+            testCharacter.inventory.equippedWeapons.primary = null;
+            testCharacter.inventory.equippedWeapons.secondary = null;
+
+            mockState.findCharacter.mockImplementation((name: string) => {
+                if (name === testCharacter.name) return testCharacter;
+                if (name === targetCharacter.name) return targetCharacter;
+                return undefined;
+            });
+            (mockState as any).characters = [testCharacter, targetCharacter];
+
+            const projectileSpy = jest.fn();
+            const listener = createTestListener();
+            listener.listen(GUIEvent.shootProjectile, projectileSpy);
+
+            superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+            superEventBus.dispatch(ControlsEvent.characterClick, {
+                characterName: 'target',
+                position: { x: 7, y: 5 }
+            });
+
+            // No weapon should fire bullet
+            expect(projectileSpy).toHaveBeenCalledWith(expect.objectContaining({
+                type: 'bullet'
+            }));
+        });
+
+        it('should dispatch damageCharacter event to update health', () => {
+            const targetCharacter = createMockCharacter({
+                name: 'target',
+                position: { x: 7, y: 5 },
+                player: 'ai',
+                health: 100,
+                maxHealth: 100
+            });
+            
+            // Set up character with weapon
+            testCharacter.inventory.equippedWeapons.primary = {
+                id: 'test-pistol',
+                name: 'Test Pistol',
+                description: 'Test weapon',
+                weight: 1,
+                icon: '🔫',
+                type: 'weapon',
+                weaponType: 'oneHanded',
+                category: 'ranged',
+                damage: 20,
+                range: 15
+            };
+            
+            mockState.findCharacter.mockImplementation((name: string) => {
+                if (name === testCharacter.name) return testCharacter;
+                if (name === targetCharacter.name) return targetCharacter;
+                return undefined;
+            });
+            (mockState as any).characters = [testCharacter, targetCharacter];
+
+            const damageSpy = jest.fn();
+            const listener = createTestListener();
+            listener.listen(UpdateStateEvent.damageCharacter, damageSpy);
+
+            // Show shooting range and shoot
+            superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+            superEventBus.dispatch(ControlsEvent.characterClick, {
+                characterName: 'target',
+                position: { x: 7, y: 5 }
+            });
+            
+            // Verify damage event was dispatched immediately
+            expect(damageSpy).toHaveBeenCalledWith(expect.objectContaining({
+                targetName: 'target',
+                attackerName: 'test',
+                damage: expect.any(Number)
+            }));
+            
+            // Verify damage amount is correct (with distance falloff)
+            const damageCall = damageSpy.mock.calls[0][0];
+            expect(damageCall.damage).toBeGreaterThan(0);
+            expect(damageCall.damage).toBeLessThanOrEqual(20); // Max weapon damage
+        });
+
+        it('should apply distance falloff to damage', () => {
+            // Create two targets at different distances
+            const closeTarget = createMockCharacter({
+                name: 'closeTarget',
+                position: { x: 6, y: 5 }, // 1 unit away
+                player: 'ai'
+            });
+            
+            const farTarget = createMockCharacter({
+                name: 'farTarget',
+                position: { x: 12, y: 5 }, // 7 units away (within 20 range)
+                player: 'ai'
+            });
+            
+            // Set up character with weapon
+            testCharacter.inventory.equippedWeapons.primary = {
+                id: 'test-rifle',
+                name: 'Test Rifle',
+                description: 'Test weapon',
+                weight: 1,
+                icon: '🔫',
+                type: 'weapon',
+                weaponType: 'twoHanded',
+                category: 'ranged',
+                damage: 50,
+                range: 20
+            };
+            
+            mockState.findCharacter.mockImplementation((name: string) => {
+                if (name === testCharacter.name) return testCharacter;
+                if (name === closeTarget.name) return closeTarget;
+                if (name === farTarget.name) return farTarget;
+                return undefined;
+            });
+            (mockState as any).characters = [testCharacter, closeTarget, farTarget];
+
+            const damageSpy = jest.fn();
+            const listener = createTestListener();
+            listener.listen(UpdateStateEvent.damageCharacter, damageSpy);
+
+            // Shoot close target
+            superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+            superEventBus.dispatch(ControlsEvent.characterClick, {
+                characterName: 'closeTarget',
+                position: { x: 6, y: 5 }
+            });
+            
+            const closeDamage = damageSpy.mock.calls[0][0].damage;
+            
+            // Clear and shoot far target
+            damageSpy.mockClear();
+            superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+            superEventBus.dispatch(ControlsEvent.characterClick, {
+                characterName: 'farTarget',
+                position: { x: 12, y: 5 }
+            });
+            
+            const farDamage = damageSpy.mock.calls[0][0].damage;
+            
+            // Close target should take more damage than far target
+            expect(closeDamage).toBeGreaterThan(farDamage);
+            expect(closeDamage).toBeLessThanOrEqual(50); // Max weapon damage
+            expect(farDamage).toBeGreaterThan(0);
         });
     });
 

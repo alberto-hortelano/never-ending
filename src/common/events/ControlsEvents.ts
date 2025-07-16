@@ -16,6 +16,7 @@ export enum ControlsEvent {
     inventory = 'ControlsEvent.inventory',
     showInventory = 'ControlsEvent.showInventory',
     equipWeapon = 'ControlsEvent.equipWeapon',
+    characterClick = 'ControlsEvent.characterClick',
 }
 
 export interface ControlsEventsMap {
@@ -38,5 +39,9 @@ export interface ControlsEventsMap {
         characterName: string;
         weaponId: string;
         slot: 'primary' | 'secondary';
+    };
+    [ControlsEvent.characterClick]: {
+        characterName: string;
+        position: DeepReadonly<ICoord>;
     };
 }

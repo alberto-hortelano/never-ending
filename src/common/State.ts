@@ -25,6 +25,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.listen(UpdateStateEvent.unequipWeapon, (data) => this.onUnequipWeapon(data));
         this.listen(UpdateStateEvent.deductActionPoints, (data) => this.onDeductActionPoints(data));
         this.listen(UpdateStateEvent.resetActionPoints, (data) => this.onResetActionPoints(data));
+        this.listen(UpdateStateEvent.damageCharacter, (data) => this.onDamageCharacter(data));
         this.listen(GameEvent.changeTurn, (data) => this.onChangeTurn(data));
     }
     // Listeners
@@ -165,6 +166,27 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
                 this.dispatch(StateChangeEvent.characterActions, structuredClone(character));
             }
         });
+        this.save();
+    }
+    private onDamageCharacter(data: UpdateStateEventsMap[UpdateStateEvent.damageCharacter]) {
+        const character = this.#findCharacter(data.targetName);
+        if (!character) {
+            throw new Error(`No character "${data.targetName}" found`);
+        }
+        
+        // Apply damage
+        const previousHealth = character.health;
+        character.health = Math.max(0, character.health - data.damage);
+        
+        // Dispatch health change event
+        this.dispatch(StateChangeEvent.characterHealth, structuredClone(character));
+        
+        // Check if character is defeated
+        if (character.health === 0 && previousHealth > 0) {
+            console.log(`${character.name} has been defeated!`);
+            this.dispatch(StateChangeEvent.characterDefeated, structuredClone(character));
+        }
+        
         this.save();
     }
     // Setters

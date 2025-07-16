@@ -104,6 +104,8 @@ export interface ICharacter extends IMovable {
     };
     inventory: IInventory;
     actions: ICharacterActions;
+    health: number;
+    maxHealth: number;
 }
 export interface IMessage {
     role: 'user' | 'assistant';

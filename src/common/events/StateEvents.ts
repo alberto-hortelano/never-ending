@@ -20,6 +20,8 @@ export enum UpdateStateEvent {
     deductActionPoints = 'UpdateStateEvent.deductActionPoints',
     /** Reset action points for all characters of a player */
     resetActionPoints = 'UpdateStateEvent.resetActionPoints',
+    /** Apply damage to a character */
+    damageCharacter = 'UpdateStateEvent.damageCharacter',
 }
 
 export interface UpdateStateEventsMap {
@@ -48,6 +50,11 @@ export interface UpdateStateEventsMap {
     [UpdateStateEvent.resetActionPoints]: {
         player: string;
     };
+    [UpdateStateEvent.damageCharacter]: {
+        targetName: string;
+        damage: number;
+        attackerName?: string;
+    };
 }
 
 /** Events when the state has changed. All can listen. Only State can dispatch */
@@ -63,6 +70,8 @@ export enum StateChangeEvent {
     messages = 'StateChangeEvent.messages',
     characterInventory = 'StateChangeEvent.characterInventory',
     characterActions = 'StateChangeEvent.characterActions',
+    characterHealth = 'StateChangeEvent.characterHealth',
+    characterDefeated = 'StateChangeEvent.characterDefeated',
 }
 
 export interface StateChangeEventsMap {
@@ -75,4 +84,6 @@ export interface StateChangeEventsMap {
     [StateChangeEvent.messages]: DeepReadonly<IState['messages']>;
     [StateChangeEvent.characterInventory]: DeepReadonly<ICharacter>;
     [StateChangeEvent.characterActions]: DeepReadonly<ICharacter>;
+    [StateChangeEvent.characterHealth]: DeepReadonly<ICharacter>;
+    [StateChangeEvent.characterDefeated]: DeepReadonly<ICharacter>;
 }

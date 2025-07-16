@@ -19,6 +19,8 @@ export default class Characters extends Component {
             characterElement.dataset.race = characterData.race;
             characterElement.dataset.direction = characterData.direction;
             characterElement.dataset.player = characterData.player;
+            characterElement.dataset.health = characterData.health.toString();
+            characterElement.dataset.maxHealth = characterData.maxHealth.toString();
             this.appendChild(characterElement);
         });
     }

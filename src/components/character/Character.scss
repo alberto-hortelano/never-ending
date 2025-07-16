@@ -17,6 +17,36 @@ $transition-duration: $transition-duration-base;
     pointer-events: auto;
 }
 
+:host(.shooting-mode) {
+    cursor: crosshair;
+
+    &:hover .character:not(.current-player) {
+        filter: brightness(1.2);
+        transform: scale(1.05);
+        transition: all 0.2s ease;
+
+        &::after {
+            background: rgba(255, 0, 0, 0.3);
+            animation: pulse 1s ease-in-out infinite;
+        }
+    }
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.5;
+    }
+
+    50% {
+        transform: scale(1.2);
+        opacity: 0.8;
+    }
+}
+
+
 .character.current-player {
     &::before {
         content: '';
@@ -42,6 +72,37 @@ $transition-duration: $transition-duration-base;
 
     50% {
         transform: translateY(calc(-10 * var(--size)));
+    }
+}
+
+.health-bar {
+    position: absolute;
+    top: calc(-70 * var(--size));
+    left: calc(-40 * var(--size));
+    width: calc(80 * var(--size));
+    height: calc(8 * var(--size));
+    background-color: rgba(0, 0, 0, 0.3);
+    border: calc(1 * var(--size)) solid $color-border-primary;
+    border-radius: calc(4 * var(--size));
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.health-bar-fill {
+    height: 100%;
+    background-color: $color-danger;
+    transition: width 0.3s ease-out;
+    width: 100%;
+}
+
+.character.defeated {
+    opacity: 0.5;
+    filter: grayscale(1);
+    transition: opacity 0.5s ease-out, filter 0.5s ease-out;
+
+    // Hide turn indicator for defeated characters
+    &::before {
+        display: none;
     }
 }
 
