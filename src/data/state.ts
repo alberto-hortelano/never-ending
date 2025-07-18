@@ -183,10 +183,14 @@ const data: Partial<ICharacter> = {
         suit: 'gold',
     },
     inventory: {
-        items: [...weapons.slice(3, 4), ...items.slice(1, 2), ...items.slice(1, 2)], // Rifle and 2 energy cells
+        items: [
+            weapons.find(w => w.name === 'Pulse Rifle'),
+            items.find(i => i.name === 'Energy Cell'),
+            items.find(i => i.name === 'Energy Cell')
+        ].filter(i => !!i), // Rifle and 2 energy cells
         maxWeight: 50,
         equippedWeapons: {
-            primary: weapons[3] ?? null, // Rifle equipped
+            primary: weapons.find(w => w.name === 'Pulse Rifle') ?? null, // Rifle equipped
             secondary: null
         }
     },
@@ -203,11 +207,16 @@ const player: Partial<ICharacter> = {
         suit: 'white',
     },
     inventory: {
-        items: [...weapons.slice(0, 2), ...items.slice(0, 1), ...items.slice(2, 3)], // Pistol, sword, medkit, ration
+        items: [
+            weapons.find(w => w.name === 'Energy Pistol'),
+            weapons.find(w => w.name === 'Plasma Sword'),
+            items.find(i => i.name === 'Medkit'),
+            items.find(i => i.name === 'Food Ration')
+        ].filter(i => !!i), // Pistol, sword, medkit, ration
         maxWeight: 50,
         equippedWeapons: {
-            primary: weapons[0] ?? null, // Pistol
-            secondary: weapons[1] ?? null  // Sword
+            primary: weapons.find(w => w.name === 'Energy Pistol') ?? null, // Pistol
+            secondary: weapons.find(w => w.name === 'Plasma Sword') ?? null  // Sword
         }
     }
 };
@@ -223,10 +232,14 @@ const enemy: Partial<ICharacter> = {
         suit: 'red',
     },
     inventory: {
-        items: [...weapons.slice(2, 3), ...weapons.slice(4, 5), ...items.slice(3, 4)], // Knife, spear, keycard
+        items: [
+            weapons.find(w => w.name === 'Pulse Rifle'),
+            weapons.find(w => w.name === 'Energy Spear'),
+            items.find(i => i.name === 'Security Keycard')
+        ].filter(i => !!i), // Knife, spear, keycard
         maxWeight: 50,
         equippedWeapons: {
-            primary: weapons[4] ?? null, // Spear (two-handed)
+            primary: weapons.find(w => w.name === 'Energy Spear') ?? null, // Spear (two-handed)
             secondary: null
         }
     }
