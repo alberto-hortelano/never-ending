@@ -6,23 +6,29 @@ import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { IMessage } from '../common/interfaces';
 import { initialSetup } from '../prompts/shortPrompts';
+import { Server } from 'http';
+import { WebSocketServer } from './WebSocketServer';
 
 export class Api {
     private dirname = dirname(fileURLToPath(import.meta.url));
     private publicDir = resolve(this.dirname, '../../public');
+    private server: Server;
 
     constructor(
         private app: Express,
         private port = 3000,
     ) {
         this.start();
-        this.listen();
+        this.server = this.listen();
+        new WebSocketServer(this.server);
     }
 
     private listen() {
-        this.app.listen(this.port, () => {
+        const server = this.app.listen(this.port, () => {
             console.log(`Static server running at http://localhost:${this.port}`);
+            console.log(`WebSocket server running on ws://localhost:${this.port}`);
         });
+        return server;
     }
 
     private start() {

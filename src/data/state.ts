@@ -248,7 +248,11 @@ export const initialState = (x: number, y: number, playerData: Partial<ICharacte
     // State
     const game: IGame = {
         turn: 'human',
-        players: ['human', 'ai']
+        players: ['human', 'ai'],
+        playerInfo: {
+            'human': { name: 'Player', isAI: false },
+            'ai': { name: 'AI', isAI: true }
+        }
     }
     const mapGenerator = new MapGenerator(x, y);
     const player = createCharacter(playerData);
@@ -273,7 +277,7 @@ export const initialState = (x: number, y: number, playerData: Partial<ICharacte
         // { size: 5, name: 'room18' },
     ], player.position)
     const map = mapGenerator.getCells();
-    const characters: ICharacter[] = [playerData, ...charactersData].map(createCharacter);
+    const characters: ICharacter[] = [player, ...charactersData.map(createCharacter)];
     const messages: IMessage[] = [];
     const initialState: IState = {
         game,

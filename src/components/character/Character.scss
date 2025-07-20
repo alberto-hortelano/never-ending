@@ -419,3 +419,27 @@ body {
         transform: none;
     }
 }
+
+// Multiplayer ownership indicators
+.my-character {
+    // Add a subtle green glow for your characters
+    filter: drop-shadow(0 0 calc(5 * var(--size)) rgba(0, 255, 0, 0.3));
+    
+    &.current-player {
+        // Stronger glow when it's your turn
+        filter: drop-shadow(0 0 calc(10 * var(--size)) rgba(0, 255, 0, 0.6));
+    }
+}
+
+.opponent-character {
+    // Add a subtle red glow for opponent characters
+    filter: drop-shadow(0 0 calc(5 * var(--size)) rgba(255, 0, 0, 0.3));
+    
+    &.current-player {
+        // Stronger glow when it's opponent's turn
+        filter: drop-shadow(0 0 calc(10 * var(--size)) rgba(255, 0, 0, 0.6));
+    }
+    
+    // Make opponent characters slightly less interactive looking
+    opacity: 0.9;
+}

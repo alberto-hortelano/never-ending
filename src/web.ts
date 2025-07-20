@@ -9,6 +9,7 @@ import { Conversation } from "./common/Conversation";
 import { Action } from "./common/Action";
 import { Inventory } from "./common/services/Inventory";
 import { CharacterService } from "./common/services/CharacterService";
+import { MultiplayerManager } from "./common/services/MultiplayerManager";
 import { GameEvent, EventBus } from "./common/events";
 import { initialState } from './data/state';
 
@@ -17,20 +18,82 @@ document.documentElement.style.setProperty('--cell-width', '4dvh');
 document.documentElement.style.setProperty('--size', 'calc(var(--cell-width, 2dvh) * 0.007)');
 document.documentElement.style.setProperty('--mobile-popup-height', '50vh');
 
-const play = () => {
-    const state = new State(initialState(50, 50));
-    // only for debugging purposes! Dont get state from window!!!
-    // (window as any).state = state;
-    // Initialize singleton services
-    CharacterService.initialize(state);
+let gameState: State | null = null;
+let gameServices: any[] = [];
 
-    new Movement(state);
-    new Talk(state);
-    new Shoot(state);
-    new Rotate(state);
-    new Inventory(state);
-    new Conversation();
-    new Action(state);
+const play = (state?: State) => {
+    // Clean up previous game services
+    gameServices.forEach(service => {
+        if (service && typeof service.destroy === 'function') {
+            service.destroy();
+        }
+    });
+    gameServices = [];
+
+    // Use provided state or create new one
+    gameState = state || new State(initialState(50, 50));
+    
+    // Initialize singleton services
+    CharacterService.initialize(gameState);
+
+    // Create new game services
+    gameServices.push(
+        new Movement(gameState),
+        new Talk(gameState),
+        new Shoot(gameState),
+        new Rotate(gameState),
+        new Inventory(gameState),
+        new Conversation(),
+        new Action(gameState)
+    );
+
+    // Show game UI
+    const container = document.querySelector('container-component');
+    const turnIndicator = document.querySelector('turn-indicator');
+    if (container) container.setAttribute('style', 'display: block;');
+    if (turnIndicator) turnIndicator.setAttribute('style', 'display: block;');
 }
+
+// Initialize event listeners
 const eventBus = new EventBus<any, any>();
-eventBus.listen(GameEvent.play, play);
+const multiplayerManager = MultiplayerManager.getInstance();
+
+// Listen for game start from select character
+eventBus.listen(GameEvent.play, () => play());
+
+// Listen for menu events
+const mainMenu = document.querySelector('main-menu');
+if (mainMenu) {
+    mainMenu.addEventListener('startSinglePlayer', () => {
+        // Get the state that was created by switchToSinglePlayer
+        const state = multiplayerManager.getState();
+        if (state) {
+            play(state);
+        } else {
+            play();
+        }
+    });
+
+    mainMenu.addEventListener('startMultiplayer', () => {
+        // Multiplayer game will be started by the MultiplayerManager
+        const state = multiplayerManager.getState();
+        if (state) {
+            play(state);
+        }
+    });
+}
+
+// Listen for multiplayer events
+multiplayerManager.listen('multiplayerGameStarted', (event: any) => {
+    // Use the initial state data to create the game state
+    const gameState = new State(event.state);
+    
+    // IMPORTANT: Set the state back to MultiplayerManager so it can handle events
+    multiplayerManager.setGameState(gameState);
+    
+    play(gameState);
+});
+
+multiplayerManager.listen('stateSynced', () => {
+    // State has been synced, UI will update automatically through events
+});

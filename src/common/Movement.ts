@@ -8,6 +8,11 @@ import {
     UpdateStateEventsMap, GUIEvent, GUIEventsMap, StateChangeEvent, StateChangeEventsMap,
 } from "./events";
 
+// Type for character path event with network flag
+interface NetworkCharacterPath extends StateChangeEventsMap[StateChangeEvent.characterPath] {
+    fromNetwork?: boolean;
+}
+
 
 export class Movement extends EventBus<
     GameEventsMap & GUIEventsMap & ControlsEventsMap & StateChangeEventsMap,
@@ -16,15 +21,31 @@ export class Movement extends EventBus<
 
     private movingCharacter?: DeepReadonly<ICharacter>;
     private reachableCells?: ICoord[];
+    private listeners: Array<{ event: string; handler: Function }> = [];
 
     constructor(
         private state: State,
     ) {
         super();
-        this.listen(ControlsEvent.cellClick, position => this.onCellClick(position));
-        this.listen(ControlsEvent.showMovement, character => this.onShowMovement(character));
-        this.listen(GUIEvent.movementEnd, characterName => this.onMovementEnd(characterName));
-        this.listen(StateChangeEvent.characterPath, character => this.onCharacterPath(character));
+        // Store references to listeners for cleanup
+        this.addListener(ControlsEvent.cellClick, position => this.onCellClick(position));
+        this.addListener(ControlsEvent.showMovement, character => this.onShowMovement(character));
+        this.addListener(GUIEvent.movementEnd, characterName => this.onMovementEnd(characterName));
+        this.addListener(StateChangeEvent.characterPath, character => this.onCharacterPath(character));
+    }
+    
+    private addListener<K extends keyof (GameEventsMap & GUIEventsMap & ControlsEventsMap & StateChangeEventsMap)>(
+        event: K,
+        handler: (data: (GameEventsMap & GUIEventsMap & ControlsEventsMap & StateChangeEventsMap)[K]) => void
+    ) {
+        this.listen(event, handler);
+        this.listeners.push({ event: event as string, handler });
+    }
+    
+    destroy() {
+        // Remove all listeners for this Movement instance
+        this.remove(this);
+        this.listeners = [];
     }
     // Listeners
     private onCellClick(position: ControlsEventsMap[ControlsEvent.cellClick]) {
@@ -33,11 +54,25 @@ export class Movement extends EventBus<
         }
     }
     private onCharacterPath(character: StateChangeEventsMap[StateChangeEvent.characterPath]) {
+        const networkCharacter = character as NetworkCharacterPath;
+        const isNetworkUpdate = networkCharacter.fromNetwork;
+        
+        // For all path updates, we need to animate the movement
         const path = [...character.path];
         const position = path.shift();
         if (position) {
             // Get the latest character from state to ensure we have the current position
             const currentCharacter = this.state.findCharacter(character.name) || character;
+            
+            // Check if we need to move or if we're already at the target
+            if (currentCharacter.position.x === position.x && currentCharacter.position.y === position.y) {
+                // Already at this position, continue with next position in path
+                if (path.length > 0) {
+                    this.dispatch(UpdateStateEvent.characterPath, { ...character, path });
+                }
+                return;
+            }
+            
             const dx = position.x - currentCharacter.position.x;
             const dy = position.y - currentCharacter.position.y;
             let direction = currentCharacter.direction;
@@ -61,7 +96,6 @@ export class Movement extends EventBus<
         // Check if the character belongs to the current turn
         const currentTurn = this.state.game.turn;
         if (character.player !== currentTurn) {
-            console.log(`${characterName} cannot be moved by ${currentTurn} - belongs to ${character.player}`);
             return;
         }
 
@@ -72,13 +106,17 @@ export class Movement extends EventBus<
         if (character) {
             this.moveCharacter(character);
             
-            // Deduct action points for movement
-            const moveCost = character.actions.general.move;
-            this.dispatch(UpdateStateEvent.deductActionPoints, {
-                characterName: character.name,
-                actionId: 'move',
-                cost: moveCost
-            });
+            // Only deduct action points if this is the current player's character
+            // Network movements already had action points deducted on the originating client
+            const currentTurn = this.state.game.turn;
+            if (character.player === currentTurn) {
+                const moveCost = character.actions.general.move;
+                this.dispatch(UpdateStateEvent.deductActionPoints, {
+                    characterName: character.name,
+                    actionId: 'move',
+                    cost: moveCost
+                });
+            }
         }
     }
     // Helpers

@@ -1,0 +1,62 @@
+@use '../variables' as *;
+
+:host {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: $color-bg-primary;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 900;
+}
+
+.menu-container {
+    text-align: center;
+    padding: $spacing-2xl;
+}
+
+.game-title {
+    font-size: 1.5rem; // 24px - larger than xl
+    color: $color-text-primary;
+    margin-bottom: $spacing-2xl;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    text-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.5);
+}
+
+.menu-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-lg;
+    align-items: center;
+}
+
+.menu-button {
+    min-width: 250px;
+    padding: $spacing-md $spacing-xl;
+    background-color: $color-bg-secondary;
+    color: $color-text-primary;
+    border: 2px solid $color-border-primary;
+    border-radius: $border-radius-md;
+    font-size: $font-size-lg;
+    font-weight: $font-weight-medium;
+    cursor: pointer;
+    transition: $transition-all;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    
+    &:hover {
+        background-color: $color-bg-tertiary;
+        border-color: $color-highlight;
+        transform: translateY(-2px);
+        box-shadow: $shadow-lg;
+    }
+    
+    &:active {
+        transform: translateY(0);
+        box-shadow: $shadow-sm;
+    }
+}

@@ -1,4 +1,4 @@
-import { GameEvent, StateChangeEvent, StateChangeEventsMap, GUIEvent, GUIEventsMap } from "../../common/events";
+import { StateChangeEvent, StateChangeEventsMap, GUIEvent, GUIEventsMap } from "../../common/events";
 import { Component } from "../Component";
 import { DragScroll } from "../../common/helpers/DragScroll";
 import { ICoord } from "../../common/interfaces";
@@ -32,7 +32,7 @@ export default class Board extends Component {
     this.listen(GUIEvent.popupHide, () => {
       this.classList.remove('popup-active');
     });
-    
+
     // Listen for shoot projectile events
     this.listen(GUIEvent.shootProjectile, (data) => this.createProjectile(data));
   }
@@ -54,7 +54,6 @@ export default class Board extends Component {
         });
       }
     });
-    this.dispatch(GameEvent.play, true);
     return root;
   }
 
@@ -108,7 +107,7 @@ export default class Board extends Component {
 
     this.dragger?.scrollTo(scrollPosition);
   }
-  
+
   private createProjectile(data: GUIEventsMap[GUIEvent.shootProjectile]) {
     console.log('Creating projectile in Board:', data);
     const projectile = document.createElement('projectile-component');
@@ -117,10 +116,10 @@ export default class Board extends Component {
     projectile.dataset.toX = data.to.x.toString();
     projectile.dataset.toY = data.to.y.toString();
     projectile.dataset.type = data.type;
-    
+
     console.log('Appending projectile to board');
     this.appendChild(projectile);
-    
+
     // Log the projectile element for easy inspection
     console.log('PROJECTILE ELEMENT:', projectile);
     console.log('You can inspect it by right-clicking on the element above in the console');

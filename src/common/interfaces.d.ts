@@ -7,6 +7,7 @@ export interface IState {
 export interface IGame {
     turn: string;
     players: string[];
+    playerInfo?: Record<string, { name: string; isAI?: boolean }>;
 }
 export interface ICoord {
     x: number;

@@ -4,6 +4,11 @@ import { UpdateStateEvent, EventBus, UpdateStateEventsMap, StateChangeEventsMap,
 import { DeepReadonly } from "./helpers/types";
 import { getBaseState } from '../data/state';
 
+// Type for network event data
+interface NetworkEventData {
+    fromNetwork?: boolean;
+}
+
 export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateChangeEventsMap & ControlsEventsMap> {
     #game: IState['game'] = { turn: '', players: [] };
     #map: IState['map'] = [];
@@ -28,16 +33,41 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.listen(UpdateStateEvent.damageCharacter, (data) => this.onDamageCharacter(data));
         this.listen(GameEvent.changeTurn, (data) => this.onChangeTurn(data));
     }
+    
+    // Helper method to check if action is from current player's turn
+    private isValidTurn(characterName: string, fromNetwork?: boolean): boolean {
+        // If it's from network, skip validation (already validated on sender's side)
+        if (fromNetwork) return true;
+        
+        const character = this.#findCharacter(characterName);
+        if (!character) return false;
+        
+        // Check if it's the character's player's turn
+        return character.player === this.#game.turn;
+    }
+    
     // Listeners
     private onCharacterPosition(characterData: UpdateStateEventsMap[UpdateStateEvent.characterPosition]) {
         const character = this.#findCharacter(characterData.name);
         if (!character) {
             throw new Error(`No character "${characterData.name}" found`);
         }
+        
+        // Validate turn for non-network actions
+        const fromNetwork = (characterData as NetworkEventData).fromNetwork;
+        
+        if (!this.isValidTurn(characterData.name, fromNetwork)) {
+            console.warn(`Invalid turn: ${character.player} tried to move during ${this.#game.turn}'s turn`);
+            return;
+        }
+        
         character.position = characterData.position;
         character.direction = characterData.direction;
-        // No one is listening
-        // this.dispatch(StateChangeEvent.characterPosition, structuredClone(character));
+        
+        // Dispatch the position change so UI components can update
+        // Include the fromNetwork flag so components know if this is a network update
+        const eventData = { ...structuredClone(character), fromNetwork };
+        this.dispatch(StateChangeEvent.characterPosition, eventData);
         this.save();
     }
     private onCharacterPath(characterData: UpdateStateEventsMap[UpdateStateEvent.characterPosition]) {
@@ -45,14 +75,32 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         if (!character) {
             throw new Error(`No character "${characterData.name}" found`);
         }
+        
+        // Validate turn for non-network actions
+        const fromNetwork = (characterData as NetworkEventData).fromNetwork;
+        if (!this.isValidTurn(characterData.name, fromNetwork)) {
+            console.warn(`Invalid turn: ${character.player} tried to set path during ${this.#game.turn}'s turn`);
+            return;
+        }
+        
         character.path = [...characterData.path];
-        this.dispatch(StateChangeEvent.characterPath, structuredClone(character));
+        // Include the fromNetwork flag so components know if this is a network update
+        const eventData = { ...structuredClone(character), fromNetwork };
+        this.dispatch(StateChangeEvent.characterPath, eventData);
     }
     private onCharacterDirection(data: UpdateStateEventsMap[UpdateStateEvent.characterDirection]) {
         const character = this.#findCharacter(data.characterName);
         if (!character) {
             throw new Error(`No character "${data.characterName}" found`);
         }
+        
+        // Validate turn for non-network actions
+        const fromNetwork = (data as NetworkEventData).fromNetwork;
+        if (!this.isValidTurn(data.characterName, fromNetwork)) {
+            console.warn(`Invalid turn: ${character.player} tried to rotate during ${this.#game.turn}'s turn`);
+            return;
+        }
+        
         character.direction = data.direction;
         // No one is listening
         // this.dispatch(StateChangeEvent.characterDirection, structuredClone(character));
@@ -72,6 +120,14 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         if (!character) {
             throw new Error(`No character "${data.characterName}" found`);
         }
+        
+        // Validate turn for non-network actions
+        const fromNetwork = (data as NetworkEventData).fromNetwork;
+        if (!this.isValidTurn(data.characterName, fromNetwork)) {
+            console.warn(`Invalid turn: ${character.player} tried to update inventory during ${this.#game.turn}'s turn`);
+            return;
+        }
+        
         character.inventory = structuredClone(data.inventory) as IInventory;
         this.dispatch(StateChangeEvent.characterInventory, structuredClone(character));
         this.save();
@@ -151,6 +207,13 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
             throw new Error(`No character "${data.characterName}" found`);
         }
         
+        // Validate turn for non-network actions
+        const fromNetwork = (data as NetworkEventData).fromNetwork;
+        if (!this.isValidTurn(data.characterName, fromNetwork)) {
+            console.warn(`Invalid turn: ${character.player} tried to use action points during ${this.#game.turn}'s turn`);
+            return;
+        }
+        
         // Deduct the action points
         character.actions.pointsLeft = Math.max(0, character.actions.pointsLeft - data.cost);
         
@@ -183,7 +246,6 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         
         // Check if character is defeated
         if (character.health === 0 && previousHealth > 0) {
-            console.log(`${character.name} has been defeated!`);
             this.dispatch(StateChangeEvent.characterDefeated, structuredClone(character));
         }
         
