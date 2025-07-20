@@ -25,6 +25,7 @@ export default {
   ],
   testPathIgnorePatterns: [
     '/node_modules/',
-    '/public/'
+    '/public/',
+    '\\.helper\\.ts$'
   ]
 };

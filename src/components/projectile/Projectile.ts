@@ -1,4 +1,5 @@
 import { Component } from "../Component";
+import { UpdateStateEvent } from "../../common/events";
 
 export default class Projectile extends Component {
     protected override hasCss = true;
@@ -21,14 +22,6 @@ export default class Projectile extends Component {
         this.toY = parseFloat(this.dataset.toY || '0');
         this.type = (this.dataset.type as 'bullet' | 'laser') || 'bullet';
 
-        console.log('Projectile created:', {
-            from: { x: this.fromX, y: this.fromY },
-            to: { x: this.toX, y: this.toY },
-            type: this.type
-        });
-        console.log('PROJECTILE COMPONENT INSTANCE:', this);
-        console.log('PROJECTILE SHADOW ROOT:', root);
-
         // Calculate angle
         const dx = this.toX - this.fromX;
         const dy = this.toY - this.fromY;
@@ -45,9 +38,14 @@ export default class Projectile extends Component {
         const projectileElement = root.querySelector('.projectile');
         projectileElement?.classList.add(this.type);
 
-        // Remove after animation (60 seconds)
+        // Schedule removal through state after animation duration
         setTimeout(() => {
-            this.remove();
+            // Dispatch event to remove this projectile from state
+            if (this.id) {
+                this.dispatch(UpdateStateEvent.uiRemoveProjectile, {
+                    projectileId: this.id
+                });
+            }
         }, 400); // Match animation duration
 
         return root;

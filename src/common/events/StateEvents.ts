@@ -1,4 +1,8 @@
-import type { ICharacter, IState, IMessage, Direction, IInventory } from '../interfaces';
+import type { 
+    ICharacter, IState, IMessage, Direction, IInventory,
+    ICharacterAnimation, ICharacterVisualState, ICellVisualState,
+    IPopupState, IProjectileState, IHighlightStates, IInteractionMode
+} from '../interfaces';
 import type { DeepReadonly } from "../helpers/types";
 
 /** Events to update state. Only State can listen. All can dispatch */
@@ -22,6 +26,26 @@ export enum UpdateStateEvent {
     resetActionPoints = 'UpdateStateEvent.resetActionPoints',
     /** Apply damage to a character */
     damageCharacter = 'UpdateStateEvent.damageCharacter',
+    
+    // UI State Events
+    /** Update character animation state */
+    uiCharacterAnimation = 'UpdateStateEvent.uiCharacterAnimation',
+    /** Update character visual state */
+    uiCharacterVisual = 'UpdateStateEvent.uiCharacterVisual',
+    /** Update cell visual state */
+    uiCellVisual = 'UpdateStateEvent.uiCellVisual',
+    /** Update board visual state */
+    uiBoardVisual = 'UpdateStateEvent.uiBoardVisual',
+    /** Update popup state */
+    uiPopup = 'UpdateStateEvent.uiPopup',
+    /** Add projectile */
+    uiAddProjectile = 'UpdateStateEvent.uiAddProjectile',
+    /** Remove projectile */
+    uiRemoveProjectile = 'UpdateStateEvent.uiRemoveProjectile',
+    /** Update highlight states */
+    uiHighlights = 'UpdateStateEvent.uiHighlights',
+    /** Update interaction mode */
+    uiInteractionMode = 'UpdateStateEvent.uiInteractionMode',
 }
 
 export interface UpdateStateEventsMap {
@@ -55,6 +79,36 @@ export interface UpdateStateEventsMap {
         damage: number;
         attackerName?: string;
     };
+    
+    // UI State Events
+    [UpdateStateEvent.uiCharacterAnimation]: {
+        characterId: string;
+        animation: DeepReadonly<ICharacterAnimation> | null;
+    };
+    [UpdateStateEvent.uiCharacterVisual]: {
+        characterId: string;
+        visualState: Partial<DeepReadonly<ICharacterVisualState>>;
+    };
+    [UpdateStateEvent.uiCellVisual]: {
+        cellKey: string; // "x,y" format
+        visualState: Partial<DeepReadonly<ICellVisualState>> | null;
+    };
+    [UpdateStateEvent.uiBoardVisual]: {
+        updates: Partial<DeepReadonly<{
+            mapWidth?: number;
+            mapHeight?: number;
+            centerPosition?: { x: number; y: number };
+            hasPopupActive?: boolean;
+        }>>;
+    };
+    [UpdateStateEvent.uiPopup]: {
+        popupId: string;
+        popupState: DeepReadonly<IPopupState> | null;
+    };
+    [UpdateStateEvent.uiAddProjectile]: DeepReadonly<IProjectileState>;
+    [UpdateStateEvent.uiRemoveProjectile]: { projectileId: string };
+    [UpdateStateEvent.uiHighlights]: Partial<DeepReadonly<IHighlightStates>>;
+    [UpdateStateEvent.uiInteractionMode]: DeepReadonly<IInteractionMode>;
 }
 
 /** Events when the state has changed. All can listen. Only State can dispatch */
@@ -72,6 +126,16 @@ export enum StateChangeEvent {
     characterActions = 'StateChangeEvent.characterActions',
     characterHealth = 'StateChangeEvent.characterHealth',
     characterDefeated = 'StateChangeEvent.characterDefeated',
+    
+    // UI State Change Events
+    /** UI animations state changed */
+    uiAnimations = 'StateChangeEvent.uiAnimations',
+    /** UI visual states changed */
+    uiVisualStates = 'StateChangeEvent.uiVisualStates',
+    /** UI transient state changed */
+    uiTransient = 'StateChangeEvent.uiTransient',
+    /** UI interaction mode changed */
+    uiInteractionMode = 'StateChangeEvent.uiInteractionMode',
 }
 
 export interface StateChangeEventsMap {
@@ -86,4 +150,10 @@ export interface StateChangeEventsMap {
     [StateChangeEvent.characterActions]: DeepReadonly<ICharacter>;
     [StateChangeEvent.characterHealth]: DeepReadonly<ICharacter>;
     [StateChangeEvent.characterDefeated]: DeepReadonly<ICharacter>;
+    
+    // UI State Change Events
+    [StateChangeEvent.uiAnimations]: DeepReadonly<IState['ui']['animations']>;
+    [StateChangeEvent.uiVisualStates]: DeepReadonly<IState['ui']['visualStates']>;
+    [StateChangeEvent.uiTransient]: DeepReadonly<IState['ui']['transientUI']>;
+    [StateChangeEvent.uiInteractionMode]: DeepReadonly<IState['ui']['interactionMode']>;
 }

@@ -1,9 +1,10 @@
 import { EventBus, EventsMap } from '../events/EventBus';
 import { NetworkService } from './NetworkService';
 import { State } from '../State';
-import { IState } from '../interfaces';
+import { IState, IUIState } from '../interfaces';
 import { GameEvent, UpdateStateEvent } from '../events';
 import { getBaseState } from '../../data/state';
+import { StateDiffService, StateDiff } from './StateDiffService';
 
 // Type for network event data
 interface NetworkEventData {
@@ -17,6 +18,9 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
     private state: State | null = null;
     private isHost = false;
     private isMultiplayer = false;
+    private lastSyncedState: IState | null = null;
+    private syncInterval: number | null = null;
+    private listenersSetup = false;
 
     private constructor() {
         super();
@@ -32,18 +36,34 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
     }
 
     private setupEventListeners() {
+        // Prevent duplicate listener registration
+        if (this.listenersSetup) {
+            return;
+        }
+        this.listenersSetup = true;
+
         // Listen for network events
         this.networkService.listen('gameStarted', (data) => {
             this.handleGameStart(data.initialState);
         });
 
-        this.networkService.listen('stateSync', (data) => {
-            this.handleStateSync(data.state);
+        this.networkService.listen('stateSync', (data: any) => {
+            if (data.diff) {
+                this.handleStateDiff(data.diff);
+            } else {
+                this.handleStateSync(data.state);
+            }
+        });
+        
+        // Listen for stateDiff using the listen method
+        this.networkService.listen('stateDiff' as any, (data: any) => {
+            this.handleStateDiff(data.diff);
         });
 
         this.networkService.listen('roomCreated', () => {
             this.isHost = true;
             this.isMultiplayer = true;
+            this.startSyncInterval();
         });
 
         this.networkService.listen('roomJoined', () => {
@@ -54,6 +74,8 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
         this.networkService.listen('roomLeft', () => {
             this.isMultiplayer = false;
             this.isHost = false;
+            this.stopSyncInterval();
+            this.lastSyncedState = null;
         });
 
         // Listen for turn changes to broadcast to other players
@@ -111,6 +133,101 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
             // Don't create a new state - just dispatch the sync event
             // The existing state will be updated through individual events
             this.dispatch('stateSynced', { state: syncedState });
+            this.lastSyncedState = syncedState;
+        }
+    }
+    
+    private handleStateDiff(diff: StateDiff) {
+        if (!this.isHost && this.state && this.lastSyncedState) {
+            // Apply the diff to get the new state
+            const newState = StateDiffService.applyDiff(this.lastSyncedState, diff);
+            
+            // Dispatch individual events for each change
+            this.dispatchStateChanges(this.lastSyncedState, newState);
+            
+            this.lastSyncedState = newState;
+        }
+    }
+    
+    private dispatchStateChanges(oldState: IState, newState: IState) {
+        // Check for game state changes
+        if (JSON.stringify(oldState.game) !== JSON.stringify(newState.game)) {
+            this.dispatch(GameEvent.changeTurn, newState.game);
+        }
+        
+        // Check for character changes
+        for (const character of newState.characters) {
+            const oldChar = oldState.characters.find(c => c.name === character.name);
+            if (!oldChar || JSON.stringify(oldChar) !== JSON.stringify(character)) {
+                // Dispatch appropriate events based on what changed
+                if (!oldChar || oldChar.position.x !== character.position.x || oldChar.position.y !== character.position.y) {
+                    const eventData = Object.assign({}, character, { fromNetwork: true });
+                    this.dispatch(UpdateStateEvent.characterPosition, eventData);
+                }
+                if (!oldChar || oldChar.health !== character.health) {
+                    const damageData = {
+                        targetName: character.name,
+                        damage: oldChar ? oldChar.health - character.health : 0
+                    };
+                    const eventData = Object.assign({}, damageData, { fromNetwork: true });
+                    this.dispatch(UpdateStateEvent.damageCharacter, eventData);
+                }
+            }
+        }
+        
+        // Handle UI state changes
+        this.dispatchUIStateChanges(oldState.ui, newState.ui);
+    }
+    
+    private dispatchUIStateChanges(oldUI: IUIState, newUI: IUIState) {
+        // Animation changes
+        for (const [characterId, animation] of Object.entries(newUI.animations.characters)) {
+            const oldAnimation = oldUI.animations.characters[characterId];
+            if (JSON.stringify(oldAnimation) !== JSON.stringify(animation)) {
+                const animData = {
+                    characterId,
+                    animation: animation || null
+                };
+                const eventData = Object.assign({}, animData, { fromNetwork: true });
+                this.dispatch(UpdateStateEvent.uiCharacterAnimation, eventData);
+            }
+        }
+        
+        // Visual state changes
+        for (const [characterId, visualState] of Object.entries(newUI.visualStates.characters)) {
+            const oldVisualState = oldUI.visualStates.characters[characterId];
+            if (JSON.stringify(oldVisualState) !== JSON.stringify(visualState)) {
+                const visualData = {
+                    characterId,
+                    visualState: visualState || {}
+                };
+                const eventData = Object.assign({}, visualData, { fromNetwork: true });
+                this.dispatch(UpdateStateEvent.uiCharacterVisual, eventData);
+            }
+        }
+        
+        // Projectile changes
+        if (JSON.stringify(oldUI.transientUI.projectiles) !== JSON.stringify(newUI.transientUI.projectiles)) {
+            // Handle projectile additions/removals
+            const oldIds = new Set(oldUI.transientUI.projectiles.map(p => p.id));
+            const newIds = new Set(newUI.transientUI.projectiles.map(p => p.id));
+            
+            // Add new projectiles
+            for (const projectile of newUI.transientUI.projectiles) {
+                if (!oldIds.has(projectile.id)) {
+                    const eventData = Object.assign({}, projectile, { fromNetwork: true });
+                    this.dispatch(UpdateStateEvent.uiAddProjectile, eventData);
+                }
+            }
+            
+            // Remove old projectiles
+            for (const projectile of oldUI.transientUI.projectiles) {
+                if (!newIds.has(projectile.id)) {
+                    const removeData = { projectileId: projectile.id };
+                    const eventData = Object.assign({}, removeData, { fromNetwork: true });
+                    this.dispatch(UpdateStateEvent.uiRemoveProjectile, eventData);
+                }
+            }
         }
     }
 
@@ -121,15 +238,32 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
             game: structuredClone(this.state.game) as IState['game'],
             map: structuredClone(this.state.map) as IState['map'],
             characters: structuredClone(this.state.characters) as IState['characters'],
-            messages: structuredClone(this.state.messages) as IState['messages']
+            messages: structuredClone(this.state.messages) as IState['messages'],
+            ui: structuredClone(this.state.ui) as IState['ui']
         };
 
-        // Send sync state through WebSocket
-        this.networkService.send('syncState', {
-            roomId: this.networkService.getRoomId(),
-            state: currentState,
-            timestamp: Date.now()
-        });
+        if (this.lastSyncedState) {
+            // Send diff if we have a previous state
+            const diff = StateDiffService.createDiff(this.lastSyncedState, currentState);
+            const filteredPatches = StateDiffService.filterUIPatches(diff.patches);
+            
+            if (filteredPatches.length > 0) {
+                this.broadcastAction('stateDiff', {
+                    roomId: this.networkService.getRoomId(),
+                    diff: { ...diff, patches: filteredPatches },
+                    timestamp: Date.now()
+                });
+            }
+        } else {
+            // Send full state on first sync
+            this.broadcastAction('stateSync', {
+                roomId: this.networkService.getRoomId(),
+                state: currentState,
+                timestamp: Date.now()
+            });
+        }
+        
+        this.lastSyncedState = currentState;
     }
 
     switchToSinglePlayer() {
@@ -203,6 +337,40 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
                 }
             }
         });
+        
+        // Listen for UI state updates
+        this.listen(UpdateStateEvent.uiCharacterAnimation, (data) => {
+            if (this.isMultiplayer && this.state) {
+                if (!(data as NetworkEventData).fromNetwork) {
+                    this.broadcastAction(UpdateStateEvent.uiCharacterAnimation, data);
+                }
+            }
+        });
+        
+        this.listen(UpdateStateEvent.uiCharacterVisual, (data) => {
+            if (this.isMultiplayer && this.state) {
+                if (!(data as NetworkEventData).fromNetwork) {
+                    this.broadcastAction(UpdateStateEvent.uiCharacterVisual, data);
+                }
+            }
+        });
+        
+        this.listen(UpdateStateEvent.uiAddProjectile, (data) => {
+            if (this.isMultiplayer && this.state) {
+                if (!(data as NetworkEventData).fromNetwork) {
+                    this.broadcastAction(UpdateStateEvent.uiAddProjectile, data);
+                }
+            }
+        });
+        
+        this.listen(UpdateStateEvent.uiRemoveProjectile, (data) => {
+            if (this.isMultiplayer && this.state) {
+                if (!(data as NetworkEventData).fromNetwork) {
+                    this.broadcastAction(UpdateStateEvent.uiRemoveProjectile, data);
+                }
+            }
+        });
+        
     }
 
     private broadcastAction(type: string, data: any) {
@@ -215,5 +383,22 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
                 }
             }
         });
+    }
+    
+    private startSyncInterval() {
+        if (!this.syncInterval) {
+            this.syncInterval = window.setInterval(() => {
+                if (this.isMultiplayer && this.isHost) {
+                    this.syncStateToClients();
+                }
+            }, 100); // Sync every 100ms
+        }
+    }
+    
+    private stopSyncInterval() {
+        if (this.syncInterval) {
+            window.clearInterval(this.syncInterval);
+            this.syncInterval = null;
+        }
     }
 }

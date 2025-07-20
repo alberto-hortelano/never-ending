@@ -1,15 +1,16 @@
-import { ControlsEvent, GUIEvent, ControlsEventsMap, StateChangeEvent } from "../../common/events";
+import { ControlsEvent, StateChangeEvent, UpdateStateEvent } from "../../common/events";
 import { Component } from "../Component";
 import type Movable from "../movable/Movable";
 import "../movable/Movable";
 import { CharacterService } from "../../common/services/CharacterService";
 import { NetworkService } from "../../common/services/NetworkService";
+import type { ICharacterVisualState } from "../../common/interfaces";
 
 // Type for character event with network flag
-interface NetworkCharacterEvent {
-    fromNetwork?: boolean;
-    [key: string]: unknown;
-}
+// interface NetworkCharacterEvent {
+//     fromNetwork?: boolean;
+//     [key: string]: unknown;
+// }
 
 export default class Character extends Component {
     protected override hasCss = true;
@@ -21,6 +22,7 @@ export default class Character extends Component {
     private isShootingMode: boolean = false;
     private root?: ShadowRoot;
     private networkService: NetworkService = NetworkService.getInstance();
+    private visualState?: ICharacterVisualState;
 
     override async connectedCallback() {
         const root = await super.connectedCallback();
@@ -34,32 +36,49 @@ export default class Character extends Component {
         this.player = player;
 
         // Set up DOM elements
-        this.listen(ControlsEvent.moveCharacter, caracter => this.onMoveCharacter(caracter), this.id);
         this.characterElement = root.getElementById('character') as HTMLElement;
         this.movable = root.getElementById('movable') as Movable;
 
-        // Apply character race
-        if (this.characterElement) {
-            this.characterElement.classList.add(race);
-
-            // Set initial direction
-            if (direction) {
-                const directionClass = CharacterService.getDirectionClass(direction);
-                this.characterElement.classList.add(directionClass);
+        // Initialize visual state in UI state
+        const initialVisualState: Partial<ICharacterVisualState> = {
+            direction: direction || 'down',
+            classList: [race],
+            styles: {
+                '--x': `${position.x}`,
+                '--y': `${position.y}`,
+                '--palette-skin': palette.skin,
+                '--palette-helmet': palette.helmet,
+                '--palette-suit': palette.suit
+            },
+            healthBarPercentage: 100,
+            healthBarColor: '#4ade80',
+            isDefeated: false,
+            isCurrentTurn: false
+        };
+        
+        // Dispatch initial visual state
+        this.dispatch(UpdateStateEvent.uiCharacterVisual, {
+            characterId: this.id,
+            visualState: initialVisualState
+        });
+        
+        // Listen for visual state changes
+        this.listen(StateChangeEvent.uiVisualStates, (visualStates) => {
+            const myVisualState = visualStates.characters[this.id];
+            if (myVisualState) {
+                this.applyVisualState(myVisualState as ICharacterVisualState);
             }
-        }
-
-        // Set position
-        if (this.movable) {
-            this.movable.dataset.x = `${position.x}`;
-            this.movable.dataset.y = `${position.y}`;
-        }
-
-        // Apply palette styles
-        CharacterService.applyPaletteStyles(this, palette);
+        });
+        
         this.movable.addEventListener("transitionend", () => {
-            this.characterElement?.classList.remove('walk');
-            this.dispatch(GUIEvent.movementEnd, this.id);
+            // Animation completed - update state to remove walk class
+            if (this.visualState?.classList.includes('walk')) {
+                const updatedClasses = this.visualState.classList.filter(c => c !== 'walk');
+                this.dispatch(UpdateStateEvent.uiCharacterVisual, {
+                    characterId: this.id,
+                    visualState: { classList: updatedClasses }
+                });
+            }
         });
         this.addEventListener('click', () => {
             if (this.isShootingMode) {
@@ -97,8 +116,8 @@ export default class Character extends Component {
         this.listen(StateChangeEvent.characterPosition, (character) => {
             if (character.name === this.id) {
                 // Check if this is a network update
-                const networkCharacter = character as NetworkCharacterEvent;
-                const isNetworkUpdate = networkCharacter.fromNetwork;
+                // const networkCharacter = character as NetworkCharacterEvent;
+                // const isNetworkUpdate = networkCharacter.fromNetwork;
                 
                 // For network updates, we now rely on path-based movement through Movement.ts
                 // This ensures smooth animation instead of jumping
@@ -108,9 +127,17 @@ export default class Character extends Component {
 
         // Listen for health changes
         this.listen(StateChangeEvent.characterHealth, (character) => {
-            // Only update if this component represents the character being damaged
-            if (character.name === this.id && this.root) {
-                this.updateHealthBar(character.health, character.maxHealth);
+            if (character.name === this.id) {
+                const percentage = Math.max(0, (character.health / character.maxHealth) * 100);
+                const color = this.calculateHealthColor(percentage);
+                
+                this.dispatch(UpdateStateEvent.uiCharacterVisual, {
+                    characterId: this.id,
+                    visualState: {
+                        healthBarPercentage: percentage,
+                        healthBarColor: color
+                    }
+                });
             }
         });
 
@@ -124,21 +151,28 @@ export default class Character extends Component {
         // Initialize health bar
         const health = parseInt(this.dataset.health || '100');
         const maxHealth = parseInt(this.dataset.maxHealth || '100');
+        const percentage = Math.max(0, (health / maxHealth) * 100);
+        const color = this.calculateHealthColor(percentage);
 
-        // Use requestAnimationFrame to ensure DOM is ready
-        requestAnimationFrame(() => {
-            this.updateHealthBar(health, maxHealth);
+        // Update health in visual state
+        this.dispatch(UpdateStateEvent.uiCharacterVisual, {
+            characterId: this.id,
+            visualState: {
+                healthBarPercentage: percentage,
+                healthBarColor: color
+            }
         });
 
-        // Listen for shooting mode changes
-        this.listen(GUIEvent.shootingModeStart, () => {
-            this.isShootingMode = true;
-            this.classList.add('shooting-mode');
-        });
-
-        this.listen(GUIEvent.shootingModeEnd, () => {
-            this.isShootingMode = false;
-            this.classList.remove('shooting-mode');
+        // Listen for interaction mode changes
+        this.listen(StateChangeEvent.uiInteractionMode, (mode) => {
+            this.isShootingMode = mode.type === 'shooting';
+            
+            // Update visual state to reflect shooting mode
+            if (this.isShootingMode) {
+                this.classList.add('shooting-mode');
+            } else {
+                this.classList.remove('shooting-mode');
+            }
         });
 
         return root;
@@ -159,79 +193,104 @@ export default class Character extends Component {
     }
 
 
-    private onMoveCharacter(character: ControlsEventsMap[ControlsEvent.moveCharacter]) {
-        if (!this.movable || !this.characterElement) return;
-
-        const currentPosition = CharacterService.getPositionFromDataset(this.movable.dataset);
-
-        const movementData = CharacterService.calculateMovementData(
-            currentPosition,
-            character.position,
-            character.direction
-        );
-
-        // Update direction
-        this.characterElement.classList.remove(...CharacterService.getDirectionClasses());
-        this.characterElement.classList.add(movementData.directionClass);
-
-        // Add walk animation if moving
-        if (movementData.isMoving) {
-            this.characterElement.classList.add('walk');
+    private applyVisualState(visualState: ICharacterVisualState) {
+        this.visualState = visualState;
+        
+        if (!this.characterElement || !this.movable) return;
+        
+        // Update classes
+        this.characterElement.className = 'character'; // Reset to base class
+        visualState.classList.forEach(cls => {
+            this.characterElement!.classList.add(cls);
+        });
+        
+        // Add direction class
+        const directionClass = CharacterService.getDirectionClass(visualState.direction);
+        this.characterElement.classList.add(directionClass);
+        
+        // Add state-based classes
+        if (visualState.isCurrentTurn) {
+            this.characterElement.classList.add('current-player');
         }
-
-        // Update position
-        this.movable.dataset.x = `${movementData.position.x}`;
-        this.movable.dataset.y = `${movementData.position.y}`;
+        if (visualState.isMyCharacter) {
+            this.characterElement.classList.add('my-character');
+        }
+        if (visualState.isOpponentCharacter) {
+            this.characterElement.classList.add('opponent-character');
+        }
+        if (visualState.isDefeated) {
+            this.characterElement.classList.add('defeated');
+        }
+        
+        // Update styles
+        if (visualState.styles) {
+            Object.entries(visualState.styles).forEach(([prop, value]) => {
+                if (prop === '--x' || prop === '--y') {
+                    // Position updates for movable element
+                    const coord = prop === '--x' ? 'x' : 'y';
+                    this.movable!.dataset[coord] = value;
+                } else if (prop.startsWith('--palette-')) {
+                    // Palette updates on the component itself
+                    this.style.setProperty(prop, value);
+                }
+            });
+        }
+        
+        // Update health bar
+        this.updateHealthBar(visualState.healthBarPercentage, visualState.healthBarColor);
+        
+        // Update interaction state
+        this.style.pointerEvents = visualState.isDefeated ? 'none' : '';
+        if (visualState.isDefeated) {
+            this.characterElement.style.opacity = '0.5';
+            this.characterElement.style.filter = 'grayscale(1)';
+        } else {
+            this.characterElement.style.opacity = '';
+            this.characterElement.style.filter = '';
+        }
     }
 
     private updateTurnIndicator() {
         const shouldShowIndicator = CharacterService.shouldShowTurnIndicator(this.player, this.currentTurn);
-        this.characterElement?.classList.toggle('current-player', shouldShowIndicator);
-
-        // In multiplayer, also show if this character belongs to the current network player
         const networkPlayerId = this.networkService.getPlayerId();
-        if (networkPlayerId) {
-            const isMyCharacter = this.player === networkPlayerId;
-            this.characterElement?.classList.toggle('my-character', isMyCharacter);
-            this.characterElement?.classList.toggle('opponent-character', !isMyCharacter);
-        }
+        const isMyCharacter = networkPlayerId ? this.player === networkPlayerId : false;
+        const isOpponentCharacter = networkPlayerId ? this.player !== networkPlayerId : false;
+        
+        // Update visual state
+        this.dispatch(UpdateStateEvent.uiCharacterVisual, {
+            characterId: this.id,
+            visualState: {
+                isCurrentTurn: shouldShowIndicator,
+                isMyCharacter,
+                isOpponentCharacter
+            }
+        });
     }
 
-    private updateHealthBar(health: number, maxHealth: number) {
-        if (!this.root) {
-            console.error('No root shadow DOM found in updateHealthBar');
-            return;
-        }
-
+    private updateHealthBar(percentage: number, color: string) {
+        if (!this.root) return;
+        
         const healthBarFill = this.root.querySelector('.health-bar-fill') as HTMLElement;
-
         if (healthBarFill) {
-            const percentage = Math.max(0, (health / maxHealth) * 100);
             healthBarFill.style.width = `${percentage}%`;
-
-            // Change color based on health percentage
-            if (percentage > 60) {
-                healthBarFill.style.backgroundColor = '#4CAF50'; // Green
-            } else if (percentage > 30) {
-                healthBarFill.style.backgroundColor = '#FFA726'; // Orange
-            } else {
-                healthBarFill.style.backgroundColor = '#F44336'; // Red
-            }
-        } else {
-            console.error('Health bar fill element not found in shadow DOM');
+            healthBarFill.style.backgroundColor = color;
         }
+    }
+    
+    private calculateHealthColor(percentage: number): string {
+        if (percentage > 60) return '#4ade80'; // Green
+        if (percentage > 30) return '#ffa726'; // Orange
+        return '#f44336'; // Red
     }
 
     private onDefeated() {
-        // Add defeated visual state
-        this.characterElement?.classList.add('defeated');
-
-        // Disable interaction
-        this.style.pointerEvents = 'none';
-
-        // Optional: add defeat animation
-        this.characterElement?.style.setProperty('opacity', '0.5');
-        this.characterElement?.style.setProperty('filter', 'grayscale(1)');
+        // Update visual state to defeated
+        this.dispatch(UpdateStateEvent.uiCharacterVisual, {
+            characterId: this.id,
+            visualState: {
+                isDefeated: true
+            }
+        });
     }
 
 }

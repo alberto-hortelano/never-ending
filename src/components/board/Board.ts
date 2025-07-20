@@ -1,7 +1,7 @@
-import { StateChangeEvent, StateChangeEventsMap, GUIEvent, GUIEventsMap } from "../../common/events";
+import { StateChangeEvent, StateChangeEventsMap, GUIEvent, GUIEventsMap, UpdateStateEvent } from "../../common/events";
 import { Component } from "../Component";
 import { DragScroll } from "../../common/helpers/DragScroll";
-import { ICoord } from "../../common/interfaces";
+import { ICoord, IProjectileState } from "../../common/interfaces";
 import { BoardService } from "../../common/services/BoardService";
 import "../projectile/Projectile";
 
@@ -22,19 +22,23 @@ export default class Board extends Component {
       }
     });
 
-    // Listen for popup visibility events
-    this.listen(GUIEvent.popupShow, () => {
-      if (this.isMobile()) {
+    // Listen for UI state changes for board visual state
+    this.listen(StateChangeEvent.uiVisualStates, (visualStates) => {
+      const boardState = visualStates.board;
+      if (boardState.hasPopupActive && this.isMobile()) {
         this.classList.add('popup-active');
+      } else {
+        this.classList.remove('popup-active');
       }
-    });
-
-    this.listen(GUIEvent.popupHide, () => {
-      this.classList.remove('popup-active');
     });
 
     // Listen for shoot projectile events
     this.listen(GUIEvent.shootProjectile, (data) => this.createProjectile(data));
+    
+    // Listen for projectile state changes
+    this.listen(StateChangeEvent.uiTransient, (transientUI) => {
+      this.updateProjectiles([...transientUI.projectiles]);
+    });
   }
 
   private isMobile(): boolean {
@@ -63,6 +67,15 @@ export default class Board extends Component {
     this.id = 'board';
 
     const dimensions = BoardService.getBoardDimensions(this.mapData);
+    
+    // Update board visual state with dimensions
+    this.dispatch(UpdateStateEvent.uiBoardVisual, {
+      updates: {
+        mapWidth: dimensions.width,
+        mapHeight: dimensions.height
+      }
+    });
+    
     this.style.setProperty('--map-width', dimensions.width.toString() || null);
     this.style.setProperty('--map-height', dimensions.height.toString() || null);
 
@@ -109,20 +122,46 @@ export default class Board extends Component {
   }
 
   private createProjectile(data: GUIEventsMap[GUIEvent.shootProjectile]) {
-    console.log('Creating projectile in Board:', data);
-    const projectile = document.createElement('projectile-component');
-    projectile.dataset.fromX = data.from.x.toString();
-    projectile.dataset.fromY = data.from.y.toString();
-    projectile.dataset.toX = data.to.x.toString();
-    projectile.dataset.toY = data.to.y.toString();
-    projectile.dataset.type = data.type;
-
-    console.log('Appending projectile to board');
-    this.appendChild(projectile);
-
-    // Log the projectile element for easy inspection
-    console.log('PROJECTILE ELEMENT:', projectile);
-    console.log('You can inspect it by right-clicking on the element above in the console');
+    // Add projectile to UI state instead of directly creating DOM element
+    const projectileId = `projectile-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    this.dispatch(UpdateStateEvent.uiAddProjectile, {
+      id: projectileId,
+      type: data.type,
+      from: data.from,
+      to: data.to,
+      startTime: Date.now(),
+      duration: 400 // 400ms animation duration
+    });
+  }
+  
+  private updateProjectiles(projectiles: IProjectileState[]) {
+    // Get existing projectile elements
+    const existingProjectiles = new Set(
+      Array.from(this.querySelectorAll('projectile-component')).map(el => el.id)
+    );
+    
+    // Add new projectiles
+    projectiles.forEach(projectile => {
+      if (!existingProjectiles.has(projectile.id)) {
+        const projectileElement = document.createElement('projectile-component');
+        projectileElement.id = projectile.id;
+        projectileElement.dataset.fromX = projectile.from.x.toString();
+        projectileElement.dataset.fromY = projectile.from.y.toString();
+        projectileElement.dataset.toX = projectile.to.x.toString();
+        projectileElement.dataset.toY = projectile.to.y.toString();
+        projectileElement.dataset.type = projectile.type;
+        this.appendChild(projectileElement);
+      }
+    });
+    
+    // Remove projectiles that are no longer in state
+    const currentProjectileIds = new Set(projectiles.map(p => p.id));
+    existingProjectiles.forEach(id => {
+      if (!currentProjectileIds.has(id)) {
+        this.querySelector(`#${id}`)?.remove();
+      }
+    });
   }
 }
 

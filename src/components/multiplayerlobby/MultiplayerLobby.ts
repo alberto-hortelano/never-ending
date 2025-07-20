@@ -117,6 +117,11 @@ export class MultiplayerLobby extends Component {
                 this.render(this._root);
             }
         });
+        
+        this.listen('networkError', (data: ClientNetworkEventMap['networkError']) => {
+            console.error('Network error:', data);
+            // Could show error message in UI if needed
+        });
     }
 
     private render(root: ShadowRoot) {

@@ -3,6 +3,7 @@ export interface IState {
     map: ICell[][];
     characters: ICharacter[];
     messages: IMessage[];
+    ui: IUIState;
 }
 export interface IGame {
     turn: string;
@@ -111,5 +112,96 @@ export interface ICharacter extends IMovable {
 export interface IMessage {
     role: 'user' | 'assistant';
     content: string;
+}
+
+// UI State Interfaces
+export interface IUIState {
+    animations: IAnimationStates;
+    visualStates: IVisualStates;
+    transientUI: ITransientUI;
+    interactionMode: IInteractionMode;
+}
+
+export interface IAnimationStates {
+    characters: Record<string, ICharacterAnimation | undefined>;
+}
+
+export interface ICharacterAnimation {
+    type: 'walk' | 'idle' | 'attack' | 'defeat' | 'rotate';
+    startTime: number;
+    duration: number;
+    from?: ICoord;
+    to?: ICoord;
+    fromDirection?: Direction;
+    toDirection?: Direction;
+    progress?: number; // 0-1
+    path?: ICoord[]; // For multi-step movements
+    currentStep?: number; // Current step in path
+}
+
+export interface IVisualStates {
+    characters: Record<string, ICharacterVisualState | undefined>;
+    cells: Record<string, ICellVisualState | undefined>; // Key format: "x,y"
+    board: IBoardVisualState;
+}
+
+export interface ICharacterVisualState {
+    direction: Direction;
+    classList: string[];
+    styles: Record<string, string>;
+    healthBarPercentage: number;
+    healthBarColor: string;
+    isDefeated: boolean;
+    isCurrentTurn: boolean;
+    isMyCharacter?: boolean; // Multiplayer
+    isOpponentCharacter?: boolean; // Multiplayer
+}
+
+export interface ICellVisualState {
+    isHighlighted: boolean;
+    highlightIntensity?: number;
+    highlightType?: 'movement' | 'attack' | 'path';
+    classList: string[];
+}
+
+export interface IBoardVisualState {
+    mapWidth: number;
+    mapHeight: number;
+    centerPosition?: ICoord;
+    hasPopupActive: boolean;
+}
+
+export interface ITransientUI {
+    popups: Record<string, IPopupState | undefined>;
+    projectiles: IProjectileState[];
+    highlights: IHighlightStates;
+}
+
+export interface IPopupState {
+    type: 'actions' | 'inventory' | 'conversation' | 'rotate' | 'directions';
+    visible: boolean;
+    position?: { x: number; y: number };
+    data: any;
+    isPinned?: boolean;
+}
+
+export interface IProjectileState {
+    id: string;
+    type: 'bullet' | 'laser';
+    from: ICoord;
+    to: ICoord;
+    startTime: number;
+    duration: number;
+}
+
+export interface IHighlightStates {
+    reachableCells: ICoord[];
+    pathCells: ICoord[];
+    targetableCells: ICoord[];
+}
+
+export interface IInteractionMode {
+    type: 'normal' | 'moving' | 'shooting' | 'selecting' | 'rotating';
+    data?: any;
 }
 

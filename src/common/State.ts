@@ -1,4 +1,7 @@
-import type { ICoord, ICell, ICharacter, IState, IInventory, IWeapon } from "./interfaces";
+import type { 
+    ICoord, ICell, ICharacter, IState, IInventory, IWeapon, IUIState,
+    ICharacterAnimation, ICharacterVisualState, ICellVisualState, IHighlightStates
+} from "./interfaces";
 
 import { UpdateStateEvent, EventBus, UpdateStateEventsMap, StateChangeEventsMap, StateChangeEvent, ControlsEvent, ControlsEventsMap, GameEvent, GameEventsMap } from "./events";
 import { DeepReadonly } from "./helpers/types";
@@ -14,9 +17,39 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
     #map: IState['map'] = [];
     #characters: IState['characters'] = [];
     #messages: IState['messages'] = [];
+    #ui: IState['ui'] = this.getInitialUIState();
 
     private readonly storageName = 'state'; // could be random to hide from others
     private cellMap = new Map<ICoord, ICell>();
+    
+    private getInitialUIState(): IUIState {
+        return {
+            animations: {
+                characters: {}
+            },
+            visualStates: {
+                characters: {},
+                cells: {},
+                board: {
+                    mapWidth: 0,
+                    mapHeight: 0,
+                    hasPopupActive: false
+                }
+            },
+            transientUI: {
+                popups: {},
+                projectiles: [],
+                highlights: {
+                    reachableCells: [],
+                    pathCells: [],
+                    targetableCells: []
+                }
+            },
+            interactionMode: {
+                type: 'normal'
+            }
+        };
+    }
 
     constructor(initialState?: IState) {
         super();
@@ -32,6 +65,17 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.listen(UpdateStateEvent.resetActionPoints, (data) => this.onResetActionPoints(data));
         this.listen(UpdateStateEvent.damageCharacter, (data) => this.onDamageCharacter(data));
         this.listen(GameEvent.changeTurn, (data) => this.onChangeTurn(data));
+        
+        // UI State listeners
+        this.listen(UpdateStateEvent.uiCharacterAnimation, (data) => this.onUICharacterAnimation(data));
+        this.listen(UpdateStateEvent.uiCharacterVisual, (data) => this.onUICharacterVisual(data));
+        this.listen(UpdateStateEvent.uiCellVisual, (data) => this.onUICellVisual(data));
+        this.listen(UpdateStateEvent.uiBoardVisual, (data) => this.onUIBoardVisual(data));
+        this.listen(UpdateStateEvent.uiPopup, (data) => this.onUIPopup(data));
+        this.listen(UpdateStateEvent.uiAddProjectile, (data) => this.onUIAddProjectile(data));
+        this.listen(UpdateStateEvent.uiRemoveProjectile, (data) => this.onUIRemoveProjectile(data));
+        this.listen(UpdateStateEvent.uiHighlights, (data) => this.onUIHighlights(data));
+        this.listen(UpdateStateEvent.uiInteractionMode, (data) => this.onUIInteractionMode(data));
     }
     
     // Helper method to check if action is from current player's turn
@@ -251,6 +295,99 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         
         this.save();
     }
+    
+    // UI State Handlers
+    private onUICharacterAnimation(data: UpdateStateEventsMap[UpdateStateEvent.uiCharacterAnimation]) {
+        if (data.animation) {
+            this.#ui.animations.characters[data.characterId] = structuredClone(data.animation) as ICharacterAnimation;
+        } else {
+            delete this.#ui.animations.characters[data.characterId];
+        }
+        this.dispatch(StateChangeEvent.uiAnimations, structuredClone(this.#ui.animations));
+    }
+    
+    private onUICharacterVisual(data: UpdateStateEventsMap[UpdateStateEvent.uiCharacterVisual]) {
+        const currentVisual = this.#ui.visualStates.characters[data.characterId] || {
+            direction: 'down',
+            classList: [],
+            styles: {},
+            healthBarPercentage: 100,
+            healthBarColor: '#4ade80',
+            isDefeated: false,
+            isCurrentTurn: false
+        };
+        
+        this.#ui.visualStates.characters[data.characterId] = {
+            ...currentVisual,
+            ...data.visualState
+        } as ICharacterVisualState;
+        
+        this.dispatch(StateChangeEvent.uiVisualStates, structuredClone(this.#ui.visualStates));
+    }
+    
+    private onUICellVisual(data: UpdateStateEventsMap[UpdateStateEvent.uiCellVisual]) {
+        if (data.visualState) {
+            const currentVisual = this.#ui.visualStates.cells[data.cellKey] || {
+                isHighlighted: false,
+                classList: []
+            };
+            
+            this.#ui.visualStates.cells[data.cellKey] = {
+                ...currentVisual,
+                ...data.visualState
+            } as ICellVisualState;
+        } else {
+            delete this.#ui.visualStates.cells[data.cellKey];
+        }
+        
+        this.dispatch(StateChangeEvent.uiVisualStates, structuredClone(this.#ui.visualStates));
+    }
+    
+    private onUIBoardVisual(data: UpdateStateEventsMap[UpdateStateEvent.uiBoardVisual]) {
+        this.#ui.visualStates.board = {
+            ...this.#ui.visualStates.board,
+            ...data.updates
+        };
+        
+        this.dispatch(StateChangeEvent.uiVisualStates, structuredClone(this.#ui.visualStates));
+    }
+    
+    private onUIPopup(data: UpdateStateEventsMap[UpdateStateEvent.uiPopup]) {
+        if (data.popupState) {
+            this.#ui.transientUI.popups[data.popupId] = structuredClone(data.popupState);
+        } else {
+            delete this.#ui.transientUI.popups[data.popupId];
+        }
+        
+        this.dispatch(StateChangeEvent.uiTransient, structuredClone(this.#ui.transientUI));
+    }
+    
+    private onUIAddProjectile(data: UpdateStateEventsMap[UpdateStateEvent.uiAddProjectile]) {
+        this.#ui.transientUI.projectiles.push(structuredClone(data));
+        this.dispatch(StateChangeEvent.uiTransient, structuredClone(this.#ui.transientUI));
+    }
+    
+    private onUIRemoveProjectile(data: UpdateStateEventsMap[UpdateStateEvent.uiRemoveProjectile]) {
+        this.#ui.transientUI.projectiles = this.#ui.transientUI.projectiles.filter(
+            p => p.id !== data.projectileId
+        );
+        this.dispatch(StateChangeEvent.uiTransient, structuredClone(this.#ui.transientUI));
+    }
+    
+    private onUIHighlights(data: UpdateStateEventsMap[UpdateStateEvent.uiHighlights]) {
+        this.#ui.transientUI.highlights = {
+            ...this.#ui.transientUI.highlights,
+            ...data
+        } as IHighlightStates;
+        
+        this.dispatch(StateChangeEvent.uiTransient, structuredClone(this.#ui.transientUI));
+    }
+    
+    private onUIInteractionMode(data: UpdateStateEventsMap[UpdateStateEvent.uiInteractionMode]) {
+        this.#ui.interactionMode = structuredClone(data);
+        this.dispatch(StateChangeEvent.uiInteractionMode, structuredClone(this.#ui.interactionMode));
+    }
+    
     // Setters
     private set game(game: IState['game']) {
         this.#game = game;
@@ -272,6 +409,14 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.#messages = messages;
         this.save();
     }
+    private set ui(ui: IState['ui']) {
+        this.#ui = ui;
+        // Dispatch individual UI state change events
+        this.dispatch(StateChangeEvent.uiAnimations, structuredClone(this.#ui.animations));
+        this.dispatch(StateChangeEvent.uiVisualStates, structuredClone(this.#ui.visualStates));
+        this.dispatch(StateChangeEvent.uiTransient, structuredClone(this.#ui.transientUI));
+        this.dispatch(StateChangeEvent.uiInteractionMode, structuredClone(this.#ui.interactionMode));
+    }
     // Getters
     get game(): DeepReadonly<IState['game']> {
         return this.#game;
@@ -284,6 +429,9 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
     }
     get messages(): DeepReadonly<IState['messages']> {
         return this.#messages;
+    }
+    get ui(): DeepReadonly<IState['ui']> {
+        return this.#ui;
     }
     // Helpers
     #findCharacter(name: ICharacter['name']) {
@@ -317,6 +465,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.map = state.map;
         this.characters = state.characters;
         this.messages = state.messages;
+        this.ui = state.ui || this.getInitialUIState();
     }
     // Public Helpers
     findCharacter(name: ICharacter['name']): DeepReadonly<ICharacter> | undefined {

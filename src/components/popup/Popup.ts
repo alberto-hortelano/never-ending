@@ -5,8 +5,9 @@ import type { RotateSelector } from "../rotateselector/RotateSelector";
 import type { Inventory } from "../inventory/Inventory";
 
 import { Component } from "../Component";
-import { ControlsEvent, ControlsEventsMap, ConversationEvent, ConversationEventsMap, UpdateStateEvent, GUIEvent } from "../../common/events";
+import { ControlsEvent, ControlsEventsMap, ConversationEvent, ConversationEventsMap, UpdateStateEvent, StateChangeEvent } from "../../common/events";
 import { Draggable } from "../../common/helpers/Draggable";
+import type { IPopupState } from "../../common/interfaces";
 
 export class Popup extends Component {
     protected override hasCss = true;
@@ -17,6 +18,7 @@ export class Popup extends Component {
     private titleElement?: HTMLElement;
     private pinButton?: HTMLElement;
     private closeButton?: HTMLElement;
+    private popupId = 'main-popup';  // Single main popup for now
 
     override async connectedCallback() {
         const root = await super.connectedCallback();
@@ -34,6 +36,18 @@ export class Popup extends Component {
 
         this.classList.add('hidden');
         this.setupEventListeners();
+        
+        // Listen for popup state changes
+        this.listen(StateChangeEvent.uiTransient, (transientUI) => {
+            const popupState = transientUI.popups[this.popupId];
+            if (popupState) {
+                this.applyPopupState(popupState as IPopupState);
+            } else {
+                // No popup state means it should be hidden
+                this.classList.add('hidden');
+            }
+        });
+        
         return root;
     }
 
@@ -141,6 +155,20 @@ export class Popup extends Component {
 
         if (this.headerElement) {
             this.dragHelper = new Draggable(this, this.headerElement);
+            
+            // Listen for mouseup/touchend to detect drag end and update state
+            const updatePositionInState = () => {
+                const popupState = this.getPopupStateFromDOM();
+                if (popupState && popupState.visible) {
+                    this.dispatch(UpdateStateEvent.uiPopup, {
+                        popupId: this.popupId,
+                        popupState
+                    });
+                }
+            };
+            
+            document.addEventListener('mouseup', updatePositionInState);
+            document.addEventListener('touchend', updatePositionInState);
         }
     }
 
@@ -257,38 +285,68 @@ export class Popup extends Component {
     }
 
     private show(title: string) {
-        this.classList.remove('hidden');
-
-        // Dispatch popup show event
-        this.dispatch(GUIEvent.popupShow, undefined);
-
         // Setup draggable on first show when shadow DOM is ready (desktop only)
         if (!this.dragHelper && !this.isMobile()) {
             this.setupDraggable();
         }
 
-        // Position popup - mobile uses fixed bottom positioning via CSS
+        // Calculate position for desktop
+        let position = undefined;
         if (!this.isMobile()) {
             // Desktop: center the popup
             const rect = this.getBoundingClientRect();
             const leftPos = Math.max(0, (window.innerWidth - rect.width) / 2);
             const topPos = Math.max(0, (window.innerHeight - rect.height) / 2);
-
-            this.style.left = `${leftPos}px`;
-            this.style.top = `${topPos}px`;
+            position = { x: leftPos, y: topPos };
         }
 
-        // Update popup title
-        if (this.titleElement) {
-            this.titleElement.textContent = title;
+        // Get current content type from the first child element
+        let contentType: IPopupState['type'] = 'actions';
+        const firstChild = this.firstElementChild;
+        if (firstChild) {
+            if (firstChild.tagName === 'ACTIONS-COMPONENT') contentType = 'actions';
+            else if (firstChild.tagName === 'SELECT-CHARACTER') contentType = 'actions'; // Talk uses actions type
+            else if (firstChild.tagName === 'ROTATE-SELECTOR') contentType = 'rotate';
+            else if (firstChild.tagName === 'INVENTORY-COMPONENT') contentType = 'inventory';
+            else if (firstChild.tagName === 'CONVERSATION-UI') contentType = 'conversation';
         }
+
+        // Update popup state
+        this.dispatch(UpdateStateEvent.uiPopup, {
+            popupId: this.popupId,
+            popupState: {
+                type: contentType,
+                visible: true,
+                position,
+                data: { title },
+                isPinned: this.isPinned
+            }
+        });
+        
+        // Also dispatch the legacy popup show event for Board compatibility
+        this.dispatch(UpdateStateEvent.uiBoardVisual, {
+            updates: { hasPopupActive: true }
+        });
     }
 
     private hide() {
         if (!this.isPinned) {
-            this.classList.add('hidden');
-            // Dispatch popup hide event
-            this.dispatch(GUIEvent.popupHide, undefined);
+            // Only dispatch UI events if State is initialized
+            // During game initialization, State might not be ready yet
+            try {
+                // Update state to hide popup
+                this.dispatch(UpdateStateEvent.uiPopup, {
+                    popupId: this.popupId,
+                    popupState: null
+                });
+                
+                // Update board visual state
+                this.dispatch(UpdateStateEvent.uiBoardVisual, {
+                    updates: { hasPopupActive: false }
+                });
+            } catch (e) {
+                // State not initialized yet, ignore
+            }
         }
     }
 
@@ -298,13 +356,87 @@ export class Popup extends Component {
             this.pinButton.textContent = this.isPinned ? '📌' : '📍';
             this.pinButton.title = this.isPinned ? 'Unpin popup' : 'Pin popup';
         }
+        
+        // Update pinned state in UI state
+        const popupState = this.getPopupStateFromDOM();
+        if (popupState) {
+            this.dispatch(UpdateStateEvent.uiPopup, {
+                popupId: this.popupId,
+                popupState: {
+                    ...popupState,
+                    isPinned: this.isPinned
+                }
+            });
+        }
     }
 
     private close() {
         this.isPinned = false;
-        this.hide();
-        // Dispatch popup hide event
-        this.dispatch(GUIEvent.popupHide, undefined);
+        // Update state to hide popup
+        this.dispatch(UpdateStateEvent.uiPopup, {
+            popupId: this.popupId,
+            popupState: null
+        });
+        
+        // Update board visual state
+        this.dispatch(UpdateStateEvent.uiBoardVisual, {
+            updates: { hasPopupActive: false }
+        });
+    }
+
+    private applyPopupState(popupState: IPopupState) {
+        // Apply visibility
+        if (popupState.visible) {
+            this.classList.remove('hidden');
+        } else {
+            this.classList.add('hidden');
+        }
+        
+        // Apply position for desktop
+        if (popupState.position && !this.isMobile()) {
+            this.style.left = `${popupState.position.x}px`;
+            this.style.top = `${popupState.position.y}px`;
+        }
+        
+        // Apply title
+        if (this.titleElement && popupState.data?.title) {
+            this.titleElement.textContent = popupState.data.title;
+        }
+        
+        // Apply pinned state
+        this.isPinned = popupState.isPinned || false;
+        if (this.pinButton) {
+            this.pinButton.textContent = this.isPinned ? '📌' : '📍';
+            this.pinButton.title = this.isPinned ? 'Unpin popup' : 'Pin popup';
+        }
+    }
+    
+    private getPopupStateFromDOM(): IPopupState | null {
+        // Get current state from DOM for updates
+        const visible = !this.classList.contains('hidden');
+        if (!visible) return null;
+        
+        const rect = this.getBoundingClientRect();
+        const position = !this.isMobile() ? { x: rect.left, y: rect.top } : undefined;
+        
+        // Determine content type
+        let contentType: IPopupState['type'] = 'actions';
+        const firstChild = this.firstElementChild;
+        if (firstChild) {
+            if (firstChild.tagName === 'ACTIONS-COMPONENT') contentType = 'actions';
+            else if (firstChild.tagName === 'SELECT-CHARACTER') contentType = 'actions';
+            else if (firstChild.tagName === 'ROTATE-SELECTOR') contentType = 'rotate';
+            else if (firstChild.tagName === 'INVENTORY-COMPONENT') contentType = 'inventory';
+            else if (firstChild.tagName === 'CONVERSATION-UI') contentType = 'conversation';
+        }
+        
+        return {
+            type: contentType,
+            visible,
+            position,
+            data: { title: this.titleElement?.textContent || '' },
+            isPinned: this.isPinned
+        };
     }
 
     // Custom element setup

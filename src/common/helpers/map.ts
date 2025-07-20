@@ -1,4 +1,4 @@
-import type { IState, ICoord, ICharacter } from "../interfaces";
+import type { IState, ICoord, ICharacter, ICell } from "../interfaces";
 import type { DeepReadonly } from "./types";
 
 export const getNeighbors = (pos: ICoord): ICoord[] => [
@@ -80,25 +80,41 @@ export const calculatePath = (start: ICoord, destination: ICoord, map: DeepReado
     return [];
 };
 
-export const positionCharacters = (characters: ICharacter[], map: DeepReadonly<IState['map']>): ICharacter[] => characters.map(character => {
-    const candidateCells = map.reduce(
-        (cells, row) => cells.concat(
-            row.filter(
-                cell => cell.locations.includes(character.location)
+export const positionCharacters = (characters: ICharacter[], map: DeepReadonly<IState['map']>): ICharacter[] => {
+    const positionedCharacters: ICharacter[] = [];
+    
+    for (const character of characters) {
+        // Find all cells that belong to the character's location
+        const candidateCells = map.reduce(
+            (cells, row) => cells.concat(
+                row.filter(
+                    cell => cell.locations.includes(character.location)
+                )
+            ), [] as DeepReadonly<ICell>[]
+        );
+        
+        // Filter out cells already occupied by positioned characters
+        const availableCells = candidateCells.filter(
+            cell => !positionedCharacters.some(
+                char => char.position.x === cell.position.x && char.position.y === cell.position.y
             )
-        ), []
-    ).filter(
-        cell => characters.find(
-            char => char.position.x !== cell.position.x && char.position.y !== cell.position.y
-        )
-    );
-    if (candidateCells.length) {
-        const cell = candidateCells[Math.floor(Math.random() * candidateCells.length)];
-        if (!cell) {
-            return character;
+        );
+        
+        if (availableCells.length > 0) {
+            // Pick a random available cell
+            const cell = availableCells[Math.floor(Math.random() * availableCells.length)];
+            if (cell) {
+                const positionedCharacter = { ...character, path: [cell.position], position: cell.position };
+                positionedCharacters.push(positionedCharacter);
+            } else {
+                // Fallback to original position
+                positionedCharacters.push(character);
+            }
+        } else {
+            // No available cells in the location, use original position
+            positionedCharacters.push(character);
         }
-        const positionedCharacter = { ...character, path: [cell.position], position: cell.position };
-        return positionedCharacter;
     }
-    return character;
-});
+    
+    return positionedCharacters;
+};

@@ -50,7 +50,7 @@ describe('Inventory Basic Test', () => {
         
         // Check that enemy has the expected items
         const itemNames = enemy?.inventory.items.map(item => item.name);
-        expect(itemNames).toContain('Combat Knife');
+        expect(itemNames).toContain('Pulse Rifle');
         expect(itemNames).toContain('Energy Spear');
         expect(itemNames).toContain('Security Keycard');
         

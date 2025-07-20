@@ -120,13 +120,19 @@ export class NetworkService extends EventBus<EventsMap, EventsMap> {
                     break;
                 }
 
-                // Mark the action as from network to prevent rebroadcasting
-                if (data.action.data) {
-                    data.action.data.fromNetwork = true;
-                    data.action.data.playerId = data.playerId;
+                // Handle special action types
+                if (data.action.type === 'stateDiff' || data.action.type === 'stateSync') {
+                    // These are custom multiplayer sync events
+                    this.dispatch(data.action.type as any, data.action.data);
+                } else {
+                    // Mark the action as from network to prevent rebroadcasting
+                    if (data.action.data) {
+                        data.action.data.fromNetwork = true;
+                        data.action.data.playerId = data.playerId;
+                    }
+                    // Dispatch the update state event locally with the data
+                    this.dispatch(data.action.type, data.action.data);
                 }
-                // Dispatch the update state event locally with the data
-                this.dispatch(data.action.type, data.action.data);
                 break;
 
             case 'syncState':

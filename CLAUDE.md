@@ -114,6 +114,48 @@ This pattern ensures the component renders correctly regardless of initializatio
 - State automatically dispatches change events when updated
 - Uses `DeepReadonly` types to prevent accidental mutations
 
+### State-Driven UI Pattern
+
+**Core Principle:** UI components are purely reactive - they listen for state changes and update their visual representation accordingly. Components never store their own UI state.
+
+**State → UI Update Flow:**
+1. **State Update**: Something dispatches an `UpdateStateEvent`
+2. **State Processing**: The State class processes the update and modifies internal state
+3. **State Dispatch**: State automatically dispatches a `StateChangeEvent` with the new data
+4. **Component Receives**: Components listening to that specific event receive the data
+5. **UI Update**: Components update their DOM/visual representation immediately
+
+**State Categories:**
+- `visualStates` - Persistent visual state (classes, styles) for components
+- `transientUI` - Temporary UI state (highlights, popups, projectiles)
+- `interactionMode` - Current interaction mode (selecting, placing, etc.)
+- `animations` - Animation queue for visual effects
+
+**Component State Listening Pattern:**
+```typescript
+// Component listens for relevant state changes
+this.listen(StateChangeEvent.uiVisualStates, (visualStates) => {
+    const myVisualState = visualStates.characters[this.id];
+    if (myVisualState) {
+        this.applyVisualState(myVisualState);
+    }
+});
+
+// Components filter by ID to check if change applies to them
+this.listen(StateChangeEvent.characterHealth, (character) => {
+    if (character.name === this.id) {
+        this.updateHealthBar(character);
+    }
+});
+```
+
+**Key Patterns:**
+1. **ID-based Filtering**: Components check if state changes apply to them by ID
+2. **Immediate Updates**: Use `requestAnimationFrame` for performance when updating DOM
+3. **Bidirectional Flow**: Components can dispatch updates that come back as state changes
+4. **No Local State**: Components derive all visual state from the centralized state
+5. **Granular Events**: Different `StateChangeEvent` subtypes for different data (game, map, characters, etc.)
+
 ### File Structure
 - `/src/components/` - Web Components (each has .ts, .scss, .html) - UI only, no business logic
 - `/src/components/_variables.scss` - Global SCSS variables and mixins

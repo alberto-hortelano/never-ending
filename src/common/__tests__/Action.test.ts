@@ -1,12 +1,12 @@
 import { Action } from '../Action';
 import { State } from '../State';
-import { EventBus, ActionEvent, StateChangeEvent, UpdateStateEvent } from '../events';
-import type { ActionEventsMap, StateChangeEventsMap, UpdateStateEventsMap } from '../events';
+import { EventBus, ActionEvent, StateChangeEvent, UpdateStateEvent, GameEvent } from '../events';
+import type { ActionEventsMap, StateChangeEventsMap, UpdateStateEventsMap, GameEventsMap } from '../events';
 import { initialState } from '../../data/state';
 
 // Type aliases for the test event bus
-type TestListenEvents = ActionEventsMap & StateChangeEventsMap;
-type TestDispatchEvents = ActionEventsMap & UpdateStateEventsMap & StateChangeEventsMap;
+type TestListenEvents = ActionEventsMap & StateChangeEventsMap & GameEventsMap;
+type TestDispatchEvents = ActionEventsMap & UpdateStateEventsMap & StateChangeEventsMap & GameEventsMap;
 
 describe('Action service', () => {
     let state: State;
@@ -165,45 +165,54 @@ describe('Action service', () => {
                 updates.push(data);
             });
 
-            // Deduct different amounts from each character
+            // Test human player's turn
             eventBus.dispatch(UpdateStateEvent.deductActionPoints, {
                 characterName: 'player',
                 actionId: 'move',
                 cost: 20
             });
 
-            eventBus.dispatch(UpdateStateEvent.deductActionPoints, {
-                characterName: 'data',
-                actionId: 'shoot',
-                cost: 40
-            });
-
-            eventBus.dispatch(UpdateStateEvent.deductActionPoints, {
-                characterName: 'enemy',
-                actionId: 'move',
-                cost: 60
+            // Change turn to AI
+            eventBus.dispatch(GameEvent.changeTurn, {
+                turn: 'ai',
+                previousTurn: 'human'
             });
 
             setTimeout(() => {
-                // Request fresh data for all characters
-                updates.length = 0;
+                // Now deduct from AI characters
+                eventBus.dispatch(UpdateStateEvent.deductActionPoints, {
+                    characterName: 'data',
+                    actionId: 'shoot',
+                    cost: 40
+                });
 
-                eventBus.dispatch(ActionEvent.request, 'player');
-                eventBus.dispatch(ActionEvent.request, 'data');
-                eventBus.dispatch(ActionEvent.request, 'enemy');
+                eventBus.dispatch(UpdateStateEvent.deductActionPoints, {
+                    characterName: 'enemy',
+                    actionId: 'move',
+                    cost: 60
+                });
 
                 setTimeout(() => {
-                    expect(updates.length).toBe(3);
+                    // Request fresh data for all characters
+                    updates.length = 0;
 
-                    const playerUpdate = updates.find(u => u.characterName === 'player');
-                    const dataUpdate = updates.find(u => u.characterName === 'data');
-                    const enemyUpdate = updates.find(u => u.characterName === 'enemy');
+                    eventBus.dispatch(ActionEvent.request, 'player');
+                    eventBus.dispatch(ActionEvent.request, 'data');
+                    eventBus.dispatch(ActionEvent.request, 'enemy');
 
-                    expect(playerUpdate?.characterActions.pointsLeft).toBe(80);  // 100 - 20
-                    expect(dataUpdate?.characterActions.pointsLeft).toBe(60);  // 100 - 40
-                    expect(enemyUpdate?.characterActions.pointsLeft).toBe(40); // 100 - 60
+                    setTimeout(() => {
+                        expect(updates.length).toBe(3);
 
-                    done();
+                        const playerUpdate = updates.find(u => u.characterName === 'player');
+                        const dataUpdate = updates.find(u => u.characterName === 'data');
+                        const enemyUpdate = updates.find(u => u.characterName === 'enemy');
+
+                        expect(playerUpdate?.characterActions.pointsLeft).toBe(80);  // 100 - 20
+                        expect(dataUpdate?.characterActions.pointsLeft).toBe(60);  // 100 - 40
+                        expect(enemyUpdate?.characterActions.pointsLeft).toBe(40); // 100 - 60
+
+                        done();
+                    }, 10);
                 }, 10);
             }, 10);
         });

@@ -3,6 +3,7 @@ import { NetworkService } from '../NetworkService';
 import { EventBus } from '../../events/EventBus';
 import { GameEvent } from '../../events';
 import { IState } from '../../interfaces';
+import { getDefaultUIState } from '../../../__tests__/helpers/testUIState.helper';
 
 // Mock NetworkService
 jest.mock('../NetworkService', () => ({
@@ -27,6 +28,11 @@ describe('MultiplayerManager', () => {
     };
 
     beforeEach(() => {
+        // Mock window object for timer functions
+        global.window = {
+            setInterval: jest.fn(),
+            clearInterval: jest.fn()
+        } as any;
         // Clear all mocks
         jest.clearAllMocks();
         
@@ -115,12 +121,19 @@ describe('MultiplayerManager', () => {
         });
 
         it('should create a base state when switching to single player', () => {
-            multiplayerManager.switchToSinglePlayer();
-            const state = multiplayerManager.getState();
+            const dispatchSpy = jest.spyOn(multiplayerManager, 'dispatch');
             
-            expect(state).toBeDefined();
-            expect(state?.game).toBeDefined();
-            expect(state?.characters).toBeDefined();
+            multiplayerManager.switchToSinglePlayer();
+            
+            expect(dispatchSpy).toHaveBeenCalledWith('switchedToSinglePlayer', expect.objectContaining({
+                state: expect.objectContaining({
+                    game: expect.any(Object),
+                    characters: expect.any(Array),
+                    map: expect.any(Array),
+                    messages: expect.any(Array),
+                    ui: expect.any(Object)
+                })
+            }));
         });
 
         it('should exit multiplayer mode when leaving room', () => {
@@ -202,7 +215,8 @@ describe('MultiplayerManager', () => {
                 game: { turn: 'player2', players: ['player1', 'player2'] },
                 characters: [],
                 map: [],
-                messages: []
+                messages: [],
+                ui: getDefaultUIState()
             };
             
             const dispatchSpy = jest.spyOn(multiplayerManager, 'dispatch');
@@ -214,7 +228,8 @@ describe('MultiplayerManager', () => {
             });
             
             expect(dispatchSpy).toHaveBeenCalledWith('multiplayerGameStarted', { state: initialState });
-            expect(multiplayerManager.getState()).toBeDefined();
+            // Note: MultiplayerManager doesn't create state - that's handled by web.ts
+            expect(multiplayerManager.getState()).toBeNull();
         });
 
         it('should handle state sync for non-host players', () => {
@@ -226,8 +241,13 @@ describe('MultiplayerManager', () => {
                 game: { turn: 'player1', players: ['player1', 'player2'] },
                 characters: [],
                 map: [],
-                messages: []
+                messages: [],
+                ui: getDefaultUIState()
             };
+            
+            // Mock a state object (MultiplayerManager needs a state to sync)
+            const mockState = {} as any;
+            multiplayerManager.setGameState(mockState);
             
             // Start game first
             triggerNetworkEvent('gameStarted', { 
@@ -239,7 +259,8 @@ describe('MultiplayerManager', () => {
                 game: { turn: 'player3', players: ['player1', 'player2'] },
                 characters: [],
                 map: [],
-                messages: []
+                messages: [],
+                ui: getDefaultUIState()
             };
             
             const dispatchSpy = jest.spyOn(multiplayerManager, 'dispatch');
@@ -267,8 +288,13 @@ describe('MultiplayerManager', () => {
                 game: { turn: 'player1', players: ['player1', 'player2'] },
                 characters: [],
                 map: [],
-                messages: []
+                messages: [],
+                ui: getDefaultUIState()
             };
+            
+            // Set a mock state (needed for sync logic)
+            const mockState = {} as any;
+            multiplayerManager.setGameState(mockState);
             
             // Start game
             triggerNetworkEvent('gameStarted', { 
@@ -276,14 +302,12 @@ describe('MultiplayerManager', () => {
                 initialState 
             });
             
-            // Store original state reference (unused but shows state doesn't change)
-            multiplayerManager.getState();
-            
             const syncedState: IState = {
                 game: { turn: 'player4', players: ['player1', 'player2'] },
                 characters: [],
                 map: [],
-                messages: []
+                messages: [],
+                ui: getDefaultUIState()
             };
             
             const dispatchSpy = jest.spyOn(multiplayerManager, 'dispatch');
@@ -299,7 +323,7 @@ describe('MultiplayerManager', () => {
             expect(dispatchSpy).not.toHaveBeenCalledWith('stateSynced', expect.anything());
         });
 
-        it('should sync state to clients on turn change when host', () => {
+        it('should broadcast turn change when host', () => {
             // Set as host
             triggerNetworkEvent('roomCreated', { 
                 roomId: 'test-room',
@@ -312,23 +336,28 @@ describe('MultiplayerManager', () => {
                 game: { turn: 'player1', players: ['player1', 'player2'] },
                 characters: [],
                 map: [],
-                messages: []
+                messages: [],
+                ui: getDefaultUIState()
             };
+            
+            // Set a mock state (needed for broadcast logic)
+            const mockState = {} as any;
+            multiplayerManager.setGameState(mockState);
+            
             triggerNetworkEvent('gameStarted', { 
                 roomId: 'test-room',
                 initialState 
             });
             
-            // Spy on send method
-            mockNetworkService.send = jest.fn();
+            // Spy on broadcastAction method
+            const broadcastSpy = jest.spyOn(multiplayerManager as any, 'broadcastAction');
             
-            // Simulate turn change
+            // Simulate turn change (not from network)
             multiplayerManager.dispatch(GameEvent.changeTurn, { turn: 'player2', previousTurn: 'player1' });
             
-            expect(mockNetworkService.send).toHaveBeenCalledWith('syncState', expect.objectContaining({
-                roomId: 'test-room',
-                state: expect.any(Object),
-                timestamp: expect.any(Number)
+            expect(broadcastSpy).toHaveBeenCalledWith(GameEvent.changeTurn, expect.objectContaining({
+                turn: 'player2',
+                previousTurn: 'player1'
             }));
         });
     });
@@ -359,7 +388,8 @@ describe('MultiplayerManager', () => {
                 game: { turn: 'player1', players: ['player1', 'player2'] },
                 characters: [],
                 map: [],
-                messages: []
+                messages: [],
+                ui: getDefaultUIState()
             };
             
             triggerNetworkEvent('gameStarted', { 

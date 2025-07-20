@@ -1,6 +1,7 @@
 import { EventBus, GameEvent, StateChangeEvent } from '../common/events';
 import { MultiplayerManager } from '../common/services/MultiplayerManager';
 import { State } from '../common/State';
+import { getDefaultUIState } from './helpers/testUIState.helper';
 
 describe('Multiplayer Turn Change', () => {
     let eventBus: EventBus<any, any>;
@@ -27,7 +28,8 @@ describe('Multiplayer Turn Change', () => {
             },
             map: [],
             characters: [],
-            messages: []
+            messages: [],
+            ui: getDefaultUIState()
         });
         
         // Mock the broadcastAction method
@@ -64,7 +66,8 @@ describe('Multiplayer Turn Change', () => {
             },
             map: [],
             characters: [],
-            messages: []
+            messages: [],
+            ui: getDefaultUIState()
         });
         (multiplayerManager as any).state = state;
         
@@ -99,7 +102,8 @@ describe('Multiplayer Turn Change', () => {
             },
             map: [],
             characters: [],
-            messages: []
+            messages: [],
+            ui: getDefaultUIState()
         };
         
         new State(initialState); // This creates the state and sets up listeners

@@ -1,6 +1,7 @@
 import { State } from '../../../common/State';
 import { ICharacter, IState } from '../../../common/interfaces';
 import { baseCharacter } from '../../../data/state';
+import { getDefaultUIState } from '../../../__tests__/helpers/testUIState.helper';
 
 describe('Character Selection Restriction', () => {
     let state: State;
@@ -45,7 +46,8 @@ describe('Character Selection Restriction', () => {
             },
             map: [], // Empty map for testing - we don't need it for character selection tests
             characters: [humanCharacter, aiCharacter],
-            messages: []
+            messages: [],
+            ui: getDefaultUIState()
         };
 
         state = new State(testState);

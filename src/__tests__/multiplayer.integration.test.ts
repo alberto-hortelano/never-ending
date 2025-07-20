@@ -7,6 +7,7 @@ import { StartGameEvent } from '../common/events/NetworkEvents';
 import { IState } from '../common/interfaces';
 import { UpdateStateEvent, GameEvent } from '../common/events';
 import { baseCharacter } from '../data/state';
+import { getDefaultUIState } from './helpers/testUIState.helper';
 
 // Mock the WebSocket connection
 class MockWebSocket {
@@ -166,7 +167,8 @@ class MultiplayerTestHelper {
                     players: [player1Id, player2Id],
                     turn: player1Id
                 },
-                messages: []
+                messages: [],
+                ui: getDefaultUIState()
             }
         };
 
@@ -438,7 +440,8 @@ describe('Multiplayer Integration Tests', () => {
                     }
                 })) as any,
                 game: { ...state.game, players: [...state.game.players] },
-                messages: [...state.messages]
+                messages: [...state.messages],
+                ui: getDefaultUIState()
             };
 
             // The stateSynced event would normally create a new state instance

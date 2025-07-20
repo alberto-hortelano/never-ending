@@ -284,6 +284,32 @@ export const initialState = (x: number, y: number, playerData: Partial<ICharacte
         map,
         characters: positionCharacters(characters, map),
         messages,
+        ui: {
+            animations: {
+                characters: {}
+            },
+            visualStates: {
+                characters: {},
+                cells: {},
+                board: {
+                    mapWidth: x,
+                    mapHeight: y,
+                    hasPopupActive: false
+                }
+            },
+            transientUI: {
+                popups: {},
+                projectiles: [],
+                highlights: {
+                    reachableCells: [],
+                    pathCells: [],
+                    targetableCells: []
+                }
+            },
+            interactionMode: {
+                type: 'normal'
+            }
+        }
     };
     return initialState;
 }
