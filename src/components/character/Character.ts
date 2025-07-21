@@ -4,7 +4,7 @@ import type Movable from "../movable/Movable";
 import "../movable/Movable";
 import { CharacterService } from "../../common/services/CharacterService";
 import { NetworkService } from "../../common/services/NetworkService";
-import type { ICharacterVisualState } from "../../common/interfaces";
+import type { ICharacterVisualState, Direction } from "../../common/interfaces";
 
 // Type for character event with network flag
 // interface NetworkCharacterEvent {
@@ -24,10 +24,17 @@ export default class Character extends Component {
     private networkService: NetworkService = NetworkService.getInstance();
     private visualState?: ICharacterVisualState;
 
+    constructor() {
+        super();
+    }
+
     override async connectedCallback() {
         const root = await super.connectedCallback();
-        if (!root) return root;
-        
+        if (!root) {
+            console.error('[Character] No root returned from super.connectedCallback');
+            return root;
+        }
+
         // Store the shadow root reference for later use
         this.root = root;
 
@@ -46,33 +53,37 @@ export default class Character extends Component {
             styles: {
                 '--x': `${position.x}`,
                 '--y': `${position.y}`,
-                '--palette-skin': palette.skin,
-                '--palette-helmet': palette.helmet,
-                '--palette-suit': palette.suit
+                '--skin': palette.skin,
+                '--helmet': palette.helmet,
+                '--suit': palette.suit
             },
             healthBarPercentage: 100,
             healthBarColor: '#4ade80',
             isDefeated: false,
             isCurrentTurn: false
         };
-        
-        // Dispatch initial visual state
-        this.dispatch(UpdateStateEvent.uiCharacterVisual, {
-            characterId: this.id,
-            visualState: initialVisualState
-        });
-        
-        // Listen for visual state changes
-        this.listen(StateChangeEvent.uiVisualStates, (visualStates) => {
-            const myVisualState = visualStates.characters[this.id];
-            if (myVisualState) {
-                this.applyVisualState(myVisualState as ICharacterVisualState);
-            }
-        });
-        
+
+        // Dispatch initial visual state (skip if preview mode)
+        if (!this.dataset.isPreview) {
+            this.dispatch(UpdateStateEvent.uiCharacterVisual, {
+                characterId: this.id,
+                visualState: initialVisualState
+            });
+        }
+
+        // Listen for visual state changes (skip if preview mode)
+        if (!this.dataset.isPreview) {
+            this.listen(StateChangeEvent.uiVisualStates, (visualStates) => {
+                const myVisualState = visualStates.characters[this.id];
+                if (myVisualState) {
+                    this.applyVisualState(myVisualState as ICharacterVisualState);
+                }
+            });
+        }
+
         this.movable.addEventListener("transitionend", () => {
             // Animation completed - update state to remove walk class
-            if (this.visualState?.classList.includes('walk')) {
+            if (this.visualState?.classList.includes('walk') && !this.dataset.isPreview) {
                 const updatedClasses = this.visualState.classList.filter(c => c !== 'walk');
                 this.dispatch(UpdateStateEvent.uiCharacterVisual, {
                     characterId: this.id,
@@ -111,14 +122,14 @@ export default class Character extends Component {
             this.currentTurn = game.turn;
             requestAnimationFrame(() => this.updateTurnIndicator());
         });
-        
+
         // Listen for character position changes from state (for multiplayer sync)
         this.listen(StateChangeEvent.characterPosition, (character) => {
             if (character.name === this.id) {
                 // Check if this is a network update
                 // const networkCharacter = character as NetworkCharacterEvent;
                 // const isNetworkUpdate = networkCharacter.fromNetwork;
-                
+
                 // For network updates, we now rely on path-based movement through Movement.ts
                 // This ensures smooth animation instead of jumping
                 // Direct position updates are only used for teleportation or initial placement
@@ -130,7 +141,7 @@ export default class Character extends Component {
             if (character.name === this.id) {
                 const percentage = Math.max(0, (character.health / character.maxHealth) * 100);
                 const color = this.calculateHealthColor(percentage);
-                
+
                 this.dispatch(UpdateStateEvent.uiCharacterVisual, {
                     characterId: this.id,
                     visualState: {
@@ -166,7 +177,7 @@ export default class Character extends Component {
         // Listen for interaction mode changes
         this.listen(StateChangeEvent.uiInteractionMode, (mode) => {
             this.isShootingMode = mode.type === 'shooting';
-            
+
             // Update visual state to reflect shooting mode
             if (this.isShootingMode) {
                 this.classList.add('shooting-mode');
@@ -176,6 +187,29 @@ export default class Character extends Component {
         });
 
         return root;
+    }
+
+    // Public method to update character appearance
+    public updateAppearance(race: string, palette: any, direction: string) {
+        if (!this.characterElement || !this.root) {
+            console.error('[Character] Cannot update - DOM not ready');
+            return;
+        }
+
+        // Update race class
+        this.characterElement.className = 'character';
+        this.characterElement.classList.add(race);
+
+        // Update direction
+        const directionClass = CharacterService.getDirectionClass(direction as Direction);
+        this.characterElement.classList.add(directionClass);
+
+        // Update palette on the host element (this component)
+        if (palette && typeof palette === 'object') {
+            this.style.setProperty('--skin', palette.skin || '#E5B887');
+            this.style.setProperty('--helmet', palette.helmet || '#4A5568');
+            this.style.setProperty('--suit', palette.suit || '#2D3748');
+        }
     }
 
     private canControlThisCharacter(): boolean {
@@ -195,19 +229,19 @@ export default class Character extends Component {
 
     private applyVisualState(visualState: ICharacterVisualState) {
         this.visualState = visualState;
-        
+
         if (!this.characterElement || !this.movable) return;
-        
+
         // Update classes
         this.characterElement.className = 'character'; // Reset to base class
         visualState.classList.forEach(cls => {
             this.characterElement!.classList.add(cls);
         });
-        
+
         // Add direction class
         const directionClass = CharacterService.getDirectionClass(visualState.direction);
         this.characterElement.classList.add(directionClass);
-        
+
         // Add state-based classes
         if (visualState.isCurrentTurn) {
             this.characterElement.classList.add('current-player');
@@ -221,7 +255,7 @@ export default class Character extends Component {
         if (visualState.isDefeated) {
             this.characterElement.classList.add('defeated');
         }
-        
+
         // Update styles
         if (visualState.styles) {
             Object.entries(visualState.styles).forEach(([prop, value]) => {
@@ -235,10 +269,10 @@ export default class Character extends Component {
                 }
             });
         }
-        
+
         // Update health bar
         this.updateHealthBar(visualState.healthBarPercentage, visualState.healthBarColor);
-        
+
         // Update interaction state
         this.style.pointerEvents = visualState.isDefeated ? 'none' : '';
         if (visualState.isDefeated) {
@@ -255,7 +289,7 @@ export default class Character extends Component {
         const networkPlayerId = this.networkService.getPlayerId();
         const isMyCharacter = networkPlayerId ? this.player === networkPlayerId : false;
         const isOpponentCharacter = networkPlayerId ? this.player !== networkPlayerId : false;
-        
+
         // Update visual state
         this.dispatch(UpdateStateEvent.uiCharacterVisual, {
             characterId: this.id,
@@ -269,14 +303,14 @@ export default class Character extends Component {
 
     private updateHealthBar(percentage: number, color: string) {
         if (!this.root) return;
-        
+
         const healthBarFill = this.root.querySelector('.health-bar-fill') as HTMLElement;
         if (healthBarFill) {
             healthBarFill.style.width = `${percentage}%`;
             healthBarFill.style.backgroundColor = color;
         }
     }
-    
+
     private calculateHealthColor(percentage: number): string {
         if (percentage > 60) return '#4ade80'; // Green
         if (percentage > 30) return '#ffa726'; // Orange

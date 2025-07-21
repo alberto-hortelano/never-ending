@@ -141,7 +141,7 @@ body {
         left: calc(5 * var(--size));
         height: calc(40 * var(--size));
         box-shadow: 0 calc(-4 * var(--size)) calc(7 * var(--size)) calc(1 * var(--size)) inset $color-black, 0 0 0 calc(4 * var(--size)) #6d6d6d;
-        background-color: $color-skin;
+        background-color: var(--skin);
         background-image: radial-gradient(circle at calc(24 * var(--size)) calc(0.8 * var(--size)), $transparent-white, $transparent-black);
         border-radius: 100%;
 
@@ -200,7 +200,7 @@ body {
     background-color: var(--suit);
     background-image: linear-gradient(90deg, $transparent-white 0%, $transparent-black 100%);
     border-radius: calc(10 * var(--size)) calc(10 * var(--size)) 0 0;
-    border-bottom: calc(8 * var(--size)) solid #d7a55f;
+    border-bottom: calc(8 * var(--size)) solid var(--skin);
     z-index: 40;
 
     &.right {

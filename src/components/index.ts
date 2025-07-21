@@ -13,3 +13,4 @@ export * from './inventory/Inventory';
 export * from './turnindicator/TurnIndicator';
 export * from './mainmenu/MainMenu';
 export * from './multiplayerlobby/MultiplayerLobby';
+export { default as CharacterCreator } from './charactercreator/CharacterCreator';

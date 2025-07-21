@@ -36,6 +36,16 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
             animation
         });
         
+        // Add 'walk' class for walk animations
+        if (animation.type === 'walk') {
+            this.dispatch(UpdateStateEvent.uiCharacterVisual, {
+                characterId,
+                visualState: {
+                    classList: ['walk']
+                }
+            });
+        }
+        
         // Start animation loop if not already running
         if (!this.animationFrame) {
             // this.lastTick = Date.now();
@@ -265,7 +275,7 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
                 this.calculateDirection(secondLastPos, finalPosition) :
                 (animation.toDirection || animation.fromDirection || 'down');
             
-            // Set final position
+            // Set final position and remove 'walk' class
             this.dispatch(UpdateStateEvent.uiCharacterVisual, {
                 characterId,
                 visualState: {
@@ -273,7 +283,8 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
                     styles: {
                         '--x': `${finalPosition?.x || 0}`,
                         '--y': `${finalPosition?.y || 0}`
-                    }
+                    },
+                    classList: [] // Remove walk class by setting empty array
                 }
             });
         }

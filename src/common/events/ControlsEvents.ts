@@ -17,6 +17,9 @@ export enum ControlsEvent {
     showInventory = 'ControlsEvent.showInventory',
     equipWeapon = 'ControlsEvent.equipWeapon',
     characterClick = 'ControlsEvent.characterClick',
+    createCharacter = 'ControlsEvent.createCharacter',
+    closeCharacterCreator = 'ControlsEvent.closeCharacterCreator',
+    openCharacterCreator = 'ControlsEvent.openCharacterCreator',
 }
 
 export interface ControlsEventsMap {
@@ -44,4 +47,24 @@ export interface ControlsEventsMap {
         characterName: string;
         position: DeepReadonly<ICoord>;
     };
+    [ControlsEvent.createCharacter]: {
+        name: string;
+        race: 'human' | 'alien' | 'robot';
+        description: string;
+        palette: {
+            skin: string;
+            helmet: string;
+            suit: string;
+        };
+        initialWeapons: any[]; // Simplified for prototype
+        initialItems: any[]; // Simplified for prototype
+        abilities: {
+            move: number;
+            shoot: number;
+            reload: number;
+            pickup: number;
+        };
+    };
+    [ControlsEvent.closeCharacterCreator]: null;
+    [ControlsEvent.openCharacterCreator]: null;
 }

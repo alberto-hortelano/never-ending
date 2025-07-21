@@ -1,0 +1,624 @@
+@use '../variables' as *;
+@use 'sass:color';
+
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.character-creator {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  background: $color-bg-primary;
+  color: $color-text-primary;
+  border-radius: $border-radius-lg;
+  overflow: hidden;
+}
+
+// Header
+.creator-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $spacing-lg;
+  background: $color-bg-secondary;
+  border-bottom: $border-width solid $color-border-primary;
+  
+  h2 {
+    margin: 0;
+    font-size: $font-size-xl;
+    font-weight: $font-weight-medium;
+  }
+  
+  .close-btn {
+    background: none;
+    border: none;
+    color: $color-text-secondary;
+    font-size: $font-size-xl;
+    cursor: pointer;
+    padding: $spacing-xs;
+    line-height: 1;
+    transition: $transition-all;
+    
+    &:hover {
+      color: $color-text-primary;
+    }
+  }
+}
+
+// Content
+.creator-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+// Tabs
+.tabs {
+  display: flex;
+  background: $color-bg-secondary;
+  border-bottom: $border-width solid $color-border-primary;
+  padding: 0 $spacing-md;
+  
+  .tab-btn {
+    flex: 1;
+    padding: $spacing-md;
+    background: none;
+    border: none;
+    color: $color-text-secondary;
+    font-size: $font-size-base;
+    cursor: pointer;
+    transition: $transition-all;
+    position: relative;
+    
+    &:hover {
+      color: $color-text-primary;
+    }
+    
+    &.active {
+      color: $color-text-primary;
+      
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: $color-highlight;
+      }
+    }
+  }
+}
+
+// Tab Panels
+.tab-panels {
+  flex: 1;
+  overflow-y: auto;
+  padding: $spacing-lg;
+}
+
+.tab-panel {
+  display: none;
+  
+  &.active {
+    display: block;
+  }
+}
+
+// Form elements
+.form-group {
+  margin-bottom: $spacing-lg;
+  
+  label {
+    display: block;
+    margin-bottom: $spacing-xs;
+    font-size: $font-size-sm;
+    color: $color-text-secondary;
+  }
+  
+  input[type="text"],
+  textarea {
+    width: 100%;
+    padding: $spacing-sm;
+    background: $color-bg-secondary;
+    border: $border-width solid $color-border-primary;
+    border-radius: $border-radius-base;
+    color: $color-text-primary;
+    font-size: $font-size-base;
+    transition: $transition-all;
+    
+    &:focus {
+      outline: none;
+      border-color: $color-highlight;
+    }
+    
+    &::placeholder {
+      color: $color-text-muted;
+    }
+  }
+  
+  textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+  
+  .error-msg {
+    display: block;
+    margin-top: $spacing-xs;
+    font-size: $font-size-xs;
+    color: $color-danger;
+    min-height: 1.2em;
+  }
+}
+
+// Race selector
+.race-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $spacing-sm;
+  
+  .race-btn {
+    padding: $spacing-md;
+    background: $color-bg-secondary;
+    border: 2px solid $color-border-primary;
+    border-radius: $border-radius-base;
+    cursor: pointer;
+    transition: $transition-all;
+    text-align: center;
+    
+    &:hover {
+      border-color: $color-highlight;
+    }
+    
+    &.active {
+      border-color: $color-highlight;
+      background: rgba($color-highlight, 0.1);
+    }
+    
+    .race-icon {
+      display: block;
+      font-size: $font-size-xl;
+      margin-bottom: $spacing-xs;
+    }
+    
+    span:last-child {
+      font-size: $font-size-sm;
+      color: $color-text-secondary;
+    }
+  }
+}
+
+// Appearance tab
+.preview-section {
+  margin-bottom: $spacing-xl;
+  
+  h3 {
+    margin-bottom: $spacing-md;
+    font-size: $font-size-lg;
+  }
+  
+  .character-preview {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    background: $color-bg-secondary;
+    border: $border-width solid $color-border-primary;
+    border-radius: $border-radius-base;
+    margin-bottom: $spacing-md;
+    position: relative;
+    
+    character-component {
+      transform: scale(2);
+    }
+  }
+  
+  .rotation-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: $spacing-md;
+    
+    .rotate-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: $color-bg-secondary;
+      border: $border-width solid $color-border-primary;
+      cursor: pointer;
+      transition: $transition-all;
+      font-size: $font-size-lg;
+      
+      &:hover {
+        background: $color-bg-tertiary;
+      }
+    }
+    
+    .rotation-label {
+      font-size: $font-size-sm;
+      color: $color-text-secondary;
+    }
+  }
+}
+
+.colors-section {
+  h3 {
+    margin-bottom: $spacing-md;
+    font-size: $font-size-lg;
+  }
+  
+  .color-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-md;
+    
+    label {
+      font-size: $font-size-base;
+    }
+    
+    .color-input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: $spacing-sm;
+      
+      input[type="color"] {
+        width: 50px;
+        height: 40px;
+        border: $border-width solid $color-border-primary;
+        border-radius: $border-radius-base;
+        cursor: pointer;
+        background: none;
+        
+        &::-webkit-color-swatch-wrapper {
+          padding: 4px;
+        }
+        
+        &::-webkit-color-swatch {
+          border-radius: $border-radius-sm;
+          border: none;
+        }
+      }
+      
+      .color-value {
+        font-family: monospace;
+        font-size: $font-size-sm;
+        color: $color-text-secondary;
+      }
+    }
+  }
+  
+  .preset-colors {
+    margin-top: $spacing-xl;
+    
+    h4 {
+      margin-bottom: $spacing-sm;
+      font-size: $font-size-base;
+      color: $color-text-secondary;
+    }
+    
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: $spacing-sm;
+      
+      .preset-btn {
+        aspect-ratio: 1;
+        border: $border-width solid $color-border-primary;
+        border-radius: $border-radius-base;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        transition: $transition-all;
+        
+        &:hover {
+          transform: scale(1.1);
+          border-color: $color-highlight;
+        }
+        
+        .preset-colors-display {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          height: 100%;
+        }
+      }
+    }
+  }
+}
+
+// Abilities tab
+.points-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-lg;
+  padding: $spacing-md;
+  background: $color-bg-secondary;
+  border-radius: $border-radius-base;
+  
+  h3 {
+    margin: 0;
+    font-size: $font-size-lg;
+  }
+  
+  .points-display {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-medium;
+    
+    .points-used {
+      color: $color-highlight;
+    }
+  }
+}
+
+.abilities-list {
+  .ability-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $spacing-md;
+    margin-bottom: $spacing-sm;
+    background: $color-bg-secondary;
+    border: $border-width solid $color-border-primary;
+    border-radius: $border-radius-base;
+    
+    .ability-info {
+      flex: 1;
+      
+      .ability-name {
+        display: block;
+        font-size: $font-size-base;
+        font-weight: $font-weight-medium;
+        margin-bottom: $spacing-xs;
+      }
+      
+      .ability-desc {
+        display: block;
+        font-size: $font-size-sm;
+        color: $color-text-secondary;
+      }
+    }
+    
+    .ability-controls {
+      display: flex;
+      align-items: center;
+      gap: $spacing-md;
+      
+      .adjust-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: $color-bg-tertiary;
+        border: $border-width solid $color-border-primary;
+        cursor: pointer;
+        transition: $transition-all;
+        font-size: $font-size-lg;
+        
+        &:hover:not(:disabled) {
+          background: $color-bg-primary;
+          border-color: $color-highlight;
+        }
+        
+        &:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+      }
+      
+      .ability-cost {
+        min-width: 40px;
+        text-align: center;
+        font-size: $font-size-lg;
+        font-weight: $font-weight-medium;
+      }
+    }
+  }
+}
+
+.abilities-note {
+  margin-top: $spacing-lg;
+  text-align: center;
+  color: $color-text-secondary;
+}
+
+// Equipment tab
+.equipment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-lg;
+  padding: $spacing-md;
+  background: $color-bg-secondary;
+  border-radius: $border-radius-base;
+  
+  h3 {
+    margin: 0;
+    font-size: $font-size-lg;
+  }
+  
+  .weight-display {
+    font-size: $font-size-base;
+    
+    .weight-current {
+      font-weight: $font-weight-medium;
+      color: $color-highlight;
+    }
+  }
+}
+
+.equipment-sections {
+  margin-bottom: $spacing-lg;
+  
+  .weapon-slots {
+    margin-bottom: $spacing-xl;
+    
+    h4 {
+      margin-bottom: $spacing-md;
+      font-size: $font-size-base;
+      color: $color-text-secondary;
+    }
+    
+    .slot-item {
+      margin-bottom: $spacing-md;
+      
+      label {
+        display: block;
+        margin-bottom: $spacing-xs;
+        font-size: $font-size-sm;
+        color: $color-text-secondary;
+      }
+      
+      select {
+        width: 100%;
+        padding: $spacing-sm;
+        background: $color-bg-secondary;
+        border: $border-width solid $color-border-primary;
+        border-radius: $border-radius-base;
+        color: $color-text-primary;
+        font-size: $font-size-base;
+        cursor: pointer;
+        
+        &:focus {
+          outline: none;
+          border-color: $color-highlight;
+        }
+      }
+    }
+  }
+  
+  .items-section {
+    h4 {
+      margin-bottom: $spacing-md;
+      font-size: $font-size-base;
+      color: $color-text-secondary;
+    }
+    
+    .items-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: $spacing-sm;
+      
+      .item-checkbox {
+        display: flex;
+        align-items: center;
+        padding: $spacing-sm;
+        background: $color-bg-secondary;
+        border: $border-width solid $color-border-primary;
+        border-radius: $border-radius-base;
+        cursor: pointer;
+        transition: $transition-all;
+        
+        &:hover {
+          border-color: $color-highlight;
+        }
+        
+        &.selected {
+          background: rgba($color-highlight, 0.1);
+          border-color: $color-highlight;
+        }
+        
+        input[type="checkbox"] {
+          margin-right: $spacing-sm;
+        }
+        
+        .item-info {
+          flex: 1;
+          
+          .item-name {
+            display: block;
+            font-size: $font-size-sm;
+            margin-bottom: 2px;
+          }
+          
+          .item-stats {
+            display: flex;
+            gap: $spacing-sm;
+            font-size: $font-size-xs;
+            color: $color-text-secondary;
+          }
+        }
+      }
+    }
+  }
+}
+
+.equipment-budget {
+  padding: $spacing-md;
+  background: $color-bg-secondary;
+  border-radius: $border-radius-base;
+  text-align: center;
+  font-size: $font-size-base;
+  
+  .budget-current {
+    font-weight: $font-weight-medium;
+    color: $color-highlight;
+  }
+}
+
+// Footer
+.creator-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: $spacing-md;
+  padding: $spacing-lg;
+  background: $color-bg-secondary;
+  border-top: $border-width solid $color-border-primary;
+  
+  button {
+    padding: $spacing-sm $spacing-lg;
+    border-radius: $border-radius-base;
+    font-size: $font-size-base;
+    cursor: pointer;
+    transition: $transition-all;
+    
+    &.btn-secondary {
+      background: $color-bg-tertiary;
+      border: $border-width solid $color-border-primary;
+      color: $color-text-primary;
+      
+      &:hover {
+        background: $color-bg-primary;
+      }
+    }
+    
+    &.btn-primary {
+      background: $color-highlight;
+      border: none;
+      color: $gray-900;
+      font-weight: $font-weight-medium;
+      
+      &:hover:not(:disabled) {
+        background: color.adjust($color-highlight, $lightness: 10%);
+      }
+      
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+  }
+}
+
+// Responsive
+@include sm-down {
+  .race-selector {
+    grid-template-columns: 1fr;
+  }
+  
+  .preset-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+@include md-up {
+  .tab-panels {
+    padding: $spacing-xl;
+  }
+}

@@ -1,16 +1,30 @@
 import { Component } from '../Component';
 import { MultiplayerLobby } from '../multiplayerlobby/MultiplayerLobby';
 import { MultiplayerManager } from '../../common/services/MultiplayerManager';
+import CharacterCreator from '../charactercreator/CharacterCreator';
+import { ControlsEvent } from '../../common/events/index';
 
 export class MainMenu extends Component {
     private multiplayerManager: MultiplayerManager;
     private multiplayerLobby: MultiplayerLobby | null = null;
+    private characterCreator: CharacterCreator | null = null;
 
     constructor() {
         super();
         this.hasCss = true;
         this.hasHtml = true;
         this.multiplayerManager = MultiplayerManager.getInstance();
+        
+        // Listen for character creator events
+        this.listen(ControlsEvent.closeCharacterCreator, () => {
+            this.show();
+        });
+        
+        this.listen(ControlsEvent.createCharacter, (characterData) => {
+            console.log('Character created:', characterData);
+            // Here you would typically save the character or start the game with it
+            this.show();
+        });
     }
 
     override async connectedCallback() {
@@ -43,6 +57,16 @@ export class MainMenu extends Component {
             });
         } else {
             console.error('Multiplayer button not found');
+        }
+
+        // Character Creator button
+        const characterCreatorBtn = root.getElementById('characterCreatorBtn');
+        if (characterCreatorBtn) {
+            characterCreatorBtn.addEventListener('click', () => {
+                this.showCharacterCreator();
+            });
+        } else {
+            console.error('Character Creator button not found');
         }
 
         // Settings button (placeholder)
@@ -79,6 +103,15 @@ export class MainMenu extends Component {
         }
 
         this.multiplayerLobby.show();
+        this.style.display = 'none';
+    }
+
+    private showCharacterCreator() {
+        if (!this.characterCreator) {
+            this.characterCreator = document.createElement('character-creator') as CharacterCreator;
+            document.body.appendChild(this.characterCreator);
+        }
+        
         this.style.display = 'none';
     }
 

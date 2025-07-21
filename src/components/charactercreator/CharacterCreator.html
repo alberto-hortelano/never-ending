@@ -1,0 +1,218 @@
+<div class="character-creator">
+  <div class="creator-header">
+    <h2>Create Your Character</h2>
+    <button class="close-btn" id="closeBtn">&times;</button>
+  </div>
+  
+  <div class="creator-content">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="appearance">Appearance</button>
+      <button class="tab-btn" data-tab="info">Basic Info</button>
+      <button class="tab-btn" data-tab="abilities">Abilities</button>
+      <button class="tab-btn" data-tab="equipment">Equipment</button>
+    </div>
+    
+    <div class="tab-panels">
+      <!-- Appearance Tab -->
+      <div class="tab-panel active" data-panel="appearance">
+        <div class="form-group">
+          <label>Race</label>
+          <div class="race-selector">
+            <button class="race-btn active" data-race="human">
+              <span class="race-icon">👤</span>
+              <span>Human</span>
+            </button>
+            <button class="race-btn" data-race="alien">
+              <span class="race-icon">👽</span>
+              <span>Alien</span>
+            </button>
+            <button class="race-btn" data-race="robot">
+              <span class="race-icon">🤖</span>
+              <span>Robot</span>
+            </button>
+          </div>
+        </div>
+        
+        <div class="preview-section">
+          <h3>Preview</h3>
+          <div class="character-preview" id="characterPreview">
+            <!-- Character component will be inserted here -->
+          </div>
+          <div class="rotation-controls">
+            <button class="rotate-btn" id="rotateLeft">↺</button>
+            <span class="rotation-label">Rotate</span>
+            <button class="rotate-btn" id="rotateRight">↻</button>
+          </div>
+        </div>
+        
+        <div class="colors-section">
+          <h3>Colors</h3>
+          <div class="color-group">
+            <label for="skinColor">Skin</label>
+            <div class="color-input-wrapper">
+              <input type="color" id="skinColor" value="#E5B887">
+              <span class="color-value">#E5B887</span>
+            </div>
+          </div>
+          
+          <div class="color-group">
+            <label for="helmetColor">Helmet</label>
+            <div class="color-input-wrapper">
+              <input type="color" id="helmetColor" value="#4A5568">
+              <span class="color-value">#4A5568</span>
+            </div>
+          </div>
+          
+          <div class="color-group">
+            <label for="suitColor">Suit</label>
+            <div class="color-input-wrapper">
+              <input type="color" id="suitColor" value="#2D3748">
+              <span class="color-value">#2D3748</span>
+            </div>
+          </div>
+          
+          <div class="preset-colors">
+            <h4>Presets</h4>
+            <div class="preset-grid" id="presetGrid">
+              <!-- Preset buttons will be added dynamically -->
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Basic Info Tab -->
+      <div class="tab-panel" data-panel="info">
+        <div class="form-group">
+          <label for="characterName">Name</label>
+          <input type="text" id="characterName" placeholder="Enter character name" maxlength="20">
+          <span class="error-msg" id="nameError"></span>
+        </div>
+        
+        <div class="form-group">
+          <label for="characterDesc">Description</label>
+          <textarea id="characterDesc" placeholder="Describe your character..." rows="4"></textarea>
+        </div>
+      </div>
+      
+      <!-- Abilities Tab -->
+      <div class="tab-panel" data-panel="abilities">
+        <div class="points-header">
+          <h3>Ability Points</h3>
+          <div class="points-display">
+            <span class="points-used" id="pointsUsed">0</span>
+            <span>/</span>
+            <span class="points-total" id="pointsTotal">10</span>
+          </div>
+        </div>
+        
+        <div class="abilities-list" id="abilitiesList">
+          <div class="ability-item" data-ability="move">
+            <div class="ability-info">
+              <span class="ability-name">Move</span>
+              <span class="ability-desc">Cost to move one tile</span>
+            </div>
+            <div class="ability-controls">
+              <button class="adjust-btn" data-action="decrease">-</button>
+              <span class="ability-cost" data-default="10">10</span>
+              <button class="adjust-btn" data-action="increase">+</button>
+            </div>
+          </div>
+          
+          <div class="ability-item" data-ability="shoot">
+            <div class="ability-info">
+              <span class="ability-name">Shoot</span>
+              <span class="ability-desc">Cost to fire weapon</span>
+            </div>
+            <div class="ability-controls">
+              <button class="adjust-btn" data-action="decrease">-</button>
+              <span class="ability-cost" data-default="20">20</span>
+              <button class="adjust-btn" data-action="increase">+</button>
+            </div>
+          </div>
+          
+          <div class="ability-item" data-ability="reload">
+            <div class="ability-info">
+              <span class="ability-name">Reload</span>
+              <span class="ability-desc">Cost to reload weapon</span>
+            </div>
+            <div class="ability-controls">
+              <button class="adjust-btn" data-action="decrease">-</button>
+              <span class="ability-cost" data-default="15">15</span>
+              <button class="adjust-btn" data-action="increase">+</button>
+            </div>
+          </div>
+          
+          <div class="ability-item" data-ability="pickup">
+            <div class="ability-info">
+              <span class="ability-name">Pick Up</span>
+              <span class="ability-desc">Cost to pick up items</span>
+            </div>
+            <div class="ability-controls">
+              <button class="adjust-btn" data-action="decrease">-</button>
+              <span class="ability-cost" data-default="5">5</span>
+              <button class="adjust-btn" data-action="increase">+</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="abilities-note">
+          <small>Lower costs mean better abilities. Distribute points wisely!</small>
+        </div>
+      </div>
+      
+      <!-- Equipment Tab -->
+      <div class="tab-panel" data-panel="equipment">
+        <div class="equipment-header">
+          <h3>Starting Equipment</h3>
+          <div class="weight-display">
+            <span>Weight:</span>
+            <span class="weight-current" id="currentWeight">0</span>
+            <span>/</span>
+            <span class="weight-max" id="maxWeight">100</span>
+            <span>kg</span>
+          </div>
+        </div>
+        
+        <div class="equipment-sections">
+          <div class="weapon-slots">
+            <h4>Weapon Slots</h4>
+            <div class="slot-item">
+              <label>Primary Weapon</label>
+              <select id="primaryWeapon">
+                <option value="">None</option>
+                <!-- Options will be added dynamically -->
+              </select>
+            </div>
+            <div class="slot-item">
+              <label>Secondary Weapon</label>
+              <select id="secondaryWeapon">
+                <option value="">None</option>
+                <!-- Options will be added dynamically -->
+              </select>
+            </div>
+          </div>
+          
+          <div class="items-section">
+            <h4>Items</h4>
+            <div class="items-grid" id="itemsGrid">
+              <!-- Item checkboxes will be added dynamically -->
+            </div>
+          </div>
+        </div>
+        
+        <div class="equipment-budget">
+          <span>Equipment Budget:</span>
+          <span class="budget-current" id="budgetUsed">0</span>
+          <span>/</span>
+          <span class="budget-total" id="budgetTotal">1000</span>
+          <span>credits</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="creator-footer">
+    <button class="btn-secondary" id="cancelBtn">Cancel</button>
+    <button class="btn-primary" id="createBtn" disabled>Create Character</button>
+  </div>
+</div>
