@@ -265,3 +265,60 @@ export interface IRotatingModeData {
     targetDirection?: Direction;
 }
 
+// Character Creation Interfaces
+export interface ICharacterCreationState {
+    isOpen: boolean;
+    currentTab: 'appearance' | 'info' | 'abilities' | 'equipment';
+    data: ICreatorData;
+    validation: ICreatorValidation;
+    availableWeapons: ISimplifiedWeapon[];
+    availableItems: ISimplifiedItem[];
+}
+
+export interface ICreatorData {
+    name: string;
+    race: Race;
+    description: string;
+    colors: ICharacterColors;
+    abilities: IAbilityCost;
+    primaryWeapon: string | null;
+    secondaryWeapon: string | null;
+    items: string[];
+}
+
+export interface ICharacterColors {
+    skin: string;
+    helmet: string;
+    suit: string;
+}
+
+export interface IAbilityCost {
+    move: number;
+    shoot: number;
+    reload: number;
+    pickup: number;
+}
+
+export interface ICreatorValidation {
+    nameError: string;
+    isWeightValid: boolean;
+    isBudgetValid: boolean;
+    currentWeight: number;
+    currentCost: number;
+    usedAbilityPoints: number;
+}
+
+export interface ISimplifiedWeapon {
+    id: string;
+    name: string;
+    weight: number;
+    cost: number;
+}
+
+export interface ISimplifiedItem {
+    id: string;
+    name: string;
+    weight: number;
+    cost: number;
+}
+

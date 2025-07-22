@@ -1,111 +1,18 @@
 import { Component } from '../Component.js';
 import { ControlsEvent } from '../../common/events/index.js';
+import { CharacterCreationService } from '../../common/services/CharacterCreationService.js';
 import Character from '../character/Character.js';
-import type { Direction } from '../../common/interfaces.js';
-
-interface ColorPreset {
-  name: string;
-  skin: string;
-  helmet: string;
-  suit: string;
-}
-
-interface AbilityCost {
-  move: number;
-  shoot: number;
-  reload: number;
-  pickup: number;
-}
-
-interface CharacterColors {
-  skin: string;
-  helmet: string;
-  suit: string;
-}
-
-interface CreatorData {
-  name: string;
-  race: 'human' | 'alien' | 'robot';
-  description: string;
-  colors: CharacterColors;
-  abilities: AbilityCost;
-  primaryWeapon: string | null;
-  secondaryWeapon: string | null;
-  items: string[];
-}
-
-interface SimplifiedWeapon {
-  id: string;
-  name: string;
-  weight: number;
-  cost: number;
-}
-
-interface SimplifiedItem {
-  id: string;
-  name: string;
-  weight: number;
-  cost: number;
-}
+import type { Direction, ICreatorData } from '../../common/interfaces.js';
 
 export default class CharacterCreator extends Component {
   protected override hasCss = true;
   protected override hasHtml = true;
   
-  private characterData: CreatorData = {
-    name: '',
-    race: 'human',
-    description: '',
-    colors: {
-      skin: '#E5B887',
-      helmet: '#4A5568',
-      suit: '#2D3748'
-    },
-    abilities: {
-      move: 10,
-      shoot: 20,
-      reload: 15,
-      pickup: 5
-    },
-    primaryWeapon: null,
-    secondaryWeapon: null,
-    items: []
-  };
-  
   private characterPreview: Character | null = null;
   private currentDirection: Direction = 'down';
   
-  private readonly TOTAL_ABILITY_POINTS = 10;
-  private readonly EQUIPMENT_BUDGET = 1000;
-  private readonly MAX_WEIGHT = 100;
-  
-  private readonly COLOR_PRESETS: ColorPreset[] = [
-    { name: 'Default Human', skin: '#E5B887', helmet: '#4A5568', suit: '#2D3748' },
-    { name: 'Pale Human', skin: '#F5DEB3', helmet: '#2C5282', suit: '#1A365D' },
-    { name: 'Dark Human', skin: '#8B6F47', helmet: '#744210', suit: '#5D4E37' },
-    { name: 'Alien Green', skin: '#90EE90', helmet: '#228B22', suit: '#006400' },
-    { name: 'Alien Purple', skin: '#DDA0DD', helmet: '#8B008B', suit: '#4B0082' },
-    { name: 'Robot Steel', skin: '#C0C0C0', helmet: '#708090', suit: '#2F4F4F' },
-    { name: 'Robot Gold', skin: '#FFD700', helmet: '#B8860B', suit: '#8B7500' },
-    { name: 'Robot Copper', skin: '#CD7F32', helmet: '#8B4513', suit: '#654321' }
-  ];
-  
-  // Simplified weapons for prototype - in a real game these would come from data
-  private readonly AVAILABLE_WEAPONS: Array<SimplifiedWeapon> = [
-    { id: 'pistol', name: 'Pistol', weight: 5, cost: 100 },
-    { id: 'rifle', name: 'Rifle', weight: 10, cost: 300 },
-    { id: 'shotgun', name: 'Shotgun', weight: 12, cost: 250 },
-    { id: 'smg', name: 'SMG', weight: 8, cost: 200 }
-  ];
-  
-  // Simplified items for prototype - in a real game these would come from data
-  private readonly AVAILABLE_ITEMS: Array<SimplifiedItem> = [
-    { id: 'medkit', name: 'Medkit', weight: 2, cost: 50 },
-    { id: 'ammo_box', name: 'Ammo Box', weight: 5, cost: 30 },
-    { id: 'grenade', name: 'Grenade', weight: 1, cost: 75 },
-    { id: 'armor', name: 'Body Armor', weight: 15, cost: 200 },
-    { id: 'scope', name: 'Scope', weight: 1, cost: 100 }
-  ];
+  // Local state management
+  private characterData: ICreatorData = CharacterCreationService.createDefaultCharacterData();
   
   override async connectedCallback() {
     const root = await super.connectedCallback();
@@ -187,7 +94,7 @@ export default class CharacterCreator extends Component {
     const suitColor = root.querySelector('#suitColor') as HTMLInputElement;
     
     // Setup color change handlers
-    const updateColor = (type: keyof CharacterColors, input: HTMLInputElement) => {
+    const updateColor = (type: keyof ICreatorData['colors'], input: HTMLInputElement) => {
       input.addEventListener('input', (e) => {
         const color = (e.target as HTMLInputElement).value;
         this.characterData.colors[type] = color;
@@ -220,7 +127,7 @@ export default class CharacterCreator extends Component {
     const presetGrid = root.querySelector('#presetGrid');
     if (!presetGrid) return;
     
-    this.COLOR_PRESETS.forEach(preset => {
+    CharacterCreationService.COLOR_PRESETS.forEach(preset => {
       const btn = document.createElement('button');
       btn.className = 'preset-btn';
       btn.title = preset.name;
@@ -230,7 +137,7 @@ export default class CharacterCreator extends Component {
       
       ['skin', 'helmet', 'suit'].forEach(type => {
         const colorDiv = document.createElement('div');
-        colorDiv.style.backgroundColor = preset[type as keyof ColorPreset];
+        colorDiv.style.backgroundColor = preset[type as keyof typeof preset];
         colorsDiv.appendChild(colorDiv);
       });
       
@@ -240,7 +147,7 @@ export default class CharacterCreator extends Component {
     });
   }
   
-  private applyPreset(root: ShadowRoot, preset: ColorPreset) {
+  private applyPreset(root: ShadowRoot, preset: typeof CharacterCreationService.COLOR_PRESETS[0]) {
     // Update data
     this.characterData.colors = {
       skin: preset.skin,
@@ -271,19 +178,11 @@ export default class CharacterCreator extends Component {
   }
   
   private async createCharacterPreview(root: ShadowRoot) {
-    console.log('[CharacterCreator] createCharacterPreview called');
-    
     const previewContainer = root.querySelector('#characterPreview');
-    if (!previewContainer) {
-      console.error('[CharacterCreator] No preview container found');
-      return;
-    }
+    if (!previewContainer) return;
     
     // Check if preview already exists
-    if (this.characterPreview) {
-      console.log('[CharacterCreator] Preview already exists, skipping creation');
-      return;
-    }
+    if (this.characterPreview) return;
     
     this.characterPreview = document.createElement('character-component') as Character;
     this.characterPreview.id = 'preview-character';
@@ -292,6 +191,7 @@ export default class CharacterCreator extends Component {
     this.characterPreview.dataset.race = this.characterData.race;
     this.characterPreview.dataset.player = 'preview';
     this.characterPreview.dataset.isPreview = 'true'; // Flag to prevent state events
+    
     // Character component expects palette as JSON string
     const paletteData = {
       skin: this.characterData.colors.skin,
@@ -300,14 +200,6 @@ export default class CharacterCreator extends Component {
     };
     this.characterPreview.dataset.palette = JSON.stringify(paletteData);
     this.characterPreview.dataset.direction = this.currentDirection;
-    
-    console.log('[CharacterCreator] Creating character with dataset:', {
-      race: this.characterPreview.dataset.race,
-      player: this.characterPreview.dataset.player,
-      palette: this.characterPreview.dataset.palette,
-      direction: this.characterPreview.dataset.direction,
-      isPreview: this.characterPreview.dataset.isPreview
-    });
     
     previewContainer.appendChild(this.characterPreview);
     
@@ -318,12 +210,7 @@ export default class CharacterCreator extends Component {
   }
   
   private updateCharacterPreview() {
-    console.log('[CharacterCreator] updateCharacterPreview called');
-    
-    if (!this.characterPreview) {
-      console.error('[CharacterCreator] No character preview to update');
-      return;
-    }
+    if (!this.characterPreview) return;
     
     // Call the character's update method
     if (typeof (this.characterPreview as any).updateAppearance === 'function') {
@@ -338,10 +225,6 @@ export default class CharacterCreator extends Component {
         palette,
         this.currentDirection
       );
-      
-      console.log('[CharacterCreator] Called updateAppearance on character');
-    } else {
-      console.error('[CharacterCreator] Character component does not have updateAppearance method');
     }
   }
   
@@ -361,7 +244,7 @@ export default class CharacterCreator extends Component {
     const abilityItems = root.querySelectorAll('.ability-item');
     
     abilityItems.forEach(item => {
-      const ability = item.getAttribute('data-ability') as keyof AbilityCost;
+      const ability = item.getAttribute('data-ability') as keyof ICreatorData['abilities'];
       const decreaseBtn = item.querySelector('[data-action="decrease"]') as HTMLButtonElement;
       const increaseBtn = item.querySelector('[data-action="increase"]') as HTMLButtonElement;
       const costSpan = item.querySelector('.ability-cost') as HTMLElement;
@@ -372,7 +255,7 @@ export default class CharacterCreator extends Component {
       
       decreaseBtn?.addEventListener('click', () => {
         const currentCost = this.characterData.abilities[ability];
-        if (currentCost > minCost && this.canSpendPoints(1)) {
+        if (currentCost > minCost && CharacterCreationService.canSpendAbilityPoints(this.characterData.abilities, 1)) {
           this.characterData.abilities[ability]--;
           this.updateAbilityDisplay(root);
         }
@@ -380,7 +263,7 @@ export default class CharacterCreator extends Component {
       
       increaseBtn?.addEventListener('click', () => {
         const currentCost = this.characterData.abilities[ability];
-        if (currentCost < maxCost && this.getUsedPoints() > 0) {
+        if (currentCost < maxCost && CharacterCreationService.calculateUsedAbilityPoints(this.characterData.abilities) > 0) {
           this.characterData.abilities[ability]++;
           this.updateAbilityDisplay(root);
         }
@@ -390,34 +273,19 @@ export default class CharacterCreator extends Component {
     this.updateAbilityDisplay(root);
   }
   
-  private getUsedPoints(): number {
-    const defaults = { move: 10, shoot: 20, reload: 15, pickup: 5 };
-    let used = 0;
-    
-    Object.keys(defaults).forEach(key => {
-      const ability = key as keyof AbilityCost;
-      const diff = defaults[ability] - this.characterData.abilities[ability];
-      if (diff > 0) used += diff;
-    });
-    
-    return used;
-  }
-  
-  private canSpendPoints(points: number): boolean {
-    return this.getUsedPoints() + points <= this.TOTAL_ABILITY_POINTS;
-  }
-  
   private updateAbilityDisplay(root: ShadowRoot) {
     // Update points display
     const pointsUsed = root.querySelector('#pointsUsed');
     const pointsTotal = root.querySelector('#pointsTotal');
-    if (pointsUsed) pointsUsed.textContent = this.getUsedPoints().toString();
-    if (pointsTotal) pointsTotal.textContent = this.TOTAL_ABILITY_POINTS.toString();
+    const usedPoints = CharacterCreationService.calculateUsedAbilityPoints(this.characterData.abilities);
+    
+    if (pointsUsed) pointsUsed.textContent = usedPoints.toString();
+    if (pointsTotal) pointsTotal.textContent = CharacterCreationService.TOTAL_ABILITY_POINTS.toString();
     
     // Update ability costs and button states
     const abilityItems = root.querySelectorAll('.ability-item');
     abilityItems.forEach(item => {
-      const ability = item.getAttribute('data-ability') as keyof AbilityCost;
+      const ability = item.getAttribute('data-ability') as keyof ICreatorData['abilities'];
       const costSpan = item.querySelector('.ability-cost') as HTMLElement;
       const decreaseBtn = item.querySelector('[data-action="decrease"]') as HTMLButtonElement;
       const increaseBtn = item.querySelector('[data-action="increase"]') as HTMLButtonElement;
@@ -430,8 +298,8 @@ export default class CharacterCreator extends Component {
       costSpan.textContent = currentCost.toString();
       
       // Update button states
-      decreaseBtn.disabled = currentCost <= minCost || !this.canSpendPoints(1);
-      increaseBtn.disabled = currentCost >= maxCost || this.getUsedPoints() <= 0;
+      decreaseBtn.disabled = currentCost <= minCost || !CharacterCreationService.canSpendAbilityPoints(this.characterData.abilities, 1);
+      increaseBtn.disabled = currentCost >= maxCost || usedPoints <= 0;
     });
   }
   
@@ -440,7 +308,7 @@ export default class CharacterCreator extends Component {
     const primarySelect = root.querySelector('#primaryWeapon') as HTMLSelectElement;
     const secondarySelect = root.querySelector('#secondaryWeapon') as HTMLSelectElement;
     
-    this.AVAILABLE_WEAPONS.forEach(weapon => {
+    CharacterCreationService.AVAILABLE_WEAPONS.forEach(weapon => {
       const option1 = document.createElement('option');
       option1.value = weapon.id;
       option1.textContent = `${weapon.name} (${weapon.weight}kg, ${weapon.cost} credits)`;
@@ -466,7 +334,7 @@ export default class CharacterCreator extends Component {
     // Create item checkboxes
     const itemsGrid = root.querySelector('#itemsGrid');
     if (itemsGrid) {
-      this.AVAILABLE_ITEMS.forEach(item => {
+      CharacterCreationService.AVAILABLE_ITEMS.forEach(item => {
         const itemDiv = document.createElement('div');
         itemDiv.className = 'item-checkbox';
         
@@ -512,41 +380,9 @@ export default class CharacterCreator extends Component {
   }
   
   private updateEquipmentDisplay(root: ShadowRoot) {
-    // Calculate weight
-    let totalWeight = 0;
-    
-    if (this.characterData.primaryWeapon) {
-      const weapon = this.AVAILABLE_WEAPONS.find(w => w.id === this.characterData.primaryWeapon);
-      if (weapon) totalWeight += weapon.weight;
-    }
-    
-    if (this.characterData.secondaryWeapon) {
-      const weapon = this.AVAILABLE_WEAPONS.find(w => w.id === this.characterData.secondaryWeapon);
-      if (weapon) totalWeight += weapon.weight;
-    }
-    
-    this.characterData.items.forEach(itemId => {
-      const item = this.AVAILABLE_ITEMS.find(i => i.id === itemId);
-      if (item) totalWeight += item.weight;
-    });
-    
-    // Calculate cost
-    let totalCost = 0;
-    
-    if (this.characterData.primaryWeapon) {
-      const weapon = this.AVAILABLE_WEAPONS.find(w => w.id === this.characterData.primaryWeapon);
-      if (weapon) totalCost += weapon.cost;
-    }
-    
-    if (this.characterData.secondaryWeapon) {
-      const weapon = this.AVAILABLE_WEAPONS.find(w => w.id === this.characterData.secondaryWeapon);
-      if (weapon) totalCost += weapon.cost;
-    }
-    
-    this.characterData.items.forEach(itemId => {
-      const item = this.AVAILABLE_ITEMS.find(i => i.id === itemId);
-      if (item) totalCost += item.cost;
-    });
+    // Calculate weight and cost
+    const totalWeight = CharacterCreationService.calculateTotalWeight(this.characterData);
+    const totalCost = CharacterCreationService.calculateTotalCost(this.characterData);
     
     // Update displays
     const currentWeight = root.querySelector('#currentWeight');
@@ -556,15 +392,15 @@ export default class CharacterCreator extends Component {
     
     if (currentWeight) {
       currentWeight.textContent = totalWeight.toString();
-      (currentWeight as HTMLElement).style.color = totalWeight > this.MAX_WEIGHT ? 'var(--color-danger)' : '';
+      (currentWeight as HTMLElement).style.color = totalWeight > CharacterCreationService.MAX_WEIGHT ? 'var(--color-danger)' : '';
     }
-    if (maxWeight) maxWeight.textContent = this.MAX_WEIGHT.toString();
+    if (maxWeight) maxWeight.textContent = CharacterCreationService.MAX_WEIGHT.toString();
     
     if (budgetUsed) {
       budgetUsed.textContent = totalCost.toString();
-      (budgetUsed as HTMLElement).style.color = totalCost > this.EQUIPMENT_BUDGET ? 'var(--color-danger)' : '';
+      (budgetUsed as HTMLElement).style.color = totalCost > CharacterCreationService.EQUIPMENT_BUDGET ? 'var(--color-danger)' : '';
     }
-    if (budgetTotal) budgetTotal.textContent = this.EQUIPMENT_BUDGET.toString();
+    if (budgetTotal) budgetTotal.textContent = CharacterCreationService.EQUIPMENT_BUDGET.toString();
   }
   
   private selectRace(root: ShadowRoot, race: 'human' | 'alien' | 'robot') {
@@ -577,8 +413,7 @@ export default class CharacterCreator extends Component {
     });
     
     // Apply race-specific preset colors
-    const presetIndex = race === 'alien' ? 3 : race === 'robot' ? 5 : 0;
-    const preset = this.COLOR_PRESETS[presetIndex];
+    const preset = CharacterCreationService.getPresetForRace(race);
     if (preset) {
       this.applyPreset(root, preset);
     }
@@ -596,25 +431,10 @@ export default class CharacterCreator extends Component {
     
     if (!nameInput || !nameError) return false;
     
-    const name = nameInput.value.trim();
+    const validation = CharacterCreationService.validateCharacterName(nameInput.value);
     
-    if (name.length === 0) {
-      nameError.textContent = 'Name is required';
-      return false;
-    }
-    
-    if (name.length < 2) {
-      nameError.textContent = 'Name must be at least 2 characters';
-      return false;
-    }
-    
-    if (!/^[a-zA-Z0-9\s-_]+$/.test(name)) {
-      nameError.textContent = 'Name contains invalid characters';
-      return false;
-    }
-    
-    nameError.textContent = '';
-    return true;
+    nameError.textContent = validation.error || '';
+    return validation.valid;
   }
   
   private updateCreateButton(root: ShadowRoot) {
@@ -622,92 +442,13 @@ export default class CharacterCreator extends Component {
     if (!createBtn) return;
     
     // Check all validation conditions
-    const hasValidName = this.validateName(root);
-    const hasValidWeight = this.getCurrentWeight() <= this.MAX_WEIGHT;
-    const hasValidBudget = this.getCurrentCost() <= this.EQUIPMENT_BUDGET;
-    
-    createBtn.disabled = !hasValidName || !hasValidWeight || !hasValidBudget;
-  }
-  
-  private getCurrentWeight(): number {
-    let weight = 0;
-    
-    if (this.characterData.primaryWeapon) {
-      const weapon = this.AVAILABLE_WEAPONS.find(w => w.id === this.characterData.primaryWeapon);
-      if (weapon) weight += weapon.weight;
-    }
-    
-    if (this.characterData.secondaryWeapon) {
-      const weapon = this.AVAILABLE_WEAPONS.find(w => w.id === this.characterData.secondaryWeapon);
-      if (weapon) weight += weapon.weight;
-    }
-    
-    this.characterData.items.forEach(itemId => {
-      const item = this.AVAILABLE_ITEMS.find(i => i.id === itemId);
-      if (item) weight += item.weight;
-    });
-    
-    return weight;
-  }
-  
-  private getCurrentCost(): number {
-    let cost = 0;
-    
-    if (this.characterData.primaryWeapon) {
-      const weapon = this.AVAILABLE_WEAPONS.find(w => w.id === this.characterData.primaryWeapon);
-      if (weapon) cost += weapon.cost;
-    }
-    
-    if (this.characterData.secondaryWeapon) {
-      const weapon = this.AVAILABLE_WEAPONS.find(w => w.id === this.characterData.secondaryWeapon);
-      if (weapon) cost += weapon.cost;
-    }
-    
-    this.characterData.items.forEach(itemId => {
-      const item = this.AVAILABLE_ITEMS.find(i => i.id === itemId);
-      if (item) cost += item.cost;
-    });
-    
-    return cost;
+    const isValid = CharacterCreationService.validateCreatorData(this.characterData);
+    createBtn.disabled = !isValid;
   }
   
   private createCharacter() {
-    // Build the character object
-    const weapons: SimplifiedWeapon[] = [];
-    const items: SimplifiedItem[] = [];
-    
-    if (this.characterData.primaryWeapon) {
-      const weapon = this.AVAILABLE_WEAPONS.find(w => w.id === this.characterData.primaryWeapon);
-      if (weapon) {
-        weapons.push(weapon);
-      }
-    }
-    
-    if (this.characterData.secondaryWeapon) {
-      const weapon = this.AVAILABLE_WEAPONS.find(w => w.id === this.characterData.secondaryWeapon);
-      if (weapon) {
-        weapons.push(weapon);
-      }
-    }
-    
-    this.characterData.items.forEach(itemId => {
-      const item = this.AVAILABLE_ITEMS.find(i => i.id === itemId);
-      if (item) {
-        items.push(item);
-      }
-    });
-    
-    // Create a partial character with the essential data
-    // The game system will complete the character creation
-    const characterData = {
-      name: this.characterData.name,
-      race: this.characterData.race,
-      description: this.characterData.description,
-      palette: this.characterData.colors,
-      initialWeapons: weapons,
-      initialItems: items,
-      abilities: this.characterData.abilities
-    };
+    // Build the character data
+    const characterData = CharacterCreationService.buildCharacterData(this.characterData);
     
     // Dispatch event to create character
     this.dispatch(ControlsEvent.createCharacter, characterData);
