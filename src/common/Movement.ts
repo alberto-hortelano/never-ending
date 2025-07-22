@@ -9,16 +9,6 @@ import {
 } from "./events";
 import { animationService } from "./services/AnimationService";
 
-// Type for character path event with network flag
-// interface NetworkCharacterPath {
-//     fromNetwork?: boolean;
-//     name: string;
-//     path: ICoord[];
-//     position: ICoord;
-//     direction: string;
-// }
-
-
 export class Movement extends EventBus<
     GameEventsMap & ControlsEventsMap & StateChangeEventsMap,
     UpdateStateEventsMap & ControlsEventsMap
@@ -39,7 +29,7 @@ export class Movement extends EventBus<
         this.addListener(StateChangeEvent.characterPath, character => this.onCharacterPath(character));
         this.addListener(StateChangeEvent.uiAnimations, animations => this.onAnimationsChange(animations));
     }
-    
+
     private addListener<K extends keyof (GameEventsMap & ControlsEventsMap & StateChangeEventsMap)>(
         event: K,
         handler: (data: (GameEventsMap & ControlsEventsMap & StateChangeEventsMap)[K]) => void
@@ -47,7 +37,7 @@ export class Movement extends EventBus<
         this.listen(event, handler);
         this.listeners.push({ event: event as string, handler });
     }
-    
+
     destroy() {
         // Remove all listeners for this Movement instance
         this.remove(this);
@@ -62,37 +52,54 @@ export class Movement extends EventBus<
     private onCharacterPath(character: StateChangeEventsMap[StateChangeEvent.characterPath]) {
         // When a character path is set, create a movement animation
         if (character.path && character.path.length > 0) {
+
+            // Calculate initial direction from current position to first path position
+            const initialDirection = this.calculateDirection(character.position, character.path[0]!) as Direction;
+
             // Calculate final direction based on last movement
-            let finalDirection = character.direction;
+            let finalDirection = initialDirection;
             if (character.path.length >= 2) {
                 const lastPos = character.path[character.path.length - 1];
                 const secondLastPos = character.path[character.path.length - 2];
                 if (lastPos && secondLastPos) {
                     finalDirection = this.calculateDirection(secondLastPos, lastPos) as Direction;
                 }
+            } else if (character.path.length === 1) {
+                // Single step movement - final direction is same as initial
+                finalDirection = initialDirection;
             }
-            
-            // Track this movement for completion
+
+            // Track this movement for completion (for action point deduction)
             this.completedMovements.set(character.name, {
                 path: [...character.path],
                 finalDirection
             });
-            
+
+            // Add walk class at the start
+            this.dispatch(UpdateStateEvent.uiCharacterVisual, {
+                characterId: character.name,
+                visualState: {
+                    classList: ['walk']
+                }
+            });
+
             // Create movement animation for the entire path
+            // Prepend the current position to the path since calculatePath doesn't include it
+            const fullPath = [character.position, ...character.path];
             const animation = animationService.createMovementAnimation(
                 character.name,
-                [...character.path],
-                character.direction
+                fullPath,
+                initialDirection
             );
-            
+
             // Start the animation
             animationService.startAnimation(character.name, animation);
-            
+
             // Clear path highlights in UI state
             this.dispatch(UpdateStateEvent.uiHighlights, {
                 pathCells: []
             });
-            
+
             // Clear the path in state since animation is handling it
             this.dispatch(UpdateStateEvent.characterPath, { ...character, path: [] });
         }
@@ -117,10 +124,10 @@ export class Movement extends EventBus<
                 // Animation just completed
                 const character = this.state.findCharacter(characterId);
                 if (character && pathData && pathData.path.length > 0) {
-                    // Update final position
+                    // Update final position in state
                     const finalPosition = pathData.path[pathData.path.length - 1];
                     const finalDirection = pathData.finalDirection as Direction;
-                    
+
                     if (finalPosition) {
                         this.dispatch(UpdateStateEvent.characterPosition, {
                             ...character,
@@ -128,7 +135,7 @@ export class Movement extends EventBus<
                             direction: finalDirection
                         });
                     }
-                    
+
                     // Deduct action points if this is the current player's character
                     if (character.player === this.state.game.turn) {
                         const moveCost = character.actions.general.move * pathData.path.length;
@@ -138,7 +145,7 @@ export class Movement extends EventBus<
                             cost: moveCost
                         });
                     }
-                    
+
                     this.completedMovements.delete(characterId);
                 }
             }
@@ -147,20 +154,20 @@ export class Movement extends EventBus<
     // Helpers
     private selectDestination(character: DeepReadonly<ICharacter>, _reachableCells: ICoord[], destination: ICoord) {
         const path = calculatePath(character.position, destination, this.state.map);
-        
+
         // Clear highlights
         this.dispatch(UpdateStateEvent.uiHighlights, {
             reachableCells: []
         });
-        
+
         // Reset interaction mode
         this.dispatch(UpdateStateEvent.uiInteractionMode, {
             type: 'normal'
         });
-        
+
         delete this.reachableCells;
         delete this.movingCharacter;
-        
+
         // Set the character path which will trigger animation
         this.dispatch(UpdateStateEvent.characterPath, { ...character, path });
     }
@@ -170,21 +177,21 @@ export class Movement extends EventBus<
         if (!freshCharacter) {
             return;
         }
-        
+
         // Calculate maximum movement distance based on action points and move cost
         const moveCost = freshCharacter.actions.general.move;
         const pointsLeft = freshCharacter.actions.pointsLeft;
         const maxDistance = Math.floor(pointsLeft / moveCost);
-        
+
         const reachableCells = getReachableCells(freshCharacter.position, maxDistance, this.state.map);
         this.movingCharacter = freshCharacter;
         this.reachableCells = reachableCells;
-        
+
         // Update UI state with highlighted cells
         this.dispatch(UpdateStateEvent.uiHighlights, {
             reachableCells: reachableCells
         });
-        
+
         // Update interaction mode
         this.dispatch(UpdateStateEvent.uiInteractionMode, {
             type: 'moving',
@@ -204,7 +211,7 @@ export class Movement extends EventBus<
         else if (dx < 0) return 'left';
         else if (dy > 0) return 'down';
         else if (dy < 0) return 'up';
-        
+
         return 'down'; // Default direction
     }
 };

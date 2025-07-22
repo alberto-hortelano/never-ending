@@ -22,7 +22,6 @@ export default class Character extends Component {
     private isShootingMode: boolean = false;
     private root?: ShadowRoot;
     private networkService: NetworkService = NetworkService.getInstance();
-    private visualState?: ICharacterVisualState;
 
     constructor() {
         super();
@@ -81,16 +80,8 @@ export default class Character extends Component {
             });
         }
 
-        this.movable.addEventListener("transitionend", () => {
-            // Animation completed - update state to remove walk class
-            if (this.visualState?.classList.includes('walk') && !this.dataset.isPreview) {
-                const updatedClasses = this.visualState.classList.filter(c => c !== 'walk');
-                this.dispatch(UpdateStateEvent.uiCharacterVisual, {
-                    characterId: this.id,
-                    visualState: { classList: updatedClasses }
-                });
-            }
-        });
+        // Remove the transitionend listener - walk class removal is handled by AnimationService
+        // when the full movement animation completes, not when individual transitions end
         this.addEventListener('click', () => {
             if (this.isShootingMode) {
                 // In shooting mode, dispatch character click event
@@ -190,7 +181,7 @@ export default class Character extends Component {
     }
 
     // Public method to update character appearance
-    public updateAppearance(race: string, palette: any, direction: string) {
+    public updateAppearance(race: string, palette: { skin: string; helmet: string; suit: string }, direction: string) {
         if (!this.characterElement || !this.root) {
             console.error('[Character] Cannot update - DOM not ready');
             return;
@@ -228,8 +219,6 @@ export default class Character extends Component {
 
 
     private applyVisualState(visualState: ICharacterVisualState) {
-        this.visualState = visualState;
-
         if (!this.characterElement || !this.movable) return;
 
         // Update classes
@@ -241,6 +230,7 @@ export default class Character extends Component {
         // Add direction class
         const directionClass = CharacterService.getDirectionClass(visualState.direction);
         this.characterElement.classList.add(directionClass);
+        
 
         // Add state-based classes
         if (visualState.isCurrentTurn) {

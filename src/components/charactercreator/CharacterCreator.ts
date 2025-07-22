@@ -34,6 +34,20 @@ interface CreatorData {
   items: string[];
 }
 
+interface SimplifiedWeapon {
+  id: string;
+  name: string;
+  weight: number;
+  cost: number;
+}
+
+interface SimplifiedItem {
+  id: string;
+  name: string;
+  weight: number;
+  cost: number;
+}
+
 export default class CharacterCreator extends Component {
   protected override hasCss = true;
   protected override hasHtml = true;
@@ -77,7 +91,7 @@ export default class CharacterCreator extends Component {
   ];
   
   // Simplified weapons for prototype - in a real game these would come from data
-  private readonly AVAILABLE_WEAPONS: Array<any> = [
+  private readonly AVAILABLE_WEAPONS: Array<SimplifiedWeapon> = [
     { id: 'pistol', name: 'Pistol', weight: 5, cost: 100 },
     { id: 'rifle', name: 'Rifle', weight: 10, cost: 300 },
     { id: 'shotgun', name: 'Shotgun', weight: 12, cost: 250 },
@@ -85,7 +99,7 @@ export default class CharacterCreator extends Component {
   ];
   
   // Simplified items for prototype - in a real game these would come from data
-  private readonly AVAILABLE_ITEMS: Array<any> = [
+  private readonly AVAILABLE_ITEMS: Array<SimplifiedItem> = [
     { id: 'medkit', name: 'Medkit', weight: 2, cost: 50 },
     { id: 'ammo_box', name: 'Ammo Box', weight: 5, cost: 30 },
     { id: 'grenade', name: 'Grenade', weight: 1, cost: 75 },
@@ -659,8 +673,8 @@ export default class CharacterCreator extends Component {
   
   private createCharacter() {
     // Build the character object
-    const weapons: any[] = [];
-    const items: any[] = [];
+    const weapons: SimplifiedWeapon[] = [];
+    const items: SimplifiedItem[] = [];
     
     if (this.characterData.primaryWeapon) {
       const weapon = this.AVAILABLE_WEAPONS.find(w => w.id === this.characterData.primaryWeapon);

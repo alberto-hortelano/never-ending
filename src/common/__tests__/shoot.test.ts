@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ICharacter, ICell, ICoord, Direction } from "../interfaces";
 import type { State } from "../State";
 
@@ -119,12 +118,12 @@ describe('Shoot', () => {
             expect(highlightedCells.length).toBeGreaterThan(0);
 
             // Check that cells directly in front are visible
-            const directlyInFront = highlightedCells.find((data: any) => data.coord.x === 7 && data.coord.y === 5);
+            const directlyInFront = highlightedCells.find((data) => data.coord.x === 7 && data.coord.y === 5);
             expect(directlyInFront).toBeDefined();
             expect(directlyInFront!.intensity).toBeGreaterThan(0.5);
 
             // Check that cells behind are not visible
-            const behind = highlightedCells.find((data: any) => data.coord.x === 3 && data.coord.y === 5);
+            const behind = highlightedCells.find((data) => data.coord.x === 3 && data.coord.y === 5);
             expect(behind).toBeUndefined();
         });
 
@@ -140,8 +139,8 @@ describe('Shoot', () => {
             superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
 
             const highlightedCells = cellHighlightSpy.mock.calls.map(call => call[0]);
-            const nearCell = highlightedCells.find((data: any) => data.coord.x === 6 && data.coord.y === 5);
-            const farCell = highlightedCells.find((data: any) => data.coord.x === 10 && data.coord.y === 5);
+            const nearCell = highlightedCells.find((data) => data.coord.x === 6 && data.coord.y === 5);
+            const farCell = highlightedCells.find((data) => data.coord.x === 10 && data.coord.y === 5);
 
             expect(nearCell).toBeDefined();
             expect(farCell).toBeDefined();
@@ -160,8 +159,8 @@ describe('Shoot', () => {
             superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
 
             const highlightedCells = cellHighlightSpy.mock.calls.map(call => call[0]);
-            const centerCell = highlightedCells.find((data: any) => data.coord.x === 7 && data.coord.y === 5);
-            const edgeCell = highlightedCells.find((data: any) => data.coord.x === 7 && data.coord.y === 6);
+            const centerCell = highlightedCells.find((data) => data.coord.x === 7 && data.coord.y === 5);
+            const edgeCell = highlightedCells.find((data) => data.coord.x === 7 && data.coord.y === 6);
 
             expect(centerCell).toBeDefined();
             expect(edgeCell).toBeDefined();
@@ -193,7 +192,7 @@ describe('Shoot', () => {
                 if (!expectedCell) {
                     throw new Error(`Expected cell not found for direction: ${direction}`);
                 }
-                const foundCell = highlightedCells.find((data: any) =>
+                const foundCell = highlightedCells.find((data) =>
                     data.coord.x === expectedCell.x && data.coord.y === expectedCell.y
                 );
 
@@ -225,15 +224,15 @@ describe('Shoot', () => {
             const highlightedCells = cellHighlightSpy.mock.calls.map(call => call[0]);
 
             // Cell with obstacle should not be visible
-            const obstacleCell = highlightedCells.find((data: any) => data.coord.x === 7 && data.coord.y === 5);
+            const obstacleCell = highlightedCells.find((data) => data.coord.x === 7 && data.coord.y === 5);
             expect(obstacleCell).toBeUndefined();
 
             // Cells behind obstacle should not be visible
-            const behindObstacle = highlightedCells.find((data: any) => data.coord.x === 9 && data.coord.y === 5);
+            const behindObstacle = highlightedCells.find((data) => data.coord.x === 9 && data.coord.y === 5);
             expect(behindObstacle).toBeUndefined();
 
             // Cells before obstacle should be visible
-            const beforeObstacle = highlightedCells.find((data: any) => data.coord.x === 6 && data.coord.y === 5);
+            const beforeObstacle = highlightedCells.find((data) => data.coord.x === 6 && data.coord.y === 5);
             expect(beforeObstacle).toBeDefined();
         });
 
@@ -639,7 +638,7 @@ describe('Shoot', () => {
 
             // All highlighted cells should have meaningful intensity
             const highlightedCells = cellHighlightSpy.mock.calls.map(call => call[0]);
-            highlightedCells.forEach((data: any) => {
+            highlightedCells.forEach((data) => {
                 expect(data.intensity).toBeGreaterThan(0.01);
             });
         });

@@ -1,7 +1,7 @@
 import { EventBus, EventsMap } from '../events/EventBus';
 import { NetworkService } from './NetworkService';
 import { State } from '../State';
-import { IState, IUIState } from '../interfaces';
+import { IState, IUIState, ICharacter } from '../interfaces';
 import { GameEvent, UpdateStateEvent } from '../events';
 import { getBaseState } from '../../data/state';
 import { StateDiffService, StateDiff } from './StateDiffService';
@@ -47,18 +47,17 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
             this.handleGameStart(data.initialState);
         });
 
-        this.networkService.listen('stateSync', (data: any) => {
-            if (data.diff) {
-                this.handleStateDiff(data.diff);
-            } else {
-                this.handleStateSync(data.state);
+        this.networkService.listen('stateSync', (data) => {
+            const syncData = data as { state?: IState; diff?: StateDiff };
+            if (syncData.diff) {
+                this.handleStateDiff(syncData.diff);
+            } else if (syncData.state) {
+                this.handleStateSync(syncData.state);
             }
         });
         
-        // Listen for stateDiff using the listen method
-        this.networkService.listen('stateDiff' as any, (data: any) => {
-            this.handleStateDiff(data.diff);
-        });
+        // Note: stateDiff actions are converted to stateSync events in NetworkService
+        // to maintain a clean event system and avoid "no listeners" warnings
 
         this.networkService.listen('roomCreated', () => {
             this.isHost = true;
@@ -114,8 +113,8 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
         this.switchToSinglePlayer();
     }
 
-    setReady(ready: boolean, character?: any): void {
-        this.networkService.setReady(ready, character);
+    setReady(ready: boolean, character?: Partial<ICharacter>): void {
+        this.networkService.setReady(ready, character as ICharacter | undefined);
     }
 
     private handleGameStart(initialState: IState) {
@@ -298,11 +297,10 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
     private setupStateUpdateListeners() {
         // Listen for character movement
         this.listen(UpdateStateEvent.characterPosition, (data) => {
-            
             if (this.isMultiplayer && this.state) {
                 // Don't broadcast if this came from network (to avoid loops)
                 if (!(data as NetworkEventData).fromNetwork) {
-                    this.broadcastAction(UpdateStateEvent.characterPosition, data);
+this.broadcastAction(UpdateStateEvent.characterPosition, data);
                 }
             }
         });
@@ -312,7 +310,7 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
             if (this.isMultiplayer && this.state) {
                 // Only broadcast if this didn't come from network (to avoid loops)
                 if (!(data as NetworkEventData).fromNetwork) {
-                    // Include current position in the broadcast for synchronization
+// Include current position in the broadcast for synchronization
                     this.broadcastAction(UpdateStateEvent.characterPath, {
                         ...data,
                         position: data.position // Ensure position is included
@@ -373,12 +371,12 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
         
     }
 
-    private broadcastAction(type: string, data: any) {
+    private broadcastAction(type: string, data: unknown) {
         this.networkService.send('playerAction', {
             action: {
                 type,
                 data: {
-                    ...data,
+                    ...(typeof data === 'object' && data !== null ? data : {}),
                     senderId: this.getCurrentPlayerId() // Add sender ID to track origin
                 }
             }

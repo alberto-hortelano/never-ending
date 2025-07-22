@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { GameEventsMap } from "./GameEvents";
 import type { StateChangeEventsMap, UpdateStateEventsMap } from "./StateEvents";
 import type { ControlsEventsMap } from "./ControlsEvents";
@@ -35,7 +34,7 @@ export type TypedEvent = keyof EventsMap;
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEvents extends Partial<EventsMap> = {}> {
-    private static listeners = new Map<string, Map<object, (data: any) => void>>();
+    private static listeners = new Map<string, Map<object, (data: unknown) => void>>();
 
     listen<E extends keyof ListenEvents>(
         eventName: E,
@@ -51,7 +50,7 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
         if (bucket.has(this)) {
             throw new Error(`Listener for "${key}" already registered on ${this.constructor.name}`);
         }
-        bucket.set(this, cb as (data: any) => void);
+        bucket.set(this, cb as (data: unknown) => void);
     }
 
     dispatch<E extends keyof DispatchEvents>(
@@ -101,7 +100,7 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
     }
 
     static reset() {
-        EventBus.listeners = new Map<string, Map<object, (data: any) => void>>();
+        EventBus.listeners = new Map<string, Map<object, (data: unknown) => void>>();
     }
 }
 

@@ -19,13 +19,23 @@ document.documentElement.style.setProperty('--size', 'calc(var(--cell-width, 2dv
 document.documentElement.style.setProperty('--mobile-popup-height', '50vh');
 
 let gameState: State | null = null;
-let gameServices: any[] = [];
+interface GameService {
+    destroy?: () => void;
+    remove?: (target: object) => void;
+}
+
+let gameServices: GameService[] = [];
 
 const play = (state?: State) => {
     // Clean up previous game services
     gameServices.forEach(service => {
-        if (service && typeof service.destroy === 'function') {
-            service.destroy();
+        if (service) {
+            if (typeof service.destroy === 'function') {
+                service.destroy();
+            } else if (typeof service.remove === 'function') {
+                // For EventBus instances, remove listeners
+                service.remove(service);
+            }
         }
     });
     gameServices = [];
@@ -84,7 +94,7 @@ if (mainMenu) {
 }
 
 // Listen for multiplayer events
-multiplayerManager.listen('multiplayerGameStarted', (event: any) => {
+multiplayerManager.listen('multiplayerGameStarted', (event) => {
     // Use the initial state data to create the game state
     const gameState = new State(event.state);
     

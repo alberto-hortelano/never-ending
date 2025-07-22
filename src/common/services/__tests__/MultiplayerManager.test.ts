@@ -32,7 +32,7 @@ describe('MultiplayerManager', () => {
         global.window = {
             setInterval: jest.fn(),
             clearInterval: jest.fn()
-        } as any;
+        } as unknown as typeof window;
         // Clear all mocks
         jest.clearAllMocks();
         
@@ -40,8 +40,8 @@ describe('MultiplayerManager', () => {
         EventBus.reset();
         
         // Reset singleton instance
-        (MultiplayerManager as any).instance = undefined;
-        (NetworkService as any).instance = undefined;
+        (MultiplayerManager as unknown as { instance: MultiplayerManager | undefined }).instance = undefined;
+        (NetworkService as unknown as { instance: NetworkService | undefined }).instance = undefined;
         
         // Create mock network service instance with required methods
         const mockInstance = {

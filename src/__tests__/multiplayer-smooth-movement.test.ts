@@ -19,7 +19,7 @@ class MockWebSocket {
     send = jest.fn();
     close = jest.fn();
     
-    simulateMessage(data: any) {
+    simulateMessage(data: { type: string; data: unknown }) {
         console.log('MockWebSocket simulateMessage:', data);
         if (this.onmessage) {
             console.log('Calling onmessage');
@@ -34,7 +34,7 @@ class MockWebSocket {
 const originalWebSocket = global.WebSocket;
 
 // Mock window object
-(global as any).window = {
+(global as typeof globalThis & { window: { location: { protocol: string; host: string } } }).window = {
     location: {
         protocol: 'http:',
         host: 'localhost:3000'
@@ -50,8 +50,8 @@ describe.skip('Multiplayer Smooth Movement - NEEDS REWRITE', () => {
     let multiplayerManager: MultiplayerManager;
     let networkService: NetworkService;
     let mockWebSocket: MockWebSocket;
-    let moveCharacterEvents: any[] = [];
-    let characterPathEvents: any[] = [];
+    let moveCharacterEvents: Array<ICharacter> = [];
+    let characterPathEvents: Array<{ characterName: string; path: ICoord[] }> = [];
     
     beforeEach(() => {
         // Reset singletons
@@ -69,7 +69,7 @@ describe.skip('Multiplayer Smooth Movement - NEEDS REWRITE', () => {
                 }
             }, 0);
             return mockWebSocket;
-        }) as any;
+        }) as unknown as typeof WebSocket;
         
         // Get singleton instances
         networkService = NetworkService.getInstance();
@@ -194,9 +194,9 @@ describe.skip('Multiplayer Smooth Movement - NEEDS REWRITE', () => {
         // Verify movement started (first cell in path)
         expect(moveCharacterEvents.length).toBeGreaterThan(0);
         const firstMove = moveCharacterEvents[0];
-        expect(firstMove.name).toBe('player2-char');
-        expect(firstMove.position).toEqual({ x: 10, y: 9 });
-        expect(firstMove.path.length).toBe(2); // Remaining path
+        expect(firstMove!.name).toBe('player2-char');
+        expect(firstMove!.position).toEqual({ x: 10, y: 9 });
+        expect(firstMove!.path.length).toBe(2); // Remaining path
         
         // TODO: Movement completion is now handled by AnimationService
         // movement['onMovementEnd']('player2-char');
@@ -211,8 +211,8 @@ describe.skip('Multiplayer Smooth Movement - NEEDS REWRITE', () => {
         // Check that next movement was triggered
         expect(moveCharacterEvents.length).toBeGreaterThan(1);
         const secondMove = moveCharacterEvents[1];
-        expect(secondMove.position).toEqual({ x: 10, y: 8 });
-        expect(secondMove.path.length).toBe(1); // One position left
+        expect(secondMove!.position).toEqual({ x: 10, y: 8 });
+        expect(secondMove!.path.length).toBe(1); // One position left
         
         // TODO: Movement completion is now handled by AnimationService
         // movement['onMovementEnd']('player2-char');
@@ -221,8 +221,8 @@ describe.skip('Multiplayer Smooth Movement - NEEDS REWRITE', () => {
         // Verify third movement
         expect(moveCharacterEvents.length).toBeGreaterThan(2);
         const thirdMove = moveCharacterEvents[2];
-        expect(thirdMove.position).toEqual({ x: 9, y: 8 });
-        expect(thirdMove.path.length).toBe(0); // No more path
+        expect(thirdMove!.position).toEqual({ x: 9, y: 8 });
+        expect(thirdMove!.path.length).toBe(0); // No more path
         
         // Final position check
         const finalChar = state.findCharacter('player2-char');
@@ -239,7 +239,7 @@ describe.skip('Multiplayer Smooth Movement - NEEDS REWRITE', () => {
         });
         
         // Track action point deductions
-        const actionPointDeductions: any[] = [];
+        const actionPointDeductions: Array<{ characterName: string; pointsLeft: number }> = [];
         const eventBus = new EventBus<any, any>();
         eventBus.listen(UpdateStateEvent.deductActionPoints, (data) => {
             actionPointDeductions.push(data);

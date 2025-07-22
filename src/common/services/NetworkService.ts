@@ -1,6 +1,5 @@
 import { EventBus, EventsMap } from '../events/EventBus';
-import { NetworkEventMap } from '../events/NetworkEvents';
-import { ICharacter } from '../interfaces';
+import { ICharacter, IState } from '../interfaces';
 
 export class NetworkService extends EventBus<EventsMap, EventsMap> {
     private static instance: NetworkService;
@@ -12,7 +11,7 @@ export class NetworkService extends EventBus<EventsMap, EventsMap> {
     private reconnectAttempts = 0;
     private maxReconnectAttempts = 5;
     private reconnectDelay = 1000;
-    private messageQueue: Array<{ type: string; data: any }> = [];
+    private messageQueue: Array<{ type: string; data: unknown }> = [];
 
     private constructor() {
         super();
@@ -86,70 +85,93 @@ export class NetworkService extends EventBus<EventsMap, EventsMap> {
         });
     }
 
-    private handleServerMessage(message: { type: keyof NetworkEventMap; data: any }) {
+    private handleServerMessage(message: { type: string; data: unknown }) {
         const { type, data } = message;
 
         switch (type) {
-            case 'connect':
-                this.playerId = data.playerId;
+            case 'connect': {
+                const connectData = data as { playerId: string };
+                this.playerId = connectData.playerId;
                 this.dispatch('networkConnected', { playerId: this.playerId || '', playerName: this.playerName || '' });
                 break;
+            }
 
-            case 'createRoom':
-                this.roomId = data.roomId;
-                this.dispatch('roomCreated', data);
+            case 'createRoom': {
+                const roomData = data as { roomId: string; roomName: string; maxPlayers: number };
+                this.roomId = roomData.roomId;
+                this.dispatch('roomCreated', roomData);
                 break;
+            }
 
-            case 'joinRoom':
-                this.roomId = data.roomId;
-                this.dispatch('roomJoined', data);
+            case 'joinRoom': {
+                const joinData = data as { roomId: string };
+                this.roomId = joinData.roomId;
+                this.dispatch('roomJoined', joinData);
                 break;
+            }
 
-            case 'leaveRoom':
+            case 'leaveRoom': {
+                const leaveData = data as { roomId: string };
                 this.roomId = null;
-                this.dispatch('roomLeft', data);
+                this.dispatch('roomLeft', leaveData);
                 break;
+            }
 
-            case 'roomState':
-                this.dispatch('roomStateUpdate', data);
+            case 'roomState': {
+                const roomStateData = data as { roomId: string; roomName: string; maxPlayers: number; players: Array<{ id: string; name: string; ready: boolean; character?: Partial<ICharacter> }>; status: 'waiting' | 'starting' | 'playing' | 'finished' };
+                this.dispatch('roomStateUpdate', roomStateData);
                 break;
+            }
 
-            case 'playerAction':
+            case 'playerAction': {
+                const actionData = data as { playerId: string; action: { type: string; data: Record<string, unknown> } };
                 // Filter out actions from the current player to prevent double processing
-                if (data.playerId === this.playerId) {
+                if (actionData.playerId === this.playerId) {
                     break;
                 }
 
                 // Handle special action types
-                if (data.action.type === 'stateDiff' || data.action.type === 'stateSync') {
-                    // These are custom multiplayer sync events
-                    this.dispatch(data.action.type as any, data.action.data);
+                if (actionData.action.type === 'stateSync') {
+                    // This is a custom multiplayer sync event that can contain either full state or diff
+                    this.dispatch('stateSync', actionData.action.data as never);
+                } else if (actionData.action.type === 'stateDiff') {
+                    // stateDiff is handled as stateSync with a diff property
+                    this.dispatch('stateSync', actionData.action.data as never);
                 } else {
                     // Mark the action as from network to prevent rebroadcasting
-                    if (data.action.data) {
-                        data.action.data.fromNetwork = true;
-                        data.action.data.playerId = data.playerId;
+                    if (actionData.action.data) {
+                        actionData.action.data.fromNetwork = true;
+                        actionData.action.data.playerId = actionData.playerId;
                     }
                     // Dispatch the update state event locally with the data
-                    this.dispatch(data.action.type, data.action.data);
+                    this.dispatch(actionData.action.type as keyof EventsMap, actionData.action.data as never);
                 }
                 break;
+            }
 
-            case 'syncState':
-                this.dispatch('stateSync', data);
+            case 'syncState': {
+                const syncData = data as { roomId: string; state: IState; timestamp: number };
+                this.dispatch('stateSync', syncData);
                 break;
+            }
 
-            case 'startGame':
-                this.dispatch('gameStarted', data);
+            case 'startGame': {
+                const gameData = data as { roomId: string; initialState: IState };
+                this.dispatch('gameStarted', gameData);
                 break;
+            }
 
-            case 'roomList':
-                this.dispatch('roomListUpdate', data);
+            case 'roomList': {
+                const listData = data as { rooms: Array<{ id: string; name: string; players: number; maxPlayers: number; status: 'waiting' | 'starting' | 'playing' | 'finished' }> };
+                this.dispatch('roomListUpdate', listData);
                 break;
+            }
 
-            case 'error':
-                this.dispatch('networkError', data);
+            case 'error': {
+                const errorData = data as { playerId?: string; roomId?: string; error: string; code: 'ROOM_FULL' | 'ROOM_NOT_FOUND' | 'INVALID_ACTION' | 'NOT_YOUR_TURN' | 'DISCONNECTED' };
+                this.dispatch('networkError', errorData);
                 break;
+            }
 
             default:
                 console.warn('Unknown message type from server:', type);
@@ -184,7 +206,7 @@ export class NetworkService extends EventBus<EventsMap, EventsMap> {
     }
 
 
-    send(type: string, data: any): void {
+    send(type: string, data: unknown): void {
         if (this.ws?.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify({ type, data }));
         } else {

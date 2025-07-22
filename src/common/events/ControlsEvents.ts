@@ -1,4 +1,4 @@
-import type { ICoord, ICharacter } from "../interfaces";
+import type { ICoord, ICharacter, IWeapon, IItem } from "../interfaces";
 import type { DeepReadonly } from "../helpers/types";
 
 /** Controls Events */
@@ -56,8 +56,8 @@ export interface ControlsEventsMap {
             helmet: string;
             suit: string;
         };
-        initialWeapons: any[]; // Simplified for prototype
-        initialItems: any[]; // Simplified for prototype
+        initialWeapons: Partial<IWeapon>[]; // Simplified for prototype
+        initialItems: Partial<IItem>[]; // Simplified for prototype
         abilities: {
             move: number;
             shoot: number;

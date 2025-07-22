@@ -1,4 +1,4 @@
-import { ICharacter, IState } from "../interfaces";
+import { ICharacter, IState, ICoord, Direction } from "../interfaces";
 
 export type NetworkEvent = 
     | ConnectEvent
@@ -56,12 +56,17 @@ export interface RoomStateEvent {
 export interface PlayerActionEvent {
     playerId: string;
     roomId: string;
-    action: {
-        type: string;
-        data: any;
-    };
+    action: PlayerAction;
     timestamp: number;
 }
+
+export type PlayerAction = 
+    | { type: 'move'; data: { characterId: string; position: ICoord; } }
+    | { type: 'shoot'; data: { characterId: string; targetPosition: ICoord; weaponId: string; } }
+    | { type: 'rotate'; data: { characterId: string; direction: Direction; } }
+    | { type: 'endTurn'; data: { playerId: string; } }
+    | { type: 'useItem'; data: { characterId: string; itemId: string; } }
+    | { type: 'updateCharacter'; data: { characterId: string; updates: Partial<ICharacter>; } };
 
 export interface SyncStateEvent {
     roomId: string;

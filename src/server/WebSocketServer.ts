@@ -1,8 +1,13 @@
 import { WebSocketServer as WSServer, WebSocket } from 'ws';
 import { Server } from 'http';
-import { NetworkEventMap } from '../common/events/NetworkEvents';
+import { NetworkEventMap, ConnectEvent, CreateRoomEvent, JoinRoomEvent, PlayerReadyEvent, PlayerActionEvent } from '../common/events/NetworkEvents';
 import { IState, ICharacter } from '../common/interfaces';
 import { randomUUID } from 'crypto';
+
+interface WebSocketMessage {
+    type: keyof NetworkEventMap;
+    data: NetworkEventMap[keyof NetworkEventMap];
+}
 
 interface Room {
     id: string;
@@ -69,37 +74,37 @@ export class WebSocketServer {
         });
     }
 
-    private handleMessage(playerId: string, ws: WebSocket, message: any) {
+    private handleMessage(playerId: string, ws: WebSocket, message: WebSocketMessage) {
         const { type, data } = message;
 
         switch (type) {
             case 'connect':
-                this.handleConnect(playerId, ws, data);
+                this.handleConnect(playerId, ws, data as ConnectEvent);
                 break;
             case 'createRoom':
-                this.handleCreateRoom(playerId, data);
+                this.handleCreateRoom(playerId, data as CreateRoomEvent);
                 break;
             case 'joinRoom':
-                this.handleJoinRoom(playerId, data);
+                this.handleJoinRoom(playerId, data as JoinRoomEvent);
                 break;
             case 'leaveRoom':
                 this.handleLeaveRoom(playerId);
                 break;
             case 'playerReady':
-                this.handlePlayerReady(playerId, data);
+                this.handlePlayerReady(playerId, data as PlayerReadyEvent);
                 break;
             case 'requestRoomList':
                 this.handleRequestRoomList(playerId);
                 break;
             case 'playerAction':
-                this.handlePlayerAction(playerId, data);
+                this.handlePlayerAction(playerId, data as PlayerActionEvent);
                 break;
             default:
                 this.sendError(ws, `Unknown message type: ${type}`);
         }
     }
 
-    private handleConnect(playerId: string, ws: WebSocket, data: NetworkEventMap['connect']) {
+    private handleConnect(playerId: string, ws: WebSocket, data: ConnectEvent) {
         const player: Player = {
             id: playerId,
             name: data.playerName,
@@ -112,7 +117,7 @@ export class WebSocketServer {
         console.log(`Player connected: ${playerId} (${data.playerName})`);
     }
 
-    private handleCreateRoom(playerId: string, data: NetworkEventMap['createRoom']) {
+    private handleCreateRoom(playerId: string, data: CreateRoomEvent) {
         const player = this.players.get(playerId);
         if (!player) return;
 
@@ -138,7 +143,7 @@ export class WebSocketServer {
         console.log(`Room created: ${roomId} by player ${playerId}`);
     }
 
-    private handleJoinRoom(playerId: string, data: NetworkEventMap['joinRoom']) {
+    private handleJoinRoom(playerId: string, data: JoinRoomEvent) {
         const player = this.players.get(playerId);
         const room = this.rooms.get(data.roomId);
 
@@ -203,7 +208,7 @@ export class WebSocketServer {
         console.log(`Player ${playerId} left room ${roomId}`);
     }
 
-    private handlePlayerReady(playerId: string, data: NetworkEventMap['playerReady']) {
+    private handlePlayerReady(playerId: string, data: PlayerReadyEvent) {
         const player = this.players.get(playerId);
         const room = player?.roomId ? this.rooms.get(player.roomId) : null;
 
@@ -226,7 +231,7 @@ export class WebSocketServer {
         }
     }
 
-    private handlePlayerAction(playerId: string, data: NetworkEventMap['playerAction']) {
+    private handlePlayerAction(playerId: string, data: PlayerActionEvent) {
         const player = this.players.get(playerId);
         const room = player?.roomId ? this.rooms.get(player.roomId) : null;
 
@@ -308,14 +313,14 @@ export class WebSocketServer {
         console.log(`Player ${playerId} disconnected`);
     }
 
-    private sendToPlayer(playerId: string, type: string, data: any) {
+    private sendToPlayer(playerId: string, type: keyof NetworkEventMap, data: NetworkEventMap[keyof NetworkEventMap]) {
         const player = this.players.get(playerId);
         if (!player || player.ws.readyState !== WebSocket.OPEN) return;
 
         player.ws.send(JSON.stringify({ type, data }));
     }
 
-    private broadcastToRoom(roomId: string, type: string, data: any, excludePlayerId?: string) {
+    private broadcastToRoom(roomId: string, type: keyof NetworkEventMap, data: NetworkEventMap[keyof NetworkEventMap], excludePlayerId?: string) {
         const room = this.rooms.get(roomId);
         if (!room) return;
 

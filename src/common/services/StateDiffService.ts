@@ -1,9 +1,9 @@
-import { IState, IUIState, IProjectileState } from '../interfaces';
+import { IState, IUIState, IProjectileState, ICharacterAnimation, ICharacterVisualState, ICellVisualState } from '../interfaces';
 
 export interface StatePatch {
     path: string[];
     op: 'set' | 'delete' | 'add' | 'remove';
-    value?: any;
+    value?: unknown;
     timestamp?: number;
 }
 
@@ -50,7 +50,7 @@ export class StateDiffService {
         
         // Apply each patch
         for (const patch of diff.patches) {
-            this.applyPatch(newState, patch);
+this.applyPatch(newState, patch);
         }
         
         return newState;
@@ -61,7 +61,7 @@ export class StateDiffService {
      * Some UI state is local-only (e.g., popup positions, local highlights)
      */
     static filterUIPatches(patches: StatePatch[]): StatePatch[] {
-        return patches.filter(patch => {
+        const filtered = patches.filter(patch => {
             const path = patch.path.join('.');
             
             // Filter out local-only UI state
@@ -72,11 +72,15 @@ export class StateDiffService {
                 'ui.interactionMode', // Interaction mode is local
             ];
             
-            return !localOnlyPaths.some(localPath => path.startsWith(localPath));
+            const isLocalOnly = localOnlyPaths.some(localPath => path.startsWith(localPath));
+            
+            return !isLocalOnly;
         });
+        
+        return filtered;
     }
     
-    private static compareObjects(oldObj: any, newObj: any, path: string[], patches: StatePatch[]) {
+    private static compareObjects(oldObj: unknown, newObj: unknown, path: string[], patches: StatePatch[]) {
         // Handle null/undefined cases
         if (oldObj === newObj) return;
         if (oldObj == null || newObj == null) {
@@ -84,18 +88,27 @@ export class StateDiffService {
             return;
         }
         
+        // Type guard to ensure we're working with objects
+        if (typeof oldObj !== 'object' || typeof newObj !== 'object') {
+            patches.push({ path: [...path], op: 'set', value: newObj });
+            return;
+        }
+        
+        const oldRecord = oldObj as Record<string, unknown>;
+        const newRecord = newObj as Record<string, unknown>;
+        
         // Get all keys from both objects
-        const allKeys = new Set([...Object.keys(oldObj), ...Object.keys(newObj)]);
+        const allKeys = new Set([...Object.keys(oldRecord), ...Object.keys(newRecord)]);
         
         for (const key of allKeys) {
-            const oldValue = oldObj[key];
-            const newValue = newObj[key];
+            const oldValue = oldRecord[key];
+            const newValue = newRecord[key];
             const currentPath = [...path, key];
             
             if (!(key in newObj)) {
                 // Key was deleted
                 patches.push({ path: currentPath, op: 'delete' });
-            } else if (!(key in oldObj)) {
+            } else if (!(key in oldRecord)) {
                 // Key was added
                 patches.push({ path: currentPath, op: 'set', value: newValue });
             } else if (oldValue !== newValue) {
@@ -113,11 +126,17 @@ export class StateDiffService {
         }
     }
     
-    private static compareArrays(oldArr: any[], newArr: any[], path: string[], patches: StatePatch[], idKey?: string) {
+    private static compareArrays(oldArr: unknown[], newArr: unknown[], path: string[], patches: StatePatch[], idKey?: string) {
         if (idKey) {
             // Compare arrays of objects with unique IDs
-            const oldMap = new Map(oldArr.map(item => [item[idKey], item]));
-            const newMap = new Map(newArr.map(item => [item[idKey], item]));
+            const oldMap = new Map(oldArr.map(item => {
+                const obj = item as Record<string, unknown>;
+                return [obj[idKey], obj];
+            }));
+            const newMap = new Map(newArr.map(item => {
+                const obj = item as Record<string, unknown>;
+                return [obj[idKey], obj];
+            }));
             
             // Check for removed items
             for (const [id] of oldMap) {
@@ -141,7 +160,7 @@ export class StateDiffService {
                     });
                 } else {
                     // Compare the objects
-                    const itemIndex = newArr.findIndex(item => item[idKey] === id);
+                    const itemIndex = newArr.findIndex(item => (item as Record<string, unknown>)[idKey] === id);
                     this.compareObjects(oldItem, newItem, [...path, itemIndex.toString()], patches);
                 }
             }
@@ -182,30 +201,35 @@ export class StateDiffService {
         this.compareArrays(oldProjectiles, newProjectiles, path, patches, 'id');
     }
     
-    private static applyPatch(state: any, patch: StatePatch) {
+    private static applyPatch(state: unknown, patch: StatePatch) {
         // Navigate to the parent object
-        let current = state;
+        let current: unknown = state;
         const parentPath = patch.path.slice(0, -1);
         const lastKey = patch.path[patch.path.length - 1];
         
         for (const key of parentPath) {
-            if (!current[key]) {
-                current[key] = {};
+            if (typeof current !== 'object' || current === null) {
+                console.error(`Cannot navigate path ${patch.path.join('.')}: current is not an object`);
+                return;
             }
-            current = current[key];
+            const currentObj = current as Record<string, unknown>;
+            if (!currentObj[key]) {
+                currentObj[key] = {};
+            }
+            current = currentObj[key];
         }
         
         // Apply the operation
         switch (patch.op) {
             case 'set':
-                if (lastKey !== undefined && lastKey !== null) {
-                    current[lastKey] = patch.value;
+                if (lastKey !== undefined && lastKey !== null && typeof current === 'object' && current !== null) {
+                    (current as Record<string, unknown>)[lastKey] = patch.value;
                 }
                 break;
                 
             case 'delete':
-                if (lastKey !== undefined && lastKey !== null) {
-                    delete current[lastKey];
+                if (lastKey !== undefined && lastKey !== null && typeof current === 'object' && current !== null) {
+                    delete (current as Record<string, unknown>)[lastKey];
                 }
                 break;
                 
@@ -219,8 +243,9 @@ export class StateDiffService {
                 if (Array.isArray(current) && patch.value) {
                     const idKey = Object.keys(patch.value)[0];
                     if (idKey) {
-                        const idValue = patch.value[idKey];
-                        const index = current.findIndex((item: any) => item[idKey] === idValue);
+                        const patchValue = patch.value as Record<string, unknown>;
+                        const idValue = patchValue[idKey];
+                        const index = current.findIndex((item) => (item as Record<string, unknown>)[idKey] === idValue);
                         if (index !== -1) {
                             current.splice(index, 1);
                         }
@@ -234,7 +259,7 @@ export class StateDiffService {
      * Create a minimal diff for animation updates
      * This is optimized for frequent animation state changes
      */
-    static createAnimationDiff(characterId: string, animation: any): StateDiff {
+    static createAnimationDiff(characterId: string, animation: ICharacterAnimation): StateDiff {
         return {
             patches: [{
                 path: ['ui', 'animations', 'characters', characterId],
@@ -248,7 +273,7 @@ export class StateDiffService {
     /**
      * Create a minimal diff for visual state updates
      */
-    static createVisualStateDiff(type: 'character' | 'cell', id: string, visualState: any): StateDiff {
+    static createVisualStateDiff(type: 'character' | 'cell', id: string, visualState: ICharacterVisualState | ICellVisualState): StateDiff {
         return {
             patches: [{
                 path: ['ui', 'visualStates', `${type}s`, id],

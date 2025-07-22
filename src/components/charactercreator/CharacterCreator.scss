@@ -5,6 +5,7 @@
   display: block;
   width: 100%;
   height: 100%;
+  position: absolute;
 }
 
 .character-creator {
@@ -28,13 +29,13 @@
   padding: $spacing-lg;
   background: $color-bg-secondary;
   border-bottom: $border-width solid $color-border-primary;
-  
+
   h2 {
     margin: 0;
     font-size: $font-size-xl;
     font-weight: $font-weight-medium;
   }
-  
+
   .close-btn {
     background: none;
     border: none;
@@ -44,7 +45,7 @@
     padding: $spacing-xs;
     line-height: 1;
     transition: $transition-all;
-    
+
     &:hover {
       color: $color-text-primary;
     }
@@ -65,7 +66,7 @@
   background: $color-bg-secondary;
   border-bottom: $border-width solid $color-border-primary;
   padding: 0 $spacing-md;
-  
+
   .tab-btn {
     flex: 1;
     padding: $spacing-md;
@@ -76,14 +77,14 @@
     cursor: pointer;
     transition: $transition-all;
     position: relative;
-    
+
     &:hover {
       color: $color-text-primary;
     }
-    
+
     &.active {
       color: $color-text-primary;
-      
+
       &::after {
         content: '';
         position: absolute;
@@ -106,7 +107,7 @@
 
 .tab-panel {
   display: none;
-  
+
   &.active {
     display: block;
   }
@@ -115,14 +116,14 @@
 // Form elements
 .form-group {
   margin-bottom: $spacing-lg;
-  
+
   label {
     display: block;
     margin-bottom: $spacing-xs;
     font-size: $font-size-sm;
     color: $color-text-secondary;
   }
-  
+
   input[type="text"],
   textarea {
     width: 100%;
@@ -133,22 +134,22 @@
     color: $color-text-primary;
     font-size: $font-size-base;
     transition: $transition-all;
-    
+
     &:focus {
       outline: none;
       border-color: $color-highlight;
     }
-    
+
     &::placeholder {
       color: $color-text-muted;
     }
   }
-  
+
   textarea {
     resize: vertical;
     min-height: 80px;
   }
-  
+
   .error-msg {
     display: block;
     margin-top: $spacing-xs;
@@ -163,7 +164,7 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: $spacing-sm;
-  
+
   .race-btn {
     padding: $spacing-md;
     background: $color-bg-secondary;
@@ -172,22 +173,22 @@
     cursor: pointer;
     transition: $transition-all;
     text-align: center;
-    
+
     &:hover {
       border-color: $color-highlight;
     }
-    
+
     &.active {
       border-color: $color-highlight;
       background: rgba($color-highlight, 0.1);
     }
-    
+
     .race-icon {
       display: block;
       font-size: $font-size-xl;
       margin-bottom: $spacing-xs;
     }
-    
+
     span:last-child {
       font-size: $font-size-sm;
       color: $color-text-secondary;
@@ -198,12 +199,12 @@
 // Appearance tab
 .preview-section {
   margin-bottom: $spacing-xl;
-  
+
   h3 {
     margin-bottom: $spacing-md;
     font-size: $font-size-lg;
   }
-  
+
   .character-preview {
     display: flex;
     justify-content: center;
@@ -214,18 +215,18 @@
     border-radius: $border-radius-base;
     margin-bottom: $spacing-md;
     position: relative;
-    
+
     character-component {
       transform: scale(2);
     }
   }
-  
+
   .rotation-controls {
     display: flex;
     justify-content: center;
     align-items: center;
     gap: $spacing-md;
-    
+
     .rotate-btn {
       width: 40px;
       height: 40px;
@@ -235,12 +236,12 @@
       cursor: pointer;
       transition: $transition-all;
       font-size: $font-size-lg;
-      
+
       &:hover {
         background: $color-bg-tertiary;
       }
     }
-    
+
     .rotation-label {
       font-size: $font-size-sm;
       color: $color-text-secondary;
@@ -253,22 +254,22 @@
     margin-bottom: $spacing-md;
     font-size: $font-size-lg;
   }
-  
+
   .color-group {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: $spacing-md;
-    
+
     label {
       font-size: $font-size-base;
     }
-    
+
     .color-input-wrapper {
       display: flex;
       align-items: center;
       gap: $spacing-sm;
-      
+
       input[type="color"] {
         width: 50px;
         height: 40px;
@@ -276,17 +277,17 @@
         border-radius: $border-radius-base;
         cursor: pointer;
         background: none;
-        
+
         &::-webkit-color-swatch-wrapper {
           padding: 4px;
         }
-        
+
         &::-webkit-color-swatch {
           border-radius: $border-radius-sm;
           border: none;
         }
       }
-      
+
       .color-value {
         font-family: monospace;
         font-size: $font-size-sm;
@@ -294,21 +295,21 @@
       }
     }
   }
-  
+
   .preset-colors {
     margin-top: $spacing-xl;
-    
+
     h4 {
       margin-bottom: $spacing-sm;
       font-size: $font-size-base;
       color: $color-text-secondary;
     }
-    
+
     .preset-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: $spacing-sm;
-      
+
       .preset-btn {
         aspect-ratio: 1;
         border: $border-width solid $color-border-primary;
@@ -317,12 +318,12 @@
         position: relative;
         overflow: hidden;
         transition: $transition-all;
-        
+
         &:hover {
           transform: scale(1.1);
           border-color: $color-highlight;
         }
-        
+
         .preset-colors-display {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
@@ -342,16 +343,16 @@
   padding: $spacing-md;
   background: $color-bg-secondary;
   border-radius: $border-radius-base;
-  
+
   h3 {
     margin: 0;
     font-size: $font-size-lg;
   }
-  
+
   .points-display {
     font-size: $font-size-lg;
     font-weight: $font-weight-medium;
-    
+
     .points-used {
       color: $color-highlight;
     }
@@ -368,29 +369,29 @@
     background: $color-bg-secondary;
     border: $border-width solid $color-border-primary;
     border-radius: $border-radius-base;
-    
+
     .ability-info {
       flex: 1;
-      
+
       .ability-name {
         display: block;
         font-size: $font-size-base;
         font-weight: $font-weight-medium;
         margin-bottom: $spacing-xs;
       }
-      
+
       .ability-desc {
         display: block;
         font-size: $font-size-sm;
         color: $color-text-secondary;
       }
     }
-    
+
     .ability-controls {
       display: flex;
       align-items: center;
       gap: $spacing-md;
-      
+
       .adjust-btn {
         width: 32px;
         height: 32px;
@@ -400,18 +401,18 @@
         cursor: pointer;
         transition: $transition-all;
         font-size: $font-size-lg;
-        
+
         &:hover:not(:disabled) {
           background: $color-bg-primary;
           border-color: $color-highlight;
         }
-        
+
         &:disabled {
           opacity: 0.5;
           cursor: not-allowed;
         }
       }
-      
+
       .ability-cost {
         min-width: 40px;
         text-align: center;
@@ -437,15 +438,15 @@
   padding: $spacing-md;
   background: $color-bg-secondary;
   border-radius: $border-radius-base;
-  
+
   h3 {
     margin: 0;
     font-size: $font-size-lg;
   }
-  
+
   .weight-display {
     font-size: $font-size-base;
-    
+
     .weight-current {
       font-weight: $font-weight-medium;
       color: $color-highlight;
@@ -455,26 +456,26 @@
 
 .equipment-sections {
   margin-bottom: $spacing-lg;
-  
+
   .weapon-slots {
     margin-bottom: $spacing-xl;
-    
+
     h4 {
       margin-bottom: $spacing-md;
       font-size: $font-size-base;
       color: $color-text-secondary;
     }
-    
+
     .slot-item {
       margin-bottom: $spacing-md;
-      
+
       label {
         display: block;
         margin-bottom: $spacing-xs;
         font-size: $font-size-sm;
         color: $color-text-secondary;
       }
-      
+
       select {
         width: 100%;
         padding: $spacing-sm;
@@ -484,7 +485,7 @@
         color: $color-text-primary;
         font-size: $font-size-base;
         cursor: pointer;
-        
+
         &:focus {
           outline: none;
           border-color: $color-highlight;
@@ -492,19 +493,19 @@
       }
     }
   }
-  
+
   .items-section {
     h4 {
       margin-bottom: $spacing-md;
       font-size: $font-size-base;
       color: $color-text-secondary;
     }
-    
+
     .items-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
       gap: $spacing-sm;
-      
+
       .item-checkbox {
         display: flex;
         align-items: center;
@@ -514,29 +515,29 @@
         border-radius: $border-radius-base;
         cursor: pointer;
         transition: $transition-all;
-        
+
         &:hover {
           border-color: $color-highlight;
         }
-        
+
         &.selected {
           background: rgba($color-highlight, 0.1);
           border-color: $color-highlight;
         }
-        
+
         input[type="checkbox"] {
           margin-right: $spacing-sm;
         }
-        
+
         .item-info {
           flex: 1;
-          
+
           .item-name {
             display: block;
             font-size: $font-size-sm;
             margin-bottom: 2px;
           }
-          
+
           .item-stats {
             display: flex;
             gap: $spacing-sm;
@@ -555,7 +556,7 @@
   border-radius: $border-radius-base;
   text-align: center;
   font-size: $font-size-base;
-  
+
   .budget-current {
     font-weight: $font-weight-medium;
     color: $color-highlight;
@@ -570,34 +571,34 @@
   padding: $spacing-lg;
   background: $color-bg-secondary;
   border-top: $border-width solid $color-border-primary;
-  
+
   button {
     padding: $spacing-sm $spacing-lg;
     border-radius: $border-radius-base;
     font-size: $font-size-base;
     cursor: pointer;
     transition: $transition-all;
-    
+
     &.btn-secondary {
       background: $color-bg-tertiary;
       border: $border-width solid $color-border-primary;
       color: $color-text-primary;
-      
+
       &:hover {
         background: $color-bg-primary;
       }
     }
-    
+
     &.btn-primary {
       background: $color-highlight;
       border: none;
       color: $gray-900;
       font-weight: $font-weight-medium;
-      
+
       &:hover:not(:disabled) {
         background: color.adjust($color-highlight, $lightness: 10%);
       }
-      
+
       &:disabled {
         opacity: 0.5;
         cursor: not-allowed;
@@ -611,7 +612,7 @@
   .race-selector {
     grid-template-columns: 1fr;
   }
-  
+
   .preset-grid {
     grid-template-columns: repeat(3, 1fr) !important;
   }

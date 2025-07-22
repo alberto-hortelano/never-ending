@@ -1,6 +1,6 @@
 import type { 
     ICoord, ICell, ICharacter, IState, IInventory, IWeapon, IUIState,
-    ICharacterAnimation, ICharacterVisualState, ICellVisualState, IHighlightStates
+    ICharacterAnimation, ICharacterVisualState, ICellVisualState, IHighlightStates, IPopupState
 } from "./interfaces";
 
 import { UpdateStateEvent, EventBus, UpdateStateEventsMap, StateChangeEventsMap, StateChangeEvent, ControlsEvent, ControlsEventsMap, GameEvent, GameEventsMap } from "./events";
@@ -354,7 +354,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
     
     private onUIPopup(data: UpdateStateEventsMap[UpdateStateEvent.uiPopup]) {
         if (data.popupState) {
-            this.#ui.transientUI.popups[data.popupId] = structuredClone(data.popupState);
+            this.#ui.transientUI.popups[data.popupId] = structuredClone(data.popupState) as IPopupState;
         } else {
             delete this.#ui.transientUI.popups[data.popupId];
         }

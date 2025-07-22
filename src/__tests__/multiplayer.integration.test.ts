@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { EventBus } from '../common/events/EventBus';
 import { State } from '../common/State';
 import { MultiplayerManager } from '../common/services/MultiplayerManager';
@@ -28,13 +27,13 @@ class MockWebSocket {
     }
 
     // Simulate server responses
-    simulateServerResponse(message: any) {
+    simulateServerResponse(message: { type: string; data: unknown }) {
         // Store for later inspection
         this.lastSentMessage = message;
     }
 
     // Helper to simulate incoming messages
-    simulateIncoming(type: string, data: any) {
+    simulateIncoming(type: string, data: unknown) {
         if (this.onmessage) {
             this.onmessage(new MessageEvent('message', {
                 data: JSON.stringify({ type, data })
@@ -42,7 +41,7 @@ class MockWebSocket {
         }
     }
 
-    lastSentMessage: any = null;
+    lastSentMessage: { type: string; data: unknown } | null = null;
 }
 
 // Test helpers
@@ -50,7 +49,7 @@ class MultiplayerTestHelper {
     private eventBus: EventBus;
     private player1Socket: MockWebSocket;
     private player2Socket: MockWebSocket;
-    private originalWebSocket: any;
+    private originalWebSocket: typeof WebSocket;
 
     constructor() {
         this.eventBus = new EventBus();
@@ -58,16 +57,16 @@ class MultiplayerTestHelper {
         this.player2Socket = new MockWebSocket();
 
         // Store original WebSocket
-        this.originalWebSocket = (global as any).WebSocket;
+        this.originalWebSocket = (global as typeof globalThis & { WebSocket: typeof WebSocket }).WebSocket;
     }
 
     setupPlayer(playerId: string, playerName: string, socket: MockWebSocket): void {
         // Mock WebSocket for this player
-        (global as any).WebSocket = jest.fn(() => socket);
+        (global as typeof globalThis & { WebSocket: typeof WebSocket }).WebSocket = jest.fn(() => socket) as unknown as typeof WebSocket;
 
         // Reset singleton instances for this player
-        (NetworkService as any).instance = null;
-        (MultiplayerManager as any).instance = null;
+        (NetworkService as unknown as { instance: NetworkService | null }).instance = null;
+        (MultiplayerManager as unknown as { instance: MultiplayerManager | null }).instance = null;
 
         // Get fresh instances
         NetworkService.getInstance();
@@ -263,8 +262,8 @@ describe('Multiplayer Integration Tests', () => {
             const characters = state.characters;
             expect(characters.length).toBe(2);
 
-            const player1Char = characters.find((c: any) => c.player === player1Id);
-            const player2Char = characters.find((c: any) => c.player === player2Id);
+            const player1Char = characters.find((c) => c.player === player1Id);
+            const player2Char = characters.find((c) => c.player === player2Id);
 
             expect(player1Char).toBeDefined();
             expect(player2Char).toBeDefined();
@@ -300,8 +299,8 @@ describe('Multiplayer Integration Tests', () => {
             const initialTurn = state.game.turn;
             expect(initialTurn).toBe(player1Id);
 
-            const player1Char = state.characters.find((c: any) => c.player === player1Id);
-            const player2Char = state.characters.find((c: any) => c.player === player2Id);
+            const player1Char = state.characters.find((c) => c.player === player1Id);
+            const player2Char = state.characters.find((c) => c.player === player2Id);
 
             // Player 1 tries to move (should succeed)
             eventBus.dispatch(UpdateStateEvent.characterPosition, {
@@ -312,7 +311,7 @@ describe('Multiplayer Integration Tests', () => {
             await new Promise(resolve => setTimeout(resolve, 10));
 
             // Check player 1 moved
-            const updatedPlayer1Char = state.characters.find((c: any) => c.name === player1Char!.name);
+            const updatedPlayer1Char = state.characters.find((c) => c.name === player1Char!.name);
             expect(updatedPlayer1Char?.position).toEqual({ x: 21, y: 25 });
 
             // Player 2 tries to move (should fail - not their turn)
@@ -324,7 +323,7 @@ describe('Multiplayer Integration Tests', () => {
             await new Promise(resolve => setTimeout(resolve, 10));
 
             // Check player 2 didn't move
-            const updatedPlayer2Char = state.characters.find((c: any) => c.name === player2Char!.name);
+            const updatedPlayer2Char = state.characters.find((c) => c.name === player2Char!.name);
             expect(updatedPlayer2Char?.position).toEqual({ x: 25, y: 25 });
         });
 
@@ -348,7 +347,7 @@ describe('Multiplayer Integration Tests', () => {
 
             await new Promise(resolve => setTimeout(resolve, 10));
 
-            const player2Char = state.characters.find((c: any) => c.player === player2Id);
+            const player2Char = state.characters.find((c) => c.player === player2Id);
 
             // End player 1's turn
             eventBus.dispatch(GameEvent.changeTurn, {
@@ -366,7 +365,7 @@ describe('Multiplayer Integration Tests', () => {
             await new Promise(resolve => setTimeout(resolve, 10));
 
             // Check player 2 moved
-            const updatedPlayer2Char = state.characters.find((c: any) => c.name === player2Char!.name);
+            const updatedPlayer2Char = state.characters.find((c) => c.name === player2Char!.name);
             expect(updatedPlayer2Char?.position).toEqual({ x: 26, y: 25 });
         });
     });
@@ -392,7 +391,7 @@ describe('Multiplayer Integration Tests', () => {
 
             await new Promise(resolve => setTimeout(resolve, 10));
 
-            const player2Char = state.characters.find((c: any) => c.player === player2Id);
+            const player2Char = state.characters.find((c) => c.player === player2Id);
 
             // Simulate receiving a network action for player 2 moving (even though it's player 1's turn)
             // This should work because fromNetwork bypasses turn validation
@@ -400,12 +399,12 @@ describe('Multiplayer Integration Tests', () => {
                 ...player2Char!,
                 position: { x: 26, y: 26 },
                 fromNetwork: true
-            } as any);
+            } as Parameters<typeof eventBus.dispatch>[1] & { fromNetwork: boolean });
 
             await new Promise(resolve => setTimeout(resolve, 10));
 
             // Check player 2 moved (network actions bypass turn validation)
-            const updatedPlayer2Char = state.characters.find((c: any) => c.name === player2Char!.name);
+            const updatedPlayer2Char = state.characters.find((c) => c.name === player2Char!.name);
             expect(updatedPlayer2Char?.position).toEqual({ x: 26, y: 26 });
         });
 
@@ -431,14 +430,14 @@ describe('Multiplayer Integration Tests', () => {
 
             // Simulate a state sync from the host
             const syncedState: IState = {
-                map: [...state.map] as any,
-                characters: state.characters.map((c: any) => ({
+                map: structuredClone(state.map) as IState['map'],
+                characters: structuredClone(state.characters).map((c: ICharacter) => ({
                     ...c,
                     actions: {
                         ...c.actions,
                         pointsLeft: 5 // Changed AP values
                     }
-                })) as any,
+                })) as IState['characters'],
                 game: { ...state.game, players: [...state.game.players] },
                 messages: [...state.messages],
                 ui: getDefaultUIState()
@@ -446,13 +445,13 @@ describe('Multiplayer Integration Tests', () => {
 
             // The stateSynced event would normally create a new state instance
             // For testing, we'll update the state directly
-            (state as any).characters = syncedState.characters;
+            (state as State & { characters: IState['characters'] }).characters = syncedState.characters;
 
             await new Promise(resolve => setTimeout(resolve, 10));
 
             // Verify state was updated
             const characters = state.characters;
-            expect(characters.every((c: any) => c.actions.pointsLeft === 5)).toBe(true);
+            expect(characters.every((c) => c.actions.pointsLeft === 5)).toBe(true);
         });
     });
 
@@ -512,7 +511,7 @@ describe('Multiplayer Integration Tests', () => {
 
             await new Promise(resolve => setTimeout(resolve, 10));
 
-            const player1Char = state.characters.find((c: any) => c.player === player1Id);
+            const player1Char = state.characters.find((c) => c.player === player1Id);
 
             // Deduct all AP
             eventBus.dispatch(UpdateStateEvent.deductActionPoints, {
@@ -524,7 +523,7 @@ describe('Multiplayer Integration Tests', () => {
             await new Promise(resolve => setTimeout(resolve, 10));
 
             // Verify AP is 0
-            const charWithNoAP = state.characters.find((c: any) => c.name === player1Char!.name);
+            const charWithNoAP = state.characters.find((c) => c.name === player1Char!.name);
             expect(charWithNoAP?.actions.pointsLeft).toBe(0);
 
             // In a real game, movement would be prevented at the UI level

@@ -181,8 +181,40 @@ export interface IPopupState {
     type: 'actions' | 'inventory' | 'conversation' | 'rotate' | 'directions';
     visible: boolean;
     position?: { x: number; y: number };
-    data: any;
+    data: IPopupData & { title?: string };
     isPinned?: boolean;
+}
+
+export type IPopupData = 
+    | IActionsPopupData
+    | IInventoryPopupData
+    | IConversationPopupData
+    | IRotatePopupData
+    | IDirectionsPopupData;
+
+export interface IActionsPopupData {
+    characterId?: string;
+    actions?: ICharacterActions;
+}
+
+export interface IInventoryPopupData {
+    characterId?: string;
+    inventory?: IInventory;
+}
+
+export interface IConversationPopupData {
+    characterId?: string;
+    messages?: IMessage[];
+}
+
+export interface IRotatePopupData {
+    characterId?: string;
+    currentDirection?: Direction;
+}
+
+export interface IDirectionsPopupData {
+    characterId?: string;
+    availableDirections?: Direction[];
 }
 
 export interface IProjectileState {
@@ -202,6 +234,34 @@ export interface IHighlightStates {
 
 export interface IInteractionMode {
     type: 'normal' | 'moving' | 'shooting' | 'selecting' | 'rotating';
-    data?: any;
+    data?: IInteractionModeData;
+}
+
+export type IInteractionModeData = 
+    | IMovingModeData
+    | IShootingModeData
+    | ISelectingModeData
+    | IRotatingModeData;
+
+export interface IMovingModeData {
+    characterId: string;
+    startPosition: ICoord;
+    targetPosition?: ICoord;
+}
+
+export interface IShootingModeData {
+    characterId: string;
+    weapon: IWeapon;
+    targetPosition?: ICoord;
+}
+
+export interface ISelectingModeData {
+    targetType: 'character' | 'cell';
+    selectedId?: string;
+}
+
+export interface IRotatingModeData {
+    characterId: string;
+    targetDirection?: Direction;
 }
 
