@@ -131,6 +131,13 @@ export class Actions extends Component {
             button.classList.add('disabled');
             button.disabled = true;
         }
+        
+        // Disable shoot action if no ranged weapon
+        if (action.id === 'shoot' && data.hasRangedWeapon === false) {
+            button.classList.add('disabled');
+            button.disabled = true;
+            button.title = 'Requires ranged weapon';
+        }
 
         // Add click handler
         button.addEventListener('click', () => {

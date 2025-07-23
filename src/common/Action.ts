@@ -65,7 +65,8 @@ export class Action extends EventBus<
             const updateData: ActionUpdateData = {
                 categories: this.getActionsWithCosts(),
                 characterName: character.name,
-                characterActions: character.actions
+                characterActions: character.actions,
+                hasRangedWeapon: this.characterHasRangedWeapon(character)
             };
             this.dispatch(ActionEvent.update, updateData);
         });
@@ -87,12 +88,20 @@ export class Action extends EventBus<
             const updateData: ActionUpdateData = {
                 categories: this.getActionsWithCosts(),
                 characterName: characterName,
-                characterActions: character.actions
+                characterActions: character.actions,
+                hasRangedWeapon: this.characterHasRangedWeapon(character)
             };
             this.dispatch(ActionEvent.update, updateData);
         } else {
             this.dispatch(ActionEvent.error, `Character ${characterName} not found`);
         }
+    }
+    
+    private characterHasRangedWeapon(character: DeepReadonly<ICharacter>): boolean {
+        const primaryWeapon = character.inventory.equippedWeapons.primary;
+        const secondaryWeapon = character.inventory.equippedWeapons.secondary;
+        
+        return (primaryWeapon?.category === 'ranged') || (secondaryWeapon?.category === 'ranged');
     }
 
     private findCharacterInState(characterName: string): DeepReadonly<ICharacter> | undefined {

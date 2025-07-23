@@ -18,6 +18,7 @@ export interface ActionUpdateData {
     categories: ActionCategory[];
     characterName: string;
     characterActions: DeepReadonly<ICharacterActions>;
+    hasRangedWeapon?: boolean;
 }
 
 export enum ActionEvent {
