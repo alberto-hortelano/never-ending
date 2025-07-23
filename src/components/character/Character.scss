@@ -309,16 +309,6 @@ body {
     }
 }
 
-.rifle {
-    position: absolute;
-    bottom: calc(0 * var(--size));
-    left: calc(-05 * var(--size));
-    width: calc(100 * var(--size));
-    height: calc(10 * var(--size));
-    background-color: $color-weapon-dark;
-    z-index: 47;
-}
-
 .sword {
     display: none;
     position: absolute;

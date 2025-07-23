@@ -22,6 +22,7 @@ export default class Character extends Component {
     private isShootingMode: boolean = false;
     private root?: ShadowRoot;
     private networkService: NetworkService = NetworkService.getInstance();
+    private weaponElement?: HTMLElement;
 
     constructor() {
         super();
@@ -44,6 +45,7 @@ export default class Character extends Component {
         // Set up DOM elements
         this.characterElement = root.getElementById('character') as HTMLElement;
         this.movable = root.getElementById('movable') as Movable;
+        this.weaponElement = root.querySelector('.weapon') as HTMLElement;
 
         // Initialize visual state in UI state
         const initialVisualState: Partial<ICharacterVisualState> = {
@@ -79,7 +81,7 @@ export default class Character extends Component {
                 }
             });
         }
-        
+
         // Apply initial action if in preview mode
         if (this.dataset.isPreview && this.dataset.action && this.characterElement) {
             this.characterElement.classList.add(this.dataset.action);
@@ -186,16 +188,16 @@ export default class Character extends Component {
     }
 
     // Public method to update character appearance
-    public updateAppearance(race: string, palette: { skin: string; helmet: string; suit: string }, direction: string, action?: string) {
+    public updateAppearance(race: string, palette: { skin: string; helmet: string; suit: string }, direction: string, action?: string, weapon?: string) {
         if (!this.characterElement || !this.root) {
             console.error('[Character] Cannot update - DOM not ready');
             return;
         }
 
         // Store current action class if any
-        const currentActionClass = action || 
-            (this.characterElement.classList.contains('walk') ? 'walk' : 
-             this.characterElement.classList.contains('idle') ? 'idle' : null);
+        const currentActionClass = action ||
+            (this.characterElement.classList.contains('walk') ? 'walk' :
+                this.characterElement.classList.contains('idle') ? 'idle' : null);
 
         // Update race class
         this.characterElement.className = 'character';
@@ -204,7 +206,7 @@ export default class Character extends Component {
         // Update direction
         const directionClass = CharacterService.getDirectionClass(direction as Direction);
         this.characterElement.classList.add(directionClass);
-        
+
         // Apply action class
         if (currentActionClass) {
             this.characterElement.classList.add(currentActionClass);
@@ -215,6 +217,23 @@ export default class Character extends Component {
             this.style.setProperty('--skin', palette.skin || '#E5B887');
             this.style.setProperty('--helmet', palette.helmet || '#4A5568');
             this.style.setProperty('--suit', palette.suit || '#2D3748');
+        }
+
+        // Update weapon
+        this.updateWeaponDisplay(weapon);
+    }
+
+    private updateWeaponDisplay(weapon?: string) {
+        if (!this.weaponElement) return;
+
+        // Remove all weapon classes
+        this.weaponElement.className = 'weapon';
+
+        if (weapon) {
+            this.characterElement?.classList.add(weapon);
+            this.weaponElement.style.display = 'block';
+        } else {
+            this.weaponElement.style.display = 'none';
         }
     }
 
@@ -245,7 +264,7 @@ export default class Character extends Component {
         // Add direction class
         const directionClass = CharacterService.getDirectionClass(visualState.direction);
         this.characterElement.classList.add(directionClass);
-        
+
 
         // Add state-based classes
         if (visualState.isCurrentTurn) {
@@ -286,6 +305,11 @@ export default class Character extends Component {
         } else {
             this.characterElement.style.opacity = '';
             this.characterElement.style.filter = '';
+        }
+
+        // Update weapon display
+        if (visualState.equippedWeapon !== undefined) {
+            this.updateWeaponDisplay(visualState.equippedWeapon);
         }
     }
 

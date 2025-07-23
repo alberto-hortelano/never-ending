@@ -216,7 +216,8 @@ export default class CharacterCreator extends Component {
         this.characterData.race,
         palette,
         this.currentDirection,
-        this.currentAction
+        this.currentAction,
+        this.characterData.primaryWeapon
       );
     }
   }
@@ -332,6 +333,7 @@ export default class CharacterCreator extends Component {
       this.characterData.primaryWeapon = primarySelect.value || null;
       this.updateEquipmentDisplay(root);
       this.updateCreateButton(root);
+      this.updateCharacterPreview();
     });
     
     secondarySelect?.addEventListener('change', () => {

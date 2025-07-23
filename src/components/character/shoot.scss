@@ -8,24 +8,131 @@
         $y: map.get($cosine-values, normalizeAngle($angle + 90));
 
         &.rotate-#{$angle} {
-            .arm {
-                &.right {
-                    z-index: 34 + 20*$x;
-                    transform: rotate(normalizeAngle(-$angle - 5deg));
-                    height: calc(30 * var(--size));
+            &.pistol {
+                .arm {
+                    &.right {
+                        z-index: 34 + 20*$x;
+                        transform: rotate(normalizeAngle(-$angle - 5deg));
+                        height: calc(30 * var(--size));
+                    }
+
+                    // Weapon styles
+                    .weapon {
+                        position: absolute;
+                        display: none;
+                        transform-origin: 10% 50%;
+                        z-index: 50;
+                        bottom: calc(-22 * var(--size));
+                        right: calc((-2 + $x * -10) * var(--size));
+                        width: calc(9 * var(--size));
+                        height: calc(18 * var(--size));
+                        border-radius: calc(2 * var(--size));
+                        border: 1px solid $gray-800;
+                        background-color: $color-weapon-dark;
+
+                        &::after {
+                            content: '';
+                            position: absolute;
+                            bottom: calc(-16 * var(--size));
+                            right: calc(1 * var(--size));
+                            width: calc(2 * var(--size));
+                            height: calc(10 * var(--size));
+                            border-radius: calc(2 * var(--size));
+                            border: 1px solid $gray-800;
+                            background-color: $color-weapon-dark;
+                        }
+                    }
+                }
+            }
+
+            &.rifle {
+                .arm {
+                    &.right {
+                        z-index: 34 + 20*$x;
+                        transform: rotate(normalizeAngle(-$angle - 5deg));
+                        height: calc(30 * var(--size));
+                    }
+
+                    // Rifle
+                    .weapon {
+                        position: absolute;
+                        display: none;
+                        transform-origin: 10% 50%;
+                        z-index: 50;
+                        bottom: calc(-22 * var(--size));
+                        right: calc((-2 + $x * -10) * var(--size));
+                        width: calc(9 * var(--size));
+                        height: calc(48 * var(--size));
+                        border-radius: calc(2 * var(--size));
+                        border: 1px solid $gray-800;
+                        background-color: $color-weapon-shield;
+
+                        &::after {
+                            content: '';
+                            position: absolute;
+                            bottom: calc(-16 * var(--size));
+                            right: calc(1 * var(--size));
+                            width: calc(2 * var(--size));
+                            height: calc(10 * var(--size));
+                            border-radius: calc(2 * var(--size));
+                            border: 1px solid $gray-800;
+                            background-color: $color-weapon-shield;
+                        }
+                    }
+                }
+            }
+
+            &.shotgun {
+                .arm {
+
+                    // Shotgun
+                    .weapon {
+                        bottom: calc(-4 * var(--size));
+                        right: calc(-12 * var(--size));
+                        width: calc(25 * var(--size));
+                        height: calc(8 * var(--size));
+                        background-color: $color-weapon-dark;
+                        border-radius: calc(1 * var(--size));
+
+                        &::after {
+                            content: '';
+                            position: absolute;
+                            top: calc(-1 * var(--size));
+                            right: calc(5 * var(--size));
+                            width: calc(15 * var(--size));
+                            height: calc(3 * var(--size));
+                            background-color: $color-weapon-light;
+                        }
+                    }
+                }
+            }
+
+            &.smg {
+                .arm {
+
+                    // SMG
+                    .weapon {
+                        bottom: calc(-3 * var(--size));
+                        right: calc(-10 * var(--size));
+                        width: calc(18 * var(--size));
+                        height: calc(7 * var(--size));
+                        background-color: $color-weapon-dark;
+                        border-radius: calc(2 * var(--size));
+
+                        &::after {
+                            content: '';
+                            position: absolute;
+                            bottom: calc(-3 * var(--size));
+                            right: calc(8 * var(--size));
+                            width: calc(6 * var(--size));
+                            height: calc(8 * var(--size));
+                            background-color: $color-weapon-light;
+                            border-radius: calc(1 * var(--size));
+                        }
+                    }
                 }
 
             }
-        }
-
-        &.pistol {
-            position: absolute;
-            bottom: calc(0 * var(--size));
-            left: calc(-05 * var(--size));
-            width: calc(100 * var(--size));
-            height: calc(10 * var(--size));
-            background-color: $color-weapon-dark;
-            z-index: 47;
         }
 
     }

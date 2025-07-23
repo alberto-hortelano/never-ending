@@ -155,6 +155,7 @@ export interface ICharacterVisualState {
     isCurrentTurn: boolean;
     isMyCharacter?: boolean; // Multiplayer
     isOpponentCharacter?: boolean; // Multiplayer
+    equippedWeapon?: string; // Current weapon being displayed
 }
 
 export interface ICellVisualState {
