@@ -79,6 +79,11 @@ export default class Character extends Component {
                 }
             });
         }
+        
+        // Apply initial action if in preview mode
+        if (this.dataset.isPreview && this.dataset.action && this.characterElement) {
+            this.characterElement.classList.add(this.dataset.action);
+        }
 
         // Remove the transitionend listener - walk class removal is handled by AnimationService
         // when the full movement animation completes, not when individual transitions end
@@ -181,11 +186,16 @@ export default class Character extends Component {
     }
 
     // Public method to update character appearance
-    public updateAppearance(race: string, palette: { skin: string; helmet: string; suit: string }, direction: string) {
+    public updateAppearance(race: string, palette: { skin: string; helmet: string; suit: string }, direction: string, action?: string) {
         if (!this.characterElement || !this.root) {
             console.error('[Character] Cannot update - DOM not ready');
             return;
         }
+
+        // Store current action class if any
+        const currentActionClass = action || 
+            (this.characterElement.classList.contains('walk') ? 'walk' : 
+             this.characterElement.classList.contains('idle') ? 'idle' : null);
 
         // Update race class
         this.characterElement.className = 'character';
@@ -194,6 +204,11 @@ export default class Character extends Component {
         // Update direction
         const directionClass = CharacterService.getDirectionClass(direction as Direction);
         this.characterElement.classList.add(directionClass);
+        
+        // Apply action class
+        if (currentActionClass) {
+            this.characterElement.classList.add(currentActionClass);
+        }
 
         // Update palette on the host element (this component)
         if (palette && typeof palette === 'object') {

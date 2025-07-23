@@ -37,7 +37,7 @@ export interface IMovable extends IPositionable {
     path: ICoord[];
 }
 export type Race = 'human' | 'alien' | 'robot';
-export type Action = 'walk' | 'iddle';
+export type Action = 'walk' | 'idle';
 export type ItemType = 'consumable' | 'weapon' | 'armor' | 'misc';
 export type WeaponType = 'oneHanded' | 'twoHanded';
 export type WeaponCategory = 'melee' | 'ranged';
@@ -185,7 +185,7 @@ export interface IPopupState {
     isPinned?: boolean;
 }
 
-export type IPopupData = 
+export type IPopupData =
     | IActionsPopupData
     | IInventoryPopupData
     | IConversationPopupData
@@ -237,7 +237,7 @@ export interface IInteractionMode {
     data?: IInteractionModeData;
 }
 
-export type IInteractionModeData = 
+export type IInteractionModeData =
     | IMovingModeData
     | IShootingModeData
     | ISelectingModeData

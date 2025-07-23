@@ -16,6 +16,7 @@ export class Movement extends EventBus<
 
     private movingCharacter?: DeepReadonly<ICharacter>;
     private reachableCells?: ICoord[];
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     private listeners: Array<{ event: string; handler: Function }> = [];
     private completedMovements = new Map<string, { path: ICoord[], finalDirection: string }>();
 

@@ -247,6 +247,37 @@
       color: $color-text-secondary;
     }
   }
+  
+  .action-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: $spacing-sm;
+    margin-top: $spacing-md;
+    
+    .action-btn {
+      padding: $spacing-sm $spacing-md;
+      border-radius: $border-radius-base;
+      background: $color-bg-secondary;
+      border: $border-width solid $color-border-primary;
+      color: $color-text-primary;
+      cursor: pointer;
+      transition: $transition-all;
+      font-size: $font-size-sm;
+      
+      &:hover {
+        background: $color-bg-tertiary;
+        border-color: $color-highlight;
+      }
+      
+      &.active {
+        background: $color-highlight;
+        border-color: $color-highlight;
+        color: $gray-900;
+        font-weight: $font-weight-medium;
+      }
+    }
+  }
 }
 
 .colors-section {

@@ -128,7 +128,7 @@ export const baseCharacter: ICharacter = {
     name: 'test',
     race: 'human',
     description: 'test character',
-    action: 'iddle',
+    action: 'idle',
     player: '',
     palette: {
         skin: 'green',

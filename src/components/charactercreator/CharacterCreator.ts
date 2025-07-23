@@ -10,6 +10,7 @@ export default class CharacterCreator extends Component {
   
   private characterPreview: Character | null = null;
   private currentDirection: Direction = 'down';
+  private currentAction: string = 'idle';
   
   // Local state management
   private characterData: ICreatorData = CharacterCreationService.createDefaultCharacterData();
@@ -119,6 +120,15 @@ export default class CharacterCreator extends Component {
     rotateLeft?.addEventListener('click', () => this.rotateCharacter(-1));
     rotateRight?.addEventListener('click', () => this.rotateCharacter(1));
     
+    // Action controls
+    const actionBtns = root.querySelectorAll('.action-btn');
+    actionBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const action = (e.currentTarget as HTMLElement).dataset.action!;
+        this.setCharacterAction(root, action);
+      });
+    });
+    
     // Create preset buttons
     this.createPresetButtons(root);
   }
@@ -200,6 +210,7 @@ export default class CharacterCreator extends Component {
     };
     this.characterPreview.dataset.palette = JSON.stringify(paletteData);
     this.characterPreview.dataset.direction = this.currentDirection;
+    this.characterPreview.dataset.action = this.currentAction;
     
     previewContainer.appendChild(this.characterPreview);
     
@@ -223,7 +234,8 @@ export default class CharacterCreator extends Component {
       (this.characterPreview as any).updateAppearance(
         this.characterData.race,
         palette,
-        this.currentDirection
+        this.currentDirection,
+        this.currentAction
       );
     }
   }
@@ -238,6 +250,22 @@ export default class CharacterCreator extends Component {
     
     this.currentDirection = directions[newIndex] || 'down';
     this.updateCharacterPreview();
+  }
+  
+  private setCharacterAction(root: ShadowRoot, action: string) {
+    this.currentAction = action;
+    
+    // Update button states
+    const actionBtns = root.querySelectorAll('.action-btn');
+    actionBtns.forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-action') === action);
+    });
+    
+    // Update preview
+    if (this.characterPreview) {
+      this.characterPreview.dataset.action = action;
+      this.updateCharacterPreview();
+    }
   }
   
   private initializeAbilities(root: ShadowRoot) {
