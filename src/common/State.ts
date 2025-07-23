@@ -3,7 +3,7 @@ import type {
     ICharacterAnimation, ICharacterVisualState, ICellVisualState, IHighlightStates, IPopupState
 } from "./interfaces";
 
-import { UpdateStateEvent, EventBus, UpdateStateEventsMap, StateChangeEventsMap, StateChangeEvent, ControlsEvent, ControlsEventsMap, GameEvent, GameEventsMap } from "./events";
+import { UpdateStateEvent, EventBus, UpdateStateEventsMap, StateChangeEventsMap, StateChangeEvent, ControlsEventsMap, GameEvent, GameEventsMap } from "./events";
 import { DeepReadonly } from "./helpers/types";
 import { getBaseState } from '../data/state';
 
@@ -146,9 +146,8 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         }
         
         character.direction = data.direction;
-        // No one is listening
-        // this.dispatch(StateChangeEvent.characterDirection, structuredClone(character));
-        this.dispatch(ControlsEvent.moveCharacter, structuredClone(character), character.name);
+        // Dispatch state change event so character components update their visual direction
+        this.dispatch(StateChangeEvent.characterDirection, structuredClone(character), character.name);
         
         // Rotation costs 0 action points, so no deduction needed
         

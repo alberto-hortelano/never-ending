@@ -54,9 +54,15 @@ export class Shoot extends EventBus<
 
         const baseAngle = Shoot.directionAngles[direction];
 
-        // Check each cell within range
-        for (let y = 0; y < map.length; y++) {
-            for (let x = 0; x < map[0]!.length; x++) {
+        // Calculate bounding box to limit cells to check
+        const minX = Math.max(0, Math.floor(position.x - range));
+        const maxX = Math.min(map[0]!.length - 1, Math.ceil(position.x + range));
+        const minY = Math.max(0, Math.floor(position.y - range));
+        const maxY = Math.min(map.length - 1, Math.ceil(position.y + range));
+
+        // Check only cells within the bounding box
+        for (let y = minY; y <= maxY; y++) {
+            for (let x = minX; x <= maxX; x++) {
                 const targetCoord = { x, y };
                 const distance = this.getDistance(position, targetCoord);
 
@@ -184,25 +190,66 @@ export class Shoot extends EventBus<
             angleOfVision
         );
 
-        // Notify UI that shooting mode has started
-        this.dispatch(GUIEvent.shootingModeStart, undefined);
+        // Update interaction mode to shooting
+        const weapon = this.getEquippedRangedWeapon(character);
+        if (weapon) {
+            this.dispatch(UpdateStateEvent.uiInteractionMode, {
+                type: 'shooting',
+                data: {
+                    characterId: character.name,
+                    weapon: weapon
+                }
+            });
+        }
 
-        // Highlight visible cells with intensity
+        // Update targetable cells in highlights for shooting mode
+        this.dispatch(UpdateStateEvent.uiHighlights, {
+            targetableCells: this.visibleCells.map(vc => vc.coord)
+        });
+
+        // Update cell visual states with intensity
         this.visibleCells.forEach(vc => {
+            // Dispatch state update
+            this.dispatch(UpdateStateEvent.uiCellVisual, {
+                cellKey: `${vc.coord.x},${vc.coord.y}`,
+                visualState: {
+                    isHighlighted: true,
+                    highlightType: 'attack',
+                    highlightIntensity: vc.intensity,
+                    classList: ['highlight', 'highlight-intensity']
+                }
+            });
+            
+            // Also dispatch the GUI event for backward compatibility/tests
             this.dispatch(GUIEvent.cellHighlightIntensity, { coord: vc.coord, intensity: vc.intensity }, JSON.stringify(vc.coord));
         });
     }
 
     private clearShootingHighlights() {
         if (this.visibleCells) {
+            // Clear targetable cells
+            this.dispatch(UpdateStateEvent.uiHighlights, {
+                targetableCells: []
+            });
+            
+            // Clear cell visual states
             this.visibleCells.forEach(vc => {
+                this.dispatch(UpdateStateEvent.uiCellVisual, {
+                    cellKey: `${vc.coord.x},${vc.coord.y}`,
+                    visualState: null
+                });
+                
+                // Also dispatch the GUI event for backward compatibility/tests
                 this.dispatch(GUIEvent.cellReset, vc.coord, JSON.stringify(vc.coord));
             });
+            
             this.visibleCells = undefined;
             this.shootingCharacter = undefined;
             
-            // Notify UI that shooting mode has ended
-            this.dispatch(GUIEvent.shootingModeEnd, undefined);
+            // Reset interaction mode to normal
+            this.dispatch(UpdateStateEvent.uiInteractionMode, {
+                type: 'normal'
+            });
         }
     }
 

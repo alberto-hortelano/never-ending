@@ -157,6 +157,13 @@ export default class Character extends Component {
             }
         }, this.id);
 
+        // Listen for character direction changes
+        this.listen(StateChangeEvent.characterDirection, (character) => {
+            if (character.name === this.id) {
+                this.updateDirection(character.direction);
+            }
+        });
+
         // Initialize health bar
         const health = parseInt(this.dataset.health || '100');
         const maxHealth = parseInt(this.dataset.maxHealth || '100');
@@ -194,6 +201,21 @@ export default class Character extends Component {
             return;
         }
 
+        // Log palette changes
+        const currentPalette = {
+            skin: this.dataset.skin || 'unknown',
+            helmet: this.dataset.helmet || 'unknown',
+            suit: this.dataset.suit || 'unknown'
+        };
+        console.log(`[Character ${this.id}] updateAppearance called:`, {
+            before: currentPalette,
+            after: palette,
+            race,
+            direction,
+            action,
+            weapon
+        });
+
         // Store current action class if any
         const currentActionClass = action ||
             (this.characterElement.classList.contains('walk') ? 'walk' :
@@ -217,6 +239,11 @@ export default class Character extends Component {
             this.style.setProperty('--skin', palette.skin || '#E5B887');
             this.style.setProperty('--helmet', palette.helmet || '#4A5568');
             this.style.setProperty('--suit', palette.suit || '#2D3748');
+            
+            // Update dataset with new palette values
+            this.dataset.skin = palette.skin;
+            this.dataset.helmet = palette.helmet;
+            this.dataset.suit = palette.suit;
         }
 
         // Update weapon
@@ -235,6 +262,32 @@ export default class Character extends Component {
         } else {
             this.weaponElement.style.display = 'none';
         }
+    }
+
+    private updateDirection(direction: Direction) {
+        if (!this.characterElement) return;
+        
+        // Get current character state
+        const race = this.dataset.race || 'human';
+        const palette = {
+            skin: this.dataset.skin || 'white',
+            helmet: this.dataset.helmet || 'black',
+            suit: this.dataset.suit || 'red'
+        };
+        
+        // Update the character's visual appearance with new direction
+        this.updateAppearance(race, palette, direction);
+        
+        // Update the dataset for consistency
+        this.dataset.direction = direction;
+        
+        // Update visual state
+        this.dispatch(UpdateStateEvent.uiCharacterVisual, {
+            characterId: this.id,
+            visualState: {
+                direction: direction
+            }
+        });
     }
 
     private canControlThisCharacter(): boolean {
