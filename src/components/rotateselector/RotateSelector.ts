@@ -62,6 +62,7 @@ export class RotateSelector extends Component {
         characterIcon.setAttribute('data-x', '0');
         characterIcon.setAttribute('data-y', '0');
         characterIcon.setAttribute('data-direction', this.options.character.direction || 'down');
+        characterIcon.setAttribute('data-is-preview', 'true');
         characterIcon.id = `rotate-preview-${this.options.character.name}`;
         
         centerDisplay.appendChild(characterIcon);
@@ -92,6 +93,16 @@ export class RotateSelector extends Component {
 
     private handleDirectionSelect(direction: Direction) {
         if (!this.options) return;
+
+        // Update the preview character's direction
+        const previewCharacter = this.querySelector(`#rotate-preview-${this.options.character.name}`) as Character;
+        if (previewCharacter && previewCharacter.updateAppearance) {
+            previewCharacter.updateAppearance(
+                this.options.character.race,
+                this.options.character.palette,
+                direction
+            );
+        }
 
         // Dispatch event to notify that a direction was selected
         this.dispatchEvent(new CustomEvent('direction-selected', {

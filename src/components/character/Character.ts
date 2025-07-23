@@ -201,21 +201,6 @@ export default class Character extends Component {
             return;
         }
 
-        // Log palette changes
-        const currentPalette = {
-            skin: this.dataset.skin || 'unknown',
-            helmet: this.dataset.helmet || 'unknown',
-            suit: this.dataset.suit || 'unknown'
-        };
-        console.log(`[Character ${this.id}] updateAppearance called:`, {
-            before: currentPalette,
-            after: palette,
-            race,
-            direction,
-            action,
-            weapon
-        });
-
         // Store current action class if any
         const currentActionClass = action ||
             (this.characterElement.classList.contains('walk') ? 'walk' :
@@ -308,8 +293,10 @@ export default class Character extends Component {
     private applyVisualState(visualState: ICharacterVisualState) {
         if (!this.characterElement || !this.movable) return;
 
-        // Update classes
+        // Update classes - PRESERVE RACE
+        const race = this.dataset.race || 'human';
         this.characterElement.className = 'character'; // Reset to base class
+        this.characterElement.classList.add(race); // Add race back
         visualState.classList.forEach(cls => {
             this.characterElement!.classList.add(cls);
         });
@@ -340,8 +327,14 @@ export default class Character extends Component {
                     // Position updates for movable element
                     const coord = prop === '--x' ? 'x' : 'y';
                     this.movable!.dataset[coord] = value;
-                } else if (prop.startsWith('--palette-')) {
+                } else if (prop === '--skin' || prop === '--helmet' || prop === '--suit') {
                     // Palette updates on the component itself
+                    this.style.setProperty(prop, value);
+                    // Also update the dataset to keep it in sync
+                    const paletteKey = prop.substring(2); // Remove '--' prefix
+                    this.dataset[paletteKey] = value;
+                } else if (prop.startsWith('--')) {
+                    // Other CSS custom properties
                     this.style.setProperty(prop, value);
                 }
             });
