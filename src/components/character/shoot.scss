@@ -1,7 +1,7 @@
 @use '../_variables' as *;
 @use 'sass:map';
 
-.character.idle {
+.character.shoot {
     @for $i from 0 through $orientations - 1 {
         $angle: $i * $degrees;
         $x: map.get($cosine-values, $angle);
@@ -13,20 +13,20 @@
                     z-index: 34 + 20*$x;
                     transform: rotate(normalizeAngle(-$angle - 5deg));
                     height: calc(30 * var(--size));
-
-                    .pistol {
-                        position: absolute;
-                        bottom: calc(0 * var(--size));
-                        left: calc(-05 * var(--size));
-                        width: calc(100 * var(--size));
-                        height: calc(10 * var(--size));
-                        background-color: $color-weapon-dark;
-                        z-index: 47;
-                    }
-
                 }
 
             }
         }
+
+        &.pistol {
+            position: absolute;
+            bottom: calc(0 * var(--size));
+            left: calc(-05 * var(--size));
+            width: calc(100 * var(--size));
+            height: calc(10 * var(--size));
+            background-color: $color-weapon-dark;
+            z-index: 47;
+        }
+
     }
 }

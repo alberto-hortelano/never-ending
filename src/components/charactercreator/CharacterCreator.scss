@@ -13,7 +13,7 @@
   flex-direction: column;
   width: 100%;
   height: 100%;
-  max-width: 800px;
+  max-width: 75rem; // 1200px
   margin: 0 auto;
   background: $color-bg-primary;
   color: $color-text-primary;
@@ -55,68 +55,465 @@
 // Content
 .creator-content {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  padding: $spacing-lg;
 }
 
-// Tabs
-.tabs {
-  display: flex;
-  background: $color-bg-secondary;
-  border-bottom: $border-width solid $color-border-primary;
-  padding: 0 $spacing-md;
+// Row structure
+.row {
+  margin-bottom: $spacing-xl;
 
-  .tab-btn {
-    flex: 1;
-    padding: $spacing-md;
-    background: none;
-    border: none;
-    color: $color-text-secondary;
-    font-size: $font-size-base;
-    cursor: pointer;
-    transition: $transition-all;
-    position: relative;
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
 
-    &:hover {
-      color: $color-text-primary;
+// Row 1: Name
+.row-name {
+  margin-bottom: $spacing-lg;
+}
+
+// Row 2: Race, Preview and Actions
+.row-preview {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: $spacing-lg;
+
+  .race-section {
+    h3 {
+      margin: 0 0 $spacing-md 0;
+      font-size: $font-size-base;
+      color: $color-text-secondary;
     }
 
-    &.active {
-      color: $color-text-primary;
+    .race-selector-vertical {
+      display: flex;
+      flex-direction: column;
+      gap: $spacing-sm;
+    }
+  }
 
-      &::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 2px;
+  .preview-section {
+    .character-preview {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 15rem; // 240px
+      background: $color-bg-secondary;
+      border: $border-width solid $color-border-primary;
+      border-radius: $border-radius-base;
+      margin-bottom: $spacing-md;
+      position: relative;
+
+      character-component {
+        transform: scale(2.5);
+      }
+    }
+
+    .rotation-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: $spacing-md;
+
+      .rotate-btn {
+        width: 2.5rem; // 40px
+        height: 2.5rem; // 40px
+        border-radius: 50%;
+        background: $color-bg-secondary;
+        border: $border-width solid $color-border-primary;
+        cursor: pointer;
+        transition: $transition-all;
+        font-size: $font-size-lg;
+        color: white;
+
+        &:hover {
+          background: $color-bg-tertiary;
+        }
+      }
+
+      .rotation-label {
+        font-size: $font-size-sm;
+        color: $color-text-secondary;
+      }
+    }
+  }
+
+  .action-controls-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+
+    h3 {
+      margin: 0 0 $spacing-sm 0;
+      font-size: $font-size-base;
+      color: $color-text-secondary;
+    }
+
+    .action-btn {
+      padding: $spacing-sm $spacing-md;
+      border-radius: $border-radius-base;
+      background: $color-bg-secondary;
+      border: $border-width solid $color-border-primary;
+      color: $color-text-primary;
+      cursor: pointer;
+      transition: $transition-all;
+      font-size: $font-size-sm;
+
+      &:hover {
+        background: $color-bg-tertiary;
+        border-color: $color-highlight;
+      }
+
+      &.active {
         background: $color-highlight;
+        border-color: $color-highlight;
+        color: $gray-900;
+        font-weight: $font-weight-medium;
       }
     }
   }
 }
 
-// Tab Panels
-.tab-panels {
-  flex: 1;
-  overflow-y: auto;
-  padding: $spacing-lg;
+// Row 3: Colors
+.row-colors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $spacing-xl;
+
+  .colors-section {
+    h3 {
+      margin: 0 0 $spacing-md 0;
+      font-size: $font-size-lg;
+    }
+
+    .color-inputs {
+      display: flex;
+      flex-direction: column;
+      gap: $spacing-sm;
+    }
+
+    .color-group {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      label {
+        font-size: $font-size-base;
+      }
+
+      .color-input-wrapper {
+        display: flex;
+        align-items: center;
+        gap: $spacing-sm;
+
+        input[type="color"] {
+          width: 3.125rem; // 50px
+          height: 2.5rem; // 40px
+          border: $border-width solid $color-border-primary;
+          border-radius: $border-radius-base;
+          cursor: pointer;
+          background: none;
+
+          &::-webkit-color-swatch-wrapper {
+            padding: 0.25rem; // 4px
+          }
+
+          &::-webkit-color-swatch {
+            border-radius: $border-radius-sm;
+            border: none;
+          }
+        }
+
+        .color-value {
+          font-family: monospace;
+          font-size: $font-size-sm;
+          color: $color-text-secondary;
+          min-width: 5rem; // 80px
+        }
+      }
+    }
+  }
+
+  .preset-colors {
+    h3 {
+      margin: 0 0 $spacing-md 0;
+      font-size: $font-size-lg;
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, 3.75rem); // 60px
+      gap: $spacing-sm;
+      justify-content: start;
+
+      .preset-btn {
+        width: 2.5rem;
+        height: 5rem;
+        border: $border-width solid $color-border-primary;
+        border-radius: $border-radius-base;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        transition: $transition-all;
+        padding: 0px;
+        background-color: transparent;
+
+        &:hover {
+          transform: scale(1.1);
+          border-color: $color-highlight;
+          box-shadow: $shadow-base;
+        }
+
+        .preset-colors-display {
+          display: grid;
+          grid-template-rows: repeat(3, 1fr);
+          height: 100%;
+        }
+      }
+    }
+  }
 }
 
-.tab-panel {
-  display: none;
+// Row 4: Equipment
+.row-equipment {
+  .equipment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-md;
+    padding: $spacing-md;
+    background: $color-bg-secondary;
+    border-radius: $border-radius-base;
 
-  &.active {
-    display: block;
+    h3 {
+      margin: 0;
+      font-size: $font-size-lg;
+    }
+
+    .weight-display,
+    .equipment-budget {
+      font-size: $font-size-sm;
+
+      .weight-current,
+      .budget-current {
+        font-weight: $font-weight-medium;
+        color: $color-highlight;
+      }
+    }
+  }
+
+  .equipment-sections {
+    .weapon-slots {
+      margin-bottom: $spacing-lg;
+
+      h4 {
+        margin: 0 0 $spacing-md 0;
+        font-size: $font-size-base;
+        color: $color-text-secondary;
+      }
+
+      .weapon-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: $spacing-lg;
+      }
+
+      .slot-item {
+        label {
+          display: block;
+          margin-bottom: $spacing-xs;
+          font-size: $font-size-sm;
+          color: $color-text-secondary;
+        }
+
+        select {
+          width: 100%;
+          padding: $spacing-sm;
+          background: $color-bg-secondary;
+          border: $border-width solid $color-border-primary;
+          border-radius: $border-radius-base;
+          color: $color-text-primary;
+          font-size: $font-size-base;
+          cursor: pointer;
+
+          &:focus {
+            outline: none;
+            border-color: $color-highlight;
+          }
+        }
+      }
+    }
+
+    .items-section {
+      h4 {
+        margin: 0 0 $spacing-md 0;
+        font-size: $font-size-base;
+        color: $color-text-secondary;
+      }
+
+      .items-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(9.375rem, 1fr)); // 150px
+        gap: $spacing-sm;
+        max-height: 12.5rem; // 200px
+        overflow-y: auto;
+
+        .item-checkbox {
+          display: flex;
+          align-items: center;
+          padding: $spacing-sm;
+          background: $color-bg-secondary;
+          border: $border-width solid $color-border-primary;
+          border-radius: $border-radius-base;
+          cursor: pointer;
+          transition: $transition-all;
+
+          &:hover {
+            border-color: $color-highlight;
+          }
+
+          &.selected {
+            background: rgba($color-highlight, 0.1);
+            border-color: $color-highlight;
+          }
+
+          input[type="checkbox"] {
+            margin-right: $spacing-sm;
+          }
+
+          .item-info {
+            flex: 1;
+
+            .item-name {
+              display: block;
+              font-size: $font-size-sm;
+              margin-bottom: 0.125rem; // 2px
+            }
+
+            .item-stats {
+              display: flex;
+              gap: $spacing-sm;
+              font-size: $font-size-xs;
+              color: $color-text-secondary;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Row 5: Abilities
+.row-abilities {
+  .abilities-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-md;
+    padding: $spacing-md;
+    background: $color-bg-secondary;
+    border-radius: $border-radius-base;
+
+    h3 {
+      margin: 0;
+      font-size: $font-size-lg;
+    }
+
+    .points-display {
+      font-size: $font-size-lg;
+      font-weight: $font-weight-medium;
+
+      .points-used {
+        color: $color-highlight;
+      }
+    }
+  }
+
+  .abilities-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: $spacing-sm;
+
+    .ability-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: $spacing-md;
+      background: $color-bg-secondary;
+      border: $border-width solid $color-border-primary;
+      border-radius: $border-radius-base;
+
+      .ability-info {
+        flex: 1;
+
+        .ability-name {
+          display: block;
+          font-size: $font-size-base;
+          font-weight: $font-weight-medium;
+          margin-bottom: $spacing-xs;
+        }
+
+        .ability-desc {
+          display: block;
+          font-size: $font-size-sm;
+          color: $color-text-secondary;
+        }
+      }
+
+      .ability-controls {
+        display: flex;
+        align-items: center;
+        gap: $spacing-sm;
+
+        .adjust-btn {
+          width: 1.75rem; // 28px
+          height: 1.75rem; // 28px
+          border-radius: 50%;
+          background: $color-bg-tertiary;
+          border: $border-width solid $color-border-primary;
+          cursor: pointer;
+          transition: $transition-all;
+          font-size: $font-size-base;
+
+          &:hover:not(:disabled) {
+            background: $color-bg-primary;
+            border-color: $color-highlight;
+          }
+
+          &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+        }
+
+        .ability-cost {
+          min-width: 1.875rem; // 30px
+          text-align: center;
+          font-size: $font-size-base;
+          font-weight: $font-weight-medium;
+        }
+      }
+    }
+  }
+
+  .abilities-note {
+    margin-top: $spacing-md;
+    text-align: center;
+    color: $color-text-secondary;
+    font-size: $font-size-sm;
+  }
+}
+
+// Row 6: Description
+.row-description {
+  .form-group {
+    margin: 0;
   }
 }
 
 // Form elements
 .form-group {
-  margin-bottom: $spacing-lg;
-
   label {
     display: block;
     margin-bottom: $spacing-xs;
@@ -147,7 +544,7 @@
 
   textarea {
     resize: vertical;
-    min-height: 80px;
+    min-height: 5rem; // 80px
   }
 
   .error-msg {
@@ -160,19 +557,18 @@
 }
 
 // Race selector
-.race-selector {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: $spacing-sm;
-
+.race-selector-vertical {
   .race-btn {
-    padding: $spacing-md;
+    padding: $spacing-sm;
     background: $color-bg-secondary;
-    border: 2px solid $color-border-primary;
+    border: 0.125rem solid $color-border-primary; // 2px
     border-radius: $border-radius-base;
     cursor: pointer;
     transition: $transition-all;
     text-align: center;
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
 
     &:hover {
       border-color: $color-highlight;
@@ -184,413 +580,13 @@
     }
 
     .race-icon {
-      display: block;
-      font-size: $font-size-xl;
-      margin-bottom: $spacing-xs;
+      font-size: $font-size-lg;
     }
 
     span:last-child {
       font-size: $font-size-sm;
-      color: $color-text-secondary;
-    }
-  }
-}
-
-// Appearance tab
-.preview-section {
-  margin-bottom: $spacing-xl;
-
-  h3 {
-    margin-bottom: $spacing-md;
-    font-size: $font-size-lg;
-  }
-
-  .character-preview {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 200px;
-    background: $color-bg-secondary;
-    border: $border-width solid $color-border-primary;
-    border-radius: $border-radius-base;
-    margin-bottom: $spacing-md;
-    position: relative;
-
-    character-component {
-      transform: scale(2);
-    }
-  }
-
-  .rotation-controls {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: $spacing-md;
-
-    .rotate-btn {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: $color-bg-secondary;
-      border: $border-width solid $color-border-primary;
-      cursor: pointer;
-      transition: $transition-all;
-      font-size: $font-size-lg;
-
-      &:hover {
-        background: $color-bg-tertiary;
-      }
-    }
-
-    .rotation-label {
-      font-size: $font-size-sm;
-      color: $color-text-secondary;
-    }
-  }
-  
-  .action-controls {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: $spacing-sm;
-    margin-top: $spacing-md;
-    
-    .action-btn {
-      padding: $spacing-sm $spacing-md;
-      border-radius: $border-radius-base;
-      background: $color-bg-secondary;
-      border: $border-width solid $color-border-primary;
       color: $color-text-primary;
-      cursor: pointer;
-      transition: $transition-all;
-      font-size: $font-size-sm;
-      
-      &:hover {
-        background: $color-bg-tertiary;
-        border-color: $color-highlight;
-      }
-      
-      &.active {
-        background: $color-highlight;
-        border-color: $color-highlight;
-        color: $gray-900;
-        font-weight: $font-weight-medium;
-      }
     }
-  }
-}
-
-.colors-section {
-  h3 {
-    margin-bottom: $spacing-md;
-    font-size: $font-size-lg;
-  }
-
-  .color-group {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: $spacing-md;
-
-    label {
-      font-size: $font-size-base;
-    }
-
-    .color-input-wrapper {
-      display: flex;
-      align-items: center;
-      gap: $spacing-sm;
-
-      input[type="color"] {
-        width: 50px;
-        height: 40px;
-        border: $border-width solid $color-border-primary;
-        border-radius: $border-radius-base;
-        cursor: pointer;
-        background: none;
-
-        &::-webkit-color-swatch-wrapper {
-          padding: 4px;
-        }
-
-        &::-webkit-color-swatch {
-          border-radius: $border-radius-sm;
-          border: none;
-        }
-      }
-
-      .color-value {
-        font-family: monospace;
-        font-size: $font-size-sm;
-        color: $color-text-secondary;
-      }
-    }
-  }
-
-  .preset-colors {
-    margin-top: $spacing-xl;
-
-    h4 {
-      margin-bottom: $spacing-sm;
-      font-size: $font-size-base;
-      color: $color-text-secondary;
-    }
-
-    .preset-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: $spacing-sm;
-
-      .preset-btn {
-        aspect-ratio: 1;
-        border: $border-width solid $color-border-primary;
-        border-radius: $border-radius-base;
-        cursor: pointer;
-        position: relative;
-        overflow: hidden;
-        transition: $transition-all;
-
-        &:hover {
-          transform: scale(1.1);
-          border-color: $color-highlight;
-        }
-
-        .preset-colors-display {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          height: 100%;
-        }
-      }
-    }
-  }
-}
-
-// Abilities tab
-.points-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: $spacing-lg;
-  padding: $spacing-md;
-  background: $color-bg-secondary;
-  border-radius: $border-radius-base;
-
-  h3 {
-    margin: 0;
-    font-size: $font-size-lg;
-  }
-
-  .points-display {
-    font-size: $font-size-lg;
-    font-weight: $font-weight-medium;
-
-    .points-used {
-      color: $color-highlight;
-    }
-  }
-}
-
-.abilities-list {
-  .ability-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: $spacing-md;
-    margin-bottom: $spacing-sm;
-    background: $color-bg-secondary;
-    border: $border-width solid $color-border-primary;
-    border-radius: $border-radius-base;
-
-    .ability-info {
-      flex: 1;
-
-      .ability-name {
-        display: block;
-        font-size: $font-size-base;
-        font-weight: $font-weight-medium;
-        margin-bottom: $spacing-xs;
-      }
-
-      .ability-desc {
-        display: block;
-        font-size: $font-size-sm;
-        color: $color-text-secondary;
-      }
-    }
-
-    .ability-controls {
-      display: flex;
-      align-items: center;
-      gap: $spacing-md;
-
-      .adjust-btn {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: $color-bg-tertiary;
-        border: $border-width solid $color-border-primary;
-        cursor: pointer;
-        transition: $transition-all;
-        font-size: $font-size-lg;
-
-        &:hover:not(:disabled) {
-          background: $color-bg-primary;
-          border-color: $color-highlight;
-        }
-
-        &:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-      }
-
-      .ability-cost {
-        min-width: 40px;
-        text-align: center;
-        font-size: $font-size-lg;
-        font-weight: $font-weight-medium;
-      }
-    }
-  }
-}
-
-.abilities-note {
-  margin-top: $spacing-lg;
-  text-align: center;
-  color: $color-text-secondary;
-}
-
-// Equipment tab
-.equipment-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: $spacing-lg;
-  padding: $spacing-md;
-  background: $color-bg-secondary;
-  border-radius: $border-radius-base;
-
-  h3 {
-    margin: 0;
-    font-size: $font-size-lg;
-  }
-
-  .weight-display {
-    font-size: $font-size-base;
-
-    .weight-current {
-      font-weight: $font-weight-medium;
-      color: $color-highlight;
-    }
-  }
-}
-
-.equipment-sections {
-  margin-bottom: $spacing-lg;
-
-  .weapon-slots {
-    margin-bottom: $spacing-xl;
-
-    h4 {
-      margin-bottom: $spacing-md;
-      font-size: $font-size-base;
-      color: $color-text-secondary;
-    }
-
-    .slot-item {
-      margin-bottom: $spacing-md;
-
-      label {
-        display: block;
-        margin-bottom: $spacing-xs;
-        font-size: $font-size-sm;
-        color: $color-text-secondary;
-      }
-
-      select {
-        width: 100%;
-        padding: $spacing-sm;
-        background: $color-bg-secondary;
-        border: $border-width solid $color-border-primary;
-        border-radius: $border-radius-base;
-        color: $color-text-primary;
-        font-size: $font-size-base;
-        cursor: pointer;
-
-        &:focus {
-          outline: none;
-          border-color: $color-highlight;
-        }
-      }
-    }
-  }
-
-  .items-section {
-    h4 {
-      margin-bottom: $spacing-md;
-      font-size: $font-size-base;
-      color: $color-text-secondary;
-    }
-
-    .items-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: $spacing-sm;
-
-      .item-checkbox {
-        display: flex;
-        align-items: center;
-        padding: $spacing-sm;
-        background: $color-bg-secondary;
-        border: $border-width solid $color-border-primary;
-        border-radius: $border-radius-base;
-        cursor: pointer;
-        transition: $transition-all;
-
-        &:hover {
-          border-color: $color-highlight;
-        }
-
-        &.selected {
-          background: rgba($color-highlight, 0.1);
-          border-color: $color-highlight;
-        }
-
-        input[type="checkbox"] {
-          margin-right: $spacing-sm;
-        }
-
-        .item-info {
-          flex: 1;
-
-          .item-name {
-            display: block;
-            font-size: $font-size-sm;
-            margin-bottom: 2px;
-          }
-
-          .item-stats {
-            display: flex;
-            gap: $spacing-sm;
-            font-size: $font-size-xs;
-            color: $color-text-secondary;
-          }
-        }
-      }
-    }
-  }
-}
-
-.equipment-budget {
-  padding: $spacing-md;
-  background: $color-bg-secondary;
-  border-radius: $border-radius-base;
-  text-align: center;
-  font-size: $font-size-base;
-
-  .budget-current {
-    font-weight: $font-weight-medium;
-    color: $color-highlight;
   }
 }
 
@@ -639,18 +635,43 @@
 }
 
 // Responsive
-@include sm-down {
-  .race-selector {
+@include md-down {
+  .row-preview {
+    grid-template-columns: 1fr;
+
+    .race-section {
+      .race-selector-vertical {
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+    }
+
+    .action-controls-vertical {
+      flex-direction: row;
+      flex-wrap: wrap;
+
+      h3 {
+        width: 100%;
+      }
+    }
+  }
+
+  .row-colors {
     grid-template-columns: 1fr;
   }
 
-  .preset-grid {
-    grid-template-columns: repeat(3, 1fr) !important;
+  .row-equipment .weapon-row {
+    grid-template-columns: 1fr;
   }
+
+  .row-abilities .abilities-list {
+    grid-template-columns: 1fr;
+  }
+
 }
 
 @include md-up {
-  .tab-panels {
+  .creator-content {
     padding: $spacing-xl;
   }
 }

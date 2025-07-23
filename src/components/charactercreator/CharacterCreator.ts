@@ -20,13 +20,12 @@ export default class CharacterCreator extends Component {
     if (!root) return root;
     
     this.setupEventListeners(root);
-    this.initializeTabs(root);
     this.initializeAppearance(root);
     this.initializeAbilities(root);
     this.initializeEquipment(root);
     this.updateCreateButton(root);
     
-    // Create character preview immediately since appearance is the first tab
+    // Create character preview immediately
     this.createCharacterPreview(root);
     
     return root;
@@ -69,24 +68,6 @@ export default class CharacterCreator extends Component {
     });
   }
   
-  private initializeTabs(root: ShadowRoot) {
-    const tabBtns = root.querySelectorAll('.tab-btn');
-    const tabPanels = root.querySelectorAll('.tab-panel');
-    
-    tabBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const tab = (e.currentTarget as HTMLElement).dataset.tab!;
-        
-        // Update active states
-        tabBtns.forEach(b => b.classList.remove('active'));
-        tabPanels.forEach(p => p.classList.remove('active'));
-        
-        btn.classList.add('active');
-        const panel = root.querySelector(`[data-panel="${tab}"]`);
-        panel?.classList.add('active');
-      });
-    });
-  }
   
   private initializeAppearance(root: ShadowRoot) {
     // Color inputs
