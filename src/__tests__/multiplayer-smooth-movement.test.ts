@@ -33,12 +33,23 @@ class MockWebSocket {
 // Store original WebSocket
 const originalWebSocket = global.WebSocket;
 
-// Mock window object
-(global as typeof globalThis & { window: { location: { protocol: string; host: string } } }).window = {
+// Mock window object with complete Location interface
+(global as any).window = {
     location: {
         protocol: 'http:',
-        host: 'localhost:3000'
-    }
+        host: 'localhost:3000',
+        hostname: 'localhost',
+        port: '3000',
+        pathname: '/',
+        search: '',
+        hash: '',
+        href: 'http://localhost:3000/',
+        origin: 'http://localhost:3000',
+        ancestorOrigins: { length: 0 } as DOMStringList,
+        assign: jest.fn(),
+        reload: jest.fn(),
+        replace: jest.fn()
+    } as Location
 };
 
 // TODO: These tests need to be rewritten for the new animation system
@@ -322,8 +333,8 @@ describe.skip('Multiplayer Smooth Movement - NEEDS REWRITE', () => {
 
         // Each movement should be to an adjacent cell
         for (let i = 1; i < moveCharacterEvents.length; i++) {
-            const prevPos = i === 1 ? { x: 10, y: 10 } : moveCharacterEvents[i - 1].position;
-            const currPos = moveCharacterEvents[i].position;
+            const prevPos = i === 1 ? { x: 10, y: 10 } : moveCharacterEvents[i - 1]?.position || { x: 10, y: 10 };
+            const currPos = moveCharacterEvents[i]?.position || { x: 10, y: 10 };
 
             const dx = Math.abs(currPos.x - prevPos.x);
             const dy = Math.abs(currPos.y - prevPos.y);

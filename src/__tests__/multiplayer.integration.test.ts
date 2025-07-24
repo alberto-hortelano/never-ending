@@ -3,7 +3,7 @@ import { State } from '../common/State';
 import { MultiplayerManager } from '../common/services/MultiplayerManager';
 import { NetworkService } from '../common/services/NetworkService';
 import { StartGameEvent } from '../common/events/NetworkEvents';
-import { ICharacter, IState } from '../common/interfaces';
+import { IState } from '../common/interfaces';
 import { UpdateStateEvent, GameEvent } from '../common/events';
 import { baseCharacter } from '../data/state';
 import { getDefaultUIState } from './helpers/testUIState.helper';
@@ -431,7 +431,7 @@ describe('Multiplayer Integration Tests', () => {
             // Simulate a state sync from the host
             const syncedState: IState = {
                 map: structuredClone(state.map) as IState['map'],
-                characters: structuredClone(state.characters).map((c: ICharacter) => ({
+                characters: structuredClone(state.characters).map((c: any) => ({
                     ...c,
                     actions: {
                         ...c.actions,
