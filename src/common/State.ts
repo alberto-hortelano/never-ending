@@ -235,6 +235,36 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.#game = { ...this.#game, ...data };
         this.dispatch(StateChangeEvent.game, structuredClone(this.#game));
         
+        // Clear all highlights when turn changes
+        this.#ui.transientUI.highlights = {
+            reachableCells: [],
+            pathCells: [],
+            targetableCells: []
+        };
+        
+        // Reset interaction mode to normal
+        this.#ui.interactionMode = {
+            type: 'normal'
+        };
+        
+        // Clear all highlighted cells in visual states
+        const cellUpdates: Array<{ cellKey: string; visualState: Partial<ICellVisualState> | null }> = [];
+        Object.keys(this.#ui.visualStates.cells).forEach(cellKey => {
+            const cell = this.#ui.visualStates.cells[cellKey];
+            if (cell?.isHighlighted) {
+                cellUpdates.push({ cellKey, visualState: null });
+            }
+        });
+        
+        // Apply cell updates if any
+        if (cellUpdates.length > 0) {
+            this.onUICellVisualBatch({ updates: cellUpdates });
+        }
+        
+        // Dispatch UI state changes
+        this.dispatch(StateChangeEvent.uiTransient, structuredClone(this.#ui.transientUI));
+        this.dispatch(StateChangeEvent.uiInteractionMode, structuredClone(this.#ui.interactionMode));
+        
         // Reset action points for the new player's characters
         this.#characters.forEach(character => {
             if (character.player === data.turn) {
