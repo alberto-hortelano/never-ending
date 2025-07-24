@@ -6,12 +6,6 @@ import { CharacterService } from "../../common/services/CharacterService";
 import { NetworkService } from "../../common/services/NetworkService";
 import type { ICharacterVisualState, Direction } from "../../common/interfaces";
 
-// Type for character event with network flag
-// interface NetworkCharacterEvent {
-//     fromNetwork?: boolean;
-//     [key: string]: unknown;
-// }
-
 export default class Character extends Component {
     protected override hasCss = true;
     protected override hasHtml = true;
@@ -224,7 +218,7 @@ export default class Character extends Component {
             this.style.setProperty('--skin', palette.skin || '#E5B887');
             this.style.setProperty('--helmet', palette.helmet || '#4A5568');
             this.style.setProperty('--suit', palette.suit || '#2D3748');
-            
+
             // Update dataset with new palette values
             this.dataset.skin = palette.skin;
             this.dataset.helmet = palette.helmet;
@@ -251,7 +245,7 @@ export default class Character extends Component {
 
     private updateDirection(direction: Direction) {
         if (!this.characterElement) return;
-        
+
         // Get current character state
         const race = this.dataset.race || 'human';
         const palette = {
@@ -259,13 +253,13 @@ export default class Character extends Component {
             helmet: this.dataset.helmet || 'black',
             suit: this.dataset.suit || 'red'
         };
-        
+
         // Update the character's visual appearance with new direction
         this.updateAppearance(race, palette, direction);
-        
+
         // Update the dataset for consistency
         this.dataset.direction = direction;
-        
+
         // Update visual state
         this.dispatch(UpdateStateEvent.uiCharacterVisual, {
             characterId: this.id,

@@ -36,7 +36,7 @@ export class Popup extends Component {
 
         this.classList.add('hidden');
         this.setupEventListeners();
-        
+
         // Listen for popup state changes
         this.listen(StateChangeEvent.uiTransient, (transientUI) => {
             const popupState = transientUI.popups[this.popupId];
@@ -47,7 +47,7 @@ export class Popup extends Component {
                 this.classList.add('hidden');
             }
         });
-        
+
         return root;
     }
 
@@ -155,7 +155,7 @@ export class Popup extends Component {
 
         if (this.headerElement) {
             this.dragHelper = new Draggable(this, this.headerElement);
-            
+
             // Listen for mouseup/touchend to detect drag end and update state
             const updatePositionInState = () => {
                 const popupState = this.getPopupStateFromDOM();
@@ -166,7 +166,7 @@ export class Popup extends Component {
                     });
                 }
             };
-            
+
             document.addEventListener('mouseup', updatePositionInState);
             document.addEventListener('touchend', updatePositionInState);
         }
@@ -322,7 +322,7 @@ export class Popup extends Component {
                 isPinned: this.isPinned
             }
         });
-        
+
         // Also dispatch the legacy popup show event for Board compatibility
         this.dispatch(UpdateStateEvent.uiBoardVisual, {
             updates: { hasPopupActive: true }
@@ -339,11 +339,12 @@ export class Popup extends Component {
                     popupId: this.popupId,
                     popupState: null
                 });
-                
+
                 // Update board visual state
                 this.dispatch(UpdateStateEvent.uiBoardVisual, {
                     updates: { hasPopupActive: false }
                 });
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
             } catch (e) {
                 // State not initialized yet, ignore
             }
@@ -356,7 +357,7 @@ export class Popup extends Component {
             this.pinButton.textContent = this.isPinned ? '📌' : '📍';
             this.pinButton.title = this.isPinned ? 'Unpin popup' : 'Pin popup';
         }
-        
+
         // Update pinned state in UI state
         const popupState = this.getPopupStateFromDOM();
         if (popupState) {
@@ -377,7 +378,7 @@ export class Popup extends Component {
             popupId: this.popupId,
             popupState: null
         });
-        
+
         // Update board visual state
         this.dispatch(UpdateStateEvent.uiBoardVisual, {
             updates: { hasPopupActive: false }
@@ -391,18 +392,18 @@ export class Popup extends Component {
         } else {
             this.classList.add('hidden');
         }
-        
+
         // Apply position for desktop
         if (popupState.position && !this.isMobile()) {
             this.style.left = `${popupState.position.x}px`;
             this.style.top = `${popupState.position.y}px`;
         }
-        
+
         // Apply title
         if (this.titleElement && popupState.data?.title) {
             this.titleElement.textContent = popupState.data.title;
         }
-        
+
         // Apply pinned state
         this.isPinned = popupState.isPinned || false;
         if (this.pinButton) {
@@ -410,15 +411,15 @@ export class Popup extends Component {
             this.pinButton.title = this.isPinned ? 'Unpin popup' : 'Pin popup';
         }
     }
-    
+
     private getPopupStateFromDOM(): IPopupState | null {
         // Get current state from DOM for updates
         const visible = !this.classList.contains('hidden');
         if (!visible) return null;
-        
+
         const rect = this.getBoundingClientRect();
         const position = !this.isMobile() ? { x: rect.left, y: rect.top } : undefined;
-        
+
         // Determine content type
         let contentType: IPopupState['type'] = 'actions';
         const firstChild = this.firstElementChild;
@@ -429,7 +430,7 @@ export class Popup extends Component {
             else if (firstChild.tagName === 'INVENTORY-COMPONENT') contentType = 'inventory';
             else if (firstChild.tagName === 'CONVERSATION-UI') contentType = 'conversation';
         }
-        
+
         return {
             type: contentType,
             visible,

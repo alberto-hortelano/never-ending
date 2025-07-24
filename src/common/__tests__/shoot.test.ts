@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ICharacter, ICell, ICoord, Direction } from "../interfaces";
 import type { State } from "../State";
 
@@ -536,7 +537,7 @@ describe('Shoot', () => {
                 health: 100,
                 maxHealth: 100
             });
-            
+
             // Set up character with weapon
             testCharacter.inventory.equippedWeapons.primary = {
                 id: 'test-pistol',
@@ -550,7 +551,7 @@ describe('Shoot', () => {
                 damage: 20,
                 range: 15
             };
-            
+
             mockState.findCharacter.mockImplementation((name: string) => {
                 if (name === testCharacter.name) return testCharacter;
                 if (name === targetCharacter.name) return targetCharacter;
@@ -568,14 +569,14 @@ describe('Shoot', () => {
                 characterName: 'target',
                 position: { x: 7, y: 5 }
             });
-            
+
             // Verify damage event was dispatched immediately
             expect(damageSpy).toHaveBeenCalledWith(expect.objectContaining({
                 targetName: 'target',
                 attackerName: 'test',
                 damage: expect.any(Number)
             }));
-            
+
             // Verify damage amount is correct (with distance falloff)
             const damageCall = damageSpy.mock.calls[0][0];
             expect(damageCall.damage).toBeGreaterThan(0);
@@ -589,13 +590,13 @@ describe('Shoot', () => {
                 position: { x: 6, y: 5 }, // 1 unit away
                 player: 'ai'
             });
-            
+
             const farTarget = createMockCharacter({
                 name: 'farTarget',
                 position: { x: 12, y: 5 }, // 7 units away (within 20 range)
                 player: 'ai'
             });
-            
+
             // Set up character with weapon
             testCharacter.inventory.equippedWeapons.primary = {
                 id: 'test-rifle',
@@ -609,7 +610,7 @@ describe('Shoot', () => {
                 damage: 50,
                 range: 20
             };
-            
+
             mockState.findCharacter.mockImplementation((name: string) => {
                 if (name === testCharacter.name) return testCharacter;
                 if (name === closeTarget.name) return closeTarget;
@@ -628,9 +629,9 @@ describe('Shoot', () => {
                 characterName: 'closeTarget',
                 position: { x: 6, y: 5 }
             });
-            
+
             const closeDamage = damageSpy.mock.calls[0][0].damage;
-            
+
             // Clear and shoot far target
             damageSpy.mockClear();
             superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
@@ -638,9 +639,9 @@ describe('Shoot', () => {
                 characterName: 'farTarget',
                 position: { x: 12, y: 5 }
             });
-            
+
             const farDamage = damageSpy.mock.calls[0][0].damage;
-            
+
             // Close target should take more damage than far target
             expect(closeDamage).toBeGreaterThan(farDamage);
             expect(closeDamage).toBeLessThanOrEqual(50); // Max weapon damage

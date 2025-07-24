@@ -24,7 +24,7 @@ export default class Cell extends Component {
             y: parseInt(this.dataset.y!),
         };
         this.cellKey = `${this.coords.x},${this.coords.y}`;
-        
+
         // Listen for UI state changes
         this.listen(StateChangeEvent.uiVisualStates, (visualStates) => {
             const cellVisualState = visualStates.cells[this.cellKey];
@@ -35,14 +35,7 @@ export default class Cell extends Component {
                 this.resetVisualState();
             }
         });
-        
-        // Listen for highlight changes
-        // NOTE: We no longer dispatch individual updates here because highlights
-        // are now handled in batch by the State when it receives UpdateStateEvent.uiHighlights
-        this.listen(StateChangeEvent.uiTransient, () => {
-            // This event is still fired but cells will be updated via uiVisualStates
-            // which is more efficient than having each cell dispatch individual updates
-        });
+
         return root;
     }
     attributeChangedCallback(name: string, oldVal: string | null, newVal: string | null) {
@@ -66,20 +59,20 @@ export default class Cell extends Component {
         requestAnimationFrame(() => {
             // Reset classes
             this.classList.remove(...Cell.states);
-            
+
             // Apply new classes
             visualState.classList.forEach(cls => {
                 this.classList.add(cls);
             });
-            
+
             // Apply highlight
             if (visualState.isHighlighted) {
                 this.classList.add('highlight');
-                
+
                 if (visualState.highlightType) {
                     this.classList.add(`highlight-${visualState.highlightType}`);
                 }
-                
+
                 if (visualState.highlightIntensity !== undefined) {
                     this.classList.add('highlight-intensity');
                     this.style.setProperty('--highlight-intensity', visualState.highlightIntensity.toString());
@@ -87,7 +80,7 @@ export default class Cell extends Component {
             }
         });
     }
-    
+
     private resetVisualState() {
         requestAnimationFrame(() => {
             this.classList.remove(...Cell.states);
