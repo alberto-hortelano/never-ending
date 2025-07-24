@@ -18,7 +18,7 @@ export class Movement extends EventBus<
     private reachableCells?: ICoord[];
     // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     private listeners: Array<{ event: string; handler: Function }> = [];
-    private completedMovements = new Map<string, { path: ICoord[], finalDirection: string }>();
+    private completedMovements = new Map<string, { path: ICoord[], finalDirection: string, fromNetwork?: boolean }>();
 
     constructor(
         private state: State,
@@ -71,9 +71,12 @@ export class Movement extends EventBus<
             }
 
             // Track this movement for completion (for action point deduction)
+            // Check if this movement is from the network
+            const fromNetwork = (character as any).fromNetwork;
             this.completedMovements.set(character.name, {
                 path: [...character.path],
-                finalDirection
+                finalDirection,
+                fromNetwork
             });
 
             // Add walk class at the start
@@ -137,8 +140,8 @@ export class Movement extends EventBus<
                         });
                     }
 
-                    // Deduct action points if this is the current player's character
-                    if (character.player === this.state.game.turn) {
+                    // Deduct action points if this is the current player's character and not from network
+                    if (character.player === this.state.game.turn && !pathData.fromNetwork) {
                         const moveCost = character.actions.general.move * pathData.path.length;
                         this.dispatch(UpdateStateEvent.deductActionPoints, {
                             characterName: character.name,

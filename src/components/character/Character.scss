@@ -101,6 +101,11 @@ $transition-duration: $transition-duration-base;
     .head {
         top: calc(50 * var(--size));
         transform: rotate(15deg) translateX(calc(-5 * var(--size)));
+
+        .face .eye {
+            animation: none;
+            height: 1px !important;
+        }
     }
 
     // Body falls straight down with slight bounce
