@@ -201,8 +201,14 @@ export default class Character extends Component {
                 this.characterElement.classList.contains('idle') ? 'idle' : null);
 
         // Update race class
+        const wasDefeated = this.characterElement.classList.contains('defeated');
         this.characterElement.className = 'character';
         this.characterElement.classList.add(race);
+
+        // Preserve defeated class if it was there
+        if (wasDefeated) {
+            this.characterElement.classList.add('defeated');
+        }
 
         // Update direction
         const directionClass = CharacterService.getDirectionClass(direction as Direction);
@@ -339,13 +345,6 @@ export default class Character extends Component {
 
         // Update interaction state
         this.style.pointerEvents = visualState.isDefeated ? 'none' : '';
-        if (visualState.isDefeated) {
-            this.characterElement.style.opacity = '0.5';
-            this.characterElement.style.filter = 'grayscale(1)';
-        } else {
-            this.characterElement.style.opacity = '';
-            this.characterElement.style.filter = '';
-        }
 
         // Update weapon display
         if (visualState.equippedWeapon !== undefined) {

@@ -290,6 +290,21 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         
         // Check if character is defeated
         if (character.health === 0 && previousHealth > 0) {
+            // Update visual state to mark character as defeated
+            const visualState = this.#ui.visualStates.characters[character.name] || {
+                direction: 'down',
+                classList: [],
+                styles: {},
+                healthBarPercentage: 0,
+                healthBarColor: '#f44336',
+                isDefeated: false,
+                isCurrentTurn: false
+            };
+            visualState.isDefeated = true;
+            this.#ui.visualStates.characters[character.name] = visualState;
+            this.dispatch(StateChangeEvent.uiVisualStates, structuredClone(this.#ui.visualStates));
+            
+            // Then dispatch the defeat event
             this.dispatch(StateChangeEvent.characterDefeated, structuredClone(character));
         }
         

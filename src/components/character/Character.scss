@@ -96,9 +96,39 @@ $transition-duration: $transition-duration-base;
 }
 
 .character.defeated {
-    opacity: 0.5;
-    filter: grayscale(1);
-    transition: opacity 0.5s ease-out, filter 0.5s ease-out;
+
+    // Head falls the furthest with bounce and slight rotation
+    .head {
+        top: calc(50 * var(--size));
+        transform: rotate(15deg) translateX(calc(-5 * var(--size)));
+    }
+
+    // Body falls straight down with slight bounce
+    .body {
+        top: calc(35 * var(--size));
+    }
+
+    // Arms fall with different timings and dispersion
+    .arm.left {
+        top: calc(40 * var(--size));
+        transform: rotate(-25deg) translateX(calc(-8 * var(--size)));
+    }
+
+    .arm.right {
+        top: calc(42 * var(--size));
+        transform: rotate(20deg) translateX(calc(6 * var(--size)));
+    }
+
+    // Legs collapse with bounce
+    .leg.left {
+        top: calc(30 * var(--size));
+        transform: rotate(-5deg);
+    }
+
+    .leg.right {
+        top: calc(30 * var(--size));
+        transform: rotate(5deg);
+    }
 
     // Hide turn indicator for defeated characters
     &::before {
@@ -132,6 +162,8 @@ body {
     background-color: var(--helmet);
     background-image: radial-gradient(circle at calc(1 * var(--size)) calc(4 * var(--size)), $transparent-white, $transparent-black);
     z-index: 35;
+    transition: top 0.8s cubic-bezier(0.3, 1.6, 0.5, 1),
+        transform 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
     .face {
         transform: none;
@@ -188,6 +220,7 @@ body {
     background-image: linear-gradient(90deg, $transparent-white 0%, $transparent-black 100%);
     border-radius: 100% / 50%;
     z-index: 29;
+    transition: top 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .arm {
@@ -206,11 +239,15 @@ body {
     &.right {
         z-index: 16;
         right: calc(29 * var(--size));
+        transition: top 0.75s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.05s,
+            transform 0.75s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.05s;
     }
 
     &.left {
         z-index: 15;
         left: calc(29 * var(--size));
+        transition: top 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s,
+            transform 0.7s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.1s;
     }
 }
 
@@ -227,10 +264,14 @@ body {
 
     &.right {
         right: 0;
+        transition: top 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.05s,
+            transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.05s;
     }
 
     &.left {
         left: 0;
+        transition: top 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+            transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     }
 }
 

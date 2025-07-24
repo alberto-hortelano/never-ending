@@ -10,6 +10,9 @@ export default class Characters extends Component {
         this.listen(StateChangeEvent.characters, (characters) => this.printCharacters(characters));
     }
     private printCharacters(characters: StateChangeEventsMap[StateChangeEvent.characters]) {
+        // Clear existing characters first
+        this.innerHTML = '';
+        
         characters.forEach(characterData => {
             const characterElement = document.createElement('character-component');
             characterElement.dataset.x = characterData.position.x.toString();
