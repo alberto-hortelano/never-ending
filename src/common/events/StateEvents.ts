@@ -151,7 +151,7 @@ export interface StateChangeEventsMap {
     [StateChangeEvent.map]: DeepReadonly<IState['map']>;
     [StateChangeEvent.characters]: DeepReadonly<IState['characters']>;
     [StateChangeEvent.characterPosition]: DeepReadonly<ICharacter>;
-    [StateChangeEvent.characterPath]: DeepReadonly<ICharacter>;
+    [StateChangeEvent.characterPath]: DeepReadonly<ICharacter> & { fromNetwork?: boolean };
     [StateChangeEvent.characterDirection]: DeepReadonly<ICharacter>;
     [StateChangeEvent.messages]: DeepReadonly<IState['messages']>;
     [StateChangeEvent.characterInventory]: DeepReadonly<ICharacter>;

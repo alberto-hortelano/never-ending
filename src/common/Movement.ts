@@ -72,11 +72,10 @@ export class Movement extends EventBus<
 
             // Track this movement for completion (for action point deduction)
             // Check if this movement is from the network
-            const fromNetwork = (character as any).fromNetwork;
             this.completedMovements.set(character.name, {
                 path: [...character.path],
                 finalDirection,
-                fromNetwork
+                fromNetwork: character.fromNetwork
             });
 
             // Add walk class at the start
