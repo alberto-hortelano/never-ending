@@ -12,11 +12,15 @@ import { CharacterService } from "./common/services/CharacterService";
 import { MultiplayerManager } from "./common/services/MultiplayerManager";
 import { GameEvent, EventBus } from "./common/events";
 import { initialState } from './data/state';
+import { initializeCSSVariables } from './common/initializeCSSVariables';
 
 // Initialize global CSS variables
 document.documentElement.style.setProperty('--cell-width', '4dvh');
 document.documentElement.style.setProperty('--size', 'calc(var(--cell-width, 2dvh) * 0.007)');
 document.documentElement.style.setProperty('--mobile-popup-height', '50vh');
+
+// Initialize CSS variables from JavaScript constants
+initializeCSSVariables();
 
 let gameState: State | null = null;
 interface GameService {

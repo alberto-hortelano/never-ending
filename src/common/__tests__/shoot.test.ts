@@ -105,26 +105,41 @@ describe('Shoot', () => {
             testCharacter.direction = 'right';
             mockState.findCharacter.mockReturnValue(testCharacter);
 
-            const cellHighlightSpy = jest.fn();
+            const cellBatchSpy = jest.fn();
+            const highlightsSpy = jest.fn();
             const listener = createTestListener();
-            listener.listen(GUIEvent.cellHighlightIntensity, cellHighlightSpy);
+            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
+            listener.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
 
             // Trigger showShooting
             superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
 
-            // Should see cells to the right within 90 degree cone
-            expect(cellHighlightSpy).toHaveBeenCalled();
-            const highlightedCells = cellHighlightSpy.mock.calls.map(call => call[0]);
-            expect(highlightedCells.length).toBeGreaterThan(0);
+            // Should update cells via batch update
+            expect(cellBatchSpy).toHaveBeenCalled();
+            const batchUpdate = cellBatchSpy.mock.calls[0][0];
+            expect(batchUpdate.updates.length).toBeGreaterThan(0);
 
             // Check that cells directly in front are visible
-            const directlyInFront = highlightedCells.find((data) => data.coord.x === 7 && data.coord.y === 5);
+            const directlyInFront = batchUpdate.updates.find((update: any) => {
+                const [x, y] = update.cellKey.split(',').map(Number);
+                return x === 7 && y === 5;
+            });
             expect(directlyInFront).toBeDefined();
-            expect(directlyInFront!.intensity).toBeGreaterThan(0.5);
+            expect(directlyInFront!.visualState.highlightIntensity).toBeGreaterThan(0.5);
 
             // Check that cells behind are not visible
-            const behind = highlightedCells.find((data) => data.coord.x === 3 && data.coord.y === 5);
+            const behind = batchUpdate.updates.find((update: any) => {
+                const [x, y] = update.cellKey.split(',').map(Number);
+                return x === 3 && y === 5;
+            });
             expect(behind).toBeUndefined();
+
+            // Should also update highlights
+            expect(highlightsSpy).toHaveBeenCalled();
+            const highlightCall = highlightsSpy.mock.calls[0][0];
+            expect(highlightCall).toHaveProperty('targetableCells');
+            expect(Array.isArray(highlightCall.targetableCells)).toBe(true);
+            expect(highlightCall.targetableCells.length).toBeGreaterThan(0);
         });
 
         it('should apply distance falloff to visibility', () => {
@@ -132,19 +147,25 @@ describe('Shoot', () => {
             testCharacter.direction = 'right';
             mockState.findCharacter.mockReturnValue(testCharacter);
 
-            const cellHighlightSpy = jest.fn();
+            const cellBatchSpy = jest.fn();
             const listener = createTestListener();
-            listener.listen(GUIEvent.cellHighlightIntensity, cellHighlightSpy);
+            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
             superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
 
-            const highlightedCells = cellHighlightSpy.mock.calls.map(call => call[0]);
-            const nearCell = highlightedCells.find((data) => data.coord.x === 6 && data.coord.y === 5);
-            const farCell = highlightedCells.find((data) => data.coord.x === 10 && data.coord.y === 5);
+            const batchUpdate = cellBatchSpy.mock.calls[0][0];
+            const nearCell = batchUpdate.updates.find((update: any) => {
+                const [x, y] = update.cellKey.split(',').map(Number);
+                return x === 6 && y === 5;
+            });
+            const farCell = batchUpdate.updates.find((update: any) => {
+                const [x, y] = update.cellKey.split(',').map(Number);
+                return x === 10 && y === 5;
+            });
 
             expect(nearCell).toBeDefined();
             expect(farCell).toBeDefined();
-            expect(nearCell!.intensity).toBeGreaterThan(farCell!.intensity);
+            expect(nearCell!.visualState.highlightIntensity).toBeGreaterThan(farCell!.visualState.highlightIntensity);
         });
 
         it('should apply angle falloff to visibility', () => {
@@ -152,19 +173,25 @@ describe('Shoot', () => {
             testCharacter.direction = 'right';
             mockState.findCharacter.mockReturnValue(testCharacter);
 
-            const cellHighlightSpy = jest.fn();
+            const cellBatchSpy = jest.fn();
             const listener = createTestListener();
-            listener.listen(GUIEvent.cellHighlightIntensity, cellHighlightSpy);
+            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
             superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
 
-            const highlightedCells = cellHighlightSpy.mock.calls.map(call => call[0]);
-            const centerCell = highlightedCells.find((data) => data.coord.x === 7 && data.coord.y === 5);
-            const edgeCell = highlightedCells.find((data) => data.coord.x === 7 && data.coord.y === 6);
+            const batchUpdate = cellBatchSpy.mock.calls[0][0];
+            const centerCell = batchUpdate.updates.find((update: any) => {
+                const [x, y] = update.cellKey.split(',').map(Number);
+                return x === 7 && y === 5;
+            });
+            const edgeCell = batchUpdate.updates.find((update: any) => {
+                const [x, y] = update.cellKey.split(',').map(Number);
+                return x === 7 && y === 6;
+            });
 
             expect(centerCell).toBeDefined();
             expect(edgeCell).toBeDefined();
-            expect(centerCell!.intensity).toBeGreaterThan(edgeCell!.intensity);
+            expect(centerCell!.visualState.highlightIntensity).toBeGreaterThan(edgeCell!.visualState.highlightIntensity);
         });
 
         it('should handle different directions correctly', () => {
@@ -177,9 +204,9 @@ describe('Shoot', () => {
             };
 
             directions.forEach(direction => {
-                const cellHighlightSpy = jest.fn();
+                const cellBatchSpy = jest.fn();
                 const listener = createTestListener();
-                listener.listen(GUIEvent.cellHighlightIntensity, cellHighlightSpy);
+                listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
                 testCharacter.position = { x: 5, y: 5 };
                 testCharacter.direction = direction;
@@ -187,17 +214,18 @@ describe('Shoot', () => {
 
                 superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
 
-                const highlightedCells = cellHighlightSpy.mock.calls.map(call => call[0]);
+                const batchUpdate = cellBatchSpy.mock.calls[0][0];
                 const expectedCell = expectedCells[direction];
                 if (!expectedCell) {
                     throw new Error(`Expected cell not found for direction: ${direction}`);
                 }
-                const foundCell = highlightedCells.find((data) =>
-                    data.coord.x === expectedCell.x && data.coord.y === expectedCell.y
-                );
+                const foundCell = batchUpdate.updates.find((update: any) => {
+                    const [x, y] = update.cellKey.split(',').map(Number);
+                    return x === expectedCell.x && y === expectedCell.y;
+                });
 
                 expect(foundCell).toBeDefined();
-                expect(foundCell!.intensity).toBeGreaterThan(0.5);
+                expect(foundCell!.visualState.highlightIntensity).toBeGreaterThan(0.5);
 
                 // Clean up listener for next iteration
                 superEventBus.remove(listener);
@@ -215,24 +243,33 @@ describe('Shoot', () => {
             testCharacter.direction = 'right';
             mockState.findCharacter.mockReturnValue(testCharacter);
 
-            const cellHighlightSpy = jest.fn();
+            const cellBatchSpy = jest.fn();
             const listener = createTestListener();
-            listener.listen(GUIEvent.cellHighlightIntensity, cellHighlightSpy);
+            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
             superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
 
-            const highlightedCells = cellHighlightSpy.mock.calls.map(call => call[0]);
+            const batchUpdate = cellBatchSpy.mock.calls[0][0];
 
             // Cell with obstacle should not be visible
-            const obstacleCell = highlightedCells.find((data) => data.coord.x === 7 && data.coord.y === 5);
+            const obstacleCell = batchUpdate.updates.find((update: any) => {
+                const [x, y] = update.cellKey.split(',').map(Number);
+                return x === 7 && y === 5;
+            });
             expect(obstacleCell).toBeUndefined();
 
             // Cells behind obstacle should not be visible
-            const behindObstacle = highlightedCells.find((data) => data.coord.x === 9 && data.coord.y === 5);
+            const behindObstacle = batchUpdate.updates.find((update: any) => {
+                const [x, y] = update.cellKey.split(',').map(Number);
+                return x === 9 && y === 5;
+            });
             expect(behindObstacle).toBeUndefined();
 
             // Cells before obstacle should be visible
-            const beforeObstacle = highlightedCells.find((data) => data.coord.x === 6 && data.coord.y === 5);
+            const beforeObstacle = batchUpdate.updates.find((update: any) => {
+                const [x, y] = update.cellKey.split(',').map(Number);
+                return x === 6 && y === 5;
+            });
             expect(beforeObstacle).toBeDefined();
         });
 
@@ -255,36 +292,36 @@ describe('Shoot', () => {
         it('should highlight visible cells when showShooting is triggered', () => {
             mockState.findCharacter.mockReturnValue(testCharacter);
 
-            const cellHighlightSpy = jest.fn();
+            const cellBatchSpy = jest.fn();
             const listener = createTestListener();
-            listener.listen(GUIEvent.cellHighlightIntensity, cellHighlightSpy);
+            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
             // Trigger showShooting
             superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
 
             // Verify cells were highlighted
-            expect(cellHighlightSpy).toHaveBeenCalled();
+            expect(cellBatchSpy).toHaveBeenCalled();
 
             // Check that intensity values are correct
-            const calls = cellHighlightSpy.mock.calls;
-            calls.forEach(([data]) => {
-                expect(data.intensity).toBeGreaterThan(0);
-                expect(data.intensity).toBeLessThanOrEqual(1);
+            const batchUpdate = cellBatchSpy.mock.calls[0][0];
+            batchUpdate.updates.forEach((update: any) => {
+                expect(update.visualState.highlightIntensity).toBeGreaterThan(0);
+                expect(update.visualState.highlightIntensity).toBeLessThanOrEqual(1);
             });
         });
 
         it('should not highlight cells if character is not found', () => {
             mockState.findCharacter.mockReturnValue(undefined);
 
-            const cellHighlightSpy = jest.fn();
+            const cellBatchSpy = jest.fn();
             const listener = createTestListener();
-            listener.listen(GUIEvent.cellHighlightIntensity, cellHighlightSpy);
+            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
             // Trigger showShooting
             superEventBus.dispatch(ControlsEvent.showShooting, 'non-existent-character');
 
             // Verify no cells were highlighted
-            expect(cellHighlightSpy).not.toHaveBeenCalled();
+            expect(cellBatchSpy).not.toHaveBeenCalled();
         });
     });
 
@@ -305,12 +342,15 @@ describe('Shoot', () => {
             // Update the characters array in the mock state
             (mockState as any).characters = [testCharacter, targetCharacter];
 
-            const cellResetSpy = jest.fn();
+            const cellBatchSpy = jest.fn();
             const listener = createTestListener();
-            listener.listen(GUIEvent.cellReset, cellResetSpy);
+            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
             // First show shooting range
             superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+
+            // Clear the spy to only capture the clearing event
+            cellBatchSpy.mockClear();
 
             // Then click on the target character
             superEventBus.dispatch(ControlsEvent.characterClick, {
@@ -318,8 +358,13 @@ describe('Shoot', () => {
                 position: { x: 7, y: 5 }
             });
 
-            // Verify highlights were cleared
-            expect(cellResetSpy).toHaveBeenCalled();
+            // Verify highlights were cleared via batch update
+            expect(cellBatchSpy).toHaveBeenCalled();
+            const clearUpdate = cellBatchSpy.mock.calls[0][0];
+            // All updates should have null visualState (clearing)
+            clearUpdate.updates.forEach((update: any) => {
+                expect(update.visualState).toBeNull();
+            });
         });
 
         it('should not clear highlights when clicking on non-visible character', () => {
@@ -336,12 +381,15 @@ describe('Shoot', () => {
                 return undefined;
             });
 
-            const cellResetSpy = jest.fn();
+            const cellBatchSpy = jest.fn();
             const listener = createTestListener();
-            listener.listen(GUIEvent.cellReset, cellResetSpy);
+            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
             // Show shooting range
             superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+
+            // Clear the spy to only capture potential clearing event
+            cellBatchSpy.mockClear();
 
             // Click on a character behind the shooter (not visible)
             superEventBus.dispatch(ControlsEvent.characterClick, {
@@ -349,8 +397,8 @@ describe('Shoot', () => {
                 position: { x: 1, y: 5 }
             });
 
-            // Verify highlights were not cleared
-            expect(cellResetSpy).not.toHaveBeenCalled();
+            // Verify highlights were not cleared (no additional batch updates)
+            expect(cellBatchSpy).not.toHaveBeenCalled();
         });
     });
 
@@ -609,15 +657,15 @@ describe('Shoot', () => {
             });
             mockState.findCharacter.mockReturnValue(edgeCharacter);
 
-            const cellHighlightSpy = jest.fn();
+            const cellBatchSpy = jest.fn();
             const listener = createTestListener();
-            listener.listen(GUIEvent.cellHighlightIntensity, cellHighlightSpy);
+            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
             // Should not crash when character is at edge
             superEventBus.dispatch(ControlsEvent.showShooting, edgeCharacter.name);
 
             // Should still highlight some cells (facing down from top-left corner)
-            expect(cellHighlightSpy).toHaveBeenCalled();
+            expect(cellBatchSpy).toHaveBeenCalled();
         });
 
         it('should handle zero range', () => {
@@ -630,16 +678,16 @@ describe('Shoot', () => {
             testCharacter.direction = 'right';
             mockState.findCharacter.mockReturnValue(testCharacter);
 
-            const cellHighlightSpy = jest.fn();
+            const cellBatchSpy = jest.fn();
             const listener = createTestListener();
-            listener.listen(GUIEvent.cellHighlightIntensity, cellHighlightSpy);
+            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
             superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
 
             // All highlighted cells should have meaningful intensity
-            const highlightedCells = cellHighlightSpy.mock.calls.map(call => call[0]);
-            highlightedCells.forEach((data) => {
-                expect(data.intensity).toBeGreaterThan(0.01);
+            const batchUpdate = cellBatchSpy.mock.calls[0][0];
+            batchUpdate.updates.forEach((update: any) => {
+                expect(update.visualState.highlightIntensity).toBeGreaterThan(0.01);
             });
         });
     });

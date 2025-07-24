@@ -70,6 +70,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.listen(UpdateStateEvent.uiCharacterAnimation, (data) => this.onUICharacterAnimation(data));
         this.listen(UpdateStateEvent.uiCharacterVisual, (data) => this.onUICharacterVisual(data));
         this.listen(UpdateStateEvent.uiCellVisual, (data) => this.onUICellVisual(data));
+        this.listen(UpdateStateEvent.uiCellVisualBatch, (data) => this.onUICellVisualBatch(data));
         this.listen(UpdateStateEvent.uiBoardVisual, (data) => this.onUIBoardVisual(data));
         this.listen(UpdateStateEvent.uiPopup, (data) => this.onUIPopup(data));
         this.listen(UpdateStateEvent.uiAddProjectile, (data) => this.onUIAddProjectile(data));
@@ -342,6 +343,28 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.dispatch(StateChangeEvent.uiVisualStates, structuredClone(this.#ui.visualStates));
     }
     
+    private onUICellVisualBatch(data: UpdateStateEventsMap[UpdateStateEvent.uiCellVisualBatch]) {
+        // Process all updates in batch
+        data.updates.forEach(update => {
+            if (update.visualState) {
+                const currentVisual = this.#ui.visualStates.cells[update.cellKey] || {
+                    isHighlighted: false,
+                    classList: []
+                };
+                
+                this.#ui.visualStates.cells[update.cellKey] = {
+                    ...currentVisual,
+                    ...update.visualState
+                } as ICellVisualState;
+            } else {
+                delete this.#ui.visualStates.cells[update.cellKey];
+            }
+        });
+        
+        // Dispatch only once after all updates
+        this.dispatch(StateChangeEvent.uiVisualStates, structuredClone(this.#ui.visualStates));
+    }
+    
     private onUIBoardVisual(data: UpdateStateEventsMap[UpdateStateEvent.uiBoardVisual]) {
         this.#ui.visualStates.board = {
             ...this.#ui.visualStates.board,
@@ -374,10 +397,70 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
     }
     
     private onUIHighlights(data: UpdateStateEventsMap[UpdateStateEvent.uiHighlights]) {
+        // First, clear previously highlighted cells
+        const previouslyHighlighted = new Set<string>();
+        Object.keys(this.#ui.visualStates.cells).forEach(cellKey => {
+            const cell = this.#ui.visualStates.cells[cellKey];
+            if (cell?.isHighlighted) {
+                previouslyHighlighted.add(cellKey);
+            }
+        });
+        
+        // Update highlights
         this.#ui.transientUI.highlights = {
             ...this.#ui.transientUI.highlights,
             ...data
         } as IHighlightStates;
+        
+        // Batch update all cell visual states
+        const cellUpdates: Array<{ cellKey: string; visualState: Partial<ICellVisualState> | null }> = [];
+        
+        // Clear previously highlighted cells
+        previouslyHighlighted.forEach(cellKey => {
+            cellUpdates.push({ cellKey, visualState: null });
+        });
+        
+        // Add new highlights
+        data.reachableCells?.forEach(coord => {
+            const cellKey = `${coord.x},${coord.y}`;
+            cellUpdates.push({
+                cellKey,
+                visualState: {
+                    isHighlighted: true,
+                    highlightType: 'movement',
+                    classList: ['highlight']
+                }
+            });
+        });
+        
+        data.pathCells?.forEach(coord => {
+            const cellKey = `${coord.x},${coord.y}`;
+            cellUpdates.push({
+                cellKey,
+                visualState: {
+                    isHighlighted: true,
+                    highlightType: 'path',
+                    classList: ['highlight']
+                }
+            });
+        });
+        
+        data.targetableCells?.forEach(coord => {
+            const cellKey = `${coord.x},${coord.y}`;
+            cellUpdates.push({
+                cellKey,
+                visualState: {
+                    isHighlighted: true,
+                    highlightType: 'attack',
+                    classList: ['highlight']
+                }
+            });
+        });
+        
+        // Apply all updates in batch
+        if (cellUpdates.length > 0) {
+            this.onUICellVisualBatch({ updates: cellUpdates });
+        }
         
         this.dispatch(StateChangeEvent.uiTransient, structuredClone(this.#ui.transientUI));
     }

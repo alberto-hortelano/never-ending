@@ -16,7 +16,8 @@
       "Bash(mv:*)",
       "Bash(npx sass:*)",
       "Bash(grep:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(NODE_ENV=test npm test -- shoot.test.ts)"
     ],
     "deny": []
   }

@@ -11,7 +11,7 @@
 .projectile {
     position: absolute;
     transform-origin: center;
-    animation: fly 400ms linear forwards;
+    animation: fly var(--animation-duration-projectile) linear forwards;
 
     &.bullet {
         width: calc(50 * var(--size)); // Increased from 10

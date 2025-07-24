@@ -1,4 +1,4 @@
-import { ControlsEvent, StateChangeEvent, UpdateStateEvent } from "../../common/events";
+import { ControlsEvent, StateChangeEvent } from "../../common/events";
 import { ICoord, ICellVisualState } from "../../common/interfaces";
 import { Component } from "../Component";
 
@@ -37,34 +37,11 @@ export default class Cell extends Component {
         });
         
         // Listen for highlight changes
-        this.listen(StateChangeEvent.uiTransient, (transientUI) => {
-            const isReachable = transientUI.highlights.reachableCells.some(
-                c => c.x === this.coords.x && c.y === this.coords.y
-            );
-            const isPath = transientUI.highlights.pathCells.some(
-                c => c.x === this.coords.x && c.y === this.coords.y
-            );
-            const isTargetable = transientUI.highlights.targetableCells.some(
-                c => c.x === this.coords.x && c.y === this.coords.y
-            );
-            
-            if (isReachable || isPath || isTargetable) {
-                const highlightType = isPath ? 'path' : isTargetable ? 'attack' : 'movement';
-                this.dispatch(UpdateStateEvent.uiCellVisual, {
-                    cellKey: this.cellKey,
-                    visualState: {
-                        isHighlighted: true,
-                        highlightType,
-                        classList: ['highlight']
-                    }
-                });
-            } else if (this.classList.contains('highlight')) {
-                // Cell is no longer highlighted
-                this.dispatch(UpdateStateEvent.uiCellVisual, {
-                    cellKey: this.cellKey,
-                    visualState: null
-                });
-            }
+        // NOTE: We no longer dispatch individual updates here because highlights
+        // are now handled in batch by the State when it receives UpdateStateEvent.uiHighlights
+        this.listen(StateChangeEvent.uiTransient, () => {
+            // This event is still fired but cells will be updated via uiVisualStates
+            // which is more efficient than having each cell dispatch individual updates
         });
         return root;
     }
@@ -85,32 +62,37 @@ export default class Cell extends Component {
         this.dispatch(ControlsEvent.cellClick, this.coords);
     }
     private applyVisualState(visualState: ICellVisualState) {
-        // Reset classes
-        this.classList.remove(...Cell.states);
-        
-        // Apply new classes
-        visualState.classList.forEach(cls => {
-            this.classList.add(cls);
+        // Use requestAnimationFrame to batch DOM updates
+        requestAnimationFrame(() => {
+            // Reset classes
+            this.classList.remove(...Cell.states);
+            
+            // Apply new classes
+            visualState.classList.forEach(cls => {
+                this.classList.add(cls);
+            });
+            
+            // Apply highlight
+            if (visualState.isHighlighted) {
+                this.classList.add('highlight');
+                
+                if (visualState.highlightType) {
+                    this.classList.add(`highlight-${visualState.highlightType}`);
+                }
+                
+                if (visualState.highlightIntensity !== undefined) {
+                    this.classList.add('highlight-intensity');
+                    this.style.setProperty('--highlight-intensity', visualState.highlightIntensity.toString());
+                }
+            }
         });
-        
-        // Apply highlight
-        if (visualState.isHighlighted) {
-            this.classList.add('highlight');
-            
-            if (visualState.highlightType) {
-                this.classList.add(`highlight-${visualState.highlightType}`);
-            }
-            
-            if (visualState.highlightIntensity !== undefined) {
-                this.classList.add('highlight-intensity');
-                this.style.setProperty('--highlight-intensity', visualState.highlightIntensity.toString());
-            }
-        }
     }
     
     private resetVisualState() {
-        this.classList.remove(...Cell.states);
-        this.style.removeProperty('--highlight-intensity');
+        requestAnimationFrame(() => {
+            this.classList.remove(...Cell.states);
+            this.style.removeProperty('--highlight-intensity');
+        });
     }
 }
 

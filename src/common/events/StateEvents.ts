@@ -34,6 +34,8 @@ export enum UpdateStateEvent {
     uiCharacterVisual = 'UpdateStateEvent.uiCharacterVisual',
     /** Update cell visual state */
     uiCellVisual = 'UpdateStateEvent.uiCellVisual',
+    /** Batch update multiple cell visual states */
+    uiCellVisualBatch = 'UpdateStateEvent.uiCellVisualBatch',
     /** Update board visual state */
     uiBoardVisual = 'UpdateStateEvent.uiBoardVisual',
     /** Update popup state */
@@ -92,6 +94,12 @@ export interface UpdateStateEventsMap {
     [UpdateStateEvent.uiCellVisual]: {
         cellKey: string; // "x,y" format
         visualState: Partial<DeepReadonly<ICellVisualState>> | null;
+    };
+    [UpdateStateEvent.uiCellVisualBatch]: {
+        updates: Array<{
+            cellKey: string; // "x,y" format
+            visualState: Partial<DeepReadonly<ICellVisualState>> | null;
+        }>;
     };
     [UpdateStateEvent.uiBoardVisual]: {
         updates: Partial<DeepReadonly<{

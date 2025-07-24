@@ -1,5 +1,6 @@
 import { Component } from "../Component";
 import { UpdateStateEvent } from "../../common/events";
+import { ANIMATION_DURATIONS } from "../../common/constants";
 
 export default class Projectile extends Component {
     protected override hasCss = true;
@@ -46,7 +47,7 @@ export default class Projectile extends Component {
                     projectileId: this.id
                 });
             }
-        }, 400); // Match animation duration
+        }, ANIMATION_DURATIONS.PROJECTILE);
 
         return root;
     }

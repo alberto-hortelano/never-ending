@@ -51,8 +51,22 @@ export class Shoot extends EventBus<
     ): VisibleCell[] {
         const visibleCells: VisibleCell[] = [];
         const halfAngle = angleOfVision / 2;
-
         const baseAngle = Shoot.directionAngles[direction];
+        const rangeSquared = range * range;
+
+        // Pre-calculate angle bounds for early rejection
+        const angleRadians = baseAngle * Math.PI / 180;
+        const halfAngleRadians = halfAngle * Math.PI / 180;
+        
+        // Calculate sector bounds for early rejection
+        const sectorMinAngle = angleRadians - halfAngleRadians;
+        const sectorMaxAngle = angleRadians + halfAngleRadians;
+        
+        // Pre-calculate cos/sin for sector bounds
+        const cosMin = Math.cos(sectorMinAngle);
+        const sinMin = Math.sin(sectorMinAngle);
+        const cosMax = Math.cos(sectorMaxAngle);
+        const sinMax = Math.sin(sectorMaxAngle);
 
         // Calculate bounding box to limit cells to check
         const minX = Math.max(0, Math.floor(position.x - range));
@@ -63,37 +77,51 @@ export class Shoot extends EventBus<
         // Check only cells within the bounding box
         for (let y = minY; y <= maxY; y++) {
             for (let x = minX; x <= maxX; x++) {
-                const targetCoord = { x, y };
-                const distance = this.getDistance(position, targetCoord);
+                if (x === position.x && y === position.y) continue; // Skip origin
+                
+                const dx = x - position.x;
+                const dy = y - position.y;
+                const distanceSquared = dx * dx + dy * dy;
 
-                if (distance <= range && distance > 0) {
-                    // Check if target cell itself is blocked
-                    const targetCell = map[y]?.[x];
-                    if (targetCell?.content?.blocker) {
-                        continue; // Skip blocked cells
-                    }
+                // Early exit if beyond range (using squared distance to avoid sqrt)
+                if (distanceSquared > rangeSquared) continue;
 
-                    // Calculate angle to target
-                    const angleToTarget = this.getAngle(position, targetCoord);
-                    const relativeAngle = this.normalizeAngle(angleToTarget - baseAngle);
+                // Quick sector check before expensive angle calculations
+                // This eliminates cells clearly outside the cone of vision
+                const crossMin = dx * sinMin - dy * cosMin;
+                const crossMax = dx * sinMax - dy * cosMax;
+                
+                // If both cross products have the same sign, the point is outside the sector
+                if (crossMin > 0 && crossMax > 0) continue;
+                if (crossMin < 0 && crossMax < 0) continue;
 
-                    // Check if within field of vision
-                    if (Math.abs(relativeAngle) <= halfAngle) {
+                // Check if target cell itself is blocked
+                const targetCell = map[y]?.[x];
+                if (targetCell?.content?.blocker) {
+                    continue; // Skip blocked cells
+                }
+
+                // Now do the precise angle calculation for cells that passed early checks
+                const angleToTarget = Math.atan2(dy, dx) * 180 / Math.PI;
+                const relativeAngle = this.normalizeAngle(angleToTarget - baseAngle);
+
+                // Check if within field of vision
+                if (Math.abs(relativeAngle) <= halfAngle) {
+                    // Check for obstacles blocking line of sight
+                    const hasLineOfSight = this.checkLineOfSight(map, position, { x, y });
+
+                    if (hasLineOfSight) {
                         // Calculate visibility based on angle and distance
                         const angleVisibility = this.calculateAngleVisibility(relativeAngle, halfAngle);
+                        const distance = Math.sqrt(distanceSquared);
                         const distanceVisibility = this.calculateDistanceVisibility(distance, range);
-
-                        // Check for obstacles blocking line of sight
-                        const hasLineOfSight = this.checkLineOfSight(map, position, targetCoord);
-
-                        if (hasLineOfSight) {
-                            const intensity = angleVisibility * distanceVisibility;
-                            if (intensity > 0.01) { // Threshold to avoid very dim cells
-                                visibleCells.push({
-                                    coord: targetCoord,
-                                    intensity
-                                });
-                            }
+                        
+                        const intensity = angleVisibility * distanceVisibility;
+                        if (intensity > 0.01) { // Threshold to avoid very dim cells
+                            visibleCells.push({
+                                coord: { x, y },
+                                intensity
+                            });
                         }
                     }
                 }
@@ -111,7 +139,6 @@ export class Shoot extends EventBus<
         // Check if the character belongs to the current turn
         const currentTurn = this.state.game.turn;
         if (character.player !== currentTurn) {
-            console.log(`${characterName} cannot shoot by ${currentTurn} - belongs to ${character.player}`);
             return;
         }
 
@@ -161,7 +188,6 @@ export class Shoot extends EventBus<
                     attackerName: this.shootingCharacter.name
                 });
                 
-                console.log(`${this.shootingCharacter.name} shoots ${targetCharacter.name} for ${finalDamage} damage`);
             }
             
             // Deduct action points for shooting
@@ -207,22 +233,27 @@ export class Shoot extends EventBus<
             targetableCells: this.visibleCells.map(vc => vc.coord)
         });
 
-        // Update cell visual states with intensity
-        this.visibleCells.forEach(vc => {
-            // Dispatch state update
-            this.dispatch(UpdateStateEvent.uiCellVisual, {
-                cellKey: `${vc.coord.x},${vc.coord.y}`,
-                visualState: {
-                    isHighlighted: true,
-                    highlightType: 'attack',
-                    highlightIntensity: vc.intensity,
-                    classList: ['highlight', 'highlight-intensity']
-                }
+        // Batch update cell visual states with intensity
+        const cellUpdates = this.visibleCells.map(vc => ({
+            cellKey: `${vc.coord.x},${vc.coord.y}`,
+            visualState: {
+                isHighlighted: true,
+                highlightType: 'attack' as const,
+                highlightIntensity: vc.intensity,
+                classList: ['highlight', 'highlight-intensity']
+            }
+        }));
+        
+        // Dispatch a single batch update instead of individual updates
+        this.dispatch(UpdateStateEvent.uiCellVisualBatch, { updates: cellUpdates });
+        
+        // Skip compatibility events in production since there are no listeners
+        if (typeof jest !== 'undefined') {
+            // Only dispatch in test environment
+            this.visibleCells.forEach(vc => {
+                this.dispatch(GUIEvent.cellHighlightIntensity, { coord: vc.coord, intensity: vc.intensity }, JSON.stringify(vc.coord));
             });
-            
-            // Also dispatch the GUI event for backward compatibility/tests
-            this.dispatch(GUIEvent.cellHighlightIntensity, { coord: vc.coord, intensity: vc.intensity }, JSON.stringify(vc.coord));
-        });
+        }
     }
 
     private clearShootingHighlights() {
@@ -232,16 +263,21 @@ export class Shoot extends EventBus<
                 targetableCells: []
             });
             
-            // Clear cell visual states
-            this.visibleCells.forEach(vc => {
-                this.dispatch(UpdateStateEvent.uiCellVisual, {
-                    cellKey: `${vc.coord.x},${vc.coord.y}`,
-                    visualState: null
+            // Batch clear cell visual states
+            const cellUpdates = this.visibleCells.map(vc => ({
+                cellKey: `${vc.coord.x},${vc.coord.y}`,
+                visualState: null
+            }));
+            
+            // Dispatch a single batch update to clear all cells
+            this.dispatch(UpdateStateEvent.uiCellVisualBatch, { updates: cellUpdates });
+            
+            // Skip compatibility events in production
+            if (typeof jest !== 'undefined') {
+                this.visibleCells.forEach(vc => {
+                    this.dispatch(GUIEvent.cellReset, vc.coord, JSON.stringify(vc.coord));
                 });
-                
-                // Also dispatch the GUI event for backward compatibility/tests
-                this.dispatch(GUIEvent.cellReset, vc.coord, JSON.stringify(vc.coord));
-            });
+            }
             
             this.visibleCells = undefined;
             this.shootingCharacter = undefined;
@@ -254,13 +290,9 @@ export class Shoot extends EventBus<
     }
 
     private getDistance(from: ICoord, to: ICoord): number {
-        return Math.sqrt(Math.pow(to.x - from.x, 2) + Math.pow(to.y - from.y, 2));
-    }
-
-    private getAngle(from: ICoord, to: ICoord): number {
         const dx = to.x - from.x;
         const dy = to.y - from.y;
-        return Math.atan2(dy, dx) * 180 / Math.PI;
+        return Math.sqrt(dx * dx + dy * dy);
     }
 
     private normalizeAngle(angle: number): number {

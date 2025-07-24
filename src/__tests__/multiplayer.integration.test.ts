@@ -3,7 +3,7 @@ import { State } from '../common/State';
 import { MultiplayerManager } from '../common/services/MultiplayerManager';
 import { NetworkService } from '../common/services/NetworkService';
 import { StartGameEvent } from '../common/events/NetworkEvents';
-import { IState } from '../common/interfaces';
+import { ICharacter, IState } from '../common/interfaces';
 import { UpdateStateEvent, GameEvent } from '../common/events';
 import { baseCharacter } from '../data/state';
 import { getDefaultUIState } from './helpers/testUIState.helper';

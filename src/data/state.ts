@@ -119,7 +119,7 @@ const defaultInventory: IInventory = {
     items: [],
     maxWeight: 50,
     equippedWeapons: {
-        primary: null,
+        primary: weapons.find(w => w.name === 'Energy Pistol') ?? null, // Pistol
         secondary: null
     }
 };

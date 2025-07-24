@@ -3,6 +3,7 @@ import { Component } from "../Component";
 import { DragScroll } from "../../common/helpers/DragScroll";
 import { ICoord, IProjectileState } from "../../common/interfaces";
 import { BoardService } from "../../common/services/BoardService";
+import { ANIMATION_DURATIONS } from "../../common/constants";
 import "../projectile/Projectile";
 
 export default class Board extends Component {
@@ -131,7 +132,7 @@ export default class Board extends Component {
       from: data.from,
       to: data.to,
       startTime: Date.now(),
-      duration: 400 // 400ms animation duration
+      duration: ANIMATION_DURATIONS.PROJECTILE
     });
   }
   
