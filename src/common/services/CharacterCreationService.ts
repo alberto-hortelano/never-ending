@@ -29,6 +29,8 @@ export interface CreatorData {
   items: string[];
 }
 
+import { weapons, items } from '../../data/state';
+
 export interface SimplifiedWeapon {
   id: string;
   name: string;
@@ -66,21 +68,20 @@ export class CharacterCreationService {
     { name: 'Robot Copper', skin: '#CD7F32', helmet: '#8B4513', suit: '#654321' }
   ];
   
-  // Temporary data - will be moved to State later
-  static readonly AVAILABLE_WEAPONS: readonly SimplifiedWeapon[] = [
-    { id: 'pistol', name: 'Pistol', weight: 5, cost: 100 },
-    { id: 'rifle', name: 'Rifle', weight: 10, cost: 300 },
-    { id: 'shotgun', name: 'Shotgun', weight: 12, cost: 250 },
-    { id: 'smg', name: 'SMG', weight: 8, cost: 200 }
-  ];
+  // Get weapons and items from state.ts and map to simplified format
+  static readonly AVAILABLE_WEAPONS: readonly SimplifiedWeapon[] = weapons.map(w => ({
+    id: w.id,
+    name: w.name,
+    weight: w.weight,
+    cost: w.cost
+  }));
   
-  static readonly AVAILABLE_ITEMS: readonly SimplifiedItem[] = [
-    { id: 'medkit', name: 'Medkit', weight: 2, cost: 50 },
-    { id: 'ammo_box', name: 'Ammo Box', weight: 5, cost: 30 },
-    { id: 'grenade', name: 'Grenade', weight: 1, cost: 75 },
-    { id: 'armor', name: 'Body Armor', weight: 15, cost: 200 },
-    { id: 'scope', name: 'Scope', weight: 1, cost: 100 }
-  ];
+  static readonly AVAILABLE_ITEMS: readonly SimplifiedItem[] = items.map(i => ({
+    id: i.id,
+    name: i.name,
+    weight: i.weight,
+    cost: i.cost
+  }));
 
   static createDefaultCharacterData(): CreatorData {
     return {

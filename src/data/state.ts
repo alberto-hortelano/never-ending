@@ -9,10 +9,12 @@ export const weapons: IWeapon[] = [
         name: 'Energy Pistol',
         description: 'A compact energy weapon for close encounters',
         weight: 1.2,
+        cost: 200,
         icon: '🔫',
         type: 'weapon',
         weaponType: 'oneHanded',
         category: 'ranged',
+        class: 'pistol',
         damage: 150,
         range: 10
     },
@@ -21,10 +23,12 @@ export const weapons: IWeapon[] = [
         name: 'Plasma Sword',
         description: 'An elegant weapon for a more civilized age',
         weight: 2.5,
+        cost: 350,
         icon: '⚔️',
         type: 'weapon',
         weaponType: 'oneHanded',
         category: 'melee',
+        class: 'sword',
         damage: 20,
         range: 2
     },
@@ -33,10 +37,12 @@ export const weapons: IWeapon[] = [
         name: 'Combat Knife',
         description: 'A sharp blade for quick strikes',
         weight: 0.5,
+        cost: 100,
         icon: '🔪',
         type: 'weapon',
         weaponType: 'oneHanded',
         category: 'melee',
+        class: 'knife',
         damage: 10,
         range: 1
     },
@@ -45,10 +51,12 @@ export const weapons: IWeapon[] = [
         name: 'Pulse Rifle',
         description: 'Standard issue military rifle with high accuracy',
         weight: 4.5,
+        cost: 500,
         icon: '🔫',
         type: 'weapon',
         weaponType: 'twoHanded',
         category: 'ranged',
+        class: 'rifle',
         damage: 30,
         range: 20
     },
@@ -57,10 +65,12 @@ export const weapons: IWeapon[] = [
         name: 'Energy Spear',
         description: 'Long reach weapon with energy tip',
         weight: 3.0,
+        cost: 400,
         icon: '🔱',
         type: 'weapon',
         weaponType: 'twoHanded',
         category: 'melee',
+        class: 'polearm',
         damage: 25,
         range: 3
     },
@@ -69,10 +79,12 @@ export const weapons: IWeapon[] = [
         name: 'Heavy Hammer',
         description: 'Devastating two-handed weapon',
         weight: 6.0,
+        cost: 600,
         icon: '🔨',
         type: 'weapon',
         weaponType: 'twoHanded',
         category: 'melee',
+        class: 'polearm',
         damage: 35,
         range: 2
     }
@@ -85,6 +97,7 @@ export const items: IItem[] = [
         name: 'Medkit',
         description: 'Restores health when used',
         weight: 0.8,
+        cost: 50,
         icon: '🏥',
         type: 'consumable'
     },
@@ -93,6 +106,7 @@ export const items: IItem[] = [
         name: 'Energy Cell',
         description: 'Ammunition for energy weapons',
         weight: 0.2,
+        cost: 20,
         icon: '🔋',
         type: 'consumable'
     },
@@ -101,6 +115,7 @@ export const items: IItem[] = [
         name: 'Food Ration',
         description: 'Standard military food ration',
         weight: 0.5,
+        cost: 30,
         icon: '🍱',
         type: 'consumable'
     },
@@ -109,6 +124,7 @@ export const items: IItem[] = [
         name: 'Security Keycard',
         description: 'Opens locked doors',
         weight: 0.1,
+        cost: 100,
         icon: '🗝️',
         type: 'misc'
     }

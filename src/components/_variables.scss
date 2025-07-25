@@ -313,3 +313,11 @@ $breakpoint-xl: 1200px; // Extra large devices
 
     @return $number;
 }
+
+// General styles
+input,
+select,
+option,
+textarea {
+    box-sizing: border-box;
+}

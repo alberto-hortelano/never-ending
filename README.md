@@ -11,9 +11,8 @@ StateEvents: Peticion de modificacion del estado. Solo la clase State puede escu
 ComponentEvent: Eventos de la interfaz. Solo los componentes pueden lanzarlos
 
 ## TODO:
-1. Los action points se restan de dos en dos en multiplayer
 1. Hace falta un cancelar accion
-1. Al acabar el turno todos los highlights deben quitarse
+1. Al mover tendria que resaltar el path al ir haciendo hover en las celdas. Y al hacer click, dejar el path resaltado e ir quitando celdas a medida que el personaje avanza
 
 ## Actions
 Hay 100 puntos por turno y cada accion consume n puntos, dependiendo de la habilidad del personaje

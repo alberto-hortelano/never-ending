@@ -3,6 +3,7 @@ import { ControlsEvent } from '../../common/events/index.js';
 import { CharacterCreationService } from '../../common/services/CharacterCreationService.js';
 import Character from '../character/Character.js';
 import type { Direction, ICreatorData } from '../../common/interfaces.js';
+import { weapons } from '../../data/state.js';
 
 export default class CharacterCreator extends Component {
   protected override hasCss = true;
@@ -212,12 +213,19 @@ export default class CharacterCreator extends Component {
         suit: this.characterData.colors.suit
       };
 
+      // Get the weapon class from the selected weapon
+      let weaponClass: string | undefined;
+      if (this.characterData.primaryWeapon) {
+        const weapon = weapons.find(w => w.id === this.characterData.primaryWeapon);
+        weaponClass = weapon?.class;
+      }
+
       this.characterPreview.updateAppearance(
         this.characterData.race,
         palette,
         this.currentDirection,
         this.currentAction,
-        this.characterData.primaryWeapon || undefined
+        weaponClass
       );
     }
   }

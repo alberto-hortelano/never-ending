@@ -41,12 +41,14 @@ export type Action = 'walk' | 'idle';
 export type ItemType = 'consumable' | 'weapon' | 'armor' | 'misc';
 export type WeaponType = 'oneHanded' | 'twoHanded';
 export type WeaponCategory = 'melee' | 'ranged';
+export type WeaponClass = 'pistol' | 'rifle' | 'shotgun' | 'sword' | 'polearm' | 'knife';
 
 export interface IItem {
     id: string;
     name: string;
     description: string;
     weight: number;
+    cost: number;
     icon: string;
     type: ItemType;
 }
@@ -55,6 +57,7 @@ export interface IWeapon extends IItem {
     type: 'weapon';
     weaponType: WeaponType;
     category: WeaponCategory;
+    class: WeaponClass;
     damage: number;
     range: number;
 }
