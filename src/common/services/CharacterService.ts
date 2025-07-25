@@ -218,4 +218,13 @@ export class CharacterService extends EventBus {
     return this.state.findCharacter(name);
   }
 
+  /**
+   * Calculate health bar color based on percentage
+   */
+  public static calculateHealthColor(percentage: number): string {
+    if (percentage > 60) return '#4ade80'; // Green
+    if (percentage > 30) return '#ffa726'; // Orange
+    return '#f44336'; // Red
+  }
+
 }

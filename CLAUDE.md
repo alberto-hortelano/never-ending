@@ -181,6 +181,8 @@ this.listen(StateChangeEvent.characterHealth, (character) => {
 - Components should be self-contained with Shadow DOM
 - System services contain business logic, components handle UI
 - Use TypeScript strict mode - all types must be explicit
+- Services must NOT use browser APIs (window, document) - pass configuration from components
+- Use EventBus for global application events, CustomEvent for parent-child component communication
 
 ### Separation of Concerns
 

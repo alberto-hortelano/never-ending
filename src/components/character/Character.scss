@@ -177,7 +177,7 @@ body {
         width: calc(60 * var(--size));
         left: calc(5 * var(--size));
         height: calc(40 * var(--size));
-        box-shadow: 0 calc(-4 * var(--size)) calc(7 * var(--size)) calc(1 * var(--size)) inset $color-black, 0 0 0 calc(4 * var(--size)) #6d6d6d;
+        box-shadow: 0 calc(-4 * var(--size)) calc(7 * var(--size)) calc(1 * var(--size)) inset $color-black, 0 0 0 calc(4 * var(--size)) $gray-400;
         background-color: var(--skin);
         background-image: radial-gradient(circle at calc(24 * var(--size)) calc(0.8 * var(--size)), $transparent-white, $transparent-black);
         border-radius: 100%;

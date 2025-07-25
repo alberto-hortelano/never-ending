@@ -366,11 +366,6 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
             isCurrentTurn: false
         };
         
-        console.log('[State] onUICharacterVisual - Before update:', data.characterId, {
-            currentTemporaryClasses: currentVisual.temporaryClasses,
-            currentWeaponClass: currentVisual.weaponClass,
-            newData: data.visualState
-        });
         
         // Merge the visual state updates properly
         const updatedVisual = {
@@ -386,10 +381,6 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
             updatedVisual.classList = data.visualState.classList;
         }
         
-        console.log('[State] onUICharacterVisual - After update:', data.characterId, {
-            temporaryClasses: updatedVisual.temporaryClasses,
-            weaponClass: updatedVisual.weaponClass
-        });
         
         this.#ui.visualStates.characters[data.characterId] = updatedVisual as ICharacterVisualState;
         

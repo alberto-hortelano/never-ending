@@ -193,13 +193,11 @@ export class Popup extends Component {
         this.show(`${data.talkingCharacter.name} - Talk to...`);
 
         // Set options on select character component
-        if (selectCharacterComponent && selectCharacterComponent.setOptions) {
-            selectCharacterComponent.setOptions({
-                characters: [...data.availableCharacters, data.talkingCharacter],
-                excludeByName: data.talkingCharacter.name,
-                emptyMessage: 'No one else is around to talk to.'
-            });
-        }
+        selectCharacterComponent.setOptions({
+            characters: [...data.availableCharacters, data.talkingCharacter],
+            excludeByName: data.talkingCharacter.name,
+            emptyMessage: 'No one else is around to talk to.'
+        });
 
         // Listen for character selection and log the conversation
         selectCharacterComponent.addEventListener('character-selected', (e: Event) => {
@@ -219,11 +217,9 @@ export class Popup extends Component {
         this.show(`${character.name} - Rotate`);
 
         // Set options on rotate selector component
-        if (rotateSelectorComponent && rotateSelectorComponent.setOptions) {
-            rotateSelectorComponent.setOptions({
-                character: character
-            });
-        }
+        rotateSelectorComponent.setOptions({
+            character: character
+        });
 
         // Listen for direction selection
         rotateSelectorComponent.addEventListener('direction-selected', (e: Event) => {

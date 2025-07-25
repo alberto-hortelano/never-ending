@@ -133,7 +133,7 @@ export default class Character extends Component {
         this.listen(StateChangeEvent.characterHealth, (character) => {
             if (character.name === this.id) {
                 const percentage = Math.max(0, (character.health / character.maxHealth) * 100);
-                const color = this.calculateHealthColor(percentage);
+                const color = CharacterService.calculateHealthColor(percentage);
 
                 this.dispatch(UpdateStateEvent.uiCharacterVisual, {
                     characterId: this.id,
@@ -163,7 +163,7 @@ export default class Character extends Component {
         const health = parseInt(this.dataset.health || '100');
         const maxHealth = parseInt(this.dataset.maxHealth || '100');
         const percentage = Math.max(0, (health / maxHealth) * 100);
-        const color = this.calculateHealthColor(percentage);
+        const color = CharacterService.calculateHealthColor(percentage);
 
         // Update health in visual state
         this.dispatch(UpdateStateEvent.uiCharacterVisual, {
@@ -301,7 +301,6 @@ export default class Character extends Component {
             }
         }
 
-        console.log('[Character] updateCharacterClasses - Final classes for', this.id, ':', classes.join(' '));
 
         // Apply all classes at once
         this.characterElement.className = classes.join(' ');
@@ -351,11 +350,6 @@ export default class Character extends Component {
     private applyVisualState(visualState: ICharacterVisualState) {
         if (!this.characterElement || !this.movable) return;
 
-        console.log('[Character] applyVisualState called for:', this.id, {
-            temporaryClasses: visualState.temporaryClasses,
-            weaponClass: visualState.weaponClass,
-            classList: visualState.classList
-        });
 
         // Store the visual state for class management
         this.currentVisualState = visualState;
@@ -422,11 +416,6 @@ export default class Character extends Component {
         }
     }
 
-    private calculateHealthColor(percentage: number): string {
-        if (percentage > 60) return '#4ade80'; // Green
-        if (percentage > 30) return '#ffa726'; // Orange
-        return '#f44336'; // Red
-    }
 
     private onDefeated() {
         // Update visual state to defeated

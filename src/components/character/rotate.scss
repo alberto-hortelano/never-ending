@@ -10,7 +10,7 @@
         &.rotate-#{$angle} {
             .head {
                 .face {
-                    box-shadow: calc(-25*#{$x} * var(--size)) calc(-4 * var(--size)) calc(7 * var(--size)) calc(1 * var(--size)) inset rgba(0, 0, 0, 0.8), 0 0 0 calc(4 * var(--size)) #6d6d6d;
+                    box-shadow: calc(-25*#{$x} * var(--size)) calc(-4 * var(--size)) calc(7 * var(--size)) calc(1 * var(--size)) inset rgba(0, 0, 0, 0.8), 0 0 0 calc(4 * var(--size)) $gray-400;
                     top: calc((15 + 10*#{$y}) * var(--size));
                     left: calc((5 + 30*#{$x}) * var(--size));
                     transform: skewY(calc(-20deg*#{$x})) rotateY(calc(-40deg*#{$x}));

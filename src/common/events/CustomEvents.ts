@@ -13,4 +13,6 @@ export type MultiplayerEventMap = {
     multiplayerGameStarted: { state: IState };
     stateSynced: { state: IState };
     switchedToSinglePlayer: { state: IState };
+    requestSyncTimer: { interval: number };
+    cancelSyncTimer: {};
 };

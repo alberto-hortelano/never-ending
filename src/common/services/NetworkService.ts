@@ -12,6 +12,7 @@ export class NetworkService extends EventBus<EventsMap, EventsMap> {
     private maxReconnectAttempts = 5;
     private reconnectDelay = 1000;
     private messageQueue: Array<{ type: string; data: unknown }> = [];
+    private lastServerUrl: string | null = null;
 
     private constructor() {
         super();
@@ -30,13 +31,8 @@ export class NetworkService extends EventBus<EventsMap, EventsMap> {
         // The MultiplayerManager will handle listening to specific state events
     }
 
-    connect(playerName: string, serverUrl?: string): Promise<void> {
-        // Use the current host for WebSocket connection
-        if (!serverUrl) {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const host = window.location.host;
-            serverUrl = `${protocol}//${host}`;
-        }
+    connect(playerName: string, serverUrl: string): Promise<void> {
+        this.lastServerUrl = serverUrl;
         return new Promise((resolve, reject) => {
             if (this.ws?.readyState === WebSocket.OPEN) {
                 resolve();
@@ -229,8 +225,8 @@ export class NetworkService extends EventBus<EventsMap, EventsMap> {
             this.reconnectAttempts++;
 
             setTimeout(() => {
-                if (this.playerName) {
-                    this.connect(this.playerName).catch(console.error);
+                if (this.playerName && this.lastServerUrl) {
+                    this.connect(this.playerName, this.lastServerUrl).catch(console.error);
                 }
             }, this.reconnectDelay * this.reconnectAttempts);
         } else {

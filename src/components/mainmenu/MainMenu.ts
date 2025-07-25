@@ -20,8 +20,7 @@ export class MainMenu extends Component {
             this.show();
         });
         
-        this.listen(ControlsEvent.createCharacter, (characterData) => {
-            console.log('Character created:', characterData);
+        this.listen(ControlsEvent.createCharacter, (_characterData) => {
             // Here you would typically save the character or start the game with it
             this.show();
         });
@@ -73,7 +72,7 @@ export class MainMenu extends Component {
         const settingsBtn = root.getElementById('settingsBtn');
         if (settingsBtn) {
             settingsBtn.addEventListener('click', () => {
-                console.log('Settings not implemented yet');
+                alert('Settings not implemented yet');
             });
         } else {
             console.error('Settings button not found');
@@ -82,7 +81,7 @@ export class MainMenu extends Component {
 
     private startSinglePlayer() {
         this.multiplayerManager.switchToSinglePlayer();
-        this.dispatchEvent(new CustomEvent('startSinglePlayer', { bubbles: true }));
+        this.dispatch('startSinglePlayer', {});
         this.style.display = 'none';
     }
 
@@ -92,12 +91,12 @@ export class MainMenu extends Component {
             document.body.appendChild(this.multiplayerLobby);
 
             // Listen for lobby events
-            this.multiplayerLobby.addEventListener('lobbyGameStarted', () => {
+            this.listen('lobbyGameStarted', () => {
                 this.style.display = 'none';
-                this.dispatchEvent(new CustomEvent('startMultiplayer', { bubbles: true }));
+                this.dispatch('startMultiplayer', {});
             });
 
-            this.multiplayerLobby.addEventListener('lobbyClose', () => {
+            this.listen('lobbyClose', () => {
                 this.show();
             });
         }

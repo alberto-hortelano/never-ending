@@ -76,26 +76,17 @@ const multiplayerManager = MultiplayerManager.getInstance();
 eventBus.listen(GameEvent.play, () => play());
 
 // Listen for menu events
-const mainMenu = document.querySelector('main-menu');
-if (mainMenu) {
-    mainMenu.addEventListener('startSinglePlayer', () => {
-        // Get the state that was created by switchToSinglePlayer
-        const state = multiplayerManager.getState();
-        if (state) {
-            play(state);
-        } else {
-            play();
-        }
-    });
+eventBus.listen('startSinglePlayer', () => {
+    // Single player will be handled by switchedToSinglePlayer event
+});
 
-    mainMenu.addEventListener('startMultiplayer', () => {
-        // Multiplayer game will be started by the MultiplayerManager
-        const state = multiplayerManager.getState();
-        if (state) {
-            play(state);
-        }
-    });
-}
+eventBus.listen('startMultiplayer', () => {
+    // Multiplayer game will be started by the MultiplayerManager
+    const state = multiplayerManager.getState();
+    if (state) {
+        play(state);
+    }
+});
 
 // Listen for multiplayer events
 multiplayerManager.listen('multiplayerGameStarted', (event) => {
@@ -110,4 +101,14 @@ multiplayerManager.listen('multiplayerGameStarted', (event) => {
 
 multiplayerManager.listen('stateSynced', () => {
     // State has been synced, UI will update automatically through events
+});
+
+multiplayerManager.listen('switchedToSinglePlayer', (event) => {
+    // Create a new game state for single player
+    const gameState = new State(event.state);
+    
+    // Set the state back to MultiplayerManager
+    multiplayerManager.setGameState(gameState);
+    
+    play(gameState);
 });

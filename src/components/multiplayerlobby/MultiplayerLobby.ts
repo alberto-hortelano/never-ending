@@ -24,6 +24,7 @@ export class MultiplayerLobby extends Component {
         maxPlayers: number;
         status: string;
     }> = [];
+    private syncTimerId: number | null = null;
 
     private generateRandomName(): string {
         const adjectives = ['Swift', 'Brave', 'Clever', 'Mighty', 'Silent', 'Noble', 'Fierce', 'Wise'];
@@ -61,6 +62,16 @@ export class MultiplayerLobby extends Component {
         this.render(root);
         return root;
     }
+    
+    disconnectedCallback() {
+        // Clean up timer when component is removed
+        if (this.syncTimerId !== null) {
+            window.clearInterval(this.syncTimerId);
+            this.syncTimerId = null;
+        }
+        // Clean up event listeners when component is removed
+        this.eventBus.remove(this);
+    }
 
     private setupEventListeners() {
         // Use this component's eventBus to listen to network events
@@ -80,10 +91,9 @@ export class MultiplayerLobby extends Component {
             if (this._root) this.render(this._root);
         });
 
-        this.listen('roomJoined', (data: ClientNetworkEventMap['roomJoined']) => {
+        this.listen('roomJoined', (_data: ClientNetworkEventMap['roomJoined']) => {
             // When we join a room, we need to wait for the roomStateUpdate
             // to get the full room details
-            console.log('Room joined:', data);
             if (this._root) this.render(this._root);
         });
 
@@ -108,7 +118,7 @@ export class MultiplayerLobby extends Component {
         this.listen('gameStarted', () => {
             // Hide lobby when game starts
             this.style.display = 'none';
-            this.dispatchEvent(new CustomEvent('lobbyGameStarted', { bubbles: true }));
+            this.dispatch('lobbyGameStarted', {});
         });
         
         this.listen('roomListUpdate', (data: ClientNetworkEventMap['roomListUpdate']) => {
@@ -119,8 +129,30 @@ export class MultiplayerLobby extends Component {
         });
         
         this.listen('networkError', (data: ClientNetworkEventMap['networkError']) => {
-            console.error('Network error:', data);
             // Could show error message in UI if needed
+            if (data.code === 'ROOM_FULL') {
+                alert('Room is full');
+            } else if (data.code === 'ROOM_NOT_FOUND') {
+                alert('Room not found');
+            }
+        });
+        
+        // Handle sync timer requests from MultiplayerManager
+        this.listen('requestSyncTimer', (data: { interval: number }) => {
+            if (this.syncTimerId !== null) {
+                window.clearInterval(this.syncTimerId);
+            }
+            // Call the sync method directly on MultiplayerManager
+            this.syncTimerId = window.setInterval(() => {
+                this.multiplayerManager.executeSyncCallback();
+            }, data.interval);
+        });
+        
+        this.listen('cancelSyncTimer', () => {
+            if (this.syncTimerId !== null) {
+                window.clearInterval(this.syncTimerId);
+                this.syncTimerId = null;
+            }
         });
     }
 
@@ -162,9 +194,14 @@ export class MultiplayerLobby extends Component {
         connectBtn.addEventListener('click', async () => {
             if (this.playerName.trim()) {
                 try {
-                    await this.multiplayerManager.connectToServer(this.playerName);
+                    // Build WebSocket URL from browser location
+                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    const host = window.location.host;
+                    const serverUrl = `${protocol}//${host}`;
+                    
+                    await this.multiplayerManager.connectToServer(this.playerName, serverUrl);
                 } catch (error) {
-                    console.error('Failed to connect:', error);
+                    alert('Failed to connect to server');
                 }
             }
         });
@@ -251,7 +288,7 @@ export class MultiplayerLobby extends Component {
         backBtn.addEventListener('click', () => {
             this.networkService.disconnect();
             this.style.display = 'none';
-            this.dispatchEvent(new CustomEvent('lobbyClose', { bubbles: true }));
+            this.dispatch('lobbyClose', {});
         });
     }
 
@@ -312,11 +349,6 @@ export class MultiplayerLobby extends Component {
 
     hide() {
         this.style.display = 'none';
-    }
-
-    disconnectedCallback() {
-        // Clean up event listeners when component is removed
-        this.eventBus.remove(this);
     }
 }
 

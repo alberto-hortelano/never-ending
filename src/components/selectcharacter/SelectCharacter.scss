@@ -105,7 +105,7 @@
 
 .empty-message {
     text-align: center;
-    color: var(--text-muted, #666);
+    color: $color-text-muted;
     font-style: italic;
     padding: $spacing-xl;
     margin: 0;

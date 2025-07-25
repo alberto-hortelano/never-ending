@@ -330,4 +330,4 @@ export const initialState = (x: number, y: number, playerData: Partial<ICharacte
     return initialState;
 }
 
-export const getBaseState = () => initialState(40, 50, player, [data]);
+export const getBaseState = () => initialState(40, 50, player, [data, enemy]);

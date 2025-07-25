@@ -19,7 +19,7 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
     private isHost = false;
     private isMultiplayer = false;
     private lastSyncedState: IState | null = null;
-    private syncInterval: number | null = null;
+    private syncTimerCallback: (() => void) | null = null;
     private listenersSetup = false;
 
     private constructor() {
@@ -81,7 +81,8 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
         this.listen(GameEvent.changeTurn, (data) => {
             if (this.isMultiplayer && this.state) {
                 // Only broadcast if this didn't come from network (to avoid loops)
-                if (!(data as NetworkEventData).fromNetwork) {
+                const fromNetwork = (data as NetworkEventData).fromNetwork;
+                if (!fromNetwork) {
                     this.broadcastAction(GameEvent.changeTurn, data);
                 }
                 
@@ -96,7 +97,7 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
         this.setupStateUpdateListeners();
     }
 
-    async connectToServer(playerName: string, serverUrl?: string): Promise<void> {
+    async connectToServer(playerName: string, serverUrl: string): Promise<void> {
         await this.networkService.connect(playerName, serverUrl);
     }
 
@@ -151,7 +152,8 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
     private dispatchStateChanges(oldState: IState, newState: IState) {
         // Check for game state changes
         if (JSON.stringify(oldState.game) !== JSON.stringify(newState.game)) {
-            this.dispatch(GameEvent.changeTurn, newState.game);
+            const eventData = Object.assign({}, newState.game, { fromNetwork: true });
+            this.dispatch(GameEvent.changeTurn, eventData);
         }
         
         // Check for character changes
@@ -384,19 +386,31 @@ this.broadcastAction(UpdateStateEvent.characterPosition, data);
     }
     
     private startSyncInterval() {
-        if (!this.syncInterval) {
-            this.syncInterval = window.setInterval(() => {
+        if (!this.syncTimerCallback) {
+            // Create callback
+            this.syncTimerCallback = () => {
                 if (this.isMultiplayer && this.isHost) {
                     this.syncStateToClients();
                 }
-            }, 100); // Sync every 100ms
+            };
+            // Dispatch event to request timer setup - without the callback
+            this.dispatch('requestSyncTimer', { 
+                interval: 100 // Sync every 100ms
+            });
         }
     }
     
     private stopSyncInterval() {
-        if (this.syncInterval) {
-            window.clearInterval(this.syncInterval);
-            this.syncInterval = null;
+        if (this.syncTimerCallback) {
+            // Dispatch event to request timer cleanup from component layer
+            this.dispatch('cancelSyncTimer', {});
+            this.syncTimerCallback = null;
+        }
+    }
+    
+    public executeSyncCallback() {
+        if (this.syncTimerCallback) {
+            this.syncTimerCallback();
         }
     }
 }
