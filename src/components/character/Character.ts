@@ -192,14 +192,11 @@ export default class Character extends Component {
     // Public method to update character appearance
     public updateAppearance(race: string, palette: { skin: string; helmet: string; suit: string }, direction: string, action?: string, weapon?: string) {
         if (!this.characterElement || !this.root) {
-            console.error('[Character] Cannot update - DOM not ready');
             return;
         }
 
-        // Store current action class if any
-        const currentActionClass = action ||
-            (this.characterElement.classList.contains('walk') ? 'walk' :
-                this.characterElement.classList.contains('idle') ? 'idle' : null);
+        // Store current action class - use the provided action parameter directly
+        const currentActionClass = action;
 
         // Update race class
         const wasDefeated = this.characterElement.classList.contains('defeated');
@@ -233,7 +230,14 @@ export default class Character extends Component {
         }
 
         // Update weapon
-        this.updateWeaponDisplay(weapon);
+        if (this.dataset.isPreview) {
+            // In preview mode, handle weapon classes directly without updateCharacterClasses
+            if (weapon && currentActionClass === 'shoot') {
+                this.characterElement.classList.add(weapon);
+            }
+        } else {
+            this.updateWeaponDisplay(weapon);
+        }
     }
 
     private updateWeaponDisplay(weapon?: string) {

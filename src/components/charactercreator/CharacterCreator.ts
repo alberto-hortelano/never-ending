@@ -196,7 +196,9 @@ export default class CharacterCreator extends Component {
 
     previewContainer.appendChild(this.characterPreview);
 
-    // Wait a bit for the character component to initialize
+    // Wait for the character component to be ready
+    // Since we're using closed shadow DOM, we can't check shadowRoot
+    // Instead, we'll wait a bit and then call updateAppearance
     setTimeout(() => {
       this.updateCharacterPreview();
     }, 100);
@@ -227,6 +229,9 @@ export default class CharacterCreator extends Component {
         this.currentAction,
         weaponClass
       );
+      
+      // Since we can't access the closed shadow DOM, the action classes
+      // are handled by the Character component via updateAppearance
     }
   }
 
@@ -254,6 +259,8 @@ export default class CharacterCreator extends Component {
     // Update preview
     if (this.characterPreview) {
       this.characterPreview.dataset.action = action;
+      
+      // Since we can't access the closed shadow DOM, we'll rely on updateAppearance
       this.updateCharacterPreview();
     }
   }
