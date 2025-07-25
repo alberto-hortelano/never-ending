@@ -17,6 +17,7 @@ export default class Character extends Component {
     private root?: ShadowRoot;
     private networkService: NetworkService = NetworkService.getInstance();
     private weaponElement?: HTMLElement;
+    private currentVisualState: ICharacterVisualState | null = null;
 
     constructor() {
         super();
@@ -242,11 +243,68 @@ export default class Character extends Component {
         this.weaponElement.className = 'weapon';
 
         if (weapon) {
-            this.characterElement?.classList.add(weapon);
-            this.weaponElement.style.display = 'block';
+            // Store weapon class in visual state if we have one
+            if (this.currentVisualState) {
+                this.currentVisualState.weaponClass = weapon;
+            }
+            // Update classes to include weapon
+            this.updateCharacterClasses();
         } else {
-            this.weaponElement.style.display = 'none';
+            if (this.currentVisualState) {
+                this.currentVisualState.weaponClass = undefined;
+            }
+            this.updateCharacterClasses();
         }
+    }
+
+    private updateCharacterClasses() {
+        if (!this.characterElement) return;
+
+        // Start with base class
+        const classes = ['character'];
+
+        // Add race class
+        const race = this.dataset.race || 'human';
+        classes.push(race);
+
+        // Add visual state classes if available
+        if (this.currentVisualState) {
+            // Add direction class
+            const directionClass = CharacterService.getDirectionClass(this.currentVisualState.direction);
+            classes.push(directionClass);
+
+            // Add persistent classes from visual state
+            classes.push(...this.currentVisualState.classList);
+
+            // Add temporary classes (like 'shoot')
+            if (this.currentVisualState.temporaryClasses) {
+                classes.push(...this.currentVisualState.temporaryClasses);
+            }
+
+            // Add weapon class if equipped
+            if (this.currentVisualState.weaponClass) {
+                classes.push(this.currentVisualState.weaponClass);
+            }
+
+            // Add state-based classes
+            if (this.currentVisualState.isCurrentTurn) {
+                classes.push('current-player');
+            }
+            if (this.currentVisualState.isMyCharacter) {
+                classes.push('my-character');
+            }
+            if (this.currentVisualState.isOpponentCharacter) {
+                classes.push('opponent-character');
+            }
+            if (this.currentVisualState.isDefeated) {
+                classes.push('defeated');
+            }
+        }
+
+        console.log('[Character] updateCharacterClasses - Final classes for', this.id, ':', classes.join(' '));
+
+        // Apply all classes at once
+        this.characterElement.className = classes.join(' ');
     }
 
     private updateDirection(direction: Direction) {
@@ -293,32 +351,17 @@ export default class Character extends Component {
     private applyVisualState(visualState: ICharacterVisualState) {
         if (!this.characterElement || !this.movable) return;
 
-        // Update classes - PRESERVE RACE
-        const race = this.dataset.race || 'human';
-        this.characterElement.className = 'character'; // Reset to base class
-        this.characterElement.classList.add(race); // Add race back
-        visualState.classList.forEach(cls => {
-            this.characterElement!.classList.add(cls);
+        console.log('[Character] applyVisualState called for:', this.id, {
+            temporaryClasses: visualState.temporaryClasses,
+            weaponClass: visualState.weaponClass,
+            classList: visualState.classList
         });
 
-        // Add direction class
-        const directionClass = CharacterService.getDirectionClass(visualState.direction);
-        this.characterElement.classList.add(directionClass);
+        // Store the visual state for class management
+        this.currentVisualState = visualState;
 
-
-        // Add state-based classes
-        if (visualState.isCurrentTurn) {
-            this.characterElement.classList.add('current-player');
-        }
-        if (visualState.isMyCharacter) {
-            this.characterElement.classList.add('my-character');
-        }
-        if (visualState.isOpponentCharacter) {
-            this.characterElement.classList.add('opponent-character');
-        }
-        if (visualState.isDefeated) {
-            this.characterElement.classList.add('defeated');
-        }
+        // Update all classes using centralized method
+        this.updateCharacterClasses();
 
         // Update styles
         if (visualState.styles) {

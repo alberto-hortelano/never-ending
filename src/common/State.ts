@@ -324,6 +324,8 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
             const visualState = this.#ui.visualStates.characters[character.name] || {
                 direction: 'down',
                 classList: [],
+                temporaryClasses: [],
+                weaponClass: undefined,
                 styles: {},
                 healthBarPercentage: 0,
                 healthBarColor: '#f44336',
@@ -355,6 +357,8 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         const currentVisual = this.#ui.visualStates.characters[data.characterId] || {
             direction: 'down',
             classList: [],
+            temporaryClasses: [],
+            weaponClass: undefined,
             styles: {},
             healthBarPercentage: 100,
             healthBarColor: '#4ade80',
@@ -362,10 +366,32 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
             isCurrentTurn: false
         };
         
-        this.#ui.visualStates.characters[data.characterId] = {
+        console.log('[State] onUICharacterVisual - Before update:', data.characterId, {
+            currentTemporaryClasses: currentVisual.temporaryClasses,
+            currentWeaponClass: currentVisual.weaponClass,
+            newData: data.visualState
+        });
+        
+        // Merge the visual state updates properly
+        const updatedVisual = {
             ...currentVisual,
             ...data.visualState
-        } as ICharacterVisualState;
+        };
+        
+        // Special handling for arrays to merge properly
+        if (data.visualState.temporaryClasses !== undefined) {
+            updatedVisual.temporaryClasses = data.visualState.temporaryClasses;
+        }
+        if (data.visualState.classList !== undefined) {
+            updatedVisual.classList = data.visualState.classList;
+        }
+        
+        console.log('[State] onUICharacterVisual - After update:', data.characterId, {
+            temporaryClasses: updatedVisual.temporaryClasses,
+            weaponClass: updatedVisual.weaponClass
+        });
+        
+        this.#ui.visualStates.characters[data.characterId] = updatedVisual as ICharacterVisualState;
         
         this.dispatch(StateChangeEvent.uiVisualStates, structuredClone(this.#ui.visualStates));
     }

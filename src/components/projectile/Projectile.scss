@@ -14,8 +14,8 @@
     animation: fly var(--animation-duration-projectile) linear forwards;
 
     &.bullet {
-        width: calc(50 * var(--size)); // Increased from 10
-        height: calc(1 * var(--size)); // Increased from 4
+        width: calc(50 * var(--size));
+        height: calc(1 * var(--size));
         background: radial-gradient(ellipse at center, #ffff00 0%, #ff9900 70%, #ff6600 100%);
         border-radius: 50%;
         border: calc(5 * var(--size)) solid #ffff00; // Add bright border
@@ -24,8 +24,8 @@
     }
 
     &.laser {
-        width: calc(300 * var(--size)); // Increased from 30
-        height: calc(40 * var(--size)); // Increased from 2
+        width: calc(50 * var(--size));
+        height: calc(1 * var(--size));
         background: linear-gradient(90deg, #00ffff 0%, #00ffff 20%, #ffffff 50%, #00ffff 80%, #00ffff 100%); // Removed transparent
         border: calc(5 * var(--size)) solid #00ffff; // Add bright border
         box-shadow: 0 0 calc(80 * var(--size)) #00ffff, 0 0 calc(160 * var(--size)) #ffffff; // Double glow

@@ -19,7 +19,7 @@
                     // Weapon styles
                     .weapon {
                         position: absolute;
-                        display: none;
+                        display: block;
                         transform-origin: 10% 50%;
                         z-index: 50;
                         bottom: calc(-22 * var(--size));

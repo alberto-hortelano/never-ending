@@ -151,6 +151,8 @@ export interface IVisualStates {
 export interface ICharacterVisualState {
     direction: Direction;
     classList: string[];
+    temporaryClasses: string[]; // For transient actions like 'shoot'
+    weaponClass?: string; // Current equipped weapon class
     styles: Record<string, string>;
     healthBarPercentage: number;
     healthBarColor: string;

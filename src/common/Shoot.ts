@@ -133,12 +133,17 @@ export class Shoot extends EventBus<
 
     // Listeners
     private onShowShooting(characterName: ControlsEventsMap[ControlsEvent.showShooting]) {
+        console.log('[Shoot] onShowShooting called for character:', characterName);
         const character = this.state.findCharacter(characterName);
-        if (!character) return;
+        if (!character) {
+            console.log('[Shoot] Character not found');
+            return;
+        }
 
         // Check if the character belongs to the current turn
         const currentTurn = this.state.game.turn;
         if (character.player !== currentTurn) {
+            console.log('[Shoot] Not current turn - character player:', character.player, 'current turn:', currentTurn);
             return;
         }
 
@@ -146,7 +151,12 @@ export class Shoot extends EventBus<
     }
 
     private onCharacterClick(data: ControlsEventsMap[ControlsEvent.characterClick]) {
-        if (!this.shootingCharacter || !this.visibleCells) return;
+        console.log('[Shoot] onCharacterClick called:', data);
+        
+        if (!this.shootingCharacter || !this.visibleCells) {
+            console.log('[Shoot] No shooting character or visible cells');
+            return;
+        }
         
         const { characterName, position } = data;
         
@@ -155,14 +165,20 @@ export class Shoot extends EventBus<
             vc.coord.x === position.x && vc.coord.y === position.y
         );
         
+        console.log('[Shoot] Is in visible cell:', !!isInVisibleCell);
+        
         if (isInVisibleCell) {
             // Get the target character
             const targetCharacter = this.state.findCharacter(characterName);
+            
+            console.log('[Shoot] Target character:', targetCharacter?.name, 'Shooter:', this.shootingCharacter.name);
             
             if (targetCharacter && targetCharacter.name !== this.shootingCharacter.name) {
                 // Show projectile animation
                 const weapon = this.getEquippedRangedWeapon(this.shootingCharacter);
                 const projectileType = weapon?.category === 'ranged' && weapon.damage > 20 ? 'laser' : 'bullet';
+                
+                console.log('[Shoot] Firing at target:', targetCharacter.name);
                 
                 this.dispatch(GUIEvent.shootProjectile, {
                     from: this.shootingCharacter.position,
@@ -218,6 +234,18 @@ export class Shoot extends EventBus<
 
         // Update interaction mode to shooting
         const weapon = this.getEquippedRangedWeapon(character);
+        const weaponClass = weapon?.class || 'unarmed';
+        
+        // Add shoot and weapon class when entering shooting mode
+        console.log('[Shoot] Entering shooting mode - Adding shoot class to character:', character.name, 'with weapon class:', weaponClass);
+        this.dispatch(UpdateStateEvent.uiCharacterVisual, {
+            characterId: character.name,
+            visualState: {
+                temporaryClasses: ['shoot'],
+                weaponClass: weaponClass
+            }
+        });
+        
         if (weapon) {
             this.dispatch(UpdateStateEvent.uiInteractionMode, {
                 type: 'shooting',
@@ -276,6 +304,17 @@ export class Shoot extends EventBus<
             if (typeof jest !== 'undefined') {
                 this.visibleCells.forEach(vc => {
                     this.dispatch(GUIEvent.cellReset, vc.coord, JSON.stringify(vc.coord));
+                });
+            }
+            
+            // Remove shoot class when exiting shooting mode
+            if (this.shootingCharacter) {
+                console.log('[Shoot] Exiting shooting mode - Removing shoot class from character:', this.shootingCharacter.name);
+                this.dispatch(UpdateStateEvent.uiCharacterVisual, {
+                    characterId: this.shootingCharacter.name,
+                    visualState: {
+                        temporaryClasses: [] // Clear temporary classes
+                    }
                 });
             }
             
