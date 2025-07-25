@@ -199,14 +199,8 @@ export default class Character extends Component {
         const currentActionClass = action;
 
         // Update race class
-        const wasDefeated = this.characterElement.classList.contains('defeated');
         this.characterElement.className = 'character';
         this.characterElement.classList.add(race);
-
-        // Preserve defeated class if it was there
-        if (wasDefeated) {
-            this.characterElement.classList.add('defeated');
-        }
 
         // Update direction
         const directionClass = CharacterService.getDirectionClass(direction as Direction);
