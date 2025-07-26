@@ -65,7 +65,8 @@ const play = (state?: State) => {
     const container = document.querySelector('container-component');
     const turnIndicator = document.querySelector('turn-indicator');
     if (container) container.setAttribute('style', 'display: block;');
-    if (turnIndicator) turnIndicator.setAttribute('style', 'display: block;');
+    // Turn indicator functionality is now in TopBar, hide the original
+    if (turnIndicator) turnIndicator.setAttribute('style', 'display: none;');
 }
 
 // Initialize event listeners
