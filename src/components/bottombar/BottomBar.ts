@@ -1,5 +1,5 @@
 import { Component } from "../Component";
-import { ControlsEvent } from "../../common/events";
+import { ControlsEvent, UpdateStateEvent } from "../../common/events";
 import type { Actions } from "../actions/Actions";
 
 export default class BottomBar extends Component {
@@ -29,6 +29,9 @@ export default class BottomBar extends Component {
         const actionsContainer = root.querySelector('.actions-container');
         if (!actionsContainer) return;
         
+        // Clear any existing highlights before showing new character actions
+        this.clearMovementHighlights();
+        
         // Clear existing content
         actionsContainer.innerHTML = '';
         
@@ -51,6 +54,22 @@ export default class BottomBar extends Component {
                 toggleButton.setAttribute('title', 'Collapse actions bar');
             }
         }
+        
+        // Automatically show movement reachable cells when character is selected
+        this.dispatch(ControlsEvent.showMovement, characterName);
+    }
+    
+    private clearMovementHighlights() {
+        // Clear any existing movement highlights and reset interaction mode
+        this.dispatch(UpdateStateEvent.uiHighlights, {
+            reachableCells: [],
+            pathCells: [],
+            targetableCells: []
+        });
+        
+        this.dispatch(UpdateStateEvent.uiInteractionMode, {
+            type: 'normal'
+        });
     }
     
     private setupCollapsibleBehavior(root: ShadowRoot) {
