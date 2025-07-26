@@ -60,6 +60,25 @@
     }
 }
 
+.selected-character {
+    color: $color-text-secondary;
+    font-weight: $font-weight-medium;
+    padding: $spacing-xs $spacing-sm;
+    margin-left: $spacing-xs;
+    border-radius: $border-radius-sm;
+    background: $color-bg-tertiary;
+    border: 1px solid $color-border-secondary;
+    
+    &:empty {
+        display: none;
+    }
+    
+    &::before {
+        content: '→ ';
+        color: $color-text-muted;
+    }
+}
+
 .end-turn-button {
     padding: $spacing-xs $spacing-md;
     background: $color-highlight;
@@ -96,8 +115,87 @@
     gap: $spacing-md;
 }
 
+.action-points {
+    display: none;
+    min-width: 200px;
+    max-width: 300px;
+    
+    &.visible {
+        display: block;
+    }
+    
+    @include sm-down {
+        min-width: 150px;
+        max-width: 200px;
+    }
+}
+
+.points-bar {
+    position: relative;
+    height: 1.75rem;
+    background: $gray-600;
+    border: $border-width solid $gray-450;
+    border-radius: $border-radius-base;
+    overflow: hidden;
+    
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: var(--points-percentage, 100%);
+        background: linear-gradient(90deg, $color-highlight 0%, color.adjust($color-highlight, $lightness: 10%) 100%);
+        transition: width $transition-duration-base ease-out;
+    }
+    
+    .points-text {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        font-size: $font-size-sm;
+        font-weight: $font-weight-medium;
+        color: $color-text-primary;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        z-index: 1;
+        
+        @include sm-down {
+            font-size: $font-size-xs;
+        }
+    }
+}
+
 .controls-section {
     display: flex;
     align-items: center;
     gap: $spacing-sm;
+}
+
+.current-player {
+    display: none; // Hidden by default, shown only in multiplayer
+    padding: $spacing-xs $spacing-md;
+    background: $color-bg-tertiary;
+    border: 1px solid $color-border-secondary;
+    border-radius: $border-radius-sm;
+    font-size: $font-size-base;
+    color: $color-text-primary;
+    font-weight: $font-weight-medium;
+    
+    &::before {
+        content: 'You: ';
+        color: $color-text-secondary;
+        font-weight: $font-weight-normal;
+    }
+    
+    &.visible {
+        display: inline-flex;
+        align-items: center;
+    }
+    
+    @include sm-down {
+        font-size: $font-size-sm;
+        padding: $spacing-xs $spacing-sm;
+    }
 }

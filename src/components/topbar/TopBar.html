@@ -2,12 +2,19 @@
     <div class="turn-indicator">
         <span class="turn-label">Current Turn:</span>
         <span class="player-name" id="player-name">Loading...</span>
+        <span class="selected-character" id="selected-character"></span>
         <button class="end-turn-button" id="end-turn-button">End Turn</button>
     </div>
     <div class="info-section">
+        <div class="action-points" id="action-points">
+            <div class="points-bar" id="points-bar">
+                <span class="points-text" id="points-text">Action Points: 0</span>
+            </div>
+        </div>
         <slot name="info"></slot>
     </div>
     <div class="controls-section">
+        <span class="current-player" id="current-player"></span>
         <slot name="controls"></slot>
     </div>
 </div>

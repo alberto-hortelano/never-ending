@@ -1,5 +1,5 @@
 import { Component } from "../Component";
-import { StateChangeEvent, GameEvent } from "../../common/events";
+import { StateChangeEvent, GameEvent, ControlsEvent, ActionEvent } from "../../common/events";
 import type { DeepReadonly } from "../../common/helpers/types";
 import type { IGame } from "../../common/interfaces";
 import { NetworkService } from "../../common/services/NetworkService";
@@ -22,6 +22,7 @@ export default class TopBar extends Component {
     
     private setupEventListeners(root: ShadowRoot) {
         const endTurnBtn = root.querySelector('#end-turn-button') as HTMLButtonElement;
+        const selectedCharacterElement = root.querySelector('#selected-character') as HTMLElement;
         
         if (endTurnBtn) {
             endTurnBtn.addEventListener('click', () => {
@@ -38,13 +39,52 @@ export default class TopBar extends Component {
             });
         }
         
+        // Listen for character selection
+        this.listen(ControlsEvent.showActions, (characterName: string) => {
+            if (selectedCharacterElement) {
+                selectedCharacterElement.textContent = characterName;
+            }
+        });
+        
+        // Listen for action points updates
+        const actionPointsElement = root.querySelector('#action-points') as HTMLElement;
+        const pointsBarElement = root.querySelector('#points-bar') as HTMLElement;
+        const pointsTextElement = root.querySelector('#points-text') as HTMLElement;
+        
+        this.listen(ActionEvent.update, (data) => {
+            if (actionPointsElement && pointsBarElement && pointsTextElement) {
+                const pointsLeft = data.characterActions.pointsLeft;
+                const percentage = pointsLeft; // Since max is 100, points = percentage
+                
+                // Update the points bar
+                pointsBarElement.style.setProperty('--points-percentage', `${percentage}%`);
+                pointsTextElement.textContent = `Action Points: ${pointsLeft}`;
+                
+                // Show the action points display
+                actionPointsElement.classList.add('visible');
+            }
+        });
+        
         this.listen(StateChangeEvent.game, (game: DeepReadonly<IGame>) => {
             const playerNameElement = root.querySelector('#player-name');
             const endTurnBtn = root.querySelector('#end-turn-button') as HTMLButtonElement;
+            const selectedCharacterElement = root.querySelector('#selected-character') as HTMLElement;
+            const currentPlayerElement = root.querySelector('#current-player') as HTMLElement;
             
             if (game) {
                 // Update internal state
                 this.players = [...game.players];
+                
+                // Clear selected character and hide action points if turn changed
+                if (this.currentTurn !== game.turn) {
+                    if (selectedCharacterElement) {
+                        selectedCharacterElement.textContent = '';
+                    }
+                    if (actionPointsElement) {
+                        actionPointsElement.classList.remove('visible');
+                    }
+                }
+                
                 this.currentTurn = game.turn;
                 
                 if (playerNameElement) {
@@ -64,8 +104,18 @@ export default class TopBar extends Component {
                     }
                 }
                 
+                const networkPlayerId = this.networkService.getPlayerId();
+                
+                // Update current player display for multiplayer
+                if (currentPlayerElement && networkPlayerId) {
+                    const currentPlayerName = game.playerInfo?.[networkPlayerId]?.name || networkPlayerId;
+                    currentPlayerElement.textContent = currentPlayerName;
+                    currentPlayerElement.classList.add('visible');
+                } else if (currentPlayerElement) {
+                    currentPlayerElement.classList.remove('visible');
+                }
+                
                 if (endTurnBtn) {
-                    const networkPlayerId = this.networkService.getPlayerId();
                     if (networkPlayerId) {
                         // Multiplayer: only show button if it's this player's turn
                         endTurnBtn.style.display = game.turn === networkPlayerId ? 'block' : 'none';
