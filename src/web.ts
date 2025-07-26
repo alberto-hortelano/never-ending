@@ -9,6 +9,7 @@ import { Conversation } from "./common/Conversation";
 import { Action } from "./common/Action";
 import { Inventory } from "./common/services/Inventory";
 import { CharacterService } from "./common/services/CharacterService";
+import { AutoSelectCharacter } from "./common/services/AutoSelectCharacter";
 import { MultiplayerManager } from "./common/services/MultiplayerManager";
 import { GameEvent, EventBus } from "./common/events";
 import { initialState } from './data/state';
@@ -58,7 +59,8 @@ const play = (state?: State) => {
         new Rotate(gameState),
         new Inventory(gameState),
         new Conversation(),
-        new Action(gameState)
+        new Action(gameState),
+        new AutoSelectCharacter(gameState)
     );
 
     // Show game UI
