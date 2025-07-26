@@ -15,6 +15,8 @@ export default class Cell extends Component {
     constructor() {
         super();
         this.addEventListener('click', () => this.onClick());
+        this.addEventListener('mouseenter', () => this.onMouseEnter());
+        this.addEventListener('mouseleave', () => this.onMouseLeave());
     }
 
     override async connectedCallback(): Promise<ShadowRoot | undefined> {
@@ -54,36 +56,42 @@ export default class Cell extends Component {
         // this.classList.toggle('wall');
         this.dispatch(ControlsEvent.cellClick, this.coords);
     }
+    
+    private onMouseEnter() {
+        this.dispatch(ControlsEvent.cellHover, this.coords);
+    }
+    
+    private onMouseLeave() {
+        this.dispatch(ControlsEvent.cellHoverEnd, null);
+    }
     private applyVisualState(visualState: ICellVisualState) {
         // Use requestAnimationFrame to batch DOM updates
         requestAnimationFrame(() => {
-            // Reset classes
-            this.classList.remove(...Cell.states);
+            // Reset ALL highlight-related classes first
+            this.classList.remove('highlight', 'highlight-movement', 'highlight-path', 'highlight-attack', 'highlight-intensity');
+            this.style.removeProperty('--highlight-intensity');
 
-            // Apply new classes
+            // Apply new classes from visual state
             visualState.classList.forEach(cls => {
                 this.classList.add(cls);
             });
 
-            // Apply highlight
-            if (visualState.isHighlighted) {
-                this.classList.add('highlight');
+            // Apply highlight type if specified
+            if (visualState.isHighlighted && visualState.highlightType) {
+                this.classList.add(`highlight-${visualState.highlightType}`);
+            }
 
-                if (visualState.highlightType) {
-                    this.classList.add(`highlight-${visualState.highlightType}`);
-                }
-
-                if (visualState.highlightIntensity !== undefined) {
-                    this.classList.add('highlight-intensity');
-                    this.style.setProperty('--highlight-intensity', visualState.highlightIntensity.toString());
-                }
+            // Apply highlight intensity if specified
+            if (visualState.highlightIntensity !== undefined) {
+                this.classList.add('highlight-intensity');
+                this.style.setProperty('--highlight-intensity', visualState.highlightIntensity.toString());
             }
         });
     }
 
     private resetVisualState() {
         requestAnimationFrame(() => {
-            this.classList.remove(...Cell.states);
+            this.classList.remove('highlight', 'highlight-movement', 'highlight-path', 'highlight-attack', 'highlight-intensity');
             this.style.removeProperty('--highlight-intensity');
         });
     }

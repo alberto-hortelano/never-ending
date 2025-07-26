@@ -1,0 +1,195 @@
+@use '../variables' as *;
+
+:host {
+    display: block;
+    width: 100%;
+    background-color: $color-bg-secondary;
+    border-top: $border-width solid $color-border-primary;
+    position: relative;
+    z-index: 100;
+}
+
+.bottombar-container {
+    display: flex;
+    flex-direction: column;
+    max-height: 4rem;
+    transition: max-height $transition-duration-base $transition-easing;
+    overflow: hidden;
+    
+    @include md-up {
+        max-height: none;
+        overflow: visible;
+    }
+    
+    &.expanded {
+        max-height: 20rem;
+    }
+}
+
+.mobile-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: $spacing-sm;
+    width: 100%;
+    padding: $spacing-sm;
+    background-color: $color-bg-tertiary;
+    border: none;
+    border-bottom: $border-width solid $color-border-primary;
+    color: $color-text-primary;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    cursor: pointer;
+    transition: $transition-all;
+    
+    @include md-up {
+        display: none;
+    }
+    
+    .toggle-icon {
+        font-size: $font-size-xs;
+        transition: transform $transition-duration-fast $transition-easing;
+    }
+    
+    &:hover {
+        background-color: $color-bg-hover;
+    }
+}
+
+.tab-switcher {
+    display: flex;
+    border-bottom: $border-width solid $color-border-primary;
+    
+    @include md-up {
+        display: none;
+    }
+}
+
+.tab-button {
+    flex: 1;
+    padding: $spacing-sm $spacing-md;
+    background-color: $color-bg-tertiary;
+    border: none;
+    border-right: $border-width solid $color-border-primary;
+    color: $color-text-secondary;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    cursor: pointer;
+    transition: $transition-all;
+    
+    &:last-child {
+        border-right: none;
+    }
+    
+    &.active {
+        background-color: $color-bg-primary;
+        color: $color-primary;
+    }
+    
+    &:hover {
+        background-color: $color-bg-hover;
+    }
+}
+
+.actions-container {
+    padding: $spacing-md;
+    
+    @include md-up {
+        padding: $spacing-lg;
+    }
+}
+
+.action-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: $spacing-sm;
+    
+    @include md-up {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: $spacing-md;
+    }
+}
+
+.action-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: $spacing-xs;
+    padding: $spacing-sm;
+    min-height: 5rem;
+    background-color: $color-bg-tertiary;
+    border: $border-width solid $color-border-primary;
+    border-radius: $border-radius-md;
+    color: $color-text-primary;
+    cursor: pointer;
+    transition: $transition-all;
+    position: relative;
+    
+    @include md-up {
+        padding: $spacing-md;
+        min-height: 6rem;
+    }
+    
+    .action-icon {
+        font-size: $font-size-xl;
+        
+        @include md-up {
+            font-size: 1.5rem;
+        }
+    }
+    
+    .action-label {
+        font-size: $font-size-xs;
+        font-weight: $font-weight-medium;
+        text-align: center;
+        
+        @include md-up {
+            font-size: $font-size-sm;
+        }
+    }
+    
+    .action-cost {
+        position: absolute;
+        top: $spacing-xs;
+        right: $spacing-xs;
+        padding: $spacing-2xs $spacing-xs;
+        background-color: $color-bg-secondary;
+        border: $border-width solid $color-border-primary;
+        border-radius: $border-radius-sm;
+        font-size: $font-size-xs;
+        font-weight: $font-weight-bold;
+        color: $color-info;
+    }
+    
+    &.selected {
+        background-color: $color-bg-hover;
+        border-color: $color-primary;
+        
+        .action-icon,
+        .action-label {
+            color: $color-primary;
+        }
+    }
+    
+    &:hover {
+        background-color: $color-bg-hover;
+        border-color: $color-border-hover;
+        transform: translateY(-2px);
+    }
+    
+    &:active {
+        transform: translateY(0);
+    }
+    
+    &.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        
+        &:hover {
+            background-color: $color-bg-tertiary;
+            border-color: $color-border-primary;
+            transform: none;
+        }
+    }
+}

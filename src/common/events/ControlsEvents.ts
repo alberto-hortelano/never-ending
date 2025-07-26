@@ -20,6 +20,10 @@ export enum ControlsEvent {
     createCharacter = 'ControlsEvent.createCharacter',
     closeCharacterCreator = 'ControlsEvent.closeCharacterCreator',
     openCharacterCreator = 'ControlsEvent.openCharacterCreator',
+    selectCharacter = 'ControlsEvent.selectCharacter',
+    deselectCharacter = 'ControlsEvent.deselectCharacter',
+    cellHover = 'ControlsEvent.cellHover',
+    cellHoverEnd = 'ControlsEvent.cellHoverEnd',
 }
 
 export interface ControlsEventsMap {
@@ -67,4 +71,8 @@ export interface ControlsEventsMap {
     };
     [ControlsEvent.closeCharacterCreator]: null;
     [ControlsEvent.openCharacterCreator]: null;
+    [ControlsEvent.selectCharacter]: DeepReadonly<ICharacter>;
+    [ControlsEvent.deselectCharacter]: null;
+    [ControlsEvent.cellHover]: DeepReadonly<ICoord>;
+    [ControlsEvent.cellHoverEnd]: null;
 }

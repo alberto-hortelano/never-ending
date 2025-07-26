@@ -123,6 +123,7 @@ export interface IUIState {
     visualStates: IVisualStates;
     transientUI: ITransientUI;
     interactionMode: IInteractionMode;
+    selectedCharacter: ICharacter | null;
 }
 
 export interface IAnimationStates {

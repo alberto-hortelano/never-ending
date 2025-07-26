@@ -58,6 +58,10 @@ export class Action extends EventBus<
 
         // Listen for character action updates from state
         this.listen(StateChangeEvent.characterActions, (character) => {
+            console.log('[Action] StateChangeEvent.characterActions received:', {
+                characterName: character.name,
+                pointsLeft: character.actions.pointsLeft
+            });
             // Update our cache
             this.characterActionsMap.set(character.name, character.actions);
 
@@ -68,6 +72,7 @@ export class Action extends EventBus<
                 characterActions: character.actions,
                 hasRangedWeapon: this.characterHasRangedWeapon(character)
             };
+            console.log('[Action] Dispatching ActionEvent.update');
             this.dispatch(ActionEvent.update, updateData);
         });
 

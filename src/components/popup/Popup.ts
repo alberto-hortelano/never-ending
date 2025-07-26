@@ -3,6 +3,7 @@ import type { SelectCharacter } from "../selectcharacter/SelectCharacter";
 import type { Conversation } from "../conversation/Conversation";
 import type { RotateSelector } from "../rotateselector/RotateSelector";
 import type { Inventory } from "../inventory/Inventory";
+import type { Confirmation } from "../confirmation/Confirmation";
 
 import { Component } from "../Component";
 import { ControlsEvent, ControlsEventsMap, ConversationEvent, ConversationEventsMap, UpdateStateEvent, StateChangeEvent } from "../../common/events";
@@ -89,6 +90,26 @@ export class Popup extends Component {
             this.showInventory(characterName);
 
             // Reset the flag after a short delay to allow the click event to finish bubbling
+            setTimeout(() => {
+                isShowing = false;
+            }, 50);
+        });
+
+        // Listen for talk confirmation
+        this.listen(ControlsEvent.talk, (characterName: ControlsEventsMap[ControlsEvent.talk]) => {
+            isShowing = true;
+            this.showTalkConfirmation(characterName);
+
+            setTimeout(() => {
+                isShowing = false;
+            }, 50);
+        });
+
+        // Listen for use confirmation
+        this.listen(ControlsEvent.use, (characterName: ControlsEventsMap[ControlsEvent.use]) => {
+            isShowing = true;
+            this.showUseConfirmation(characterName);
+
             setTimeout(() => {
                 isShowing = false;
             }, 50);
@@ -365,6 +386,79 @@ export class Popup extends Component {
                 }
             });
         }
+    }
+
+    private showTalkConfirmation(characterName: string) {
+        this.clearContent();
+        
+        const confirmationComponent = document.createElement('confirmation-component') as Confirmation;
+        this.appendChild(confirmationComponent);
+        
+        this.show(`Talk to ${characterName}`);
+        
+        if (confirmationComponent && confirmationComponent.setOptions) {
+            confirmationComponent.setOptions({
+                title: 'Confirm Action',
+                message: `Do you want to talk to ${characterName}?`,
+                confirmText: 'Talk',
+                cancelText: 'Cancel',
+                onConfirm: () => {
+                    // Dispatch the actual talk action
+                    this.dispatch(ControlsEvent.showTalk, {
+                        talkingCharacter: { name: characterName } as any, // Simplified for now
+                        availableCharacters: []
+                    });
+                },
+                onCancel: () => {
+                    this.close();
+                }
+            });
+        }
+
+        // Listen for confirmation events
+        confirmationComponent.addEventListener('confirmed', () => {
+            // Close popup after confirmation
+            setTimeout(() => this.close(), 100);
+        });
+        
+        confirmationComponent.addEventListener('cancelled', () => {
+            this.close();
+        });
+    }
+
+    private showUseConfirmation(objectName: string) {
+        this.clearContent();
+        
+        const confirmationComponent = document.createElement('confirmation-component') as Confirmation;
+        this.appendChild(confirmationComponent);
+        
+        this.show(`Use ${objectName}`);
+        
+        if (confirmationComponent && confirmationComponent.setOptions) {
+            confirmationComponent.setOptions({
+                title: 'Confirm Action',
+                message: `Do you want to use ${objectName}?`,
+                confirmText: 'Use',
+                cancelText: 'Cancel',
+                onConfirm: () => {
+                    // TODO: Dispatch the actual use action when implemented
+                    console.log(`Using ${objectName}`);
+                },
+                onCancel: () => {
+                    this.close();
+                }
+            });
+        }
+
+        // Listen for confirmation events
+        confirmationComponent.addEventListener('confirmed', () => {
+            // Close popup after confirmation
+            setTimeout(() => this.close(), 100);
+        });
+        
+        confirmationComponent.addEventListener('cancelled', () => {
+            this.close();
+        });
     }
 
     private close() {

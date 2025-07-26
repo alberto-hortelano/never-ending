@@ -1,0 +1,188 @@
+@use '../variables' as *;
+
+:host {
+    display: block;
+    width: 100%;
+    background-color: $color-bg-secondary;
+    border-bottom: $border-width solid $color-border-primary;
+    position: relative;
+    z-index: 100;
+}
+
+.topbar-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $spacing-sm $spacing-md;
+    height: 3.5rem;
+    gap: $spacing-md;
+
+    @include md-up {
+        padding: $spacing-md $spacing-lg;
+        height: 4rem;
+    }
+}
+
+.character-info {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+
+    .character-name {
+        font-size: $font-size-lg;
+        font-weight: $font-weight-bold;
+        color: $color-primary;
+        white-space: nowrap;
+        
+        @include md-up {
+            font-size: $font-size-xl;
+        }
+    }
+}
+
+.action-points-container {
+    flex: 0 1 300px;
+    margin-right: $spacing-md;
+
+    .action-points-label {
+        font-size: $font-size-xs;
+        color: $color-text-secondary;
+        text-align: center;
+        margin-bottom: $spacing-xs;
+        
+        @include md-up {
+            font-size: $font-size-sm;
+        }
+    }
+
+    .action-points-bar {
+        position: relative;
+        width: 100%;
+        height: 1.5rem;
+        background-color: $color-bg-tertiary;
+        border: $border-width solid $color-border-primary;
+        border-radius: $border-radius-xl;
+        overflow: hidden;
+        
+        @include md-up {
+            height: 2rem;
+        }
+    }
+
+    .action-points-fill {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        background: linear-gradient(90deg, $color-primary, $color-primary-light);
+        transition: width $transition-duration-base $transition-easing-out;
+    }
+
+    .action-points-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: $font-size-sm;
+        font-weight: $font-weight-medium;
+        color: $color-text-primary;
+        text-shadow: 0 0 4px rgba($color-black, 0.8);
+        
+        @include md-up {
+            font-size: $font-size-base;
+        }
+    }
+}
+
+.turn-indicator {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: $spacing-md;
+    
+    .turn-info {
+        display: flex;
+        align-items: center;
+        gap: $spacing-sm;
+        
+        .turn-label {
+            font-size: $font-size-sm;
+            color: $color-text-secondary;
+        }
+        
+        .turn-player {
+            font-size: $font-size-base;
+            font-weight: $font-weight-bold;
+            color: $color-primary;
+            text-transform: capitalize;
+        }
+    }
+    
+    .end-turn-button {
+        padding: $spacing-xs $spacing-md;
+        background-color: $color-primary;
+        color: $color-bg-primary;
+        border: none;
+        border-radius: $border-radius-md;
+        font-size: $font-size-sm;
+        font-weight: $font-weight-medium;
+        cursor: pointer;
+        transition: $transition-all;
+        
+        &:hover {
+            background-color: $color-primary-light;
+            transform: translateY(-1px);
+        }
+        
+        &:active {
+            transform: translateY(0);
+        }
+    }
+}
+
+.right-section {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+}
+
+.inventory-button {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    padding: $spacing-sm $spacing-md;
+    background-color: $color-bg-tertiary;
+    color: $color-text-primary;
+    border: $border-width solid $color-border-primary;
+    border-radius: $border-radius-md;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    cursor: pointer;
+    transition: $transition-all;
+
+    .icon {
+        font-size: $font-size-lg;
+    }
+
+    .label {
+        display: none;
+        
+        @include md-up {
+            display: inline;
+        }
+    }
+
+    &:hover {
+        background-color: $color-bg-hover;
+        border-color: $color-border-hover;
+        transform: translateY(-1px);
+    }
+
+    &:active {
+        background-color: $color-bg-active;
+        transform: translateY(0);
+    }
+}

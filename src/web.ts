@@ -9,6 +9,7 @@ import { Conversation } from "./common/Conversation";
 import { Action } from "./common/Action";
 import { Inventory } from "./common/services/Inventory";
 import { CharacterService } from "./common/services/CharacterService";
+import "./common/services/CharacterManager"; // Import for side effects (singleton initialization)
 import { MultiplayerManager } from "./common/services/MultiplayerManager";
 import { GameEvent, EventBus } from "./common/events";
 import { initialState } from './data/state';
@@ -63,9 +64,7 @@ const play = (state?: State) => {
 
     // Show game UI
     const container = document.querySelector('container-component');
-    const turnIndicator = document.querySelector('turn-indicator');
     if (container) container.setAttribute('style', 'display: block;');
-    if (turnIndicator) turnIndicator.setAttribute('style', 'display: block;');
 }
 
 // Initialize event listeners

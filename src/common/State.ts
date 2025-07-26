@@ -47,7 +47,8 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
             },
             interactionMode: {
                 type: 'normal'
-            }
+            },
+            selectedCharacter: null
         };
     }
 
@@ -77,6 +78,8 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.listen(UpdateStateEvent.uiRemoveProjectile, (data) => this.onUIRemoveProjectile(data));
         this.listen(UpdateStateEvent.uiHighlights, (data) => this.onUIHighlights(data));
         this.listen(UpdateStateEvent.uiInteractionMode, (data) => this.onUIInteractionMode(data));
+        this.listen(UpdateStateEvent.selectCharacter, (data) => this.onSelectCharacter(data));
+        this.listen(UpdateStateEvent.deselectCharacter, () => this.onDeselectCharacter());
     }
     
     // Helper method to check if action is from current player's turn
@@ -477,34 +480,55 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         // Batch update all cell visual states
         const cellUpdates: Array<{ cellKey: string; visualState: Partial<ICellVisualState> | null }> = [];
         
-        // Clear previously highlighted cells
-        previouslyHighlighted.forEach(cellKey => {
-            cellUpdates.push({ cellKey, visualState: null });
-        });
+        // Track which cells will be highlighted to avoid clearing cells that should remain highlighted
+        const willBeHighlighted = new Set<string>();
         
-        // Add new highlights
+        // Collect all cells that will be highlighted
         data.reachableCells?.forEach(coord => {
-            const cellKey = `${coord.x},${coord.y}`;
-            cellUpdates.push({
-                cellKey,
-                visualState: {
-                    isHighlighted: true,
-                    highlightType: 'movement',
-                    classList: ['highlight']
-                }
-            });
+            willBeHighlighted.add(`${coord.x},${coord.y}`);
+        });
+        data.pathCells?.forEach(coord => {
+            willBeHighlighted.add(`${coord.x},${coord.y}`);
+        });
+        data.targetableCells?.forEach(coord => {
+            willBeHighlighted.add(`${coord.x},${coord.y}`);
         });
         
+        // Clear previously highlighted cells that won't be highlighted anymore
+        previouslyHighlighted.forEach(cellKey => {
+            if (!willBeHighlighted.has(cellKey)) {
+                cellUpdates.push({ cellKey, visualState: null });
+            }
+        });
+        
+        // Add new highlights - path cells take priority over reachable cells
+        const pathCellKeys = new Set<string>();
         data.pathCells?.forEach(coord => {
             const cellKey = `${coord.x},${coord.y}`;
+            pathCellKeys.add(cellKey);
             cellUpdates.push({
                 cellKey,
                 visualState: {
                     isHighlighted: true,
                     highlightType: 'path',
-                    classList: ['highlight']
+                    classList: ['highlight', 'highlight-path']
                 }
             });
+        });
+        
+        // Add reachable cells (but not if they're already path cells)
+        data.reachableCells?.forEach(coord => {
+            const cellKey = `${coord.x},${coord.y}`;
+            if (!pathCellKeys.has(cellKey)) {
+                cellUpdates.push({
+                    cellKey,
+                    visualState: {
+                        isHighlighted: true,
+                        highlightType: 'movement',
+                        classList: ['highlight']
+                    }
+                });
+            }
         });
         
         data.targetableCells?.forEach(coord => {
@@ -530,6 +554,16 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
     private onUIInteractionMode(data: UpdateStateEventsMap[UpdateStateEvent.uiInteractionMode]) {
         this.#ui.interactionMode = structuredClone(data);
         this.dispatch(StateChangeEvent.uiInteractionMode, structuredClone(this.#ui.interactionMode));
+    }
+    
+    private onSelectCharacter(character: UpdateStateEventsMap[UpdateStateEvent.selectCharacter]) {
+        this.#ui.selectedCharacter = structuredClone(character) as ICharacter;
+        this.dispatch(StateChangeEvent.selectedCharacter, structuredClone(this.#ui.selectedCharacter));
+    }
+    
+    private onDeselectCharacter() {
+        this.#ui.selectedCharacter = null;
+        this.dispatch(StateChangeEvent.selectedCharacter, null);
     }
     
     // Setters

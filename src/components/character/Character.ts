@@ -92,8 +92,13 @@ export default class Character extends Component {
                     characterName: this.id,
                     position
                 });
-            } else if (this.canControlThisCharacter()) {
-                this.dispatch(ControlsEvent.showActions, this.id);
+            } else {
+                // Always dispatch character click for selection handling
+                const position = CharacterService.getPositionFromDataset(this.movable!.dataset);
+                this.dispatch(ControlsEvent.characterClick, {
+                    characterName: this.id,
+                    position
+                });
             }
         });
 
@@ -114,6 +119,18 @@ export default class Character extends Component {
         this.listen(StateChangeEvent.game, (game) => {
             this.currentTurn = game.turn;
             requestAnimationFrame(() => this.updateTurnIndicator());
+        });
+        
+        // Listen for selected character changes
+        this.listen(StateChangeEvent.selectedCharacter, (selectedCharacter) => {
+            const isSelected = selectedCharacter?.name === this.id;
+            requestAnimationFrame(() => {
+                if (isSelected) {
+                    this.classList.add('selected');
+                } else {
+                    this.classList.remove('selected');
+                }
+            });
         });
 
         // Listen for character position changes from state (for multiplayer sync)
@@ -328,20 +345,6 @@ export default class Character extends Component {
                 direction: direction
             }
         });
-    }
-
-    private canControlThisCharacter(): boolean {
-        // In multiplayer, check if this character belongs to the current network player
-        // and it's their turn
-        const networkPlayerId = this.networkService.getPlayerId();
-
-        if (networkPlayerId) {
-            // Multiplayer mode: must be this player's character AND their turn
-            return this.player === networkPlayerId && this.player === this.currentTurn;
-        } else {
-            // Single player mode: use normal turn logic
-            return CharacterService.canControlCharacter(this.player, this.currentTurn);
-        }
     }
 
 

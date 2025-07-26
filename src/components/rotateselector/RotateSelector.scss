@@ -1,22 +1,66 @@
 @use '../variables' as *;
 
+:host {
+    display: block;
+    background-color: $color-bg-secondary;
+    border: $border-width solid $color-border-primary;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-lg;
+}
+
 .rotate-container {
-    padding: $spacing-lg;
-    min-width: 18.75rem; // 300px
+    padding: $spacing-md;
+    min-width: 8rem;
+    transition: all $transition-duration-base $transition-easing;
+    
+    &.minimized {
+        padding: $spacing-sm;
+        min-width: auto;
+        
+        .rotate-cross,
+        .current-direction {
+            display: none;
+        }
+        
+        .rotate-title {
+            margin-bottom: 0;
+            font-size: $font-size-xl;
+        }
+    }
+}
+
+.rotate-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-md;
 }
 
 .rotate-title {
-    text-align: center;
-    margin-bottom: $spacing-xl;
     color: $color-text-primary;
     font-size: $font-size-lg;
+    margin: 0;
+}
+
+.minimize-btn {
+    background: none;
+    border: none;
+    color: $color-text-secondary;
+    font-size: $font-size-sm;
+    cursor: pointer;
+    padding: $spacing-xs;
+    transition: $transition-colors;
+    
+    &:hover {
+        color: $color-text-primary;
+    }
 }
 
 .rotate-cross {
     position: relative;
-    width: 10rem; // 160px
-    height: 10rem; // 160px
-    margin: 0 auto $spacing-lg;
+    width: 8rem;
+    height: 8rem;
+    margin: 0 auto $spacing-md;
 }
 
 .center-display {
@@ -24,10 +68,10 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 3.125rem; // 50px
-    height: 3.125rem; // 50px
-    background-color: $color-bg-secondary;
-    border: $border-width-thick solid $color-border-primary;
+    width: 2.5rem;
+    height: 2.5rem;
+    background-color: $color-bg-tertiary;
+    border: $border-width solid $color-border-primary;
     border-radius: $border-radius-md;
     display: flex;
     align-items: center;
@@ -36,24 +80,24 @@
 }
 
 .character-preview {
-    width: 2.5rem; // 40px
-    height: 2.5rem; // 40px
+    width: 2rem;
+    height: 2rem;
 }
 
 .direction-button {
     position: absolute;
-    width: 2.5rem; // 40px
-    height: 2.5rem; // 40px
-    background-color: $color-bg-primary;
-    border: $border-width-thick solid $color-border-primary;
-    border-radius: $border-radius-md;
-    font-size: $font-size-lg;
+    width: 2rem;
+    height: 2rem;
+    background-color: $color-bg-tertiary;
+    border: $border-width solid $color-border-primary;
+    border-radius: $border-radius-sm;
+    font-size: $font-size-sm;
     color: $color-text-primary;
     cursor: pointer;
     transition: $transition-all;
     
     &:hover {
-        background-color: $color-bg-secondary;
+        background-color: $color-bg-hover;
         border-color: $color-primary;
         color: $color-primary;
         transform: scale(1.1);
@@ -67,74 +111,99 @@
         top: 0;
         left: 50%;
         transform: translateX(-50%);
+        
+        &:hover {
+            transform: translateX(-50%) scale(1.1);
+        }
     }
     
     &.direction-top-right {
-        top: 15%;
-        right: 15%;
+        top: 10%;
+        right: 10%;
     }
     
     &.direction-right {
         top: 50%;
         right: 0;
         transform: translateY(-50%);
+        
+        &:hover {
+            transform: translateY(-50%) scale(1.1);
+        }
     }
     
     &.direction-bottom-right {
-        bottom: 15%;
-        right: 15%;
+        bottom: 10%;
+        right: 10%;
     }
     
     &.direction-bottom {
         bottom: 0;
         left: 50%;
         transform: translateX(-50%);
+        
+        &:hover {
+            transform: translateX(-50%) scale(1.1);
+        }
     }
     
     &.direction-bottom-left {
-        bottom: 15%;
-        left: 15%;
+        bottom: 10%;
+        left: 10%;
     }
     
     &.direction-left {
         top: 50%;
         left: 0;
         transform: translateY(-50%);
+        
+        &:hover {
+            transform: translateY(-50%) scale(1.1);
+        }
     }
     
     &.direction-top-left {
-        top: 15%;
-        left: 15%;
+        top: 10%;
+        left: 10%;
     }
 }
 
 .current-direction {
     text-align: center;
     color: $color-text-secondary;
-    font-size: $font-size-sm;
-    margin-top: $spacing-md;
+    font-size: $font-size-xs;
+    margin-top: $spacing-sm;
 }
 
 // Desktop styles
 @include md-up {
+    .rotate-container {
+        padding: $spacing-lg;
+        min-width: 12rem;
+    }
+    
     .rotate-cross {
-        width: 12.5rem; // 200px
-        height: 12.5rem; // 200px
+        width: 10rem;
+        height: 10rem;
     }
     
     .direction-button {
-        width: 3.125rem; // 50px
-        height: 3.125rem; // 50px
-        font-size: $font-size-xl;
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: $font-size-base;
     }
     
     .center-display {
-        width: 3.75rem; // 60px
-        height: 3.75rem; // 60px
+        width: 3rem;
+        height: 3rem;
     }
     
     .character-preview {
-        width: 3rem; // 48px
-        height: 3rem; // 48px
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+    
+    .current-direction {
+        font-size: $font-size-sm;
     }
 }

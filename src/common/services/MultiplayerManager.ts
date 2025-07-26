@@ -2,7 +2,7 @@ import { EventBus, EventsMap } from '../events/EventBus';
 import { NetworkService } from './NetworkService';
 import { State } from '../State';
 import { IState, IUIState, ICharacter } from '../interfaces';
-import { GameEvent, UpdateStateEvent } from '../events';
+import { GameEvent, UpdateStateEvent, StateChangeEvent } from '../events';
 import { getBaseState } from '../../data/state';
 import { StateDiffService, StateDiff } from './StateDiffService';
 
@@ -130,10 +130,21 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
 
     private handleStateSync(syncedState: IState) {
         if (!this.isHost && this.state) {
-            // Don't create a new state - just dispatch the sync event
-            // The existing state will be updated through individual events
-            this.dispatch('stateSynced', { state: syncedState });
+            // If we have a previous state, dispatch the changes
+            if (this.lastSyncedState) {
+                this.dispatchStateChanges(this.lastSyncedState, syncedState);
+            } else {
+                // First sync - dispatch initial UI state
+                if (syncedState.ui) {
+                    this.dispatchUIStateChanges(undefined, syncedState.ui);
+                }
+            }
+            
+            // Update the last synced state
             this.lastSyncedState = syncedState;
+            
+            // Dispatch the sync event
+            this.dispatch('stateSynced', { state: syncedState });
         }
     }
     
@@ -173,6 +184,16 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
                     const eventData = Object.assign({}, damageData, { fromNetwork: true });
                     this.dispatch(UpdateStateEvent.damageCharacter, eventData);
                 }
+                if (!oldChar || oldChar.actions.pointsLeft !== character.actions.pointsLeft) {
+                    console.log('[MultiplayerManager] Action points changed:', {
+                        characterName: character.name,
+                        oldPoints: oldChar?.actions.pointsLeft,
+                        newPoints: character.actions.pointsLeft
+                    });
+                    // Dispatch character actions update for action points change
+                    const eventData = Object.assign({}, character, { fromNetwork: true });
+                    this.dispatch(StateChangeEvent.characterActions, eventData);
+                }
             }
         }
         
@@ -180,7 +201,21 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
         this.dispatchUIStateChanges(oldState.ui, newState.ui);
     }
     
-    private dispatchUIStateChanges(oldUI: IUIState, newUI: IUIState) {
+    private dispatchUIStateChanges(oldUI: IUIState | undefined, newUI: IUIState | undefined) {
+        // Handle cases where UI state might be missing
+        if (!newUI) {
+            return;
+        }
+        
+        // If oldUI is missing, treat everything as new
+        if (!oldUI) {
+            // Dispatch initial selected character if present
+            if (newUI.selectedCharacter) {
+                const eventData = Object.assign({}, newUI.selectedCharacter, { fromNetwork: true });
+                this.dispatch(UpdateStateEvent.selectCharacter, eventData);
+            }
+            return;
+        }
         // Animation changes
         for (const [characterId, animation] of Object.entries(newUI.animations.characters)) {
             const oldAnimation = oldUI.animations.characters[characterId];
@@ -204,6 +239,16 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
                 };
                 const eventData = Object.assign({}, visualData, { fromNetwork: true });
                 this.dispatch(UpdateStateEvent.uiCharacterVisual, eventData);
+            }
+        }
+        
+        // Selected character changes
+        if (JSON.stringify(oldUI.selectedCharacter) !== JSON.stringify(newUI.selectedCharacter)) {
+            if (newUI.selectedCharacter) {
+                const eventData = Object.assign({}, newUI.selectedCharacter, { fromNetwork: true });
+                this.dispatch(UpdateStateEvent.selectCharacter, eventData);
+            } else {
+                this.dispatch(UpdateStateEvent.deselectCharacter, null);
             }
         }
         
@@ -368,6 +413,22 @@ this.broadcastAction(UpdateStateEvent.characterPosition, data);
                 if (!(data as NetworkEventData).fromNetwork) {
                     this.broadcastAction(UpdateStateEvent.uiRemoveProjectile, data);
                 }
+            }
+        });
+        
+        // Listen for character selection updates
+        this.listen(UpdateStateEvent.selectCharacter, (data) => {
+            if (this.isMultiplayer && this.state) {
+                if (!(data as NetworkEventData).fromNetwork) {
+                    this.broadcastAction(UpdateStateEvent.selectCharacter, data);
+                }
+            }
+        });
+        
+        this.listen(UpdateStateEvent.deselectCharacter, () => {
+            if (this.isMultiplayer && this.state) {
+                // deselectCharacter doesn't have data, just broadcast the event
+                this.broadcastAction(UpdateStateEvent.deselectCharacter, null);
             }
         });
         

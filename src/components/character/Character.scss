@@ -17,6 +17,34 @@ $transition-duration: $transition-duration-base;
     pointer-events: auto;
 }
 
+:host(.selected) {
+    &::before {
+        content: '';
+        position: absolute;
+        top: -0.5rem;
+        left: -0.5rem;
+        right: -0.5rem;
+        bottom: -0.5rem;
+        border: 3px solid $color-primary;
+        border-radius: $border-radius-md;
+        pointer-events: none;
+        z-index: -1;
+        animation: selected-pulse 2s ease-in-out infinite;
+        box-shadow: 0 0 10px $color-primary;
+    }
+}
+
+@keyframes selected-pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.05);
+    }
+}
+
 :host(.shooting-mode) {
     cursor: crosshair;
 

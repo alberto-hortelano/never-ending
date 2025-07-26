@@ -1,0 +1,77 @@
+@use '../variables' as *;
+
+:host {
+    display: block;
+    width: 100%;
+}
+
+.confirmation-container {
+    padding: $spacing-lg;
+    text-align: center;
+}
+
+.confirmation-title {
+    color: $color-text-primary;
+    font-size: $font-size-lg;
+    font-weight: $font-weight-bold;
+    margin-bottom: $spacing-md;
+}
+
+.confirmation-message {
+    color: $color-text-secondary;
+    font-size: $font-size-base;
+    margin-bottom: $spacing-xl;
+    line-height: $line-height-normal;
+}
+
+.confirmation-buttons {
+    display: flex;
+    gap: $spacing-md;
+    justify-content: center;
+    
+    @include sm-down {
+        flex-direction: column-reverse;
+    }
+}
+
+.confirm-button,
+.cancel-button {
+    padding: $spacing-sm $spacing-xl;
+    font-size: $font-size-base;
+    font-weight: $font-weight-medium;
+    border: $border-width solid $color-border-primary;
+    border-radius: $border-radius-md;
+    cursor: pointer;
+    transition: $transition-all;
+    min-width: 100px;
+    
+    @include sm-down {
+        width: 100%;
+    }
+}
+
+.confirm-button {
+    background-color: $color-primary;
+    color: $color-bg-primary;
+    border-color: $color-primary;
+    
+    &:hover {
+        background-color: $color-primary-light;
+        border-color: $color-primary-light;
+        transform: translateY(-1px);
+    }
+    
+    &:active {
+        transform: translateY(0);
+    }
+}
+
+.cancel-button {
+    background-color: $color-bg-tertiary;
+    color: $color-text-primary;
+    
+    &:hover {
+        background-color: $color-bg-hover;
+        border-color: $color-border-hover;
+    }
+}

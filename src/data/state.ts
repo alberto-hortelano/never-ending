@@ -324,7 +324,8 @@ export const initialState = (x: number, y: number, playerData: Partial<ICharacte
             },
             interactionMode: {
                 type: 'normal'
-            }
+            },
+            selectedCharacter: null
         }
     };
     return initialState;

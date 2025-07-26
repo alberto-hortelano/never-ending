@@ -19,6 +19,7 @@ export class Movement extends EventBus<
     // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     private listeners: Array<{ event: string; handler: Function }> = [];
     private completedMovements = new Map<string, { path: ICoord[], finalDirection: string, fromNetwork?: boolean }>();
+    private currentHoveredPath?: ICoord[];
 
     constructor(
         private state: State,
@@ -29,6 +30,8 @@ export class Movement extends EventBus<
         this.addListener(ControlsEvent.showMovement, character => this.onShowMovement(character));
         this.addListener(StateChangeEvent.characterPath, character => this.onCharacterPath(character));
         this.addListener(StateChangeEvent.uiAnimations, animations => this.onAnimationsChange(animations));
+        this.addListener(ControlsEvent.cellHover, position => this.onCellHover(position));
+        this.addListener(ControlsEvent.cellHoverEnd, () => this.onCellHoverEnd());
     }
 
     private addListener<K extends keyof (GameEventsMap & ControlsEventsMap & StateChangeEventsMap)>(
@@ -158,9 +161,11 @@ export class Movement extends EventBus<
     private selectDestination(character: DeepReadonly<ICharacter>, _reachableCells: ICoord[], destination: ICoord) {
         const path = calculatePath(character.position, destination, this.state.map);
 
-        // Clear highlights
+        // Clear highlights and path preview
+        this.clearPathPreview();
         this.dispatch(UpdateStateEvent.uiHighlights, {
-            reachableCells: []
+            reachableCells: [],
+            pathCells: []
         });
 
         // Reset interaction mode
@@ -216,5 +221,45 @@ export class Movement extends EventBus<
         else if (dy < 0) return 'up';
 
         return 'down'; // Default direction
+    }
+    
+    private onCellHover(position: ControlsEventsMap[ControlsEvent.cellHover]) {
+        // Only show path preview if we're in movement mode and hovering over a reachable cell
+        if (!this.movingCharacter || !this.reachableCells) return;
+        
+        const isReachable = this.reachableCells.some(c => c.x === position.x && c.y === position.y);
+        if (!isReachable) {
+            // If hovering over non-reachable cell, clear any existing path
+            this.clearPathPreview();
+            return;
+        }
+        
+        // Calculate path to hovered cell
+        const path = calculatePath(this.movingCharacter.position, position, this.state.map);
+        this.currentHoveredPath = path;
+        
+        // Update UI to show path cells with stronger highlight
+        this.dispatch(UpdateStateEvent.uiHighlights, {
+            reachableCells: this.reachableCells,
+            pathCells: path
+        });
+    }
+    
+    private onCellHoverEnd() {
+        this.clearPathPreview();
+    }
+    
+    private clearPathPreview() {
+        if (!this.currentHoveredPath) return;
+        
+        this.currentHoveredPath = undefined;
+        
+        // Reset highlights to only show reachable cells
+        if (this.reachableCells) {
+            this.dispatch(UpdateStateEvent.uiHighlights, {
+                reachableCells: this.reachableCells,
+                pathCells: []
+            });
+        }
     }
 };

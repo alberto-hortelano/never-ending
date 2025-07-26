@@ -48,6 +48,10 @@ export enum UpdateStateEvent {
     uiHighlights = 'UpdateStateEvent.uiHighlights',
     /** Update interaction mode */
     uiInteractionMode = 'UpdateStateEvent.uiInteractionMode',
+    /** Select a character */
+    selectCharacter = 'UpdateStateEvent.selectCharacter',
+    /** Deselect current character */
+    deselectCharacter = 'UpdateStateEvent.deselectCharacter',
 }
 
 export interface UpdateStateEventsMap {
@@ -117,6 +121,8 @@ export interface UpdateStateEventsMap {
     [UpdateStateEvent.uiRemoveProjectile]: { projectileId: string };
     [UpdateStateEvent.uiHighlights]: Partial<DeepReadonly<IHighlightStates>>;
     [UpdateStateEvent.uiInteractionMode]: DeepReadonly<IInteractionMode>;
+    [UpdateStateEvent.selectCharacter]: DeepReadonly<ICharacter>;
+    [UpdateStateEvent.deselectCharacter]: null;
 }
 
 /** Events when the state has changed. All can listen. Only State can dispatch */
@@ -144,6 +150,8 @@ export enum StateChangeEvent {
     uiTransient = 'StateChangeEvent.uiTransient',
     /** UI interaction mode changed */
     uiInteractionMode = 'StateChangeEvent.uiInteractionMode',
+    /** Selected character changed */
+    selectedCharacter = 'StateChangeEvent.selectedCharacter',
 }
 
 export interface StateChangeEventsMap {
@@ -164,4 +172,5 @@ export interface StateChangeEventsMap {
     [StateChangeEvent.uiVisualStates]: DeepReadonly<IState['ui']['visualStates']>;
     [StateChangeEvent.uiTransient]: DeepReadonly<IState['ui']['transientUI']>;
     [StateChangeEvent.uiInteractionMode]: DeepReadonly<IState['ui']['interactionMode']>;
+    [StateChangeEvent.selectedCharacter]: DeepReadonly<ICharacter> | null;
 }

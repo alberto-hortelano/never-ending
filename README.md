@@ -5,6 +5,9 @@ A game to test AI
 ## Tareas:
 1. Mover character
 
+UI refactor:
+ * 
+
 ## Events:
 GameEvents: Dinamica del juego como play, pause, save...
 StateEvents: Peticion de modificacion del estado. Solo la clase State puede escucharlos, cualquiera puede lanzarlos.
@@ -13,6 +16,20 @@ ComponentEvent: Eventos de la interfaz. Solo los componentes pueden lanzarlos
 ## TODO:
 1. Hace falta un cancelar accion
 1. Al mover tendria que resaltar el path al ir haciendo hover en las celdas. Y al hacer click, dejar el path resaltado e ir quitando celdas a medida que el personaje avanza
+1. UI Refactor:
+ * Character selection. If the player has only one character it is automatically selected. If there is no character selected none of the following is shown.
+ When a character is selected:
+ * Movement is pre-selected when a character is selected, the reachable cells are shown and shows the path on mouse hover with a heavier highlight. The click on a highlighted cell initiates the movement.
+ * A top and a botom bar are added. They get space from the board component, so the board is between both bars.
+ * The top bar is for info and less used buttons.
+ * The bottom bar is the actions bar.
+ * Rotate component is fixed in the bottom left corner.
+ * Action Points are displayed at the top, labeled with the character's name: "Character Name: Action Points", shown as a progress bar.
+ * Clicking on a character (while not in targeting mode) brings up a popup with the "Talk" option to confirm interaction. More actions may be added in the future.
+ * Clicking on a usable object brings up a popup with the "Use" option to confirm, similar to "Talk".
+ * Inventory is a button located at the right of the top bar. Clicking it opens the inventory popup.
+ * The combat buttons have a toggle between close and ranged. They display on the bottom bar from left to right, on mobile both types of combar are shown in two columns and the full bottom bar has a toggle button to expand or contract it
+
 
 ## Actions
 Hay 100 puntos por turno y cada accion consume n puntos, dependiendo de la habilidad del personaje

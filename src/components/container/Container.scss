@@ -7,4 +7,40 @@
     background-color: $color-bg-primary;
     color: $color-text-primary;
     font-family: $font-family-mono;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+}
+
+topbar-component {
+    flex: 0 0 auto;
+}
+
+board-component {
+    flex: 1 1 auto;
+    overflow: auto;
+    min-height: 0; // Important for flex children to respect parent constraints
+}
+
+bottombar-component {
+    flex: 0 0 auto;
+}
+
+.fixed-rotate {
+    position: fixed;
+    bottom: 1rem;
+    left: 1rem;
+    z-index: 90;
+    display: none;
+    
+    @include md-up {
+        bottom: 2rem;
+        left: 2rem;
+    }
 }
