@@ -26,9 +26,12 @@ export class Movement extends EventBus<
         super();
         // Store references to listeners for cleanup
         this.addListener(ControlsEvent.cellClick, position => this.onCellClick(position));
+        this.addListener(ControlsEvent.cellMouseEnter, position => this.onCellMouseEnter(position));
+        this.addListener(ControlsEvent.cellMouseLeave, () => this.onCellMouseLeave());
         this.addListener(ControlsEvent.showMovement, character => this.onShowMovement(character));
         this.addListener(StateChangeEvent.characterPath, character => this.onCharacterPath(character));
         this.addListener(StateChangeEvent.uiAnimations, animations => this.onAnimationsChange(animations));
+        this.addListener(StateChangeEvent.uiInteractionMode, mode => this.onInteractionModeChange(mode));
     }
 
     private addListener<K extends keyof (GameEventsMap & ControlsEventsMap & StateChangeEventsMap)>(
@@ -48,6 +51,21 @@ export class Movement extends EventBus<
     private onCellClick(position: ControlsEventsMap[ControlsEvent.cellClick]) {
         if (this.movingCharacter && this.reachableCells?.find(c => c.x === position.x && c.y === position.y)) {
             this.selectDestination(this.movingCharacter, this.reachableCells, position);
+        }
+    }
+    private onCellMouseEnter(position: ControlsEventsMap[ControlsEvent.cellMouseEnter]) {
+        // Only show path preview during movement mode
+        if (this.movingCharacter && this.reachableCells?.find(c => c.x === position.x && c.y === position.y)) {
+            this.showPathPreview(position);
+        }
+    }
+    private onCellMouseLeave() {
+        this.clearPathPreview();
+    }
+    private onInteractionModeChange(mode: StateChangeEventsMap[StateChangeEvent.uiInteractionMode]) {
+        // Clear path preview when leaving movement mode
+        if (mode.type !== 'moving') {
+            this.clearPathPreview();
         }
     }
     private onCharacterPath(character: StateChangeEventsMap[StateChangeEvent.characterPath]) {
@@ -216,5 +234,26 @@ export class Movement extends EventBus<
         else if (dy < 0) return 'up';
 
         return 'down'; // Default direction
+    }
+    private showPathPreview(destination: ICoord) {
+        if (!this.movingCharacter || !this.reachableCells) return;
+        
+        // Calculate path
+        const path = calculatePath(this.movingCharacter.position, destination, this.state.map);
+        
+        // Update UI state with path preview cells while preserving reachable cells
+        this.dispatch(UpdateStateEvent.uiHighlights, {
+            reachableCells: this.reachableCells,
+            pathCells: path
+        });
+    }
+    private clearPathPreview() {
+        // Clear path preview in UI state but keep reachable cells
+        if (this.reachableCells) {
+            this.dispatch(UpdateStateEvent.uiHighlights, {
+                reachableCells: this.reachableCells,
+                pathCells: []
+            });
+        }
     }
 };

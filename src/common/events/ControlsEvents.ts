@@ -9,6 +9,8 @@ export enum ControlsEvent {
     talk = 'ControlsEvent.talk',
     use = 'ControlsEvent.use',
     cellClick = 'ControlsEvent.cellClick',
+    cellMouseEnter = 'ControlsEvent.cellMouseEnter',
+    cellMouseLeave = 'ControlsEvent.cellMouseLeave',
     moveCharacter = 'ControlsEvent.moveCharacter',
     showTalk = 'ControlsEvent.showTalk',
     rotate = 'ControlsEvent.rotate',
@@ -29,6 +31,8 @@ export interface ControlsEventsMap {
     [ControlsEvent.talk]: ICharacter['name'];
     [ControlsEvent.use]: ICharacter['name'];
     [ControlsEvent.cellClick]: DeepReadonly<ICoord>;
+    [ControlsEvent.cellMouseEnter]: DeepReadonly<ICoord>;
+    [ControlsEvent.cellMouseLeave]: DeepReadonly<ICoord>;
     [ControlsEvent.moveCharacter]: DeepReadonly<ICharacter>;
     [ControlsEvent.showTalk]: {
         talkingCharacter: DeepReadonly<ICharacter>;

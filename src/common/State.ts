@@ -502,7 +502,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
                 visualState: {
                     isHighlighted: true,
                     highlightType: 'path',
-                    classList: ['highlight']
+                    classList: ['path']
                 }
             });
         });

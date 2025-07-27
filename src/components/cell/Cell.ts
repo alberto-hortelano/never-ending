@@ -6,7 +6,7 @@ export default class Cell extends Component {
     static get observedAttributes() {
         return ['content'];
     }
-    static states = ['highlight', 'highlight-intensity'];
+    static states = ['highlight', 'highlight-intensity', 'highlight-movement', 'highlight-path', 'highlight-attack', 'path'];
     protected override hasCss = true;
     protected override hasHtml = false;
     private coords: ICoord = { x: -1, y: -1 };
@@ -15,6 +15,8 @@ export default class Cell extends Component {
     constructor() {
         super();
         this.addEventListener('click', () => this.onClick());
+        this.addEventListener('mouseenter', () => this.onMouseEnter());
+        this.addEventListener('mouseleave', () => this.onMouseLeave());
     }
 
     override async connectedCallback(): Promise<ShadowRoot | undefined> {
@@ -53,6 +55,12 @@ export default class Cell extends Component {
     private onClick() {
         // this.classList.toggle('wall');
         this.dispatch(ControlsEvent.cellClick, this.coords);
+    }
+    private onMouseEnter() {
+        this.dispatch(ControlsEvent.cellMouseEnter, this.coords);
+    }
+    private onMouseLeave() {
+        this.dispatch(ControlsEvent.cellMouseLeave, this.coords);
     }
     private applyVisualState(visualState: ICellVisualState) {
         // Use requestAnimationFrame to batch DOM updates
