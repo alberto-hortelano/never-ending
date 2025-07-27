@@ -73,6 +73,7 @@ export interface IInventory {
 
 export interface ICharacterActions {
     pointsLeft: number;
+    pendingCost?: number;
     general: {
         move: number;
         talk: number;
@@ -259,6 +260,7 @@ export interface IShootingModeData {
     characterId: string;
     weapon: IWeapon;
     targetPosition?: ICoord;
+    aimLevel?: number;
 }
 
 export interface ISelectingModeData {

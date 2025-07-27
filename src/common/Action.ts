@@ -26,7 +26,7 @@ export class Action extends EventBus<
             name: "Ranged Combat",
             actions: [
                 { id: "shoot", label: "Shoot", icon: "🔫", event: ControlsEvent.showShooting },
-                { id: "aim", label: "Aim", icon: "🎯", event: ControlsEvent.showMovement },
+                { id: "aim", label: "Aim", icon: "🎯", event: ControlsEvent.showAiming },
                 { id: "suppress", label: "Suppress", icon: "💥", event: ControlsEvent.showMovement },
                 { id: "cover", label: "Cover", icon: "🛡️", event: ControlsEvent.showMovement },
                 { id: "throw", label: "Throw", icon: "🤾", event: ControlsEvent.showMovement }
@@ -162,7 +162,7 @@ export class Action extends EventBus<
         }
 
         // For actions that don't have their own handlers yet, deduct points here
-        if (cost > 0 && ['use', 'inventory', 'aim', 'suppress', 'cover', 'throw', 'power-strike', 'slash', 'fast-attack', 'feint', 'break-guard'].includes(actionId)) {
+        if (cost > 0 && ['use', 'inventory', 'suppress', 'cover', 'throw', 'power-strike', 'slash', 'fast-attack', 'feint', 'break-guard'].includes(actionId)) {
             this.dispatch(UpdateStateEvent.deductActionPoints, {
                 characterName: characterName,
                 actionId: actionId,

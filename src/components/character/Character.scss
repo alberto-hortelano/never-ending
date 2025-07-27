@@ -154,6 +154,19 @@ body {
     z-index: 0;
     perspective: calc(500 * var(--size));
     transform-style: preserve-3d;
+
+    &:not(.defeated) .head,
+    &:not(.defeated) .face,
+    &:not(.defeated) .body,
+    &:not(.defeated) .arm,
+    &:not(.defeated) .leg {
+        transition: none;
+    }
+
+    // &:not(.defeated).rotate-315 .arm,
+    // &:not(.defeated).rotate-0 .arm {
+    //     transition: none;
+    // }
 }
 
 .head {

@@ -6,6 +6,7 @@ import {
     EventBus, ControlsEvent, ControlsEventsMap,
     GUIEvent, GUIEventsMap, StateChangeEventsMap,
     UpdateStateEvent, UpdateStateEventsMap,
+    ActionEvent, ActionEventsMap,
 } from "./events";
 import { DirectionsService } from "./services/DirectionsService";
 
@@ -15,17 +16,19 @@ export interface VisibleCell {
 }
 
 export class Shoot extends EventBus<
-    GUIEventsMap & ControlsEventsMap & StateChangeEventsMap,
-    GUIEventsMap & ControlsEventsMap & UpdateStateEventsMap
+    GUIEventsMap & ControlsEventsMap & StateChangeEventsMap & ActionEventsMap,
+    GUIEventsMap & ControlsEventsMap & UpdateStateEventsMap & ActionEventsMap
 > {
     private shootingCharacter?: DeepReadonly<ICharacter>;
     private visibleCells?: VisibleCell[];
+    private aimLevel: number = 0;
 
     constructor(
         private state: State,
     ) {
         super();
         this.listen(ControlsEvent.showShooting, characterName => this.onShowShooting(characterName));
+        this.listen(ControlsEvent.showAiming, characterName => this.onShowAiming(characterName));
         this.listen(ControlsEvent.characterClick, data => this.onCharacterClick(data));
         this.listen(ControlsEvent.mousePositionUpdate, data => this.onMousePositionUpdate(data));
         
@@ -138,6 +141,59 @@ export class Shoot extends EventBus<
             return;
         }
 
+        this.aimLevel = 0; // Reset aim level when entering shoot mode
+        
+        // Set initial pending cost (just shoot cost)
+        const shootCost = character.actions.rangedCombat.shoot;
+        this.dispatch(UpdateStateEvent.setPendingActionCost, {
+            characterName: characterName,
+            cost: shootCost
+        });
+        
+        this.showShootingRange(character);
+    }
+
+    private onShowAiming(characterName: ControlsEventsMap[ControlsEvent.showAiming]) {
+        console.log('[Shoot] onShowAiming called for character:', characterName);
+        
+        // Only process if we're already in shooting mode with this character
+        if (!this.shootingCharacter || this.shootingCharacter.name !== characterName) {
+            console.log('[Shoot] Not in shooting mode or different character');
+            // If not in shooting mode, enter shooting mode first
+            this.onShowShooting(characterName);
+            return;
+        }
+
+        // Check if player has enough points for another aim + shoot
+        const shootCost = this.shootingCharacter.actions.rangedCombat.shoot;
+        const aimCost = this.shootingCharacter.actions.rangedCombat.aim;
+        const newPendingCost = shootCost + (aimCost * (this.aimLevel + 1));
+        const pointsLeft = this.shootingCharacter.actions.pointsLeft;
+        
+        if (newPendingCost > pointsLeft) {
+            console.log('[Shoot] Not enough points for another aim. Points left:', pointsLeft, 'New cost would be:', newPendingCost);
+            this.dispatch(ActionEvent.error, `Not enough action points to aim again. Need ${newPendingCost}, have ${pointsLeft}`);
+            return;
+        }
+
+        // Increment aim level
+        this.aimLevel++;
+        console.log('[Shoot] Aim level increased to:', this.aimLevel);
+
+        // Update pending cost
+        this.dispatch(UpdateStateEvent.setPendingActionCost, {
+            characterName: characterName,
+            cost: newPendingCost
+        });
+
+        // Get updated character state
+        const character = this.state.findCharacter(characterName);
+        if (!character) {
+            console.log('[Shoot] Character not found');
+            return;
+        }
+
+        // Recalculate and show updated shooting range with new aim level
         this.showShootingRange(character);
     }
 
@@ -197,13 +253,25 @@ export class Shoot extends EventBus<
                 
             }
             
-            // Deduct action points for shooting
+            // Deduct action points for shooting and aiming
             const shootCost = this.shootingCharacter.actions.rangedCombat.shoot;
+            const aimCost = this.shootingCharacter.actions.rangedCombat.aim * this.aimLevel;
+            
+            // Deduct shoot points
             this.dispatch(UpdateStateEvent.deductActionPoints, {
                 characterName: this.shootingCharacter.name,
                 actionId: 'shoot',
                 cost: shootCost
             });
+            
+            // Deduct aim points if any
+            if (this.aimLevel > 0) {
+                this.dispatch(UpdateStateEvent.deductActionPoints, {
+                    characterName: this.shootingCharacter.name,
+                    actionId: 'aim',
+                    cost: aimCost
+                });
+            }
             
             this.clearShootingHighlights();
         }
@@ -294,7 +362,8 @@ export class Shoot extends EventBus<
                 type: 'shooting',
                 data: {
                     characterId: character.name,
-                    weapon: weapon
+                    weapon: weapon,
+                    aimLevel: this.aimLevel
                 }
             });
         }
@@ -362,7 +431,17 @@ export class Shoot extends EventBus<
             }
             
             this.visibleCells = undefined;
+            
+            // Clear pending cost when exiting shooting mode
+            if (this.shootingCharacter) {
+                this.dispatch(UpdateStateEvent.setPendingActionCost, {
+                    characterName: this.shootingCharacter.name,
+                    cost: 0
+                });
+            }
+            
             this.shootingCharacter = undefined;
+            this.aimLevel = 0; // Reset aim level
             
             // Reset interaction mode to normal
             this.dispatch(UpdateStateEvent.uiInteractionMode, {
@@ -450,6 +529,8 @@ export class Shoot extends EventBus<
 
     private getWeaponRange(character: DeepReadonly<ICharacter>): number {
         const weapon = this.getEquippedRangedWeapon(character);
-        return weapon ? weapon.range : 10; // Default range for unarmed/throwing
+        const baseRange = weapon ? weapon.range : 10; // Default range for unarmed/throwing
+        // Apply aim bonus: 50% increase per aim level
+        return baseRange * (1 + 0.5 * this.aimLevel);
     }
 }

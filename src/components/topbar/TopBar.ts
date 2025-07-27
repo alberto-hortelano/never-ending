@@ -1,7 +1,7 @@
 import { Component } from "../Component";
 import { StateChangeEvent, GameEvent, ControlsEvent, ActionEvent } from "../../common/events";
 import type { DeepReadonly } from "../../common/helpers/types";
-import type { IGame } from "../../common/interfaces";
+import type { IGame, ICharacter } from "../../common/interfaces";
 import { NetworkService } from "../../common/services/NetworkService";
 
 export default class TopBar extends Component {
@@ -53,18 +53,57 @@ export default class TopBar extends Component {
         const pointsBarElement = root.querySelector('#points-bar') as HTMLElement;
         const pointsTextElement = root.querySelector('#points-text') as HTMLElement;
         
+        const pointsPendingElement = root.querySelector('#points-bar-pending') as HTMLElement;
+        
         this.listen(ActionEvent.update, (data) => {
             // Only show action points for the selected character
             if (data.characterName === this.selectedCharacter && actionPointsElement && pointsBarElement && pointsTextElement) {
                 const pointsLeft = data.characterActions.pointsLeft;
+                const pendingCost = data.characterActions.pendingCost || 0;
                 const percentage = pointsLeft; // Since max is 100, points = percentage
                 
                 // Update the points bar
                 pointsBarElement.style.setProperty('--points-percentage', `${percentage}%`);
                 pointsTextElement.textContent = `Action Points: ${pointsLeft}`;
                 
+                // Update pending cost overlay
+                if (pointsPendingElement && pendingCost > 0) {
+                    const pendingPercentage = pendingCost; // Since max is 100
+                    const pendingPosition = Math.max(0, percentage - pendingPercentage);
+                    pointsPendingElement.style.setProperty('--pending-percentage', `${pendingPercentage}%`);
+                    pointsPendingElement.style.setProperty('--pending-position', `${pendingPosition}%`);
+                    pointsPendingElement.classList.add('visible');
+                } else if (pointsPendingElement) {
+                    pointsPendingElement.classList.remove('visible');
+                }
+                
                 // Show the action points display
                 actionPointsElement.classList.add('visible');
+            }
+        });
+        
+        // Listen for character actions changes (includes pending cost)
+        this.listen(StateChangeEvent.characterActions, (character: DeepReadonly<ICharacter>) => {
+            // Only update if it's the selected character
+            if (character.name === this.selectedCharacter && actionPointsElement && pointsBarElement && pointsTextElement) {
+                const pointsLeft = character.actions.pointsLeft;
+                const pendingCost = character.actions.pendingCost || 0;
+                const percentage = pointsLeft; // Since max is 100, points = percentage
+                
+                // Update the points bar
+                pointsBarElement.style.setProperty('--points-percentage', `${percentage}%`);
+                pointsTextElement.textContent = `Action Points: ${pointsLeft}`;
+                
+                // Update pending cost overlay
+                if (pointsPendingElement && pendingCost > 0) {
+                    const pendingPercentage = pendingCost; // Since max is 100
+                    const pendingPosition = Math.max(0, percentage - pendingPercentage);
+                    pointsPendingElement.style.setProperty('--pending-percentage', `${pendingPercentage}%`);
+                    pointsPendingElement.style.setProperty('--pending-position', `${pendingPosition}%`);
+                    pointsPendingElement.classList.add('visible');
+                } else if (pointsPendingElement) {
+                    pointsPendingElement.classList.remove('visible');
+                }
             }
         });
         

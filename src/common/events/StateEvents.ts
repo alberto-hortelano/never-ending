@@ -22,6 +22,8 @@ export enum UpdateStateEvent {
     unequipWeapon = 'UpdateStateEvent.unequipWeapon',
     /** Deduct action points from character */
     deductActionPoints = 'UpdateStateEvent.deductActionPoints',
+    /** Set pending action cost (preview before actual deduction) */
+    setPendingActionCost = 'UpdateStateEvent.setPendingActionCost',
     /** Reset action points for all characters of a player */
     resetActionPoints = 'UpdateStateEvent.resetActionPoints',
     /** Apply damage to a character */
@@ -71,6 +73,10 @@ export interface UpdateStateEventsMap {
     [UpdateStateEvent.deductActionPoints]: {
         characterName: string;
         actionId: string;
+        cost: number;
+    };
+    [UpdateStateEvent.setPendingActionCost]: {
+        characterName: string;
         cost: number;
     };
     [UpdateStateEvent.resetActionPoints]: {
