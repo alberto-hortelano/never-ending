@@ -110,9 +110,10 @@ export default class TopBar extends Component {
                 if (currentPlayerElement && networkPlayerId) {
                     const currentPlayerName = game.playerInfo?.[networkPlayerId]?.name || networkPlayerId;
                     currentPlayerElement.textContent = currentPlayerName;
-                    currentPlayerElement.classList.add('visible');
                 } else if (currentPlayerElement) {
-                    currentPlayerElement.classList.remove('visible');
+                    // In single player, show the current player name
+                    const currentPlayerName = game.playerInfo?.[game.turn]?.name || game.turn;
+                    currentPlayerElement.textContent = currentPlayerName;
                 }
                 
                 if (endTurnBtn) {

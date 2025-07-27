@@ -12,24 +12,139 @@
 
 .top-bar {
     display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+// First row - smaller height
+.top-row {
+    display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: $spacing-sm $spacing-md;
-    min-height: 3.5rem;
-    gap: $spacing-md;
-    
+    padding: $spacing-xs $spacing-md;
+    min-height: 2rem;
+    background: $color-bg-tertiary;
+    border-bottom: 1px solid $color-border-secondary;
+    font-size: $font-size-sm;
+
     @include sm-down {
         padding: $spacing-xs $spacing-sm;
-        min-height: 3rem;
+        min-height: 1.75rem;
+        font-size: $font-size-xs;
     }
 }
 
+// Second row - main content
+.bottom-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $spacing-sm $spacing-md;
+    min-height: 3rem;
+    gap: $spacing-md;
+
+    @include sm-down {
+        padding: $spacing-xs $spacing-sm;
+        min-height: 2.5rem;
+        gap: $spacing-sm;
+    }
+}
+
+// Top row elements
+.current-player {
+    padding: $spacing-xs $spacing-sm;
+    background: $color-bg-secondary;
+    border: 1px solid $color-border-secondary;
+    border-radius: $border-radius-sm;
+    font-size: $font-size-sm;
+    color: $color-text-primary;
+    font-weight: $font-weight-medium;
+
+    &:empty {
+        display: none;
+    }
+
+    @include sm-down {
+        font-size: $font-size-xs;
+        padding: 2px $spacing-xs;
+    }
+}
+
+.campaign-name,
+.map-name {
+    color: $color-text-secondary;
+    font-weight: $font-weight-normal;
+    padding: 0 $spacing-sm;
+
+    @include sm-down {
+        padding: 0 $spacing-xs;
+    }
+}
+
+.campaign-name::before {
+    content: 'Campaign: ';
+    color: $color-text-muted;
+    font-weight: $font-weight-normal;
+}
+
+.map-name::before {
+    content: 'Map: ';
+    color: $color-text-muted;
+    font-weight: $font-weight-normal;
+}
+
+// Bottom row sections
+.left-section,
+.center-section,
+.right-section {
+    display: flex;
+    align-items: center;
+}
+
+.left-section {
+    flex: 0 0 auto;
+    min-width: 150px;
+
+    @include sm-down {
+        min-width: 100px;
+    }
+}
+
+.center-section {
+    flex: 1 1 auto;
+    justify-content: center;
+}
+
+.right-section {
+    flex: 0 0 auto;
+}
+
+// Selected character styling
+.selected-character {
+    color: $color-text-secondary;
+    font-weight: $font-weight-medium;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $border-radius-sm;
+    background: $color-bg-tertiary;
+    border: 1px solid $color-border-secondary;
+
+    &:empty {
+        display: none;
+    }
+
+    &::before {
+        content: '→ ';
+        color: $color-text-muted;
+    }
+}
+
+// Turn indicator section
 .turn-indicator {
     display: flex;
     align-items: center;
     gap: $spacing-sm;
     font-size: $font-size-base;
-    
+
     @include sm-down {
         font-size: $font-size-sm;
         gap: $spacing-xs;
@@ -39,6 +154,10 @@
 .turn-label {
     color: $color-text-secondary;
     font-weight: $font-weight-medium;
+
+    @include md-down {
+        display: none;
+    }
 }
 
 .player-name {
@@ -48,34 +167,15 @@
     padding: $spacing-xs $spacing-sm;
     border-radius: $border-radius-sm;
     background: $color-bg-tertiary;
-    
+
     &.human {
         color: $color-player-human;
         background: rgba($color-player-human, 0.1);
     }
-    
+
     &.ai {
         color: $color-player-ai;
         background: rgba($color-player-ai, 0.1);
-    }
-}
-
-.selected-character {
-    color: $color-text-secondary;
-    font-weight: $font-weight-medium;
-    padding: $spacing-xs $spacing-sm;
-    margin-left: $spacing-xs;
-    border-radius: $border-radius-sm;
-    background: $color-bg-tertiary;
-    border: 1px solid $color-border-secondary;
-    
-    &:empty {
-        display: none;
-    }
-    
-    &::before {
-        content: '→ ';
-        color: $color-text-muted;
     }
 }
 
@@ -89,41 +189,35 @@
     font-weight: $font-weight-medium;
     cursor: pointer;
     transition: $transition-all;
-    
+
     @include sm-down {
         padding: $spacing-xs $spacing-sm;
         font-size: $font-size-sm;
     }
-    
+
     &:hover {
         background: color.adjust($color-highlight, $lightness: 10%);
         transform: translateY(-1px);
         box-shadow: $shadow-sm;
     }
-    
+
     &:active {
         transform: translateY(0);
         box-shadow: none;
     }
 }
 
-.info-section {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: $spacing-md;
-}
-
+// Action points section
 .action-points {
     display: none;
     min-width: 200px;
     max-width: 300px;
-    
+    width: 100%;
+
     &.visible {
         display: block;
     }
-    
+
     @include sm-down {
         min-width: 150px;
         max-width: 200px;
@@ -137,7 +231,7 @@
     border: $border-width solid $gray-450;
     border-radius: $border-radius-base;
     overflow: hidden;
-    
+
     &::before {
         content: '';
         position: absolute;
@@ -148,7 +242,7 @@
         background: linear-gradient(90deg, $color-highlight 0%, color.adjust($color-highlight, $lightness: 10%) 100%);
         transition: width $transition-duration-base ease-out;
     }
-    
+
     .points-text {
         position: relative;
         display: flex;
@@ -160,42 +254,9 @@
         color: $color-text-primary;
         text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
         z-index: 1;
-        
+
         @include sm-down {
             font-size: $font-size-xs;
         }
-    }
-}
-
-.controls-section {
-    display: flex;
-    align-items: center;
-    gap: $spacing-sm;
-}
-
-.current-player {
-    display: none; // Hidden by default, shown only in multiplayer
-    padding: $spacing-xs $spacing-md;
-    background: $color-bg-tertiary;
-    border: 1px solid $color-border-secondary;
-    border-radius: $border-radius-sm;
-    font-size: $font-size-base;
-    color: $color-text-primary;
-    font-weight: $font-weight-medium;
-    
-    &::before {
-        content: 'You: ';
-        color: $color-text-secondary;
-        font-weight: $font-weight-normal;
-    }
-    
-    &.visible {
-        display: inline-flex;
-        align-items: center;
-    }
-    
-    @include sm-down {
-        font-size: $font-size-sm;
-        padding: $spacing-xs $spacing-sm;
     }
 }
