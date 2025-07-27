@@ -39,5 +39,39 @@ export class DirectionsService {
         return this.OPPOSITE_DIRECTIONS[direction];
     }
 
+    public static getDirectionFromAngle(angle: number): Direction {
+        // Convert from Math.atan2 range (-180 to 180) to 0-360
+        let normalizedAngle = angle;
+        if (normalizedAngle < 0) {
+            normalizedAngle += 360;
+        }
+
+        console.log('[DirectionsService] getDirectionFromAngle - Input angle:', angle, 'Normalized:', normalizedAngle);
+
+        // Define angle ranges for each direction
+        // Math.atan2 returns: right=0°, down=90°, left=180°/-180°, up=-90°
+        // After normalization: right=0°, down=90°, left=180°, up=270°
+        let direction: Direction;
+        if (normalizedAngle >= 337.5 || normalizedAngle < 22.5) {
+            direction = 'right';
+        } else if (normalizedAngle >= 22.5 && normalizedAngle < 67.5) {
+            direction = 'down-right';
+        } else if (normalizedAngle >= 67.5 && normalizedAngle < 112.5) {
+            direction = 'down';
+        } else if (normalizedAngle >= 112.5 && normalizedAngle < 157.5) {
+            direction = 'down-left';
+        } else if (normalizedAngle >= 157.5 && normalizedAngle < 202.5) {
+            direction = 'left';
+        } else if (normalizedAngle >= 202.5 && normalizedAngle < 247.5) {
+            direction = 'up-left';
+        } else if (normalizedAngle >= 247.5 && normalizedAngle < 292.5) {
+            direction = 'up';
+        } else {
+            direction = 'up-right';
+        }
+        
+        console.log('[DirectionsService] getDirectionFromAngle - Output direction:', direction);
+        return direction;
+    }
 
 }

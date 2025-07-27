@@ -1,4 +1,4 @@
-import type { ICoord, ICharacter, IWeapon, IItem } from "../interfaces";
+import type { ICoord, ICharacter, IWeapon, IItem, Direction } from "../interfaces";
 import type { DeepReadonly } from "../helpers/types";
 
 /** Controls Events */
@@ -22,6 +22,7 @@ export enum ControlsEvent {
     createCharacter = 'ControlsEvent.createCharacter',
     closeCharacterCreator = 'ControlsEvent.closeCharacterCreator',
     openCharacterCreator = 'ControlsEvent.openCharacterCreator',
+    mousePositionUpdate = 'ControlsEvent.mousePositionUpdate',
 }
 
 export interface ControlsEventsMap {
@@ -71,4 +72,9 @@ export interface ControlsEventsMap {
     };
     [ControlsEvent.closeCharacterCreator]: null;
     [ControlsEvent.openCharacterCreator]: null;
+    [ControlsEvent.mousePositionUpdate]: {
+        characterName: string;
+        newDirection: Direction;
+        mouseCoord: DeepReadonly<ICoord>;
+    };
 }

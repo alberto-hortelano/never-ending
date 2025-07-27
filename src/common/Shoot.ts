@@ -7,6 +7,7 @@ import {
     GUIEvent, GUIEventsMap, StateChangeEventsMap,
     UpdateStateEvent, UpdateStateEventsMap,
 } from "./events";
+import { DirectionsService } from "./services/DirectionsService";
 
 export interface VisibleCell {
     coord: ICoord;
@@ -37,6 +38,7 @@ export class Shoot extends EventBus<
         super();
         this.listen(ControlsEvent.showShooting, characterName => this.onShowShooting(characterName));
         this.listen(ControlsEvent.characterClick, data => this.onCharacterClick(data));
+        this.listen(ControlsEvent.mousePositionUpdate, data => this.onMousePositionUpdate(data));
         
         // Clear shooting mode when popup is shown (other actions selected)
         this.listen(GUIEvent.popupShow, () => this.clearShootingHighlights());
@@ -215,6 +217,58 @@ export class Shoot extends EventBus<
             });
             
             this.clearShootingHighlights();
+        }
+    }
+    
+    private onMousePositionUpdate(data: ControlsEventsMap[ControlsEvent.mousePositionUpdate]) {
+        const { characterName, mouseCoord } = data;
+        
+        console.log('[Shoot] Mouse position update received:', { characterName, mouseCoord });
+        
+        // Only process if this is for the current shooting character
+        if (!this.shootingCharacter || this.shootingCharacter.name !== characterName) {
+            console.log('[Shoot] Not current shooting character. Current:', this.shootingCharacter?.name, 'Received:', characterName);
+            return;
+        }
+        
+        // Get character position from state
+        const character = this.state.findCharacter(characterName);
+        if (!character) {
+            console.log('[Shoot] Character not found in state:', characterName);
+            return;
+        }
+        
+        // Calculate angle from character to mouse
+        const dx = mouseCoord.x - character.position.x;
+        const dy = mouseCoord.y - character.position.y;
+        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        
+        console.log('[Shoot] Angle calculation - Character pos:', character.position, 'Mouse coord:', mouseCoord, 'dx:', dx, 'dy:', dy, 'angle:', angle);
+        
+        // Get the nearest direction
+        const newDirection = DirectionsService.getDirectionFromAngle(angle);
+        
+        console.log('[Shoot] New direction:', newDirection, 'Current direction:', character.direction);
+        
+        // Check if the direction actually changed
+        if (character.direction === newDirection) {
+            console.log('[Shoot] Direction unchanged:', newDirection);
+            return;
+        }
+        
+        console.log('[Shoot] Updating character direction from', character.direction, 'to', newDirection);
+        
+        // Update the character's direction
+        this.dispatch(UpdateStateEvent.characterDirection, {
+            characterName: characterName,
+            direction: newDirection
+        });
+        
+        // Recalculate and update the shooting range with the new direction
+        const updatedCharacter = this.state.findCharacter(characterName);
+        if (updatedCharacter) {
+            console.log('[Shoot] Recalculating shooting range for new direction');
+            this.showShootingRange(updatedCharacter);
         }
     }
 
