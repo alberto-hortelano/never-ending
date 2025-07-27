@@ -62,22 +62,27 @@ export class Actions extends Component {
         // Clear existing content
         this.actionsGrid.innerHTML = '';
 
-        // Create columns for each category
+        // Create rows for each category
         data.categories.forEach(category => {
-            const column = document.createElement('div');
-            column.className = 'action-column';
+            const row = document.createElement('div');
+            row.className = 'action-row';
 
             const header = document.createElement('h4');
             header.textContent = category.name;
-            column.appendChild(header);
+            row.appendChild(header);
+
+            const buttonsContainer = document.createElement('div');
+            buttonsContainer.className = 'action-buttons';
 
             category.actions.forEach(action => {
                 const button = this.createActionButton(action, data);
-                column.appendChild(button);
+                buttonsContainer.appendChild(button);
             });
 
+            row.appendChild(buttonsContainer);
+
             if (this.actionsGrid) {
-                this.actionsGrid.appendChild(column);
+                this.actionsGrid.appendChild(row);
             }
         });
     }

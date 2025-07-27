@@ -2,12 +2,12 @@
 @use 'sass:color';
 
 .actions-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    display: flex;
+    flex-direction: column;
     gap: $spacing-lg;
 }
 
-.action-column {
+.action-row {
     h4 {
         margin: 0 0 $spacing-sm 0;
         font-size: $font-size-sm;
@@ -20,16 +20,26 @@
     }
 }
 
+.action-buttons {
+    display: flex;
+    gap: $spacing-sm;
+    flex-wrap: wrap;
+    
+    // On smaller screens, allow buttons to wrap to next line
+    @include sm-down {
+        gap: $spacing-xs;
+    }
+}
+
 .action-button {
     display: flex;
     align-items: center;
     gap: $spacing-sm;
-    width: $spacing-100;
+    flex: 0 0 auto;
     background: $gray-600;
     border: $border-width solid $gray-450;
     color: $color-text-primary;
     padding: $spacing-sm $spacing-md;
-    margin-bottom: $spacing-xs;
     border-radius: $border-radius-base;
     cursor: pointer;
     font-size: $font-size-xs;
@@ -46,6 +56,10 @@
     .action-label {
         flex: 1;
         text-align: left;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     
     .action-cost {
@@ -82,7 +96,4 @@
         }
     }
 
-    &:last-child {
-        margin-bottom: 0;
-    }
 }
