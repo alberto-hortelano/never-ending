@@ -10,6 +10,7 @@ export default class TopBar extends Component {
     
     private players: string[] = [];
     private currentTurn = '';
+    private selectedCharacter = '';
     private networkService: NetworkService = NetworkService.getInstance();
     
     override async connectedCallback() {
@@ -41,6 +42,7 @@ export default class TopBar extends Component {
         
         // Listen for character selection
         this.listen(ControlsEvent.showActions, (characterName: string) => {
+            this.selectedCharacter = characterName;
             if (selectedCharacterElement) {
                 selectedCharacterElement.textContent = characterName;
             }
@@ -52,7 +54,8 @@ export default class TopBar extends Component {
         const pointsTextElement = root.querySelector('#points-text') as HTMLElement;
         
         this.listen(ActionEvent.update, (data) => {
-            if (actionPointsElement && pointsBarElement && pointsTextElement) {
+            // Only show action points for the selected character
+            if (data.characterName === this.selectedCharacter && actionPointsElement && pointsBarElement && pointsTextElement) {
                 const pointsLeft = data.characterActions.pointsLeft;
                 const percentage = pointsLeft; // Since max is 100, points = percentage
                 
@@ -77,6 +80,7 @@ export default class TopBar extends Component {
                 
                 // Clear selected character and hide action points if turn changed
                 if (this.currentTurn !== game.turn) {
+                    this.selectedCharacter = '';
                     if (selectedCharacterElement) {
                         selectedCharacterElement.textContent = '';
                     }
