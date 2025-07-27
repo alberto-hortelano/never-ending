@@ -1,4 +1,4 @@
-import { Direction } from "../interfaces";
+import { Direction, ICoord } from "../interfaces";
 
 export interface DirectionData {
     direction: Direction;
@@ -8,16 +8,41 @@ export interface DirectionData {
 }
 
 export class DirectionsService {
+    // Standardized angle system: right=0°, angles increase counter-clockwise
     private static readonly DIRECTION_DATA: DirectionData[] = [
-        { direction: 'up', label: '↑', position: 'top', angle: 180 },
-        { direction: 'up-right', label: '↗', position: 'top-right', angle: 135 },
-        { direction: 'right', label: '→', position: 'right', angle: 90 },
+        { direction: 'right', label: '→', position: 'right', angle: 0 },
         { direction: 'down-right', label: '↘', position: 'bottom-right', angle: 45 },
-        { direction: 'down', label: '↓', position: 'bottom', angle: 0 },
-        { direction: 'down-left', label: '↙', position: 'bottom-left', angle: 315 },
-        { direction: 'left', label: '←', position: 'left', angle: 270 },
-        { direction: 'up-left', label: '↖', position: 'top-left', angle: 225 }
+        { direction: 'down', label: '↓', position: 'bottom', angle: 90 },
+        { direction: 'down-left', label: '↙', position: 'bottom-left', angle: 135 },
+        { direction: 'left', label: '←', position: 'left', angle: 180 },
+        { direction: 'up-left', label: '↖', position: 'top-left', angle: 225 },
+        { direction: 'up', label: '↑', position: 'top', angle: 270 },
+        { direction: 'up-right', label: '↗', position: 'top-right', angle: 315 }
     ];
+    
+    // CSS rotation classes for character sprites
+    private static readonly ROTATION_CLASSES: Record<Direction, string> = {
+        'down': 'rotate-0',
+        'down-right': 'rotate-45',
+        'right': 'rotate-90',
+        'up-right': 'rotate-135',
+        'up': 'rotate-180',
+        'up-left': 'rotate-225',
+        'left': 'rotate-270',
+        'down-left': 'rotate-315'
+    };
+    
+    // Angle mappings for shooting calculations (matches Math.atan2 output)
+    private static readonly DIRECTION_ANGLES: Record<Direction, number> = {
+        'right': 0,
+        'down-right': 45,
+        'down': 90,
+        'down-left': 135,
+        'left': 180,
+        'up-left': -135,
+        'up': -90,
+        'up-right': -45
+    };
 
     private static readonly OPPOSITE_DIRECTIONS: Record<Direction, Direction> = {
         'up': 'down',
@@ -32,6 +57,35 @@ export class DirectionsService {
 
     public static getAllDirections(): DirectionData[] {
         return [...this.DIRECTION_DATA];
+    }
+    
+    public static getAllDirectionValues(): Direction[] {
+        return this.DIRECTION_DATA.map(d => d.direction);
+    }
+    
+    public static getDirectionAngle(direction: Direction): number {
+        return this.DIRECTION_ANGLES[direction];
+    }
+    
+    public static getRotationClass(direction: Direction): string {
+        return this.ROTATION_CLASSES[direction];
+    }
+    
+    public static calculateDirection(from: ICoord, to: ICoord): Direction {
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        
+        // Calculate direction including diagonals
+        if (dx > 0 && dy > 0) return 'down-right';
+        else if (dx > 0 && dy < 0) return 'up-right';
+        else if (dx < 0 && dy > 0) return 'down-left';
+        else if (dx < 0 && dy < 0) return 'up-left';
+        else if (dx > 0) return 'right';
+        else if (dx < 0) return 'left';
+        else if (dy > 0) return 'down';
+        else if (dy < 0) return 'up';
+        
+        return 'down'; // Default direction
     }
 
 

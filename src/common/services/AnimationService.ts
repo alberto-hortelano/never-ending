@@ -1,5 +1,6 @@
 import type { ICharacterAnimation, ICoord, Direction } from '../interfaces';
 import { EventBus, UpdateStateEvent, UpdateStateEventsMap, StateChangeEvent, StateChangeEventsMap } from '../events';
+import { DirectionsService } from './DirectionsService';
 
 export interface AnimationUpdate {
     characterId: string;
@@ -224,7 +225,7 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
         
         // Only calculate direction when we're actually moving between different cells
         if (fromIndex < toIndex && fromPos && toPos) {
-            currentDirection = this.calculateDirection(fromPos, toPos);
+            currentDirection = DirectionsService.calculateDirection(fromPos, toPos);
         }
         
         return {
@@ -255,22 +256,7 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
     /**
      * Calculate direction from one position to another
      */
-    private calculateDirection(from: ICoord, to: ICoord): Direction {
-        const dx = to.x - from.x;
-        const dy = to.y - from.y;
         
-        if (dx > 0 && dy > 0) return 'down-right';
-        if (dx > 0 && dy < 0) return 'up-right';
-        if (dx < 0 && dy > 0) return 'down-left';
-        if (dx < 0 && dy < 0) return 'up-left';
-        if (dx > 0) return 'right';
-        if (dx < 0) return 'left';
-        if (dy > 0) return 'down';
-        if (dy < 0) return 'up';
-        
-        return 'down'; // Default
-    }
-    
     /**
      * Complete an animation and clean up
      */
@@ -283,7 +269,7 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
             const finalPosition = animation.path[animation.path.length - 1];
             const secondLastPos = animation.path.length > 1 ? animation.path[animation.path.length - 2] : null;
             const finalDirection = (animation.path.length > 1 && secondLastPos && finalPosition) ? 
-                this.calculateDirection(secondLastPos, finalPosition) :
+                DirectionsService.calculateDirection(secondLastPos, finalPosition) :
                 (animation.toDirection || animation.fromDirection || 'down');
             
             // Set final position and remove 'walk' class

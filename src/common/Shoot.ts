@@ -18,17 +18,6 @@ export class Shoot extends EventBus<
     GUIEventsMap & ControlsEventsMap & StateChangeEventsMap,
     GUIEventsMap & ControlsEventsMap & UpdateStateEventsMap
 > {
-    static readonly directionAngles: Record<Direction, number> = {
-        'up': -90,
-        'up-right': -45,
-        'right': 0,
-        'down-right': 45,
-        'down': 90,
-        'down-left': 135,
-        'left': 180,
-        'up-left': -135
-    };
-
     private shootingCharacter?: DeepReadonly<ICharacter>;
     private visibleCells?: VisibleCell[];
 
@@ -53,7 +42,7 @@ export class Shoot extends EventBus<
     ): VisibleCell[] {
         const visibleCells: VisibleCell[] = [];
         const halfAngle = angleOfVision / 2;
-        const baseAngle = Shoot.directionAngles[direction];
+        const baseAngle = DirectionsService.getDirectionAngle(direction);
         const rangeSquared = range * range;
 
         // Pre-calculate angle bounds for early rejection

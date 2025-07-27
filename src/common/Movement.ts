@@ -8,6 +8,7 @@ import {
     UpdateStateEventsMap, StateChangeEvent, StateChangeEventsMap,
 } from "./events";
 import { animationService } from "./services/AnimationService";
+import { DirectionsService } from "./services/DirectionsService";
 
 export class Movement extends EventBus<
     GameEventsMap & ControlsEventsMap & StateChangeEventsMap,
@@ -73,7 +74,7 @@ export class Movement extends EventBus<
         if (character.path && character.path.length > 0) {
 
             // Calculate initial direction from current position to first path position
-            const initialDirection = this.calculateDirection(character.position, character.path[0]!) as Direction;
+            const initialDirection = DirectionsService.calculateDirection(character.position, character.path[0]!);
 
             // Calculate final direction based on last movement
             let finalDirection = initialDirection;
@@ -81,7 +82,7 @@ export class Movement extends EventBus<
                 const lastPos = character.path[character.path.length - 1];
                 const secondLastPos = character.path[character.path.length - 2];
                 if (lastPos && secondLastPos) {
-                    finalDirection = this.calculateDirection(secondLastPos, lastPos) as Direction;
+                    finalDirection = DirectionsService.calculateDirection(secondLastPos, lastPos);
                 }
             } else if (character.path.length === 1) {
                 // Single step movement - final direction is same as initial
@@ -219,28 +220,12 @@ export class Movement extends EventBus<
             data: { characterId: character.name }
         });
     }
-    private calculateDirection(from: ICoord, to: ICoord): Direction {
-        const dx = to.x - from.x;
-        const dy = to.y - from.y;
-
-        // Calculate direction including diagonals
-        if (dx > 0 && dy > 0) return 'down-right';
-        else if (dx > 0 && dy < 0) return 'up-right';
-        else if (dx < 0 && dy > 0) return 'down-left';
-        else if (dx < 0 && dy < 0) return 'up-left';
-        else if (dx > 0) return 'right';
-        else if (dx < 0) return 'left';
-        else if (dy > 0) return 'down';
-        else if (dy < 0) return 'up';
-
-        return 'down'; // Default direction
-    }
     private showPathPreview(destination: ICoord) {
         if (!this.movingCharacter || !this.reachableCells) return;
-        
+
         // Calculate path
         const path = calculatePath(this.movingCharacter.position, destination, this.state.map);
-        
+
         // Update UI state with path preview cells while preserving reachable cells
         this.dispatch(UpdateStateEvent.uiHighlights, {
             reachableCells: this.reachableCells,
