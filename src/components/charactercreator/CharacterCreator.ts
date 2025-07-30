@@ -4,6 +4,7 @@ import { CharacterCreationService } from '../../common/services/CharacterCreatio
 import Character from '../character/Character.js';
 import type { Direction, ICreatorData } from '../../common/interfaces.js';
 import { weapons } from '../../data/state.js';
+import { DirectionsService } from '../../common/services/DirectionsService.js';
 
 export default class CharacterCreator extends Component {
   protected override hasCss = true;
@@ -236,7 +237,7 @@ export default class CharacterCreator extends Component {
   }
 
   private rotateCharacter(direction: number) {
-    const directions: Direction[] = ['down', 'down-right', 'right', 'up-right', 'up', 'up-left', 'left', 'down-left'];
+    const directions = DirectionsService.getAllDirectionValues();
     const currentIndex = directions.indexOf(this.currentDirection);
     let newIndex = currentIndex + direction;
 

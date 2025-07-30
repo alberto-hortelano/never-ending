@@ -1,4 +1,3 @@
-import type { Actions } from "../actions/Actions";
 import type { SelectCharacter } from "../selectcharacter/SelectCharacter";
 import type { Conversation } from "../conversation/Conversation";
 import type { RotateSelector } from "../rotateselector/RotateSelector";
@@ -54,15 +53,16 @@ export class Popup extends Component {
     private setupEventListeners() {
         let isShowing = false;
 
-        this.listen(ControlsEvent.showActions, (characterName: ControlsEventsMap[ControlsEvent.showActions]) => {
-            isShowing = true;
-            this.showActions(characterName);
+        // Actions are now shown in the BottomBar, not in the popup
+        // this.listen(ControlsEvent.showActions, (characterName: ControlsEventsMap[ControlsEvent.showActions]) => {
+        //     isShowing = true;
+        //     this.showActions(characterName);
 
-            // Reset the flag after a short delay to allow the click event to finish bubbling
-            setTimeout(() => {
-                isShowing = false;
-            }, 50);
-        });
+        //     // Reset the flag after a short delay to allow the click event to finish bubbling
+        //     setTimeout(() => {
+        //         isShowing = false;
+        //     }, 50);
+        // });
 
         this.listen(ControlsEvent.showTalk, (data: ControlsEventsMap[ControlsEvent.showTalk]) => {
             isShowing = true;
@@ -132,12 +132,7 @@ export class Popup extends Component {
             e.stopPropagation();
         });
 
-        // Listen for action selections from child Actions component
-        this.addEventListener('action-selected', () => {
-            if (!this.isPinned) {
-                this.hide();
-            }
-        });
+        // Actions are now in BottomBar, so no need to listen for action-selected events
 
         // Listen for conversation updates from Conversation component
         this.addEventListener('conversation-updated', () => {
@@ -172,16 +167,6 @@ export class Popup extends Component {
         }
     }
 
-    private showActions(characterName: string) {
-        this.clearContent();
-
-        // Create and append actions component
-        const actionsComponent = document.createElement('actions-component') as Actions;
-        actionsComponent.setAttribute('character-name', characterName);
-        this.appendChild(actionsComponent);
-
-        this.show(`${characterName} - Actions`);
-    }
 
     private showTalk(data: ControlsEventsMap[ControlsEvent.showTalk]) {
         this.clearContent();

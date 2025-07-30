@@ -100,6 +100,12 @@ export class MapGenerator {
         // If map is all zeros, return as is
         if (firstRow === -1 || firstCol === -1) return;
         
+        // Add one row margin on all sides (if possible within original bounds)
+        firstRow = Math.max(0, firstRow - 1);
+        lastRow = Math.min(this.map.length - 1, lastRow + 1);
+        firstCol = Math.max(0, firstCol - 1);
+        lastCol = Math.min(this.width - 1, lastCol + 1);
+        
         // Create trimmed map
         const trimmedMap: number[][] = [];
         for (let y = firstRow; y <= lastRow; y++) {

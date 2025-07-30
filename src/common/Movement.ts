@@ -8,6 +8,7 @@ import {
     UpdateStateEventsMap, StateChangeEvent, StateChangeEventsMap,
 } from "./events";
 import { animationService } from "./services/AnimationService";
+import { DirectionsService } from "./services/DirectionsService";
 
 export class Movement extends EventBus<
     GameEventsMap & ControlsEventsMap & StateChangeEventsMap,
@@ -26,9 +27,12 @@ export class Movement extends EventBus<
         super();
         // Store references to listeners for cleanup
         this.addListener(ControlsEvent.cellClick, position => this.onCellClick(position));
+        this.addListener(ControlsEvent.cellMouseEnter, position => this.onCellMouseEnter(position));
+        this.addListener(ControlsEvent.cellMouseLeave, () => this.onCellMouseLeave());
         this.addListener(ControlsEvent.showMovement, character => this.onShowMovement(character));
         this.addListener(StateChangeEvent.characterPath, character => this.onCharacterPath(character));
         this.addListener(StateChangeEvent.uiAnimations, animations => this.onAnimationsChange(animations));
+        this.addListener(StateChangeEvent.uiInteractionMode, mode => this.onInteractionModeChange(mode));
     }
 
     private addListener<K extends keyof (GameEventsMap & ControlsEventsMap & StateChangeEventsMap)>(
@@ -50,12 +54,27 @@ export class Movement extends EventBus<
             this.selectDestination(this.movingCharacter, this.reachableCells, position);
         }
     }
+    private onCellMouseEnter(position: ControlsEventsMap[ControlsEvent.cellMouseEnter]) {
+        // Only show path preview during movement mode
+        if (this.movingCharacter && this.reachableCells?.find(c => c.x === position.x && c.y === position.y)) {
+            this.showPathPreview(position);
+        }
+    }
+    private onCellMouseLeave() {
+        this.clearPathPreview();
+    }
+    private onInteractionModeChange(mode: StateChangeEventsMap[StateChangeEvent.uiInteractionMode]) {
+        // Clear path preview when leaving movement mode
+        if (mode.type !== 'moving') {
+            this.clearPathPreview();
+        }
+    }
     private onCharacterPath(character: StateChangeEventsMap[StateChangeEvent.characterPath]) {
         // When a character path is set, create a movement animation
         if (character.path && character.path.length > 0) {
 
             // Calculate initial direction from current position to first path position
-            const initialDirection = this.calculateDirection(character.position, character.path[0]!) as Direction;
+            const initialDirection = DirectionsService.calculateDirection(character.position, character.path[0]!);
 
             // Calculate final direction based on last movement
             let finalDirection = initialDirection;
@@ -63,7 +82,7 @@ export class Movement extends EventBus<
                 const lastPos = character.path[character.path.length - 1];
                 const secondLastPos = character.path[character.path.length - 2];
                 if (lastPos && secondLastPos) {
-                    finalDirection = this.calculateDirection(secondLastPos, lastPos) as Direction;
+                    finalDirection = DirectionsService.calculateDirection(secondLastPos, lastPos);
                 }
             } else if (character.path.length === 1) {
                 // Single step movement - final direction is same as initial
@@ -201,20 +220,25 @@ export class Movement extends EventBus<
             data: { characterId: character.name }
         });
     }
-    private calculateDirection(from: ICoord, to: ICoord): Direction {
-        const dx = to.x - from.x;
-        const dy = to.y - from.y;
+    private showPathPreview(destination: ICoord) {
+        if (!this.movingCharacter || !this.reachableCells) return;
 
-        // Calculate direction including diagonals
-        if (dx > 0 && dy > 0) return 'down-right';
-        else if (dx > 0 && dy < 0) return 'up-right';
-        else if (dx < 0 && dy > 0) return 'down-left';
-        else if (dx < 0 && dy < 0) return 'up-left';
-        else if (dx > 0) return 'right';
-        else if (dx < 0) return 'left';
-        else if (dy > 0) return 'down';
-        else if (dy < 0) return 'up';
+        // Calculate path
+        const path = calculatePath(this.movingCharacter.position, destination, this.state.map);
 
-        return 'down'; // Default direction
+        // Update UI state with path preview cells while preserving reachable cells
+        this.dispatch(UpdateStateEvent.uiHighlights, {
+            reachableCells: this.reachableCells,
+            pathCells: path
+        });
+    }
+    private clearPathPreview() {
+        // Clear path preview in UI state but keep reachable cells
+        if (this.reachableCells) {
+            this.dispatch(UpdateStateEvent.uiHighlights, {
+                reachableCells: this.reachableCells,
+                pathCells: []
+            });
+        }
     }
 };

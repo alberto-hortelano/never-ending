@@ -3,6 +3,7 @@ import { ICoord } from "../interfaces";
 import { DeepReadonly } from "../helpers/types";
 import { State } from "../State";
 import { EventBus } from "../events";
+import { DirectionsService } from "./DirectionsService";
 
 export interface CharacterPalette {
   skin: string;
@@ -24,16 +25,6 @@ export class CharacterService extends EventBus {
     'rotate-180', 'rotate-225', 'rotate-270', 'rotate-315'
   ];
 
-  private static readonly DIRECTION_MAP: Record<Direction, string> = {
-    'down': 'rotate-0',
-    'down-right': 'rotate-45',
-    'right': 'rotate-90',
-    'up-right': 'rotate-135',
-    'up': 'rotate-180',
-    'up-left': 'rotate-225',
-    'left': 'rotate-270',
-    'down-left': 'rotate-315'
-  };
 
   private static readonly DEFAULT_PALETTE: CharacterPalette = {
     skin: 'black',
@@ -63,7 +54,7 @@ export class CharacterService extends EventBus {
   }
 
   public static getDirectionClass(direction: Direction): string {
-    return this.DIRECTION_MAP[direction] || 'rotate-0';
+    return DirectionsService.getRotationClass(direction) || 'rotate-0';
   }
 
   public static parseCharacterPalette(paletteString?: string): CharacterPalette {

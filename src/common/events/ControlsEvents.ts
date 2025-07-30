@@ -1,4 +1,4 @@
-import type { ICoord, ICharacter, IWeapon, IItem } from "../interfaces";
+import type { ICoord, ICharacter, IWeapon, IItem, Direction } from "../interfaces";
 import type { DeepReadonly } from "../helpers/types";
 
 /** Controls Events */
@@ -6,9 +6,12 @@ export enum ControlsEvent {
     showActions = 'ControlsEvent.showActions',
     showMovement = 'ControlsEvent.showMovement',
     showShooting = 'ControlsEvent.showShooting',
+    showAiming = 'ControlsEvent.showAiming',
     talk = 'ControlsEvent.talk',
     use = 'ControlsEvent.use',
     cellClick = 'ControlsEvent.cellClick',
+    cellMouseEnter = 'ControlsEvent.cellMouseEnter',
+    cellMouseLeave = 'ControlsEvent.cellMouseLeave',
     moveCharacter = 'ControlsEvent.moveCharacter',
     showTalk = 'ControlsEvent.showTalk',
     rotate = 'ControlsEvent.rotate',
@@ -20,15 +23,19 @@ export enum ControlsEvent {
     createCharacter = 'ControlsEvent.createCharacter',
     closeCharacterCreator = 'ControlsEvent.closeCharacterCreator',
     openCharacterCreator = 'ControlsEvent.openCharacterCreator',
+    mousePositionUpdate = 'ControlsEvent.mousePositionUpdate',
 }
 
 export interface ControlsEventsMap {
     [ControlsEvent.showActions]: ICharacter['name'];
     [ControlsEvent.showMovement]: ICharacter['name'];
     [ControlsEvent.showShooting]: ICharacter['name'];
+    [ControlsEvent.showAiming]: ICharacter['name'];
     [ControlsEvent.talk]: ICharacter['name'];
     [ControlsEvent.use]: ICharacter['name'];
     [ControlsEvent.cellClick]: DeepReadonly<ICoord>;
+    [ControlsEvent.cellMouseEnter]: DeepReadonly<ICoord>;
+    [ControlsEvent.cellMouseLeave]: DeepReadonly<ICoord>;
     [ControlsEvent.moveCharacter]: DeepReadonly<ICharacter>;
     [ControlsEvent.showTalk]: {
         talkingCharacter: DeepReadonly<ICharacter>;
@@ -67,4 +74,9 @@ export interface ControlsEventsMap {
     };
     [ControlsEvent.closeCharacterCreator]: null;
     [ControlsEvent.openCharacterCreator]: null;
+    [ControlsEvent.mousePositionUpdate]: {
+        characterName: string;
+        newDirection: Direction;
+        mouseCoord: DeepReadonly<ICoord>;
+    };
 }

@@ -4,7 +4,6 @@ import { ActionEvent, ActionEventsMap, ActionUpdateData } from "../../common/eve
 export class Actions extends Component {
     protected override hasCss = true;
     protected override hasHtml = false;
-    private pointsDisplay?: HTMLElement;
     private actionsGrid?: HTMLElement;
 
     override async connectedCallback() {
@@ -29,11 +28,6 @@ export class Actions extends Component {
     }
 
     private createUIStructure(root: ShadowRoot | HTMLElement): void {
-        // Create points display
-        this.pointsDisplay = document.createElement('div');
-        this.pointsDisplay.className = 'points-display';
-        root.appendChild(this.pointsDisplay);
-
         // Create actions grid
         this.actionsGrid = document.createElement('div');
         this.actionsGrid.className = 'actions-grid';
@@ -55,26 +49,12 @@ export class Actions extends Component {
         const characterName = this.getAttribute('character-name');
         if (data.characterName !== characterName) return;
 
-        if (!this.pointsDisplay || !this.actionsGrid) return;
-
-        // Update points display
-        this.updatePointsDisplay(data.characterActions.pointsLeft);
+        if (!this.actionsGrid) return;
 
         // Update actions grid
         this.updateActionsGrid(data);
     }
 
-    private updatePointsDisplay(pointsLeft: number): void {
-        if (!this.pointsDisplay) return;
-
-        const percentage = pointsLeft; // Since max is 100, points = percentage
-
-        this.pointsDisplay.innerHTML = `
-            <div class="points-bar" style="--points-percentage: ${percentage}%">
-                <span class="points-text">Action Points: ${pointsLeft}</span>
-            </div>
-        `;
-    }
 
     private updateActionsGrid(data: ActionUpdateData): void {
         if (!this.actionsGrid) return;
@@ -82,22 +62,27 @@ export class Actions extends Component {
         // Clear existing content
         this.actionsGrid.innerHTML = '';
 
-        // Create columns for each category
+        // Create rows for each category
         data.categories.forEach(category => {
-            const column = document.createElement('div');
-            column.className = 'action-column';
+            const row = document.createElement('div');
+            row.className = 'action-row';
 
             const header = document.createElement('h4');
             header.textContent = category.name;
-            column.appendChild(header);
+            row.appendChild(header);
+
+            const buttonsContainer = document.createElement('div');
+            buttonsContainer.className = 'action-buttons';
 
             category.actions.forEach(action => {
                 const button = this.createActionButton(action, data);
-                column.appendChild(button);
+                buttonsContainer.appendChild(button);
             });
 
+            row.appendChild(buttonsContainer);
+
             if (this.actionsGrid) {
-                this.actionsGrid.appendChild(column);
+                this.actionsGrid.appendChild(row);
             }
         });
     }
@@ -130,7 +115,7 @@ export class Actions extends Component {
             button.classList.add('disabled');
             button.disabled = true;
         }
-        
+
         // Disable shoot action if no ranged weapon
         if (action.id === 'shoot' && data.hasRangedWeapon === false) {
             button.classList.add('disabled');
@@ -166,7 +151,7 @@ export class Actions extends Component {
             // Ranged Combat
             'shoot': characterActions.rangedCombat.shoot,
             'aim': characterActions.rangedCombat.aim,
-            'suppress': characterActions.rangedCombat.suppress,
+            'overwatch': characterActions.rangedCombat.overwatch,
             'cover': characterActions.rangedCombat.cover,
             'throw': characterActions.rangedCombat.throw,
             // Close Combat

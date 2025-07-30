@@ -62,6 +62,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.listen(UpdateStateEvent.equipWeapon, (data) => this.onEquipWeapon(data));
         this.listen(UpdateStateEvent.unequipWeapon, (data) => this.onUnequipWeapon(data));
         this.listen(UpdateStateEvent.deductActionPoints, (data) => this.onDeductActionPoints(data));
+        this.listen(UpdateStateEvent.setPendingActionCost, (data) => this.onSetPendingActionCost(data));
         this.listen(UpdateStateEvent.resetActionPoints, (data) => this.onResetActionPoints(data));
         this.listen(UpdateStateEvent.damageCharacter, (data) => this.onDamageCharacter(data));
         this.listen(GameEvent.changeTurn, (data) => this.onChangeTurn(data));
@@ -269,6 +270,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.#characters.forEach(character => {
             if (character.player === data.turn) {
                 character.actions.pointsLeft = 100;
+                character.actions.pendingCost = 0; // Clear any pending costs
                 this.dispatch(StateChangeEvent.characterActions, structuredClone(character));
             }
         });
@@ -295,11 +297,25 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.dispatch(StateChangeEvent.characterActions, structuredClone(character));
         this.save();
     }
+    private onSetPendingActionCost(data: UpdateStateEventsMap[UpdateStateEvent.setPendingActionCost]) {
+        const character = this.#findCharacter(data.characterName);
+        if (!character) {
+            throw new Error(`No character "${data.characterName}" found`);
+        }
+        
+        // Set the pending action cost
+        character.actions.pendingCost = data.cost;
+        
+        // Dispatch change event
+        this.dispatch(StateChangeEvent.characterActions, structuredClone(character));
+        // Don't save for pending costs - they're temporary
+    }
     private onResetActionPoints(data: UpdateStateEventsMap[UpdateStateEvent.resetActionPoints]) {
         // Reset action points for all characters belonging to the specified player
         this.#characters.forEach(character => {
             if (character.player === data.player) {
                 character.actions.pointsLeft = 100;
+                character.actions.pendingCost = 0; // Clear any pending costs
                 this.dispatch(StateChangeEvent.characterActions, structuredClone(character));
             }
         });
@@ -502,7 +518,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
                 visualState: {
                     isHighlighted: true,
                     highlightType: 'path',
-                    classList: ['highlight']
+                    classList: ['path']
                 }
             });
         });

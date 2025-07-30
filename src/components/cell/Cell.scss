@@ -72,4 +72,5 @@
 :host(.path) {
     background-color: $color-path;
     border: $border-width solid $color-path-border;
+    z-index: 10;
 }

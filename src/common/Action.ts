@@ -26,8 +26,8 @@ export class Action extends EventBus<
             name: "Ranged Combat",
             actions: [
                 { id: "shoot", label: "Shoot", icon: "🔫", event: ControlsEvent.showShooting },
-                { id: "aim", label: "Aim", icon: "🎯", event: ControlsEvent.showMovement },
-                { id: "suppress", label: "Suppress", icon: "💥", event: ControlsEvent.showMovement },
+                { id: "aim", label: "Aim", icon: "🎯", event: ControlsEvent.showAiming },
+                { id: "overwatch", label: "Overwatch", icon: "💥", event: ControlsEvent.showMovement },
                 { id: "cover", label: "Cover", icon: "🛡️", event: ControlsEvent.showMovement },
                 { id: "throw", label: "Throw", icon: "🤾", event: ControlsEvent.showMovement }
             ]
@@ -80,11 +80,11 @@ export class Action extends EventBus<
     private handleActionRequest(characterName: string): void {
         // ALWAYS get fresh data from state, don't use cache for requests
         const character = this.findCharacterInState(characterName);
-        
+
         if (character) {
             // Update cache with fresh data
             this.characterActionsMap.set(characterName, character.actions);
-            
+
             const updateData: ActionUpdateData = {
                 categories: this.getActionsWithCosts(),
                 characterName: characterName,
@@ -96,11 +96,11 @@ export class Action extends EventBus<
             this.dispatch(ActionEvent.error, `Character ${characterName} not found`);
         }
     }
-    
+
     private characterHasRangedWeapon(character: DeepReadonly<ICharacter>): boolean {
         const primaryWeapon = character.inventory.equippedWeapons.primary;
         const secondaryWeapon = character.inventory.equippedWeapons.secondary;
-        
+
         return (primaryWeapon?.category === 'ranged') || (secondaryWeapon?.category === 'ranged');
     }
 
@@ -124,7 +124,7 @@ export class Action extends EventBus<
             // Ranged Combat
             'shoot': characterActions.rangedCombat.shoot,
             'aim': characterActions.rangedCombat.aim,
-            'suppress': characterActions.rangedCombat.suppress,
+            'overwatch': characterActions.rangedCombat.overwatch,
             'cover': characterActions.rangedCombat.cover,
             'throw': characterActions.rangedCombat.throw,
             // Close Combat
@@ -162,7 +162,7 @@ export class Action extends EventBus<
         }
 
         // For actions that don't have their own handlers yet, deduct points here
-        if (cost > 0 && ['use', 'inventory', 'aim', 'suppress', 'cover', 'throw', 'power-strike', 'slash', 'fast-attack', 'feint', 'break-guard'].includes(actionId)) {
+        if (cost > 0 && ['use', 'inventory', 'overwatch', 'cover', 'throw', 'power-strike', 'slash', 'fast-attack', 'feint', 'break-guard'].includes(actionId)) {
             this.dispatch(UpdateStateEvent.deductActionPoints, {
                 characterName: characterName,
                 actionId: actionId,

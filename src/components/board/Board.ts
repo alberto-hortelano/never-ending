@@ -1,7 +1,7 @@
-import { StateChangeEvent, StateChangeEventsMap, GUIEvent, GUIEventsMap, UpdateStateEvent } from "../../common/events";
+import { StateChangeEvent, StateChangeEventsMap, GUIEvent, GUIEventsMap, UpdateStateEvent, ControlsEvent } from "../../common/events";
 import { Component } from "../Component";
 import { DragScroll } from "../../common/helpers/DragScroll";
-import { ICoord, IProjectileState } from "../../common/interfaces";
+import { ICoord, IProjectileState, IInteractionMode } from "../../common/interfaces";
 import { BoardService } from "../../common/services/BoardService";
 import { ANIMATION_DURATIONS } from "../../common/constants";
 import "../projectile/Projectile";
@@ -11,6 +11,7 @@ export default class Board extends Component {
   private dragger?: DragScroll;
   protected override hasCss = true;
   protected override hasHtml = true;
+  private shootingCharacterName?: string;
 
   constructor() {
     super();
@@ -40,6 +41,16 @@ export default class Board extends Component {
     this.listen(StateChangeEvent.uiTransient, (transientUI) => {
       this.updateProjectiles([...transientUI.projectiles]);
     });
+    
+    // Listen for interaction mode changes
+    this.listen(StateChangeEvent.uiInteractionMode, (mode) => {
+      this.onInteractionModeChange(mode);
+    });
+    
+    // Listen for cell mouse enter events during shooting mode
+    this.listen(ControlsEvent.cellMouseEnter, (coord) => {
+      this.onCellMouseEnter(coord);
+    });
   }
 
   private isMobile(): boolean {
@@ -60,6 +71,10 @@ export default class Board extends Component {
       }
     });
     return root;
+  }
+  
+  disconnectedCallback() {
+    // Cleanup if needed
   }
 
 
@@ -162,6 +177,32 @@ export default class Board extends Component {
       if (!currentProjectileIds.has(id)) {
         this.querySelector(`#${id}`)?.remove();
       }
+    });
+  }
+  
+  private onInteractionModeChange(mode: IInteractionMode) {
+    console.log('[Board] Interaction mode changed:', mode);
+    if (mode.type === 'shooting' && mode.data) {
+      const shootingData = mode.data as { characterId: string };
+      console.log('[Board] Shooting mode enabled for character:', shootingData.characterId);
+      this.shootingCharacterName = shootingData.characterId;
+    } else {
+      console.log('[Board] Shooting mode disabled');
+      this.shootingCharacterName = undefined;
+    }
+  }
+  
+  private onCellMouseEnter(coord: ICoord) {
+    // Only process if we're in shooting mode
+    if (!this.shootingCharacterName) return;
+    
+    console.log('[Board] Cell mouse enter:', coord, 'Shooting character:', this.shootingCharacterName);
+    
+    // Dispatch the coordinate update to Shoot service
+    this.dispatch(ControlsEvent.mousePositionUpdate, {
+      characterName: this.shootingCharacterName,
+      newDirection: 'down', // Placeholder, will be calculated in Shoot service
+      mouseCoord: coord
     });
   }
 }

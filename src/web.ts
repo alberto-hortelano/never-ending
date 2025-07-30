@@ -9,6 +9,7 @@ import { Conversation } from "./common/Conversation";
 import { Action } from "./common/Action";
 import { Inventory } from "./common/services/Inventory";
 import { CharacterService } from "./common/services/CharacterService";
+import { AutoSelectCharacter } from "./common/services/AutoSelectCharacter";
 import { MultiplayerManager } from "./common/services/MultiplayerManager";
 import { GameEvent, EventBus } from "./common/events";
 import { initialState } from './data/state';
@@ -58,14 +59,16 @@ const play = (state?: State) => {
         new Rotate(gameState),
         new Inventory(gameState),
         new Conversation(),
-        new Action(gameState)
+        new Action(gameState),
+        new AutoSelectCharacter(gameState)
     );
 
     // Show game UI
     const container = document.querySelector('container-component');
     const turnIndicator = document.querySelector('turn-indicator');
     if (container) container.setAttribute('style', 'display: block;');
-    if (turnIndicator) turnIndicator.setAttribute('style', 'display: block;');
+    // Turn indicator functionality is now in TopBar, hide the original
+    if (turnIndicator) turnIndicator.setAttribute('style', 'display: none;');
 }
 
 // Initialize event listeners
