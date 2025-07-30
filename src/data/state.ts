@@ -169,7 +169,7 @@ export const baseCharacter: ICharacter = {
         rangedCombat: {
             shoot: 20,
             aim: 20,
-            suppress: 20,
+            overwatch: 20,
             cover: 20,
             throw: 20,
         },

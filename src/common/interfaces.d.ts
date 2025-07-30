@@ -84,7 +84,7 @@ export interface ICharacterActions {
     rangedCombat: {
         shoot: number;
         aim: number;
-        suppress: number;
+        overwatch: number;
         cover: number;
         throw: number;
     };

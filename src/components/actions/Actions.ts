@@ -115,7 +115,7 @@ export class Actions extends Component {
             button.classList.add('disabled');
             button.disabled = true;
         }
-        
+
         // Disable shoot action if no ranged weapon
         if (action.id === 'shoot' && data.hasRangedWeapon === false) {
             button.classList.add('disabled');
@@ -151,7 +151,7 @@ export class Actions extends Component {
             // Ranged Combat
             'shoot': characterActions.rangedCombat.shoot,
             'aim': characterActions.rangedCombat.aim,
-            'suppress': characterActions.rangedCombat.suppress,
+            'overwatch': characterActions.rangedCombat.overwatch,
             'cover': characterActions.rangedCombat.cover,
             'throw': characterActions.rangedCombat.throw,
             // Close Combat
