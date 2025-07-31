@@ -27,7 +27,7 @@ export class Action extends EventBus<
             actions: [
                 { id: "shoot", label: "Shoot", icon: "🔫", event: ControlsEvent.showShooting },
                 { id: "aim", label: "Aim", icon: "🎯", event: ControlsEvent.showAiming },
-                { id: "overwatch", label: "Overwatch", icon: "💥", event: ControlsEvent.showMovement },
+                { id: "overwatch", label: "Overwatch", icon: "💥", event: ControlsEvent.showOverwatch },
                 { id: "cover", label: "Cover", icon: "🛡️", event: ControlsEvent.showMovement },
                 { id: "throw", label: "Throw", icon: "🤾", event: ControlsEvent.showMovement }
             ]
@@ -162,7 +162,7 @@ export class Action extends EventBus<
         }
 
         // For actions that don't have their own handlers yet, deduct points here
-        if (cost > 0 && ['use', 'inventory', 'overwatch', 'cover', 'throw', 'power-strike', 'slash', 'fast-attack', 'feint', 'break-guard'].includes(actionId)) {
+        if (cost > 0 && ['use', 'inventory', 'cover', 'throw', 'power-strike', 'slash', 'fast-attack', 'feint', 'break-guard'].includes(actionId)) {
             this.dispatch(UpdateStateEvent.deductActionPoints, {
                 characterName: characterName,
                 actionId: actionId,

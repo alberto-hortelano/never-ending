@@ -69,6 +69,34 @@
     }
 }
 
+:host(.highlight-overwatch):after {
+    content: '';
+    // Blue-based color for overwatch
+    $overwatch-color: rgba(0, 100, 255, 0.4);
+    background-color: $overwatch-color;
+    box-shadow: 0 0 15px rgba(0, 100, 255, 0.6) inset;
+    cursor: crosshair;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    // Add animated border effect
+    border: 2px solid rgba(0, 150, 255, 0.8);
+    animation: overwatch-pulse 2s ease-in-out infinite;
+}
+
+@keyframes overwatch-pulse {
+    0%, 100% {
+        opacity: 0.8;
+        box-shadow: 0 0 15px rgba(0, 100, 255, 0.6) inset;
+    }
+    50% {
+        opacity: 1;
+        box-shadow: 0 0 25px rgba(0, 100, 255, 0.8) inset;
+    }
+}
+
 :host(.path) {
     background-color: $color-path;
     border: $border-width solid $color-path-border;

@@ -50,6 +50,8 @@ export enum UpdateStateEvent {
     uiHighlights = 'UpdateStateEvent.uiHighlights',
     /** Update interaction mode */
     uiInteractionMode = 'UpdateStateEvent.uiInteractionMode',
+    /** Set overwatch data for character */
+    setOverwatchData = 'UpdateStateEvent.setOverwatchData',
 }
 
 export interface UpdateStateEventsMap {
@@ -123,6 +125,15 @@ export interface UpdateStateEventsMap {
     [UpdateStateEvent.uiRemoveProjectile]: { projectileId: string };
     [UpdateStateEvent.uiHighlights]: Partial<DeepReadonly<IHighlightStates>>;
     [UpdateStateEvent.uiInteractionMode]: DeepReadonly<IInteractionMode>;
+    [UpdateStateEvent.setOverwatchData]: {
+        characterName: string;
+        active: boolean;
+        direction?: Direction;
+        position?: DeepReadonly<{ x: number; y: number }>;
+        range?: number;
+        shotsRemaining?: number;
+        watchedCells?: DeepReadonly<{ x: number; y: number }>[];
+    };
 }
 
 /** Events when the state has changed. All can listen. Only State can dispatch */
@@ -150,6 +161,8 @@ export enum StateChangeEvent {
     uiTransient = 'StateChangeEvent.uiTransient',
     /** UI interaction mode changed */
     uiInteractionMode = 'StateChangeEvent.uiInteractionMode',
+    /** Overwatch state changed */
+    overwatchData = 'StateChangeEvent.overwatchData',
 }
 
 export interface StateChangeEventsMap {
@@ -170,4 +183,12 @@ export interface StateChangeEventsMap {
     [StateChangeEvent.uiVisualStates]: DeepReadonly<IState['ui']['visualStates']>;
     [StateChangeEvent.uiTransient]: DeepReadonly<IState['ui']['transientUI']>;
     [StateChangeEvent.uiInteractionMode]: DeepReadonly<IState['ui']['interactionMode']>;
+    [StateChangeEvent.overwatchData]: DeepReadonly<Map<string, {
+        active: boolean;
+        direction: Direction;
+        position: { x: number; y: number };
+        range: number;
+        shotsRemaining: number;
+        watchedCells?: { x: number; y: number }[];
+    }>>;
 }

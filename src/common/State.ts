@@ -1,6 +1,7 @@
 import type { 
     ICoord, ICell, ICharacter, IState, IInventory, IWeapon, IUIState,
-    ICharacterAnimation, ICharacterVisualState, ICellVisualState, IHighlightStates, IPopupState
+    ICharacterAnimation, ICharacterVisualState, ICellVisualState, IHighlightStates, IPopupState,
+    IOverwatchData
 } from "./interfaces";
 
 import { UpdateStateEvent, EventBus, UpdateStateEventsMap, StateChangeEventsMap, StateChangeEvent, ControlsEventsMap, GameEvent, GameEventsMap } from "./events";
@@ -18,6 +19,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
     #characters: IState['characters'] = [];
     #messages: IState['messages'] = [];
     #ui: IState['ui'] = this.getInitialUIState();
+    #overwatchData: IState['overwatchData'] = new Map();
 
     private readonly storageName = 'state'; // could be random to hide from others
     private cellMap = new Map<ICoord, ICell>();
@@ -78,6 +80,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.listen(UpdateStateEvent.uiRemoveProjectile, (data) => this.onUIRemoveProjectile(data));
         this.listen(UpdateStateEvent.uiHighlights, (data) => this.onUIHighlights(data));
         this.listen(UpdateStateEvent.uiInteractionMode, (data) => this.onUIInteractionMode(data));
+        this.listen(UpdateStateEvent.setOverwatchData, (data) => this.onSetOverwatchData(data));
     }
     
     // Helper method to check if action is from current player's turn
@@ -548,6 +551,30 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.dispatch(StateChangeEvent.uiInteractionMode, structuredClone(this.#ui.interactionMode));
     }
     
+    private onSetOverwatchData(data: UpdateStateEventsMap[UpdateStateEvent.setOverwatchData]) {
+        const existingData = this.#overwatchData.get(data.characterName);
+        
+        if (!data.active) {
+            // Remove overwatch data
+            this.#overwatchData.delete(data.characterName);
+        } else {
+            // Update overwatch data
+            const newData: IOverwatchData = {
+                active: data.active,
+                direction: data.direction || existingData?.direction || 'down',
+                position: data.position || existingData?.position || { x: 0, y: 0 },
+                range: data.range || existingData?.range || 10,
+                shotsRemaining: data.shotsRemaining !== undefined ? data.shotsRemaining : existingData?.shotsRemaining || 0,
+                watchedCells: data.watchedCells || existingData?.watchedCells,
+                shotCells: existingData?.shotCells || new Set()
+            };
+            this.#overwatchData.set(data.characterName, newData);
+        }
+        
+        this.dispatch(StateChangeEvent.overwatchData, new Map(this.#overwatchData));
+        this.save();
+    }
+    
     // Setters
     private set game(game: IState['game']) {
         this.#game = game;
@@ -593,6 +620,9 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
     get ui(): DeepReadonly<IState['ui']> {
         return this.#ui;
     }
+    get overwatchData(): DeepReadonly<IState['overwatchData']> {
+        return this.#overwatchData;
+    }
     // Helpers
     #findCharacter(name: ICharacter['name']) {
         return this.#characters.find(character => character.name === name);
@@ -626,6 +656,10 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.characters = state.characters;
         this.messages = state.messages;
         this.ui = state.ui || this.getInitialUIState();
+        // Initialize overwatch data if present
+        if (state.overwatchData) {
+            this.#overwatchData = new Map(Object.entries(state.overwatchData));
+        }
     }
     // Public Helpers
     findCharacter(name: ICharacter['name']): DeepReadonly<ICharacter> | undefined {

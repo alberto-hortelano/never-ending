@@ -6,7 +6,7 @@ export default class Cell extends Component {
     static get observedAttributes() {
         return ['content'];
     }
-    static states = ['highlight', 'highlight-intensity', 'highlight-movement', 'highlight-path', 'highlight-attack', 'path'];
+    static states = ['highlight', 'highlight-intensity', 'highlight-movement', 'highlight-path', 'highlight-attack', 'highlight-overwatch', 'path'];
     protected override hasCss = true;
     protected override hasHtml = false;
     private coords: ICoord = { x: -1, y: -1 };

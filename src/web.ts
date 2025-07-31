@@ -3,6 +3,7 @@ import './components';
 import { Movement } from "./common/Movement";
 import { Talk } from "./common/Talk";
 import { Shoot } from "./common/Shoot";
+import { Overwatch } from "./common/Overwatch";
 import { Rotate } from "./common/Rotate";
 import { State } from "./common/State";
 import { Conversation } from "./common/Conversation";
@@ -56,6 +57,7 @@ const play = (state?: State) => {
         new Movement(gameState),
         new Talk(gameState),
         new Shoot(gameState),
+        new Overwatch(gameState),
         new Rotate(gameState),
         new Inventory(gameState),
         new Conversation(),

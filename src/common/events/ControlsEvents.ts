@@ -7,6 +7,7 @@ export enum ControlsEvent {
     showMovement = 'ControlsEvent.showMovement',
     showShooting = 'ControlsEvent.showShooting',
     showAiming = 'ControlsEvent.showAiming',
+    showOverwatch = 'ControlsEvent.showOverwatch',
     talk = 'ControlsEvent.talk',
     use = 'ControlsEvent.use',
     cellClick = 'ControlsEvent.cellClick',
@@ -31,6 +32,7 @@ export interface ControlsEventsMap {
     [ControlsEvent.showMovement]: ICharacter['name'];
     [ControlsEvent.showShooting]: ICharacter['name'];
     [ControlsEvent.showAiming]: ICharacter['name'];
+    [ControlsEvent.showOverwatch]: ICharacter['name'];
     [ControlsEvent.talk]: ICharacter['name'];
     [ControlsEvent.use]: ICharacter['name'];
     [ControlsEvent.cellClick]: DeepReadonly<ICoord>;
