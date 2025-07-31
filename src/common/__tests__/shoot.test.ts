@@ -421,8 +421,10 @@ describe('Shoot', () => {
                 type: 'weapon',
                 weaponType: 'oneHanded',
                 category: 'ranged',
+                class: 'pistol',
                 damage: 20,
-                range: 15
+                range: 15,
+                cost: 100
             };
 
             mockState.findCharacter.mockImplementation((name: string) => {
@@ -468,8 +470,10 @@ describe('Shoot', () => {
                 type: 'weapon',
                 weaponType: 'twoHanded',
                 category: 'ranged',
+                class: 'rifle',
                 damage: 50,
-                range: 20
+                range: 20,
+                cost: 200
             };
 
             mockState.findCharacter.mockImplementation((name: string) => {
@@ -530,6 +534,10 @@ describe('Shoot', () => {
         });
 
         it('should dispatch damageCharacter event to update health', () => {
+            // Mock Math.random to ensure hit
+            const originalRandom = Math.random;
+            Math.random = jest.fn(() => 0.1); // Always hit
+
             const targetCharacter = createMockCharacter({
                 name: 'target',
                 position: { x: 7, y: 5 },
@@ -548,8 +556,10 @@ describe('Shoot', () => {
                 type: 'weapon',
                 weaponType: 'oneHanded',
                 category: 'ranged',
+                class: 'pistol',
                 damage: 20,
-                range: 15
+                range: 15,
+                cost: 100
             };
 
             mockState.findCharacter.mockImplementation((name: string) => {
@@ -581,9 +591,16 @@ describe('Shoot', () => {
             const damageCall = damageSpy.mock.calls[0][0];
             expect(damageCall.damage).toBeGreaterThan(0);
             expect(damageCall.damage).toBeLessThanOrEqual(20); // Max weapon damage
+
+            // Restore original Math.random
+            Math.random = originalRandom;
         });
 
         it('should apply distance falloff to damage', () => {
+            // Mock Math.random to ensure hits (value < hit chance)
+            const originalRandom = Math.random;
+            Math.random = jest.fn(() => 0.1); // Always hit
+
             // Create two targets at different distances
             const closeTarget = createMockCharacter({
                 name: 'closeTarget',
@@ -607,8 +624,10 @@ describe('Shoot', () => {
                 type: 'weapon',
                 weaponType: 'twoHanded',
                 category: 'ranged',
+                class: 'rifle',
                 damage: 50,
-                range: 20
+                range: 20,
+                cost: 200
             };
 
             mockState.findCharacter.mockImplementation((name: string) => {
@@ -646,6 +665,9 @@ describe('Shoot', () => {
             expect(closeDamage).toBeGreaterThan(farDamage);
             expect(closeDamage).toBeLessThanOrEqual(50); // Max weapon damage
             expect(farDamage).toBeGreaterThan(0);
+
+            // Restore original Math.random
+            Math.random = originalRandom;
         });
     });
 

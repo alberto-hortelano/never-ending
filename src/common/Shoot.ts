@@ -15,6 +15,21 @@ export interface VisibleCell {
     intensity: number; // 0-1, where 1 is fully visible
 }
 
+// Constants for shooting mechanics
+const SHOOT_CONSTANTS = {
+    DEFAULT_ANGLE_OF_VISION: 120,
+    DEFAULT_UNARMED_DAMAGE: 5,
+    DEFAULT_UNARMED_RANGE: 10,
+    VISIBILITY_THRESHOLD: 0.01,
+    DISTANCE_DAMAGE_FALLOFF: 0.5, // 50% damage reduction at max range
+    AIM_RANGE_BONUS: 0.5, // 50% range increase per aim level
+    AIM_ACCURACY_BONUS: 0.15, // 15% accuracy increase per aim level
+    BASE_ACCURACY: 0.7, // 70% base hit chance
+    CRITICAL_HIT_BASE_CHANCE: 0.05, // 5% base critical chance
+    CRITICAL_HIT_AIM_BONUS: 0.05, // 5% additional critical chance per aim level
+    CRITICAL_HIT_MULTIPLIER: 2.0, // Double damage on critical hits
+} as const;
+
 export class Shoot extends EventBus<
     GUIEventsMap & ControlsEventsMap & StateChangeEventsMap & ActionEventsMap,
     GUIEventsMap & ControlsEventsMap & UpdateStateEventsMap & ActionEventsMap
@@ -31,7 +46,7 @@ export class Shoot extends EventBus<
         this.listen(ControlsEvent.showAiming, characterName => this.onShowAiming(characterName));
         this.listen(ControlsEvent.characterClick, data => this.onCharacterClick(data));
         this.listen(ControlsEvent.mousePositionUpdate, data => this.onMousePositionUpdate(data));
-        
+
         // Clear shooting mode when popup is shown (other actions selected)
         this.listen(GUIEvent.popupShow, () => this.clearShootingHighlights());
     }
@@ -51,11 +66,11 @@ export class Shoot extends EventBus<
         // Pre-calculate angle bounds for early rejection
         const angleRadians = baseAngle * Math.PI / 180;
         const halfAngleRadians = halfAngle * Math.PI / 180;
-        
+
         // Calculate sector bounds for early rejection
         const sectorMinAngle = angleRadians - halfAngleRadians;
         const sectorMaxAngle = angleRadians + halfAngleRadians;
-        
+
         // Pre-calculate cos/sin for sector bounds
         const cosMin = Math.cos(sectorMinAngle);
         const sinMin = Math.sin(sectorMinAngle);
@@ -72,7 +87,7 @@ export class Shoot extends EventBus<
         for (let y = minY; y <= maxY; y++) {
             for (let x = minX; x <= maxX; x++) {
                 if (x === position.x && y === position.y) continue; // Skip origin
-                
+
                 const dx = x - position.x;
                 const dy = y - position.y;
                 const distanceSquared = dx * dx + dy * dy;
@@ -84,7 +99,7 @@ export class Shoot extends EventBus<
                 // This eliminates cells clearly outside the cone of vision
                 const crossMin = dx * sinMin - dy * cosMin;
                 const crossMax = dx * sinMax - dy * cosMax;
-                
+
                 // If both cross products have the same sign, the point is outside the sector
                 if (crossMin > 0 && crossMax > 0) continue;
                 if (crossMin < 0 && crossMax < 0) continue;
@@ -109,9 +124,9 @@ export class Shoot extends EventBus<
                         const angleVisibility = this.calculateAngleVisibility(relativeAngle, halfAngle);
                         const distance = Math.sqrt(distanceSquared);
                         const distanceVisibility = this.calculateDistanceVisibility(distance, range);
-                        
+
                         const intensity = angleVisibility * distanceVisibility;
-                        if (intensity > 0.01) { // Threshold to avoid very dim cells
+                        if (intensity > SHOOT_CONSTANTS.VISIBILITY_THRESHOLD) { // Threshold to avoid very dim cells
                             visibleCells.push({
                                 coord: { x, y },
                                 intensity
@@ -127,38 +142,35 @@ export class Shoot extends EventBus<
 
     // Listeners
     private onShowShooting(characterName: ControlsEventsMap[ControlsEvent.showShooting]) {
-        console.log('[Shoot] onShowShooting called for character:', characterName);
         const character = this.state.findCharacter(characterName);
         if (!character) {
-            console.log('[Shoot] Character not found');
+            console.error('[Shoot] Character not found');
             return;
         }
 
         // Check if the character belongs to the current turn
         const currentTurn = this.state.game.turn;
         if (character.player !== currentTurn) {
-            console.log('[Shoot] Not current turn - character player:', character.player, 'current turn:', currentTurn);
+            console.error('[Shoot] Not current turn - character player:', character.player, 'current turn:', currentTurn);
             return;
         }
 
         this.aimLevel = 0; // Reset aim level when entering shoot mode
-        
+
         // Set initial pending cost (just shoot cost)
         const shootCost = character.actions.rangedCombat.shoot;
         this.dispatch(UpdateStateEvent.setPendingActionCost, {
             characterName: characterName,
             cost: shootCost
         });
-        
+
         this.showShootingRange(character);
     }
 
     private onShowAiming(characterName: ControlsEventsMap[ControlsEvent.showAiming]) {
-        console.log('[Shoot] onShowAiming called for character:', characterName);
-        
         // Only process if we're already in shooting mode with this character
         if (!this.shootingCharacter || this.shootingCharacter.name !== characterName) {
-            console.log('[Shoot] Not in shooting mode or different character');
+            console.error('[Shoot] Not in shooting mode or different character');
             // If not in shooting mode, enter shooting mode first
             this.onShowShooting(characterName);
             return;
@@ -169,16 +181,14 @@ export class Shoot extends EventBus<
         const aimCost = this.shootingCharacter.actions.rangedCombat.aim;
         const newPendingCost = shootCost + (aimCost * (this.aimLevel + 1));
         const pointsLeft = this.shootingCharacter.actions.pointsLeft;
-        
+
         if (newPendingCost > pointsLeft) {
-            console.log('[Shoot] Not enough points for another aim. Points left:', pointsLeft, 'New cost would be:', newPendingCost);
             this.dispatch(ActionEvent.error, `Not enough action points to aim again. Need ${newPendingCost}, have ${pointsLeft}`);
             return;
         }
 
         // Increment aim level
         this.aimLevel++;
-        console.log('[Shoot] Aim level increased to:', this.aimLevel);
 
         // Update pending cost
         this.dispatch(UpdateStateEvent.setPendingActionCost, {
@@ -189,7 +199,7 @@ export class Shoot extends EventBus<
         // Get updated character state
         const character = this.state.findCharacter(characterName);
         if (!character) {
-            console.log('[Shoot] Character not found');
+            console.error('[Shoot] Character not found');
             return;
         }
 
@@ -198,72 +208,86 @@ export class Shoot extends EventBus<
     }
 
     private onCharacterClick(data: ControlsEventsMap[ControlsEvent.characterClick]) {
-        console.log('[Shoot] onCharacterClick called:', data);
-        
         if (!this.shootingCharacter || !this.visibleCells) {
-            console.log('[Shoot] No shooting character or visible cells');
+            console.error('[Shoot] No shooting character or visible cells');
             return;
         }
-        
+
         const { characterName, position } = data;
-        
+
         // Check if clicked position is in a visible cell
-        const isInVisibleCell = this.visibleCells.find(vc => 
+        const isInVisibleCell = this.visibleCells.find(vc =>
             vc.coord.x === position.x && vc.coord.y === position.y
         );
-        
-        console.log('[Shoot] Is in visible cell:', !!isInVisibleCell);
-        
+
         if (isInVisibleCell) {
             // Get the target character
             const targetCharacter = this.state.findCharacter(characterName);
-            
-            console.log('[Shoot] Target character:', targetCharacter?.name, 'Shooter:', this.shootingCharacter.name);
-            
+
             if (targetCharacter && targetCharacter.name !== this.shootingCharacter.name) {
                 // Show projectile animation
                 const weapon = this.getEquippedRangedWeapon(this.shootingCharacter);
                 const projectileType = weapon?.category === 'ranged' && weapon.damage > 20 ? 'laser' : 'bullet';
-                
-                console.log('[Shoot] Firing at target:', targetCharacter.name);
-                
+
                 this.dispatch(GUIEvent.shootProjectile, {
                     from: this.shootingCharacter.position,
                     to: position,
                     type: projectileType
                 });
-                
-                // Calculate damage based on equipped weapon
-                const baseDamage = this.getWeaponDamage(this.shootingCharacter);
-                
-                // Get distance for damage falloff
+
+                // Calculate hit chance
                 const distance = this.getDistance(this.shootingCharacter.position, position);
                 const maxRange = this.getWeaponRange(this.shootingCharacter);
-                
-                // Apply distance falloff (100% damage at point blank, 50% at max range)
-                const distanceFactor = 1 - (distance / maxRange) * 0.5;
-                const finalDamage = Math.round(baseDamage * distanceFactor);
-                
-                // Apply damage to target immediately
-                this.dispatch(UpdateStateEvent.damageCharacter, {
-                    targetName: targetCharacter.name,
-                    damage: finalDamage,
-                    attackerName: this.shootingCharacter.name
-                });
-                
+                const hitChance = this.calculateHitChance(distance, maxRange);
+
+                // Check if the shot hits
+                if (this.rollHit(hitChance)) {
+                    // Calculate damage based on equipped weapon
+                    const baseDamage = this.getWeaponDamage(this.shootingCharacter);
+
+                    // Apply distance falloff
+                    const distanceFactor = 1 - (distance / maxRange) * SHOOT_CONSTANTS.DISTANCE_DAMAGE_FALLOFF;
+                    let finalDamage = Math.round(baseDamage * distanceFactor);
+
+                    // Check for critical hit
+                    const critChance = this.calculateCriticalChance();
+                    const isCritical = this.rollCritical(critChance);
+                    
+                    if (isCritical) {
+                        finalDamage = Math.round(finalDamage * SHOOT_CONSTANTS.CRITICAL_HIT_MULTIPLIER);
+                    }
+
+                    // Dispatch damage number event for visual feedback
+                    this.dispatch(GUIEvent.damageNumber, {
+                        position: position,
+                        damage: finalDamage,
+                        isCritical: isCritical
+                    });
+
+                    // Apply damage to target
+                    this.dispatch(UpdateStateEvent.damageCharacter, {
+                        targetName: targetCharacter.name,
+                        damage: finalDamage,
+                        attackerName: this.shootingCharacter.name
+                    });
+                } else {
+                    // Shot missed
+                    this.dispatch(ActionEvent.error, `Shot missed! (${Math.round(hitChance * 100)}% chance)`);
+                }
+
             }
-            
+
             // Deduct action points for shooting and aiming
             const shootCost = this.shootingCharacter.actions.rangedCombat.shoot;
             const aimCost = this.shootingCharacter.actions.rangedCombat.aim * this.aimLevel;
-            
+
             // Deduct shoot points
             this.dispatch(UpdateStateEvent.deductActionPoints, {
                 characterName: this.shootingCharacter.name,
                 actionId: 'shoot',
                 cost: shootCost
             });
-            
+
             // Deduct aim points if any
             if (this.aimLevel > 0) {
                 this.dispatch(UpdateStateEvent.deductActionPoints, {
@@ -272,59 +296,49 @@ export class Shoot extends EventBus<
                     cost: aimCost
                 });
             }
-            
+
             this.clearShootingHighlights();
         }
     }
-    
+
     private onMousePositionUpdate(data: ControlsEventsMap[ControlsEvent.mousePositionUpdate]) {
         const { characterName, mouseCoord } = data;
-        
-        console.log('[Shoot] Mouse position update received:', { characterName, mouseCoord });
-        
+
         // Only process if this is for the current shooting character
         if (!this.shootingCharacter || this.shootingCharacter.name !== characterName) {
-            console.log('[Shoot] Not current shooting character. Current:', this.shootingCharacter?.name, 'Received:', characterName);
+            console.error('[Shoot] Not current shooting character. Current:', this.shootingCharacter?.name, 'Received:', characterName);
             return;
         }
-        
+
         // Get character position from state
         const character = this.state.findCharacter(characterName);
         if (!character) {
-            console.log('[Shoot] Character not found in state:', characterName);
+            console.error('[Shoot] Character not found in state:', characterName);
             return;
         }
-        
+
         // Calculate angle from character to mouse
         const dx = mouseCoord.x - character.position.x;
         const dy = mouseCoord.y - character.position.y;
         const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-        
-        console.log('[Shoot] Angle calculation - Character pos:', character.position, 'Mouse coord:', mouseCoord, 'dx:', dx, 'dy:', dy, 'angle:', angle);
-        
+
         // Get the nearest direction
         const newDirection = DirectionsService.getDirectionFromAngle(angle);
-        
-        console.log('[Shoot] New direction:', newDirection, 'Current direction:', character.direction);
-        
+
         // Check if the direction actually changed
         if (character.direction === newDirection) {
-            console.log('[Shoot] Direction unchanged:', newDirection);
             return;
         }
-        
-        console.log('[Shoot] Updating character direction from', character.direction, 'to', newDirection);
-        
+
         // Update the character's direction
         this.dispatch(UpdateStateEvent.characterDirection, {
             characterName: characterName,
             direction: newDirection
         });
-        
+
         // Recalculate and update the shooting range with the new direction
         const updatedCharacter = this.state.findCharacter(characterName);
         if (updatedCharacter) {
-            console.log('[Shoot] Recalculating shooting range for new direction');
             this.showShootingRange(updatedCharacter);
         }
     }
@@ -332,7 +346,7 @@ export class Shoot extends EventBus<
     // Helpers
     private showShootingRange(character: DeepReadonly<ICharacter>) {
         const range = this.getWeaponRange(character);
-        const angleOfVision = 120; // Default field of vision
+        const angleOfVision = SHOOT_CONSTANTS.DEFAULT_ANGLE_OF_VISION;
 
         this.shootingCharacter = character;
         this.visibleCells = this.calculateVisibleCells(
@@ -346,9 +360,8 @@ export class Shoot extends EventBus<
         // Update interaction mode to shooting
         const weapon = this.getEquippedRangedWeapon(character);
         const weaponClass = weapon?.class || 'unarmed';
-        
+
         // Add shoot and weapon class when entering shooting mode
-        console.log('[Shoot] Entering shooting mode - Adding shoot class to character:', character.name, 'with weapon class:', weaponClass);
         this.dispatch(UpdateStateEvent.uiCharacterVisual, {
             characterId: character.name,
             visualState: {
@@ -356,7 +369,7 @@ export class Shoot extends EventBus<
                 weaponClass: weaponClass
             }
         });
-        
+
         if (weapon) {
             this.dispatch(UpdateStateEvent.uiInteractionMode, {
                 type: 'shooting',
@@ -383,10 +396,10 @@ export class Shoot extends EventBus<
                 classList: ['highlight', 'highlight-intensity']
             }
         }));
-        
+
         // Dispatch a single batch update instead of individual updates
         this.dispatch(UpdateStateEvent.uiCellVisualBatch, { updates: cellUpdates });
-        
+
         // Skip compatibility events in production since there are no listeners
         if (typeof jest !== 'undefined') {
             // Only dispatch in test environment
@@ -402,26 +415,25 @@ export class Shoot extends EventBus<
             this.dispatch(UpdateStateEvent.uiHighlights, {
                 targetableCells: []
             });
-            
+
             // Batch clear cell visual states
             const cellUpdates = this.visibleCells.map(vc => ({
                 cellKey: `${vc.coord.x},${vc.coord.y}`,
                 visualState: null
             }));
-            
+
             // Dispatch a single batch update to clear all cells
             this.dispatch(UpdateStateEvent.uiCellVisualBatch, { updates: cellUpdates });
-            
+
             // Skip compatibility events in production
             if (typeof jest !== 'undefined') {
                 this.visibleCells.forEach(vc => {
                     this.dispatch(GUIEvent.cellReset, vc.coord, JSON.stringify(vc.coord));
                 });
             }
-            
+
             // Remove shoot class when exiting shooting mode
             if (this.shootingCharacter) {
-                console.log('[Shoot] Exiting shooting mode - Removing shoot class from character:', this.shootingCharacter.name);
                 this.dispatch(UpdateStateEvent.uiCharacterVisual, {
                     characterId: this.shootingCharacter.name,
                     visualState: {
@@ -429,9 +441,9 @@ export class Shoot extends EventBus<
                     }
                 });
             }
-            
+
             this.visibleCells = undefined;
-            
+
             // Clear pending cost when exiting shooting mode
             if (this.shootingCharacter) {
                 this.dispatch(UpdateStateEvent.setPendingActionCost, {
@@ -439,10 +451,10 @@ export class Shoot extends EventBus<
                     cost: 0
                 });
             }
-            
+
             this.shootingCharacter = undefined;
             this.aimLevel = 0; // Reset aim level
-            
+
             // Reset interaction mode to normal
             this.dispatch(UpdateStateEvent.uiInteractionMode, {
                 type: 'normal'
@@ -510,27 +522,56 @@ export class Shoot extends EventBus<
     private getEquippedRangedWeapon(character: DeepReadonly<ICharacter>) {
         const primaryWeapon = character.inventory.equippedWeapons.primary;
         const secondaryWeapon = character.inventory.equippedWeapons.secondary;
-        
+
         if (primaryWeapon && primaryWeapon.category === 'ranged') {
             return primaryWeapon;
         }
-        
+
         if (secondaryWeapon && secondaryWeapon.category === 'ranged') {
             return secondaryWeapon;
         }
-        
+
         return null;
     }
 
     private getWeaponDamage(character: DeepReadonly<ICharacter>): number {
         const weapon = this.getEquippedRangedWeapon(character);
-        return weapon ? weapon.damage : 5; // Default unarmed damage
+        return weapon ? weapon.damage : SHOOT_CONSTANTS.DEFAULT_UNARMED_DAMAGE;
     }
 
     private getWeaponRange(character: DeepReadonly<ICharacter>): number {
         const weapon = this.getEquippedRangedWeapon(character);
-        const baseRange = weapon ? weapon.range : 10; // Default range for unarmed/throwing
-        // Apply aim bonus: 50% increase per aim level
-        return baseRange * (1 + 0.5 * this.aimLevel);
+        const baseRange = weapon ? weapon.range : SHOOT_CONSTANTS.DEFAULT_UNARMED_RANGE;
+        // Apply aim bonus
+        return baseRange * (1 + SHOOT_CONSTANTS.AIM_RANGE_BONUS * this.aimLevel);
+    }
+
+    private calculateHitChance(distance: number, maxRange: number): number {
+        // Base accuracy
+        let accuracy = SHOOT_CONSTANTS.BASE_ACCURACY;
+        
+        // Add aim level bonus
+        accuracy += this.aimLevel * SHOOT_CONSTANTS.AIM_ACCURACY_BONUS;
+        
+        // Apply distance penalty (no penalty at point blank, max penalty at max range)
+        const distancePenalty = (distance / maxRange) * 0.3; // Up to 30% penalty
+        accuracy -= distancePenalty;
+        
+        // Clamp between 0.05 (5% minimum) and 0.95 (95% maximum)
+        return Math.max(0.05, Math.min(0.95, accuracy));
+    }
+
+    private calculateCriticalChance(): number {
+        const baseChance = SHOOT_CONSTANTS.CRITICAL_HIT_BASE_CHANCE;
+        const aimBonus = this.aimLevel * SHOOT_CONSTANTS.CRITICAL_HIT_AIM_BONUS;
+        return Math.min(0.5, baseChance + aimBonus); // Cap at 50%
+    }
+
+    private rollHit(hitChance: number): boolean {
+        return Math.random() < hitChance;
+    }
+
+    private rollCritical(critChance: number): boolean {
+        return Math.random() < critChance;
     }
 }

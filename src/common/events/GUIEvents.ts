@@ -12,6 +12,7 @@ export enum GUIEvent {
     shootProjectile = 'GUIEvent.shootProjectile',
     shootingModeStart = 'GUIEvent.shootingModeStart',
     shootingModeEnd = 'GUIEvent.shootingModeEnd',
+    damageNumber = 'GUIEvent.damageNumber',
 }
 
 export interface GUIEventsMap {
@@ -28,4 +29,9 @@ export interface GUIEventsMap {
     }>;
     [GUIEvent.shootingModeStart]: void;
     [GUIEvent.shootingModeEnd]: void;
+    [GUIEvent.damageNumber]: DeepReadonly<{
+        position: ICoord;
+        damage: number;
+        isCritical: boolean;
+    }>;
 }
