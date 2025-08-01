@@ -63,11 +63,6 @@ export default class Cell extends Component {
         this.dispatch(ControlsEvent.cellMouseLeave, this.coords);
     }
     private applyVisualState(visualState: ICellVisualState) {
-        // Debug logging for cells with multiple states
-        if (visualState.highlightTypes && visualState.highlightTypes.length > 1) {
-            console.log(`[Cell ${this.cellKey}] Multiple highlight types:`, visualState.highlightTypes);
-        }
-
         // Use requestAnimationFrame to batch DOM updates
         requestAnimationFrame(() => {
             // Reset classes

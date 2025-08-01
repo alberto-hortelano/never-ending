@@ -88,7 +88,6 @@
     // Blue-based color for overwatch
     $overwatch-color: rgba(0, 100, 255, 0.4);
     background-color: $overwatch-color;
-    box-shadow: 0 0 15px rgba(0, 100, 255, 0.6) inset;
     cursor: crosshair;
     position: absolute;
     top: 0;
@@ -97,18 +96,6 @@
     height: 100%;
     // Add animated border effect
     border: 2px solid rgba(0, 150, 255, 0.8);
-    animation: overwatch-pulse 2s ease-in-out infinite;
-}
-
-@keyframes overwatch-pulse {
-    0%, 100% {
-        opacity: 0.8;
-        box-shadow: 0 0 15px rgba(0, 100, 255, 0.6) inset;
-    }
-    50% {
-        opacity: 1;
-        box-shadow: 0 0 25px rgba(0, 100, 255, 0.8) inset;
-    }
 }
 
 :host(.path) {
@@ -121,10 +108,7 @@
 :host(.highlight-overwatch.highlight-movement):after {
     content: '';
     // Solid purple/magenta color to clearly indicate combined state
-    background-color: rgba(180, 0, 255, 0.35);
-    box-shadow: 
-        0 0 20px rgba(180, 0, 255, 0.7) inset,
-        0 0 40px rgba(180, 0, 255, 0.4) inset;
+    background-color: rgb(0 62 255 / 30%);
     cursor: pointer;
     position: absolute;
     top: 0;
@@ -133,7 +117,6 @@
     height: 100%;
     // Thick purple border
     border: 3px solid rgba(220, 0, 255, 0.8);
-    animation: combined-pulse 1.5s ease-in-out infinite;
 }
 
 // Add corner indicators for combined state
@@ -145,21 +128,10 @@
     width: 100%;
     height: 100%;
     pointer-events: none;
-    background: 
+    background:
         // Top-left corner indicator (blue for overwatch)
         linear-gradient(135deg, rgba(0, 100, 255, 0.6) 0%, transparent 30%),
         // Bottom-right corner indicator (yellow for movement)
         linear-gradient(-45deg, rgba(255, 215, 0, 0.6) 0%, transparent 30%);
     z-index: 1;
-}
-
-@keyframes combined-pulse {
-    0%, 100% {
-        opacity: 0.7;
-        transform: scale(1);
-    }
-    50% {
-        opacity: 1;
-        transform: scale(1.02);
-    }
 }

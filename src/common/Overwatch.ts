@@ -79,6 +79,15 @@ export class Overwatch extends EventBus<
             // Activate overwatch
             const pointsToConsume = this.activeOverwatchCharacter.actions.pointsLeft;
             
+            console.log('[Overwatch] Activating overwatch:', {
+                character: this.activeOverwatchCharacter.name,
+                player: this.activeOverwatchCharacter.player,
+                position: this.activeOverwatchCharacter.position,
+                direction: this.activeOverwatchCharacter.direction,
+                shotsAvailable: pointsToConsume,
+                watchedCells: this.visibleCells.length
+            });
+            
             // Store overwatch data
             this.dispatch(UpdateStateEvent.setOverwatchData, {
                 characterName: this.activeOverwatchCharacter.name,
@@ -226,19 +235,34 @@ export class Overwatch extends EventBus<
     }
     
     private onTurnChange(data: GameEventsMap[GameEvent.changeTurn]) {
-        console.log('[Overwatch] Turn change event:', data);
-        // Clear overwatch completely for all characters of the player whose turn is starting
-        const charactersToCheck = this.state.characters.filter(char => char.player === data.turn);
-        console.log('[Overwatch] Characters to check for turn:', data.turn, charactersToCheck.map(c => c.name));
+        // Group logging to avoid spam
+        const activeOverwatches: string[] = [];
+        const overwatchesToClear: string[] = [];
         
-        charactersToCheck.forEach(character => {
+        // Check all characters for active overwatch
+        this.state.characters.forEach(character => {
             const overwatchData = (this.state.overwatchData as any).get(character.name) as IOverwatchData | undefined;
-            console.log('[Overwatch] Checking character:', character.name, 'overwatchData:', overwatchData);
             if (overwatchData && overwatchData.active) {
-                console.log('[Overwatch] Clearing overwatch for:', character.name);
-                // Clear overwatch completely (including visuals) when their turn starts
-                this.clearCharacterOverwatch(character.name);
+                activeOverwatches.push(`${character.name}(${character.player})`);
+                
+                // Clear overwatch for characters whose turn is starting (they can act again)
+                if (character.player === data.turn) {
+                    overwatchesToClear.push(character.name);
+                }
             }
+        });
+        
+        // Log summary
+        console.log('[Overwatch] Turn change:', {
+            newTurn: data.turn,
+            activeOverwatches: activeOverwatches.length > 0 ? activeOverwatches : 'none',
+            toBeCleared: overwatchesToClear.length > 0 ? overwatchesToClear : 'none'
+        });
+        
+        // Clear overwatch for characters whose turn is starting
+        overwatchesToClear.forEach(characterName => {
+            console.log('[Overwatch] Clearing overwatch for:', characterName, 'as their turn is starting');
+            this.clearCharacterOverwatch(characterName);
         });
     }
     

@@ -1,4 +1,4 @@
-import type { 
+import type {
     ICoord, ICell, ICharacter, IState, IInventory, IWeapon, IUIState,
     ICharacterAnimation, ICharacterVisualState, ICellVisualState, IHighlightStates, IPopupState,
     IOverwatchData
@@ -23,7 +23,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
 
     private readonly storageName = 'state'; // could be random to hide from others
     private cellMap = new Map<ICoord, ICell>();
-    
+
     private getInitialUIState(): IUIState {
         return {
             animations: {
@@ -68,7 +68,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.listen(UpdateStateEvent.resetActionPoints, (data) => this.onResetActionPoints(data));
         this.listen(UpdateStateEvent.damageCharacter, (data) => this.onDamageCharacter(data));
         this.listen(GameEvent.changeTurn, (data) => this.onChangeTurn(data));
-        
+
         // UI State listeners
         this.listen(UpdateStateEvent.uiCharacterAnimation, (data) => this.onUICharacterAnimation(data));
         this.listen(UpdateStateEvent.uiCharacterVisual, (data) => this.onUICharacterVisual(data));
@@ -82,37 +82,37 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.listen(UpdateStateEvent.uiInteractionMode, (data) => this.onUIInteractionMode(data));
         this.listen(UpdateStateEvent.setOverwatchData, (data) => this.onSetOverwatchData(data));
     }
-    
+
     // Helper method to check if action is from current player's turn
     private isValidTurn(characterName: string, fromNetwork?: boolean): boolean {
         // If it's from network, skip validation (already validated on sender's side)
         if (fromNetwork) return true;
-        
+
         const character = this.#findCharacter(characterName);
         if (!character) return false;
-        
+
         // Check if it's the character's player's turn
         return character.player === this.#game.turn;
     }
-    
+
     // Listeners
     private onCharacterPosition(characterData: UpdateStateEventsMap[UpdateStateEvent.characterPosition]) {
         const character = this.#findCharacter(characterData.name);
         if (!character) {
             throw new Error(`No character "${characterData.name}" found`);
         }
-        
+
         // Validate turn for non-network actions
         const fromNetwork = (characterData as NetworkEventData).fromNetwork;
-        
+
         if (!this.isValidTurn(characterData.name, fromNetwork)) {
             console.warn(`Invalid turn: ${character.player} tried to move during ${this.#game.turn}'s turn`);
             return;
         }
-        
+
         character.position = characterData.position;
         character.direction = characterData.direction;
-        
+
         // Dispatch the position change so UI components can update
         // Include the fromNetwork flag so components know if this is a network update
         const eventData = { ...structuredClone(character), fromNetwork };
@@ -124,14 +124,14 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         if (!character) {
             throw new Error(`No character "${characterData.name}" found`);
         }
-        
+
         // Validate turn for non-network actions
         const fromNetwork = (characterData as NetworkEventData).fromNetwork;
         if (!this.isValidTurn(characterData.name, fromNetwork)) {
             console.warn(`Invalid turn: ${character.player} tried to set path during ${this.#game.turn}'s turn`);
             return;
         }
-        
+
         character.path = [...characterData.path];
         // Include the fromNetwork flag so components know if this is a network update
         const eventData = { ...structuredClone(character), fromNetwork };
@@ -142,20 +142,20 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         if (!character) {
             throw new Error(`No character "${data.characterName}" found`);
         }
-        
+
         // Validate turn for non-network actions
         const fromNetwork = (data as NetworkEventData).fromNetwork;
         if (!this.isValidTurn(data.characterName, fromNetwork)) {
             console.warn(`Invalid turn: ${character.player} tried to rotate during ${this.#game.turn}'s turn`);
             return;
         }
-        
+
         character.direction = data.direction;
         // Dispatch state change event so character components update their visual direction
         this.dispatch(StateChangeEvent.characterDirection, structuredClone(character), character.name);
-        
+
         // Rotation costs 0 action points, so no deduction needed
-        
+
         this.save();
     }
     private onUpdateMessages(messages: UpdateStateEventsMap[UpdateStateEvent.updateMessages]) {
@@ -168,14 +168,14 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         if (!character) {
             throw new Error(`No character "${data.characterName}" found`);
         }
-        
+
         // Validate turn for non-network actions
         const fromNetwork = (data as NetworkEventData).fromNetwork;
         if (!this.isValidTurn(data.characterName, fromNetwork)) {
             console.warn(`Invalid turn: ${character.player} tried to update inventory during ${this.#game.turn}'s turn`);
             return;
         }
-        
+
         character.inventory = structuredClone(data.inventory) as IInventory;
         this.dispatch(StateChangeEvent.characterInventory, structuredClone(character));
         this.save();
@@ -238,19 +238,19 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
     private onChangeTurn(data: GameEventsMap[GameEvent.changeTurn]) {
         this.#game = { ...this.#game, ...data };
         this.dispatch(StateChangeEvent.game, structuredClone(this.#game));
-        
+
         // Clear all highlights when turn changes
         this.#ui.transientUI.highlights = {
             reachableCells: [],
             pathCells: [],
             targetableCells: []
         };
-        
+
         // Reset interaction mode to normal
         this.#ui.interactionMode = {
             type: 'normal'
         };
-        
+
         // Clear all highlighted cells in visual states EXCEPT overwatch highlights
         const cellUpdates: Array<{ cellKey: string; visualState: Partial<ICellVisualState> | null }> = [];
         Object.keys(this.#ui.visualStates.cells).forEach(cellKey => {
@@ -261,16 +261,16 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
                 cellUpdates.push({ cellKey, visualState: null });
             }
         });
-        
+
         // Apply cell updates if any
         if (cellUpdates.length > 0) {
             this.onUICellVisualBatch({ updates: cellUpdates });
         }
-        
+
         // Dispatch UI state changes
         this.dispatch(StateChangeEvent.uiTransient, structuredClone(this.#ui.transientUI));
         this.dispatch(StateChangeEvent.uiInteractionMode, structuredClone(this.#ui.interactionMode));
-        
+
         // Reset action points for the new player's characters
         this.#characters.forEach(character => {
             if (character.player === data.turn) {
@@ -279,7 +279,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
                 this.dispatch(StateChangeEvent.characterActions, structuredClone(character));
             }
         });
-        
+
         this.save();
     }
     private onDeductActionPoints(data: UpdateStateEventsMap[UpdateStateEvent.deductActionPoints]) {
@@ -287,17 +287,17 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         if (!character) {
             throw new Error(`No character "${data.characterName}" found`);
         }
-        
+
         // Validate turn for non-network actions
         const fromNetwork = (data as NetworkEventData).fromNetwork;
         if (!this.isValidTurn(data.characterName, fromNetwork)) {
             console.warn(`Invalid turn: ${character.player} tried to use action points during ${this.#game.turn}'s turn`);
             return;
         }
-        
+
         // Deduct the action points
         character.actions.pointsLeft = Math.max(0, character.actions.pointsLeft - data.cost);
-        
+
         // Dispatch change event
         this.dispatch(StateChangeEvent.characterActions, structuredClone(character));
         this.save();
@@ -307,10 +307,10 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         if (!character) {
             throw new Error(`No character "${data.characterName}" found`);
         }
-        
+
         // Set the pending action cost
         character.actions.pendingCost = data.cost;
-        
+
         // Dispatch change event
         this.dispatch(StateChangeEvent.characterActions, structuredClone(character));
         // Don't save for pending costs - they're temporary
@@ -331,14 +331,14 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         if (!character) {
             throw new Error(`No character "${data.targetName}" found`);
         }
-        
+
         // Apply damage
         const previousHealth = character.health;
         character.health = Math.max(0, character.health - data.damage);
-        
+
         // Dispatch health change event
         this.dispatch(StateChangeEvent.characterHealth, structuredClone(character));
-        
+
         // Check if character is defeated
         if (character.health === 0 && previousHealth > 0) {
             // Update visual state to mark character as defeated
@@ -356,14 +356,14 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
             visualState.isDefeated = true;
             this.#ui.visualStates.characters[character.name] = visualState;
             this.dispatch(StateChangeEvent.uiVisualStates, structuredClone(this.#ui.visualStates));
-            
+
             // Then dispatch the defeat event
             this.dispatch(StateChangeEvent.characterDefeated, structuredClone(character));
         }
-        
+
         this.save();
     }
-    
+
     // UI State Handlers
     private onUICharacterAnimation(data: UpdateStateEventsMap[UpdateStateEvent.uiCharacterAnimation]) {
         if (data.animation) {
@@ -373,7 +373,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         }
         this.dispatch(StateChangeEvent.uiAnimations, structuredClone(this.#ui.animations));
     }
-    
+
     private onUICharacterVisual(data: UpdateStateEventsMap[UpdateStateEvent.uiCharacterVisual]) {
         const currentVisual = this.#ui.visualStates.characters[data.characterId] || {
             direction: 'down',
@@ -386,14 +386,14 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
             isDefeated: false,
             isCurrentTurn: false
         };
-        
-        
+
+
         // Merge the visual state updates properly
         const updatedVisual = {
             ...currentVisual,
             ...data.visualState
         };
-        
+
         // Special handling for arrays to merge properly
         if (data.visualState.temporaryClasses !== undefined) {
             updatedVisual.temporaryClasses = data.visualState.temporaryClasses;
@@ -401,20 +401,20 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         if (data.visualState.classList !== undefined) {
             updatedVisual.classList = data.visualState.classList;
         }
-        
-        
+
+
         this.#ui.visualStates.characters[data.characterId] = updatedVisual as ICharacterVisualState;
-        
+
         this.dispatch(StateChangeEvent.uiVisualStates, structuredClone(this.#ui.visualStates));
     }
-    
+
     private onUICellVisual(data: UpdateStateEventsMap[UpdateStateEvent.uiCellVisual]) {
         if (data.visualState) {
             const currentVisual = this.#ui.visualStates.cells[data.cellKey] || {
                 isHighlighted: false,
                 classList: []
             };
-            
+
             this.#ui.visualStates.cells[data.cellKey] = {
                 ...currentVisual,
                 ...data.visualState
@@ -422,11 +422,16 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         } else {
             delete this.#ui.visualStates.cells[data.cellKey];
         }
-        
+
         this.dispatch(StateChangeEvent.uiVisualStates, structuredClone(this.#ui.visualStates));
     }
-    
+
     private onUICellVisualBatch(data: UpdateStateEventsMap[UpdateStateEvent.uiCellVisualBatch]) {
+        // Group logging to avoid spam
+        const overwatchUpdates: string[] = [];
+        const clearUpdates: string[] = [];
+        const otherUpdates: string[] = [];
+
         // Process all updates in batch
         data.updates.forEach(update => {
             if (update.visualState) {
@@ -434,114 +439,116 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
                     isHighlighted: false,
                     classList: []
                 };
-                
+
+                // Track update types for logging
+                if (update.visualState.highlightTypes?.includes('overwatch')) {
+                    overwatchUpdates.push(update.cellKey);
+                } else {
+                    otherUpdates.push(update.cellKey);
+                }
+
                 // If both have highlightTypes, merge them
-                let mergedVisualState = { ...update.visualState };
+                const mergedVisualState = { ...update.visualState };
                 if (currentVisual.highlightTypes && update.visualState.highlightTypes) {
                     const mergedTypes = new Set([...currentVisual.highlightTypes, ...update.visualState.highlightTypes]);
                     mergedVisualState.highlightTypes = Array.from(mergedTypes);
-                    console.log(`[State] Merging highlight types for ${update.cellKey}:`, 
-                        'current:', currentVisual.highlightTypes, 
-                        'new:', update.visualState.highlightTypes, 
-                        'merged:', mergedVisualState.highlightTypes);
                 }
-                
+
                 this.#ui.visualStates.cells[update.cellKey] = {
                     ...currentVisual,
                     ...mergedVisualState
                 } as ICellVisualState;
             } else {
+                clearUpdates.push(update.cellKey);
                 delete this.#ui.visualStates.cells[update.cellKey];
             }
         });
-        
+
         // Dispatch only once after all updates
         this.dispatch(StateChangeEvent.uiVisualStates, structuredClone(this.#ui.visualStates));
     }
-    
+
     private onUIBoardVisual(data: UpdateStateEventsMap[UpdateStateEvent.uiBoardVisual]) {
         this.#ui.visualStates.board = {
             ...this.#ui.visualStates.board,
             ...data.updates
         };
-        
+
         this.dispatch(StateChangeEvent.uiVisualStates, structuredClone(this.#ui.visualStates));
     }
-    
+
     private onUIPopup(data: UpdateStateEventsMap[UpdateStateEvent.uiPopup]) {
         if (data.popupState) {
             this.#ui.transientUI.popups[data.popupId] = structuredClone(data.popupState) as IPopupState;
         } else {
             delete this.#ui.transientUI.popups[data.popupId];
         }
-        
+
         this.dispatch(StateChangeEvent.uiTransient, structuredClone(this.#ui.transientUI));
     }
-    
+
     private onUIAddProjectile(data: UpdateStateEventsMap[UpdateStateEvent.uiAddProjectile]) {
         this.#ui.transientUI.projectiles.push(structuredClone(data));
         this.dispatch(StateChangeEvent.uiTransient, structuredClone(this.#ui.transientUI));
     }
-    
+
     private onUIRemoveProjectile(data: UpdateStateEventsMap[UpdateStateEvent.uiRemoveProjectile]) {
         this.#ui.transientUI.projectiles = this.#ui.transientUI.projectiles.filter(
             p => p.id !== data.projectileId
         );
         this.dispatch(StateChangeEvent.uiTransient, structuredClone(this.#ui.transientUI));
     }
-    
+
     // Helper function to merge highlight types
     private mergeHighlightTypes(
-        existing: Array<'movement' | 'attack' | 'path' | 'overwatch'> | undefined, 
+        existing: Array<'movement' | 'attack' | 'path' | 'overwatch'> | undefined,
         newType: 'movement' | 'attack' | 'path' | 'overwatch'
     ): Array<'movement' | 'attack' | 'path' | 'overwatch'> {
         const types = new Set(existing || []);
         types.add(newType);
         return Array.from(types) as Array<'movement' | 'attack' | 'path' | 'overwatch'>;
     }
-    
+
     private onUIHighlights(data: UpdateStateEventsMap[UpdateStateEvent.uiHighlights]) {
         // First, clear previously highlighted cells (except overwatch)
         const previouslyHighlighted = new Set<string>();
         const overwatchCells = new Map<string, ICellVisualState>(); // Store overwatch cells to preserve them
-        
+
         Object.keys(this.#ui.visualStates.cells).forEach(cellKey => {
             const cell = this.#ui.visualStates.cells[cellKey];
             if (cell?.isHighlighted) {
                 // Check if it's an overwatch cell using new or old format
                 const isOverwatch = cell.highlightTypes?.includes('overwatch') || cell.highlightType === 'overwatch';
                 if (isOverwatch) {
-                    console.log(`[State.onUIHighlights] Found overwatch cell ${cellKey}`, cell);
                     overwatchCells.set(cellKey, cell);
                 } else {
                     previouslyHighlighted.add(cellKey);
                 }
             }
         });
-        
+
         // Update highlights
         this.#ui.transientUI.highlights = {
             ...this.#ui.transientUI.highlights,
             ...data
         } as IHighlightStates;
-        
+
         // Batch update all cell visual states
         const cellUpdates: Array<{ cellKey: string; visualState: Partial<ICellVisualState> | null }> = [];
-        
+
         // Clear previously highlighted cells (except overwatch)
         previouslyHighlighted.forEach(cellKey => {
             cellUpdates.push({ cellKey, visualState: null });
         });
-        
+
         // Add new highlights
         data.reachableCells?.forEach(coord => {
             const cellKey = `${coord.x},${coord.y}`;
             const existingOverwatch = overwatchCells.get(cellKey);
-            
+
             if (existingOverwatch) {
                 // Merge with existing overwatch state
                 const mergedTypes = this.mergeHighlightTypes(existingOverwatch.highlightTypes, 'movement');
-                console.log(`[State.onUIHighlights] Cell ${cellKey} has overwatch, adding movement. Merged types:`, mergedTypes);
                 cellUpdates.push({
                     cellKey,
                     visualState: {
@@ -563,11 +570,11 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
                 });
             }
         });
-        
+
         data.pathCells?.forEach(coord => {
             const cellKey = `${coord.x},${coord.y}`;
             const existingOverwatch = overwatchCells.get(cellKey);
-            
+
             if (existingOverwatch) {
                 // Merge with existing overwatch state
                 cellUpdates.push({
@@ -590,11 +597,11 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
                 });
             }
         });
-        
+
         data.targetableCells?.forEach(coord => {
             const cellKey = `${coord.x},${coord.y}`;
             const existingOverwatch = overwatchCells.get(cellKey);
-            
+
             if (existingOverwatch) {
                 // Merge with existing overwatch state
                 cellUpdates.push({
@@ -617,37 +624,37 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
                 });
             }
         });
-        
+
         // Re-add overwatch cells that weren't updated (to preserve them)
         overwatchCells.forEach((cell, cellKey) => {
             // Only re-add if this cell wasn't already updated
             if (!cellUpdates.some(update => update.cellKey === cellKey)) {
-                console.log(`[State.onUIHighlights] Re-adding preserved overwatch cell ${cellKey}`);
                 cellUpdates.push({
                     cellKey,
                     visualState: cell
                 });
             }
         });
-        
+
         // Apply all updates in batch
         if (cellUpdates.length > 0) {
             this.onUICellVisualBatch({ updates: cellUpdates });
         }
-        
+
         this.dispatch(StateChangeEvent.uiTransient, structuredClone(this.#ui.transientUI));
     }
-    
+
     private onUIInteractionMode(data: UpdateStateEventsMap[UpdateStateEvent.uiInteractionMode]) {
         this.#ui.interactionMode = structuredClone(data);
         this.dispatch(StateChangeEvent.uiInteractionMode, structuredClone(this.#ui.interactionMode));
     }
-    
+
     private onSetOverwatchData(data: UpdateStateEventsMap[UpdateStateEvent.setOverwatchData]) {
         const existingData = this.#overwatchData.get(data.characterName);
-        
+
         if (!data.active) {
             // Remove overwatch data
+            console.log('[State] Removing overwatch data for:', data.characterName);
             this.#overwatchData.delete(data.characterName);
         } else {
             // Update overwatch data
@@ -660,13 +667,18 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
                 watchedCells: data.watchedCells || existingData?.watchedCells,
                 shotCells: existingData?.shotCells || new Set()
             };
+            console.log('[State] Setting overwatch data for:', data.characterName, {
+                active: newData.active,
+                shotsRemaining: newData.shotsRemaining,
+                watchedCells: newData.watchedCells?.length || 0
+            });
             this.#overwatchData.set(data.characterName, newData);
         }
-        
+
         this.dispatch(StateChangeEvent.overwatchData, new Map(this.#overwatchData));
         this.save();
     }
-    
+
     // Setters
     private set game(game: IState['game']) {
         this.#game = game;
