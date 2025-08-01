@@ -1,5 +1,5 @@
 import type { DeepReadonly } from "./helpers/types";
-import type { ICharacter, ICoord, IOverwatchData, IWeapon } from "./interfaces";
+import type { ICharacter, ICoord, IOverwatchData, IOverwatchModeData } from "./interfaces";
 import type { State } from "./State";
 
 import {
@@ -29,12 +29,6 @@ interface TrackedPosition {
     y: number;
 }
 
-interface OverwatchModeData {
-    characterId: string;
-    weapon: IWeapon;
-    remainingPoints?: number;
-    shotsRemaining?: number;
-}
 
 interface CellVisualUpdate {
     cellKey: CellKey;
@@ -47,8 +41,15 @@ interface CellVisualUpdate {
 }
 
 // Helper functions
-const createCellKey = (coord: ICoord): CellKey => 
+const createCellKey = (coord: ICoord): CellKey =>
     `${coord.x}${OVERWATCH_CONSTANTS.CELL_KEY_SEPARATOR}${coord.y}`;
+
+const addShotCellIfNotExists = (shotCells: string[], cellKey: string): string[] => {
+    if (!shotCells.includes(cellKey)) {
+        return [...shotCells, cellKey];
+    }
+    return shotCells;
+};
 
 
 export class Overwatch extends EventBus<
@@ -176,7 +177,7 @@ export class Overwatch extends EventBus<
 
     private handleCharacterMove(character: DeepReadonly<ICharacter>): void {
         this.log(`Character ${character.name} moved to ${character.position.x},${character.position.y}`);
-        
+
         this.trackedCharacterPositions.set(character.name, {
             x: character.position.x,
             y: character.position.y
@@ -195,15 +196,12 @@ export class Overwatch extends EventBus<
     }
 
     private handleTurnChange(data: GameEventsMap[GameEvent.changeTurn]): void {
-        const activeOverwatches: string[] = [];
         const overwatchesToClear: CharacterName[] = [];
 
         // Collect overwatch information
         this.state.characters.forEach(character => {
             const overwatchData = this.getOverwatchData(character.name);
             if (overwatchData?.active) {
-                activeOverwatches.push(`${character.name}(${character.player})`);
-
                 if (character.player === data.turn) {
                     overwatchesToClear.push(character.name);
                 }
@@ -269,18 +267,16 @@ export class Overwatch extends EventBus<
 
     private checkOverwatchTriggers(character: DeepReadonly<ICharacter>): void {
         const overwatchData = this.state.overwatchData;
-        if (!overwatchData) {
+        if (!overwatchData || Object.keys(overwatchData).length === 0) {
             this.log('No overwatch data in state');
             return;
         }
 
-        this.log(`Found ${overwatchData.size} overwatch entries for ${character.name} at ${character.position.x},${character.position.y}`);
+        this.log(`Found ${Object.keys(overwatchData).length} overwatch entries for ${character.name} at ${character.position.x},${character.position.y}`);
 
-        // Iterate over the Map entries
-        // DeepReadonly requires us to cast to any to iterate
-        const overwatchMap = overwatchData as any as Map<string, IOverwatchData>;
-        overwatchMap.forEach((data: IOverwatchData, overwatcherName: string) => {
-            this.processOverwatchTrigger(overwatcherName, data as DeepReadonly<IOverwatchData>, character);
+        // Iterate over the object entries
+        Object.entries(overwatchData).forEach(([overwatcherName, data]) => {
+            this.processOverwatchTrigger(overwatcherName, data, character);
         });
 
         this.updateMovingCharacterOverwatch(character);
@@ -298,7 +294,7 @@ export class Overwatch extends EventBus<
         }
 
         const cellKey = createCellKey(target.position);
-        
+
         if (this.hasAlreadyShotAtCell(data, cellKey)) {
             this.log(`Already shot at cell ${cellKey}`);
             return;
@@ -326,7 +322,7 @@ export class Overwatch extends EventBus<
         this.showProjectileAnimation(overwatcher, overwatchData.position, target.position);
 
         const shotResult = this.calculateShot(overwatcher, overwatchData, target);
-        
+
         if (shotResult.hit && 'damage' in shotResult && shotResult.damage !== undefined && shotResult.isCritical !== undefined) {
             this.applyDamage(overwatcherName, target, { damage: shotResult.damage, isCritical: shotResult.isCritical });
         } else {
@@ -360,9 +356,9 @@ export class Overwatch extends EventBus<
         return DirectionsService.getDirectionFromAngle(angle);
     }
 
-    private extractPositionFromStyles(styles: Record<string, any>): TrackedPosition | null {
+    private extractPositionFromStyles(styles: Record<string, string>): TrackedPosition | null {
         if (!('--x' in styles && '--y' in styles)) return null;
-        
+
         const xStr = styles['--x'];
         const yStr = styles['--y'];
         if (!xStr || !yStr) return null;
@@ -377,8 +373,8 @@ export class Overwatch extends EventBus<
         return !lastPos || lastPos.x !== newPos.x || lastPos.y !== newPos.y;
     }
 
-    private getOverwatchData(characterName: CharacterName): IOverwatchData | undefined {
-        return (this.state.overwatchData as any).get(characterName) as IOverwatchData | undefined;
+    private getOverwatchData(characterName: CharacterName): DeepReadonly<IOverwatchData> | undefined {
+        return this.state.overwatchData[characterName];
     }
 
     private canExecuteOverwatch(
@@ -406,11 +402,8 @@ export class Overwatch extends EventBus<
     }
 
     private hasAlreadyShotAtCell(data: DeepReadonly<IOverwatchData>, cellKey: CellKey): boolean {
-        // DeepReadonly makes Set methods readonly, so we need to check if the cell is in the set
         if (!data.shotCells) return false;
-        // Convert to array to check membership
-        const shotCellsArray = Array.from(data.shotCells as any);
-        return shotCellsArray.includes(cellKey);
+        return data.shotCells.includes(cellKey);
     }
 
     private hasLineOfSight(from: ICoord, to: ICoord): boolean {
@@ -424,12 +417,12 @@ export class Overwatch extends EventBus<
     ) {
         const distance = ShootingService.getDistance(overwatchData.position, target.position);
         const hitChance = ShootingService.calculateHitChance(
-            distance, 
-            overwatchData.range, 
+            distance,
+            overwatchData.range,
             OVERWATCH_CONSTANTS.NO_AIM_BONUS
         );
         const hit = ShootingService.rollHit(hitChance);
-        
+
         if (!hit) {
             return { hit: false, hitChance };
         }
@@ -486,11 +479,10 @@ export class Overwatch extends EventBus<
         targetPosition: ICoord
     ): void {
         const cellKey = createCellKey(targetPosition);
-        const existingShotCells = overwatchData.shotCells || new Set<string>();
-        
-        const updatedShotCells = new Set<string>(existingShotCells as any);
-        updatedShotCells.add(cellKey);
-        
+        const existingShotCells = overwatchData.shotCells || [];
+
+        const updatedShotCells = addShotCellIfNotExists([...existingShotCells], cellKey);
+
         const newShotsRemaining = overwatchData.shotsRemaining - 1;
         this.log(`Shots remaining: ${overwatchData.shotsRemaining} -> ${newShotsRemaining}`);
 
@@ -503,7 +495,7 @@ export class Overwatch extends EventBus<
                 characterName: overwatcherName,
                 active: true,
                 shotsRemaining: newShotsRemaining,
-                shotCells: Array.from(updatedShotCells) as any
+                shotCells: updatedShotCells
             });
 
             this.updateInteractionModeShots(overwatcherName, newShotsRemaining);
@@ -555,7 +547,7 @@ export class Overwatch extends EventBus<
         const weapon = ShootingService.getEquippedRangedWeapon(character);
         if (!weapon) return;
 
-        const modeData: OverwatchModeData = {
+        const modeData: IOverwatchModeData = {
             characterId: character.name,
             weapon,
             remainingPoints: character.actions.pointsLeft
@@ -563,23 +555,25 @@ export class Overwatch extends EventBus<
 
         this.dispatch(UpdateStateEvent.uiInteractionMode, {
             type: 'overwatch',
-            data: modeData as any
+            data: modeData
         });
     }
 
     private updateInteractionModeShots(characterName: CharacterName, shotsRemaining: number): void {
         const currentMode = this.state.ui.interactionMode;
-        if (currentMode.type !== 'overwatch') return;
+        if (currentMode.type !== 'overwatch' || !currentMode.data) return;
 
-        const currentData = currentMode.data as any;
-        if (currentData?.shotsRemaining === shotsRemaining) return;
+        // Type guard to ensure we have overwatch mode data
+        const currentData = currentMode.data as IOverwatchModeData;
+        if (currentData.shotsRemaining === shotsRemaining) return;
 
-        const weapon = ShootingService.getEquippedRangedWeapon(
-            this.state.findCharacter(characterName)!
-        );
+        const character = this.state.findCharacter(characterName);
+        if (!character) return;
+        
+        const weapon = ShootingService.getEquippedRangedWeapon(character);
         if (!weapon) return;
 
-        const modeData: OverwatchModeData = {
+        const modeData: IOverwatchModeData = {
             characterId: characterName,
             weapon,
             shotsRemaining
@@ -587,7 +581,7 @@ export class Overwatch extends EventBus<
 
         this.dispatch(UpdateStateEvent.uiInteractionMode, {
             type: 'overwatch',
-            data: modeData as any
+            data: modeData
         });
     }
 
@@ -675,7 +669,7 @@ export class Overwatch extends EventBus<
         const interactionMode = this.state.ui.interactionMode;
         if (interactionMode.type !== 'overwatch' || !interactionMode.data) return;
 
-        const overwatchModeData = interactionMode.data as OverwatchModeData;
+        const overwatchModeData = interactionMode.data as IOverwatchModeData;
         if (overwatchModeData.characterId === characterName) {
             this.dispatch(UpdateStateEvent.uiInteractionMode, { type: 'normal' });
         }

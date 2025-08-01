@@ -19,7 +19,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
     #characters: IState['characters'] = [];
     #messages: IState['messages'] = [];
     #ui: IState['ui'] = this.getInitialUIState();
-    #overwatchData: IState['overwatchData'] = new Map();
+    #overwatchData: IState['overwatchData'] = {};
 
     private readonly storageName = 'state'; // could be random to hide from others
     private cellMap = new Map<ICoord, ICell>();
@@ -636,28 +636,28 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
     }
 
     private onSetOverwatchData(data: UpdateStateEventsMap[UpdateStateEvent.setOverwatchData]) {
-        const existingData = this.#overwatchData.get(data.characterName);
+        const existingData = this.#overwatchData[data.characterName];
         console.log(`[State] onSetOverwatchData for ${data.characterName}`);
-        console.log(`[State] Existing shotCells:`, existingData?.shotCells instanceof Set ? Array.from(existingData.shotCells) : 'none');
-        console.log(`[State] Incoming shotCells:`, data.shotCells instanceof Set ? Array.from(data.shotCells) : 'none');
+        console.log(`[State] Existing shotCells:`, existingData?.shotCells || 'none');
+        console.log(`[State] Incoming shotCells:`, data.shotCells || 'none');
 
         if (!data.active) {
             // Remove overwatch data
             console.log(`[State] Removing overwatch data for ${data.characterName}`);
-            this.#overwatchData.delete(data.characterName);
+            delete this.#overwatchData[data.characterName];
         } else {
-            // Handle shotCells conversion from Array to Set
-            let shotCells: Set<string>;
+            // Handle shotCells - no conversion needed anymore
+            let shotCells: string[];
             if (data.shotCells !== undefined) {
-                // Convert array to Set
-                shotCells = new Set(data.shotCells);
-                console.log(`[State] Converting shotCells array to Set:`, Array.from(shotCells));
+                // Use the provided shotCells array
+                shotCells = data.shotCells;
+                console.log(`[State] Using provided shotCells:`, shotCells);
             } else if (existingData?.shotCells) {
                 shotCells = existingData.shotCells;
-                console.log(`[State] Using existing shotCells Set:`, Array.from(shotCells));
+                console.log(`[State] Using existing shotCells:`, shotCells);
             } else {
-                shotCells = new Set();
-                console.log(`[State] Creating new empty shotCells Set`);
+                shotCells = [];
+                console.log(`[State] Creating new empty shotCells array`);
             }
 
             // Update overwatch data
@@ -670,11 +670,11 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
                 watchedCells: data.watchedCells || existingData?.watchedCells,
                 shotCells: shotCells
             };
-            console.log(`[State] New shotCells will be:`, newData.shotCells instanceof Set ? Array.from(newData.shotCells) : 'none');
-            this.#overwatchData.set(data.characterName, newData);
+            console.log(`[State] New shotCells will be:`, newData.shotCells || 'none');
+            this.#overwatchData[data.characterName] = newData;
         }
 
-        this.dispatch(StateChangeEvent.overwatchData, new Map(this.#overwatchData));
+        this.dispatch(StateChangeEvent.overwatchData, { ...this.#overwatchData });
         this.save();
     }
 
@@ -761,7 +761,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.ui = state.ui || this.getInitialUIState();
         // Initialize overwatch data if present
         if (state.overwatchData) {
-            this.#overwatchData = new Map(Object.entries(state.overwatchData));
+            this.#overwatchData = state.overwatchData;
         }
     }
     // Public Helpers

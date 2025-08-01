@@ -184,12 +184,13 @@ export interface StateChangeEventsMap {
     [StateChangeEvent.uiVisualStates]: DeepReadonly<IState['ui']['visualStates']>;
     [StateChangeEvent.uiTransient]: DeepReadonly<IState['ui']['transientUI']>;
     [StateChangeEvent.uiInteractionMode]: DeepReadonly<IState['ui']['interactionMode']>;
-    [StateChangeEvent.overwatchData]: DeepReadonly<Map<string, {
+    [StateChangeEvent.overwatchData]: DeepReadonly<Record<string, {
         active: boolean;
         direction: Direction;
         position: { x: number; y: number };
         range: number;
         shotsRemaining: number;
         watchedCells?: { x: number; y: number }[];
+        shotCells?: string[];
     }>>;
 }

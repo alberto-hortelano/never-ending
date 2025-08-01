@@ -241,7 +241,7 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
             characters: structuredClone(this.state.characters) as IState['characters'],
             messages: structuredClone(this.state.messages) as IState['messages'],
             ui: structuredClone(this.state.ui) as IState['ui'],
-            overwatchData: new Map() // Don't sync overwatch data for now
+            overwatchData: {} // Don't sync overwatch data for now
         };
 
         if (this.lastSyncedState) {

@@ -4,7 +4,7 @@ export interface IState {
     characters: ICharacter[];
     messages: IMessage[];
     ui: IUIState;
-    overwatchData: Map<string, IOverwatchData>;
+    overwatchData: Record<string, IOverwatchData>;
 }
 
 export interface IOverwatchData {
@@ -14,7 +14,7 @@ export interface IOverwatchData {
     range: number;
     shotsRemaining: number;
     watchedCells?: ICoord[];
-    shotCells?: Set<string>; // Track cells already shot at to prevent duplicate shots
+    shotCells?: string[]; // Track cells already shot at to prevent duplicate shots
 }
 export interface IGame {
     turn: string;

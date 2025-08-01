@@ -45,6 +45,9 @@ User Action → Component → ControlsEvent → System Service → UpdateStateEv
 - Events are dispatched globally - any listener anywhere in the app will receive them
 - This is why components MUST exist before they can receive events (can't listen if not created yet)
 
+### State
+The state is a readonly object. It can be read from any class from /logic. It must be serializable, no Map, Set or any complex types. It can only be modified by the UpdateState events.
+
 ### Component Architecture
 All UI components extend the base `Component` class which provides:
 - Shadow DOM encapsulation
@@ -180,7 +183,7 @@ this.listen(StateChangeEvent.characterHealth, (character) => {
 - Never directly modify state - use UpdateStateEvent
 - Components should be self-contained with Shadow DOM
 - System services contain business logic, components handle UI
-- Use TypeScript strict mode - all types must be explicit
+- Use TypeScript strict mode - all types must be explicit, don't use any or forced casting except in test files.
 - Services must NOT use browser APIs (window, document) - pass configuration from components
 - Use EventBus for global application events, CustomEvent for parent-child component communication
 
