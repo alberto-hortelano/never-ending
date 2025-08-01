@@ -650,7 +650,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
             let shotCells: Set<string>;
             if (data.shotCells !== undefined) {
                 // Convert array to Set
-                shotCells = new Set(data.shotCells as any);
+                shotCells = new Set(data.shotCells);
                 console.log(`[State] Converting shotCells array to Set:`, Array.from(shotCells));
             } else if (existingData?.shotCells) {
                 shotCells = existingData.shotCells;
@@ -659,7 +659,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
                 shotCells = new Set();
                 console.log(`[State] Creating new empty shotCells Set`);
             }
-            
+
             // Update overwatch data
             const newData: IOverwatchData = {
                 active: data.active,

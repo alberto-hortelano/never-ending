@@ -40,7 +40,7 @@ export class Movement extends EventBus<
         handler: (data: (GameEventsMap & ControlsEventsMap & StateChangeEventsMap)[K]) => void
     ) {
         this.listen(event, handler);
-        this.listeners.push({ event: event as string, handler });
+        this.listeners.push({ event, handler });
     }
 
     destroy() {
