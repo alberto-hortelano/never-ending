@@ -32,6 +32,7 @@ export class Overwatch extends EventBus<
         // State change events
         this.listen(StateChangeEvent.characterPosition, character => this.onCharacterMove(character));
         this.listen(StateChangeEvent.characterHealth, character => this.onCharacterHealthChange(character));
+        this.listen(StateChangeEvent.uiVisualStates, visualStates => this.onVisualStatesChange(visualStates));
         
         // Game events
         this.listen(GameEvent.changeTurn, data => this.onTurnChange(data));
@@ -79,6 +80,7 @@ export class Overwatch extends EventBus<
             // Activate overwatch
             const pointsToConsume = this.activeOverwatchCharacter.actions.pointsLeft;
             
+            console.log(`[Overwatch] Activating overwatch for ${this.activeOverwatchCharacter.name} with ${pointsToConsume} shots`);
             
             // Store overwatch data
             this.dispatch(UpdateStateEvent.setOverwatchData, {
@@ -88,7 +90,8 @@ export class Overwatch extends EventBus<
                 position: this.activeOverwatchCharacter.position,
                 range: ShootingService.getWeaponRange(this.activeOverwatchCharacter),
                 shotsRemaining: pointsToConsume,
-                watchedCells: this.visibleCells.map(vc => vc.coord)
+                watchedCells: this.visibleCells.map(vc => vc.coord),
+                shotCells: [] as any // Initialize empty array (will be converted to Set in State)
             });
             
             // Deduct all remaining action points
@@ -152,23 +155,83 @@ export class Overwatch extends EventBus<
         }
     }
     
+    private trackedCharacterPositions = new Map<string, { x: number, y: number }>();
+    
+    private onVisualStatesChange(visualStates: StateChangeEventsMap[StateChangeEvent.uiVisualStates]) {
+        // Track character positions during animations
+        for (const [characterId, visualState] of Object.entries(visualStates.characters)) {
+            if (!visualState || !visualState.styles) continue;
+            
+            if ('--x' in visualState.styles && '--y' in visualState.styles) {
+                const xStr = visualState.styles['--x'];
+                const yStr = visualState.styles['--y'];
+                if (!xStr || !yStr) continue;
+                
+                const newX = Math.round(parseFloat(xStr));
+                const newY = Math.round(parseFloat(yStr));
+                
+                const lastPos = this.trackedCharacterPositions.get(characterId);
+                
+                // Check if character moved to a new cell
+                if (!lastPos || lastPos.x !== newX || lastPos.y !== newY) {
+                    console.log(`[Overwatch] Character ${characterId} animated to cell ${newX},${newY}`);
+                    
+                    // Update tracked position
+                    this.trackedCharacterPositions.set(characterId, { x: newX, y: newY });
+                    
+                    // Find the character data
+                    const character = this.state.findCharacter(characterId);
+                    if (character) {
+                        // Create a temporary character state with the animated position
+                        const characterAtPosition = {
+                            ...character,
+                            position: { x: newX, y: newY }
+                        } as DeepReadonly<ICharacter>;
+                        
+                        // Check overwatch for this position
+                        this.checkOverwatchTriggers(characterAtPosition);
+                    }
+                }
+            }
+        }
+    }
+    
     private onCharacterMove(character: StateChangeEventsMap[StateChangeEvent.characterPosition]) {
+        console.log(`[Overwatch] onCharacterMove: ${character.name} moved to ${character.position.x},${character.position.y}`);
+        
+        // Update tracked position for when movement completes
+        this.trackedCharacterPositions.set(character.name, {
+            x: character.position.x,
+            y: character.position.y
+        });
+        
+        this.checkOverwatchTriggers(character);
+    }
+    
+    private checkOverwatchTriggers(character: DeepReadonly<ICharacter>) {
         // Get all active overwatches
         const overwatchData = this.state.overwatchData;
         if (!overwatchData) {
+            console.log('[Overwatch] No overwatch data in state');
             return;
         }
+        
+        console.log(`[Overwatch] Found ${overwatchData.size} overwatch entries for ${character.name} at ${character.position.x},${character.position.y}`);
         
         // Check each overwatch - iterate manually to avoid DeepReadonly issues
         const overwatchArray = Array.from(overwatchData as any) as [string, IOverwatchData][];
         overwatchArray.forEach(([overwatcherName, data]) => {
+            console.log(`[Overwatch] Checking ${overwatcherName}: active=${data.active}, shots=${data.shotsRemaining}, shotCells=`, data.shotCells);
+            
             if (!data.active || data.shotsRemaining <= 0) {
+                console.log(`[Overwatch] ${overwatcherName} is inactive or out of shots`);
                 return;
             }
             
             // Don't shoot at friendly units
             const overwatcher = this.state.findCharacter(overwatcherName);
             if (!overwatcher || overwatcher.player === character.player) {
+                console.log(`[Overwatch] ${overwatcherName} won't shoot at friendly ${character.name} (${character.player})`);
                 return;
             }
             
@@ -177,10 +240,15 @@ export class Overwatch extends EventBus<
                 cell.x === character.position.x && cell.y === character.position.y
             );
             
+            console.log(`[Overwatch] ${character.name} in watched cell: ${isInWatchedCell}`);
+            
             if (isInWatchedCell) {
                 // Check if we've already shot at this cell
                 const cellKey = `${character.position.x},${character.position.y}`;
+                console.log(`[Overwatch] Checking shotCells for ${cellKey}:`, data.shotCells, 'has:', data.shotCells?.has(cellKey));
+                
                 if (data.shotCells?.has(cellKey)) {
+                    console.log(`[Overwatch] Already shot at cell ${cellKey}`);
                     return; // Already shot at this cell
                 }
                 
@@ -190,9 +258,11 @@ export class Overwatch extends EventBus<
                     data.position,
                     character.position
                 )) {
+                    console.log(`[Overwatch] No line of sight`);
                     return; // No line of sight
                 }
                 
+                console.log(`[Overwatch] EXECUTING SHOT at ${cellKey}`);
                 // Execute overwatch shot
                 this.executeOverwatchShot(overwatcherName, data, character);
             }
@@ -477,12 +547,17 @@ export class Overwatch extends EventBus<
         // Update overwatch data
         const cellKey = `${target.position.x},${target.position.y}`;
         const existingShotCells = overwatchData.shotCells || new Set<string>();
+        console.log(`[Overwatch] Current shotCells:`, existingShotCells instanceof Set ? Array.from(existingShotCells as any) : 'not a Set');
+        
         const updatedShotCells = new Set<string>(existingShotCells as any);
         updatedShotCells.add(cellKey);
+        console.log(`[Overwatch] Updated shotCells after adding ${cellKey}:`, Array.from(updatedShotCells));
         
         const newShotsRemaining = overwatchData.shotsRemaining - 1;
+        console.log(`[Overwatch] Shots remaining: ${overwatchData.shotsRemaining} -> ${newShotsRemaining}`);
         
         if (newShotsRemaining <= 0) {
+            console.log(`[Overwatch] Out of shots, deactivating overwatch`);
             // Out of shots, deactivate overwatch
             this.clearCharacterOverwatch(overwatcherName);
             
@@ -491,11 +566,14 @@ export class Overwatch extends EventBus<
                 type: 'normal'
             });
         } else {
-            // Update remaining shots
+            console.log(`[Overwatch] Dispatching setOverwatchData with shotCells:`, Array.from(updatedShotCells));
+            // Update remaining shots AND shotCells
+            // Convert Set to Array for serialization
             this.dispatch(UpdateStateEvent.setOverwatchData, {
                 characterName: overwatcherName,
                 active: true,
-                shotsRemaining: newShotsRemaining
+                shotsRemaining: newShotsRemaining,
+                shotCells: Array.from(updatedShotCells) as any // Convert Set to Array
             });
             
             // Update interaction mode to show remaining shots only if data changed

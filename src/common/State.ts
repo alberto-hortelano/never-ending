@@ -637,12 +637,29 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
 
     private onSetOverwatchData(data: UpdateStateEventsMap[UpdateStateEvent.setOverwatchData]) {
         const existingData = this.#overwatchData.get(data.characterName);
+        console.log(`[State] onSetOverwatchData for ${data.characterName}`);
+        console.log(`[State] Existing shotCells:`, existingData?.shotCells instanceof Set ? Array.from(existingData.shotCells) : 'none');
+        console.log(`[State] Incoming shotCells:`, data.shotCells instanceof Set ? Array.from(data.shotCells) : 'none');
 
         if (!data.active) {
             // Remove overwatch data
-            console.log('[State] Removing overwatch data for:', data.characterName);
+            console.log(`[State] Removing overwatch data for ${data.characterName}`);
             this.#overwatchData.delete(data.characterName);
         } else {
+            // Handle shotCells conversion from Array to Set
+            let shotCells: Set<string>;
+            if (data.shotCells !== undefined) {
+                // Convert array to Set
+                shotCells = new Set(data.shotCells as any);
+                console.log(`[State] Converting shotCells array to Set:`, Array.from(shotCells));
+            } else if (existingData?.shotCells) {
+                shotCells = existingData.shotCells;
+                console.log(`[State] Using existing shotCells Set:`, Array.from(shotCells));
+            } else {
+                shotCells = new Set();
+                console.log(`[State] Creating new empty shotCells Set`);
+            }
+            
             // Update overwatch data
             const newData: IOverwatchData = {
                 active: data.active,
@@ -651,13 +668,9 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
                 range: data.range || existingData?.range || 10,
                 shotsRemaining: data.shotsRemaining !== undefined ? data.shotsRemaining : existingData?.shotsRemaining || 0,
                 watchedCells: data.watchedCells || existingData?.watchedCells,
-                shotCells: existingData?.shotCells || new Set()
+                shotCells: shotCells
             };
-            console.log('[State] Setting overwatch data for:', data.characterName, {
-                active: newData.active,
-                shotsRemaining: newData.shotsRemaining,
-                watchedCells: newData.watchedCells?.length || 0
-            });
+            console.log(`[State] New shotCells will be:`, newData.shotCells instanceof Set ? Array.from(newData.shotCells) : 'none');
             this.#overwatchData.set(data.characterName, newData);
         }
 

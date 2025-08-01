@@ -133,6 +133,7 @@ export interface UpdateStateEventsMap {
         range?: number;
         shotsRemaining?: number;
         watchedCells?: DeepReadonly<{ x: number; y: number }>[];
+        shotCells?: string[]; // Array instead of Set for serialization
     };
 }
 

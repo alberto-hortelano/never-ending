@@ -635,6 +635,204 @@ describe('Overwatch', () => {
         });
     });
 
+    describe('Overwatch Cell Coverage', () => {
+        it('should shoot at enemy on every cell they enter in overwatch area', () => {
+            const listener = createTestListener();
+            const projectileSpy = jest.fn();
+            const damageSpy = jest.fn();
+
+            listener.listen(GUIEvent.shootProjectile, projectileSpy);
+            listener.listen(UpdateStateEvent.damageCharacter, damageSpy);
+
+            // Set up a wider overwatch area
+            const watchedCells = [
+                { x: 6, y: 5 },
+                { x: 7, y: 5 },
+                { x: 8, y: 5 },
+                { x: 9, y: 5 },
+                { x: 10, y: 5 },
+                { x: 7, y: 4 },
+                { x: 8, y: 4 },
+                { x: 9, y: 4 },
+                { x: 7, y: 6 },
+                { x: 8, y: 6 },
+                { x: 9, y: 6 }
+            ];
+
+            (mockState as any)._overwatchData.set(testCharacter.name, {
+                active: true,
+                direction: testCharacter.direction,
+                position: testCharacter.position,
+                range: 15,
+                shotsRemaining: 20, // Enough shots for all cells
+                watchedCells: watchedCells,
+                shotCells: new Set()
+            });
+
+            mockState.findCharacter.mockImplementation((name) => {
+                if (name === enemyCharacter.name) return enemyCharacter;
+                if (name === testCharacter.name) return testCharacter;
+                return undefined;
+            });
+
+            // Mock Math.random to ensure all shots hit
+            const mockRandom = jest.spyOn(Math, 'random').mockReturnValue(0.5);
+
+            // Test enemy entering multiple cells
+            const cellsToEnter = [
+                { x: 10, y: 5 }, // Enter from the right
+                { x: 9, y: 5 },  // Cell 1 - should shoot
+                { x: 8, y: 5 },  // Cell 2 - should shoot
+                { x: 7, y: 5 },  // Cell 3 - should shoot
+                { x: 7, y: 4 },  // Cell 4 - should shoot
+                { x: 8, y: 4 },  // Cell 5 - should shoot
+                { x: 9, y: 4 },  // Cell 6 - should shoot
+                { x: 9, y: 6 },  // Cell 7 - jump to another watched cell
+                { x: 8, y: 6 },  // Cell 8 - should shoot
+                { x: 7, y: 6 },  // Cell 9 - should shoot
+                { x: 6, y: 5 }   // Cell 10 - final watched cell
+            ];
+
+            // Track which cells were shot at
+            const shotAtCells = new Set<string>();
+
+            // Clear previous calls
+            projectileSpy.mockClear();
+            damageSpy.mockClear();
+
+            // Mock the UpdateStateEvent.setOverwatchData to track shotCells
+            const updateOverwatchSpy = jest.fn();
+            listener.listen(UpdateStateEvent.setOverwatchData, (data) => {
+                if (data && typeof data === 'object' && 'shotsRemaining' in data) {
+                    // Update our mock state's overwatch data
+                    const overwatchUpdate = data as any;
+                    const currentData = (mockState as any)._overwatchData.get(overwatchUpdate.characterName);
+                    if (currentData) {
+                        currentData.shotsRemaining = overwatchUpdate.shotsRemaining;
+                        // The real implementation would update shotCells here
+                    }
+                }
+                updateOverwatchSpy(data);
+            });
+
+            // Simulate movement through cells
+            cellsToEnter.forEach((position, index) => {
+                if (index === 0) {
+                    // Starting position - update enemy position but don't trigger movement event
+                    enemyCharacter.position = position;
+                } else {
+                    // Trigger movement event
+                    superEventBus.dispatch(StateChangeEvent.characterPosition, {
+                        ...enemyCharacter,
+                        position
+                    });
+
+                    // Check if this cell is in the watched area
+                    const isWatchedCell = watchedCells.some(cell => 
+                        cell.x === position.x && cell.y === position.y
+                    );
+
+                    if (isWatchedCell) {
+                        const cellKey = `${position.x},${position.y}`;
+                        shotAtCells.add(cellKey);
+                        
+                        // Update mock state's shotCells to simulate the real behavior
+                        const overwatchData = (mockState as any)._overwatchData.get(testCharacter.name);
+                        if (overwatchData) {
+                            overwatchData.shotCells.add(cellKey);
+                        }
+                    }
+
+                    // Update enemy position for next move
+                    enemyCharacter.position = position;
+                }
+            });
+
+            // Verify shots were fired at each watched cell entered
+            expect(projectileSpy).toHaveBeenCalledTimes(shotAtCells.size);
+            expect(damageSpy).toHaveBeenCalledTimes(shotAtCells.size);
+
+            // Verify each shot was to a unique cell
+            const shotTargets = projectileSpy.mock.calls.map(call => call[0].to);
+            const uniqueTargets = new Set(shotTargets.map(t => `${t.x},${t.y}`));
+            expect(uniqueTargets.size).toBe(shotAtCells.size);
+
+            // Verify all watched cells that were entered were shot at
+            shotTargets.forEach(target => {
+                const cellKey = `${target.x},${target.y}`;
+                expect(shotAtCells.has(cellKey)).toBe(true);
+            });
+
+            // Clean up
+            mockRandom.mockRestore();
+        });
+
+        it('should not shoot twice at the same cell even if enemy re-enters it', () => {
+            const listener = createTestListener();
+            const projectileSpy = jest.fn();
+
+            listener.listen(GUIEvent.shootProjectile, projectileSpy);
+
+            const watchedCells = [
+                { x: 7, y: 5 },
+                { x: 8, y: 5 },
+                { x: 9, y: 5 }
+            ];
+
+            const shotCellsSet = new Set<string>();
+            (mockState as any)._overwatchData.set(testCharacter.name, {
+                active: true,
+                direction: testCharacter.direction,
+                position: testCharacter.position,
+                range: 15,
+                shotsRemaining: 10,
+                watchedCells: watchedCells,
+                shotCells: shotCellsSet
+            });
+
+            mockState.findCharacter.mockImplementation((name) => {
+                if (name === enemyCharacter.name) return enemyCharacter;
+                if (name === testCharacter.name) return testCharacter;
+                return undefined;
+            });
+
+            // Mock the UpdateStateEvent.setOverwatchData to track shotCells
+            listener.listen(UpdateStateEvent.setOverwatchData, (data) => {
+                if (data && typeof data === 'object' && 'shotsRemaining' in data) {
+                    const overwatchUpdate = data as any;
+                    const currentData = (mockState as any)._overwatchData.get(overwatchUpdate.characterName);
+                    if (currentData) {
+                        currentData.shotsRemaining = overwatchUpdate.shotsRemaining;
+                        // Track the shot cell
+                        shotCellsSet.add('8,5');
+                    }
+                }
+            });
+
+            // Enemy enters cell
+            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+                ...enemyCharacter,
+                position: { x: 8, y: 5 }
+            });
+
+            expect(projectileSpy).toHaveBeenCalledTimes(1);
+
+            // Enemy leaves and re-enters the same cell
+            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+                ...enemyCharacter,
+                position: { x: 10, y: 5 } // Leave watched area
+            });
+
+            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+                ...enemyCharacter,
+                position: { x: 8, y: 5 } // Re-enter same cell
+            });
+
+            // Should still only have shot once
+            expect(projectileSpy).toHaveBeenCalledTimes(1);
+        });
+    });
+
     describe('Overwatch Edge Cases', () => {
         it('should handle character death during overwatch', () => {
             const listener = createTestListener();
