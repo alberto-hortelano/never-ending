@@ -178,7 +178,8 @@ export interface ICharacterVisualState {
 export interface ICellVisualState {
     isHighlighted: boolean;
     highlightIntensity?: number;
-    highlightType?: 'movement' | 'attack' | 'path' | 'overwatch';
+    highlightType?: 'movement' | 'attack' | 'path' | 'overwatch'; // Deprecated, use highlightTypes
+    highlightTypes?: Array<'movement' | 'attack' | 'path' | 'overwatch'>; // New: supports multiple types
     classList: string[];
 }
 

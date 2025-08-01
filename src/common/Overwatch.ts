@@ -226,12 +226,17 @@ export class Overwatch extends EventBus<
     }
     
     private onTurnChange(data: GameEventsMap[GameEvent.changeTurn]) {
-        // Clear overwatch for all characters of the player whose turn is starting
+        console.log('[Overwatch] Turn change event:', data);
+        // Clear overwatch completely for all characters of the player whose turn is starting
         const charactersToCheck = this.state.characters.filter(char => char.player === data.turn);
+        console.log('[Overwatch] Characters to check for turn:', data.turn, charactersToCheck.map(c => c.name));
         
         charactersToCheck.forEach(character => {
             const overwatchData = (this.state.overwatchData as any).get(character.name) as IOverwatchData | undefined;
+            console.log('[Overwatch] Checking character:', character.name, 'overwatchData:', overwatchData);
             if (overwatchData && overwatchData.active) {
+                console.log('[Overwatch] Clearing overwatch for:', character.name);
+                // Clear overwatch completely (including visuals) when their turn starts
                 this.clearCharacterOverwatch(character.name);
             }
         });
@@ -285,7 +290,7 @@ export class Overwatch extends EventBus<
             cellKey: `${vc.coord.x},${vc.coord.y}`,
             visualState: {
                 isHighlighted: true,
-                highlightType: 'overwatch' as const,
+                highlightTypes: ['overwatch'] as Array<'overwatch'>,
                 highlightIntensity: vc.intensity,
                 classList: ['highlight', 'overwatch']
             }
@@ -332,23 +337,29 @@ export class Overwatch extends EventBus<
     }
     
     private clearCharacterOverwatch(characterName: string) {
-        // Clear overwatch data
-        this.dispatch(UpdateStateEvent.setOverwatchData, {
-            characterName: characterName,
-            active: false
-        });
+        console.log('[Overwatch] clearCharacterOverwatch called for:', characterName);
         
-        // Clear visual indicators
+        // Get overwatch data BEFORE clearing it
         const overwatchData = (this.state.overwatchData as any).get(characterName) as IOverwatchData | undefined;
+        console.log('[Overwatch] Overwatch data to clear:', overwatchData);
+        
+        // Clear visual indicators first (while we still have the data)
         if (overwatchData && overwatchData.watchedCells) {
             // Batch clear cell visual states
             const cellUpdates = overwatchData.watchedCells.map(coord => ({
                 cellKey: `${coord.x},${coord.y}`,
                 visualState: null
             }));
+            console.log('[Overwatch] Clearing', cellUpdates.length, 'cell visuals');
             
             this.dispatch(UpdateStateEvent.uiCellVisualBatch, { updates: cellUpdates });
         }
+        
+        // Then clear overwatch data
+        this.dispatch(UpdateStateEvent.setOverwatchData, {
+            characterName: characterName,
+            active: false
+        });
         
         // Clear targetable cells
         this.dispatch(UpdateStateEvent.uiHighlights, {

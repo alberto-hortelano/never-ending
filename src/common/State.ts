@@ -251,11 +251,13 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
             type: 'normal'
         };
         
-        // Clear all highlighted cells in visual states
+        // Clear all highlighted cells in visual states EXCEPT overwatch highlights
         const cellUpdates: Array<{ cellKey: string; visualState: Partial<ICellVisualState> | null }> = [];
         Object.keys(this.#ui.visualStates.cells).forEach(cellKey => {
             const cell = this.#ui.visualStates.cells[cellKey];
-            if (cell?.isHighlighted) {
+            // Only clear non-overwatch highlights (check both old and new format)
+            const isOverwatch = cell?.highlightTypes?.includes('overwatch') || cell?.highlightType === 'overwatch';
+            if (cell?.isHighlighted && !isOverwatch) {
                 cellUpdates.push({ cellKey, visualState: null });
             }
         });
@@ -433,9 +435,20 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
                     classList: []
                 };
                 
+                // If both have highlightTypes, merge them
+                let mergedVisualState = { ...update.visualState };
+                if (currentVisual.highlightTypes && update.visualState.highlightTypes) {
+                    const mergedTypes = new Set([...currentVisual.highlightTypes, ...update.visualState.highlightTypes]);
+                    mergedVisualState.highlightTypes = Array.from(mergedTypes);
+                    console.log(`[State] Merging highlight types for ${update.cellKey}:`, 
+                        'current:', currentVisual.highlightTypes, 
+                        'new:', update.visualState.highlightTypes, 
+                        'merged:', mergedVisualState.highlightTypes);
+                }
+                
                 this.#ui.visualStates.cells[update.cellKey] = {
                     ...currentVisual,
-                    ...update.visualState
+                    ...mergedVisualState
                 } as ICellVisualState;
             } else {
                 delete this.#ui.visualStates.cells[update.cellKey];
@@ -477,13 +490,32 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.dispatch(StateChangeEvent.uiTransient, structuredClone(this.#ui.transientUI));
     }
     
+    // Helper function to merge highlight types
+    private mergeHighlightTypes(
+        existing: Array<'movement' | 'attack' | 'path' | 'overwatch'> | undefined, 
+        newType: 'movement' | 'attack' | 'path' | 'overwatch'
+    ): Array<'movement' | 'attack' | 'path' | 'overwatch'> {
+        const types = new Set(existing || []);
+        types.add(newType);
+        return Array.from(types) as Array<'movement' | 'attack' | 'path' | 'overwatch'>;
+    }
+    
     private onUIHighlights(data: UpdateStateEventsMap[UpdateStateEvent.uiHighlights]) {
-        // First, clear previously highlighted cells
+        // First, clear previously highlighted cells (except overwatch)
         const previouslyHighlighted = new Set<string>();
+        const overwatchCells = new Map<string, ICellVisualState>(); // Store overwatch cells to preserve them
+        
         Object.keys(this.#ui.visualStates.cells).forEach(cellKey => {
             const cell = this.#ui.visualStates.cells[cellKey];
             if (cell?.isHighlighted) {
-                previouslyHighlighted.add(cellKey);
+                // Check if it's an overwatch cell using new or old format
+                const isOverwatch = cell.highlightTypes?.includes('overwatch') || cell.highlightType === 'overwatch';
+                if (isOverwatch) {
+                    console.log(`[State.onUIHighlights] Found overwatch cell ${cellKey}`, cell);
+                    overwatchCells.set(cellKey, cell);
+                } else {
+                    previouslyHighlighted.add(cellKey);
+                }
             }
         });
         
@@ -496,7 +528,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         // Batch update all cell visual states
         const cellUpdates: Array<{ cellKey: string; visualState: Partial<ICellVisualState> | null }> = [];
         
-        // Clear previously highlighted cells
+        // Clear previously highlighted cells (except overwatch)
         previouslyHighlighted.forEach(cellKey => {
             cellUpdates.push({ cellKey, visualState: null });
         });
@@ -504,38 +536,98 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         // Add new highlights
         data.reachableCells?.forEach(coord => {
             const cellKey = `${coord.x},${coord.y}`;
-            cellUpdates.push({
-                cellKey,
-                visualState: {
-                    isHighlighted: true,
-                    highlightType: 'movement',
-                    classList: ['highlight']
-                }
-            });
+            const existingOverwatch = overwatchCells.get(cellKey);
+            
+            if (existingOverwatch) {
+                // Merge with existing overwatch state
+                const mergedTypes = this.mergeHighlightTypes(existingOverwatch.highlightTypes, 'movement');
+                console.log(`[State.onUIHighlights] Cell ${cellKey} has overwatch, adding movement. Merged types:`, mergedTypes);
+                cellUpdates.push({
+                    cellKey,
+                    visualState: {
+                        isHighlighted: true,
+                        highlightTypes: mergedTypes,
+                        highlightIntensity: existingOverwatch.highlightIntensity, // Preserve intensity
+                        classList: ['highlight']
+                    }
+                });
+            } else {
+                // New movement highlight
+                cellUpdates.push({
+                    cellKey,
+                    visualState: {
+                        isHighlighted: true,
+                        highlightTypes: ['movement'],
+                        classList: ['highlight']
+                    }
+                });
+            }
         });
         
         data.pathCells?.forEach(coord => {
             const cellKey = `${coord.x},${coord.y}`;
-            cellUpdates.push({
-                cellKey,
-                visualState: {
-                    isHighlighted: true,
-                    highlightType: 'path',
-                    classList: ['path']
-                }
-            });
+            const existingOverwatch = overwatchCells.get(cellKey);
+            
+            if (existingOverwatch) {
+                // Merge with existing overwatch state
+                cellUpdates.push({
+                    cellKey,
+                    visualState: {
+                        isHighlighted: true,
+                        highlightTypes: this.mergeHighlightTypes(existingOverwatch.highlightTypes, 'path'),
+                        highlightIntensity: existingOverwatch.highlightIntensity,
+                        classList: ['path']
+                    }
+                });
+            } else {
+                cellUpdates.push({
+                    cellKey,
+                    visualState: {
+                        isHighlighted: true,
+                        highlightTypes: ['path'],
+                        classList: ['path']
+                    }
+                });
+            }
         });
         
         data.targetableCells?.forEach(coord => {
             const cellKey = `${coord.x},${coord.y}`;
-            cellUpdates.push({
-                cellKey,
-                visualState: {
-                    isHighlighted: true,
-                    highlightType: 'attack',
-                    classList: ['highlight']
-                }
-            });
+            const existingOverwatch = overwatchCells.get(cellKey);
+            
+            if (existingOverwatch) {
+                // Merge with existing overwatch state
+                cellUpdates.push({
+                    cellKey,
+                    visualState: {
+                        isHighlighted: true,
+                        highlightTypes: this.mergeHighlightTypes(existingOverwatch.highlightTypes, 'attack'),
+                        highlightIntensity: existingOverwatch.highlightIntensity,
+                        classList: ['highlight']
+                    }
+                });
+            } else {
+                cellUpdates.push({
+                    cellKey,
+                    visualState: {
+                        isHighlighted: true,
+                        highlightTypes: ['attack'],
+                        classList: ['highlight']
+                    }
+                });
+            }
+        });
+        
+        // Re-add overwatch cells that weren't updated (to preserve them)
+        overwatchCells.forEach((cell, cellKey) => {
+            // Only re-add if this cell wasn't already updated
+            if (!cellUpdates.some(update => update.cellKey === cellKey)) {
+                console.log(`[State.onUIHighlights] Re-adding preserved overwatch cell ${cellKey}`);
+                cellUpdates.push({
+                    cellKey,
+                    visualState: cell
+                });
+            }
         });
         
         // Apply all updates in batch

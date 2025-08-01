@@ -164,7 +164,7 @@ describe('Overwatch', () => {
             expect(cellBatchSpy).toHaveBeenCalled();
             const batchUpdate = cellBatchSpy.mock.calls[0][0];
             expect(batchUpdate.updates.length).toBeGreaterThan(0);
-            expect(batchUpdate.updates[0].visualState.highlightType).toBe('overwatch');
+            expect(batchUpdate.updates[0].visualState.highlightTypes).toContain('overwatch');
 
             // Should set interaction mode to overwatch
             expect(interactionModeSpy).toHaveBeenCalledWith({
@@ -500,6 +500,9 @@ describe('Overwatch', () => {
                 characterName: testCharacter.name,
                 active: false
             });
+            
+            // Should also clear highlights
+            expect(clearHighlightsSpy).toHaveBeenCalled();
         });
 
         it('should maintain overwatch during other players\' turns', () => {
@@ -579,7 +582,7 @@ describe('Overwatch', () => {
             const batchUpdate = cellBatchSpy.mock.calls[0][0];
             expect(batchUpdate.updates[0].visualState).toMatchObject({
                 isHighlighted: true,
-                highlightType: 'overwatch',
+                highlightTypes: expect.arrayContaining(['overwatch']),
                 classList: expect.arrayContaining(['highlight', 'overwatch'])
             });
         });

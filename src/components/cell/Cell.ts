@@ -63,6 +63,11 @@ export default class Cell extends Component {
         this.dispatch(ControlsEvent.cellMouseLeave, this.coords);
     }
     private applyVisualState(visualState: ICellVisualState) {
+        // Debug logging for cells with multiple states
+        if (visualState.highlightTypes && visualState.highlightTypes.length > 1) {
+            console.log(`[Cell ${this.cellKey}] Multiple highlight types:`, visualState.highlightTypes);
+        }
+
         // Use requestAnimationFrame to batch DOM updates
         requestAnimationFrame(() => {
             // Reset classes
@@ -77,7 +82,13 @@ export default class Cell extends Component {
             if (visualState.isHighlighted) {
                 this.classList.add('highlight');
 
-                if (visualState.highlightType) {
+                // Handle multiple highlight types (new)
+                if (visualState.highlightTypes && visualState.highlightTypes.length > 0) {
+                    visualState.highlightTypes.forEach(type => {
+                        this.classList.add(`highlight-${type}`);
+                    });
+                } else if (visualState.highlightType) {
+                    // Fallback to single highlight type (backward compatibility)
                     this.classList.add(`highlight-${visualState.highlightType}`);
                 }
 
