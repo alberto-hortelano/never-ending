@@ -100,7 +100,6 @@ export class DirectionsService {
             normalizedAngle += 360;
         }
 
-        console.log('[DirectionsService] getDirectionFromAngle - Input angle:', angle, 'Normalized:', normalizedAngle);
 
         // Define angle ranges for each direction
         // Math.atan2 returns: right=0°, down=90°, left=180°/-180°, up=-90°
@@ -124,7 +123,6 @@ export class DirectionsService {
             direction = 'up-right';
         }
         
-        console.log('[DirectionsService] getDirectionFromAngle - Output direction:', direction);
         return direction;
     }
 

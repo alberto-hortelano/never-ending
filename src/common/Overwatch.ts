@@ -79,14 +79,6 @@ export class Overwatch extends EventBus<
             // Activate overwatch
             const pointsToConsume = this.activeOverwatchCharacter.actions.pointsLeft;
             
-            console.log('[Overwatch] Activating overwatch:', {
-                character: this.activeOverwatchCharacter.name,
-                player: this.activeOverwatchCharacter.player,
-                position: this.activeOverwatchCharacter.position,
-                direction: this.activeOverwatchCharacter.direction,
-                shotsAvailable: pointsToConsume,
-                watchedCells: this.visibleCells.length
-            });
             
             // Store overwatch data
             this.dispatch(UpdateStateEvent.setOverwatchData, {
@@ -255,16 +247,9 @@ export class Overwatch extends EventBus<
             }
         });
         
-        // Log summary
-        console.log('[Overwatch] Turn change:', {
-            newTurn: data.turn,
-            activeOverwatches: activeOverwatches.length > 0 ? activeOverwatches : 'none',
-            toBeCleared: overwatchesToClear.length > 0 ? overwatchesToClear : 'none'
-        });
         
         // Clear overwatch for characters whose turn is starting
         overwatchesToClear.forEach(characterName => {
-            console.log('[Overwatch] Clearing overwatch for:', characterName, 'as their turn is starting');
             this.clearCharacterOverwatch(characterName);
             
             // Also ensure interaction mode is cleared if this character was in overwatch mode
@@ -385,11 +370,8 @@ export class Overwatch extends EventBus<
     }
     
     private clearCharacterOverwatch(characterName: string) {
-        console.log('[Overwatch] clearCharacterOverwatch called for:', characterName);
-        
         // Get overwatch data BEFORE clearing it
         const overwatchData = (this.state.overwatchData as any).get(characterName) as IOverwatchData | undefined;
-        console.log('[Overwatch] Overwatch data to clear:', overwatchData);
         
         // Clear visual indicators first (while we still have the data)
         if (overwatchData && overwatchData.watchedCells) {
@@ -398,7 +380,6 @@ export class Overwatch extends EventBus<
                 cellKey: `${coord.x},${coord.y}`,
                 visualState: null
             }));
-            console.log('[Overwatch] Clearing', cellUpdates.length, 'cell visuals');
             
             this.dispatch(UpdateStateEvent.uiCellVisualBatch, { updates: cellUpdates });
         }

@@ -306,7 +306,6 @@ export class Shoot extends EventBus<
 
         // Only process if this is for the current shooting character
         if (!this.shootingCharacter || this.shootingCharacter.name !== characterName) {
-            console.error('[Shoot] Not current shooting character. Current:', this.shootingCharacter?.name, 'Received:', characterName);
             return;
         }
 
