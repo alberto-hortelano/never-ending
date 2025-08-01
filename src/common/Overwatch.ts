@@ -110,7 +110,7 @@ export class Overwatch extends EventBus<
             this.activeOverwatchCharacter = undefined;
             this.visibleCells = undefined;
             
-            // Update interaction mode to show overwatch is active
+            // Reset interaction mode to normal since overwatch is now active and locked
             this.dispatch(UpdateStateEvent.uiInteractionMode, {
                 type: 'normal'
             });
@@ -120,7 +120,7 @@ export class Overwatch extends EventBus<
     private onMousePositionUpdate(data: ControlsEventsMap[ControlsEvent.mousePositionUpdate]) {
         const { characterName, mouseCoord } = data;
         
-        // Only process if this is for the current overwatch character
+        // Only process if this is for the current overwatch setup (not active overwatch)
         if (!this.activeOverwatchCharacter || this.activeOverwatchCharacter.name !== characterName) {
             return;
         }
@@ -150,10 +150,13 @@ export class Overwatch extends EventBus<
             direction: newDirection
         });
         
-        // Recalculate and update the overwatch range with the new direction
-        const updatedCharacter = this.state.findCharacter(characterName);
-        if (updatedCharacter) {
-            this.showOverwatchRange(updatedCharacter);
+        // Handle only if we're in setup mode (not active overwatch)
+        if (this.activeOverwatchCharacter) {
+            // Setting up overwatch - update visual range
+            const updatedCharacter = this.state.findCharacter(characterName);
+            if (updatedCharacter) {
+                this.showOverwatchRange(updatedCharacter);
+            }
         }
     }
     
@@ -263,6 +266,17 @@ export class Overwatch extends EventBus<
         overwatchesToClear.forEach(characterName => {
             console.log('[Overwatch] Clearing overwatch for:', characterName, 'as their turn is starting');
             this.clearCharacterOverwatch(characterName);
+            
+            // Also ensure interaction mode is cleared if this character was in overwatch mode
+            const interactionMode = this.state.ui.interactionMode;
+            if (interactionMode.type === 'overwatch' && interactionMode.data) {
+                const overwatchModeData = interactionMode.data as { characterId: string };
+                if (overwatchModeData.characterId === characterName) {
+                    this.dispatch(UpdateStateEvent.uiInteractionMode, {
+                        type: 'normal'
+                    });
+                }
+            }
         });
     }
     
@@ -270,6 +284,15 @@ export class Overwatch extends EventBus<
     private showOverwatchRange(character: DeepReadonly<ICharacter>) {
         const range = ShootingService.getWeaponRange(character);
         const angleOfVision = SHOOT_CONSTANTS.DEFAULT_ANGLE_OF_VISION;
+        
+        // Clear previous visible cells if they exist
+        if (this.visibleCells) {
+            const clearUpdates = this.visibleCells.map(vc => ({
+                cellKey: `${vc.coord.x},${vc.coord.y}`,
+                visualState: null
+            }));
+            this.dispatch(UpdateStateEvent.uiCellVisualBatch, { updates: clearUpdates });
+        }
         
         this.activeOverwatchCharacter = character;
         this.visibleCells = ShootingService.calculateVisibleCells(
@@ -293,6 +316,7 @@ export class Overwatch extends EventBus<
             }
         });
         
+        // Set interaction mode for overwatch
         if (weapon) {
             this.dispatch(UpdateStateEvent.uiInteractionMode, {
                 type: 'overwatch',
@@ -397,6 +421,17 @@ export class Overwatch extends EventBus<
                 temporaryClasses: []
             }
         });
+        
+        // Clear interaction mode if this was the active overwatch character
+        const interactionMode = this.state.ui.interactionMode;
+        if (interactionMode.type === 'overwatch' && interactionMode.data) {
+            const overwatchModeData = interactionMode.data as { characterId: string };
+            if (overwatchModeData.characterId === characterName) {
+                this.dispatch(UpdateStateEvent.uiInteractionMode, {
+                    type: 'normal'
+                });
+            }
+        }
     }
     
     private executeOverwatchShot(
@@ -469,6 +504,11 @@ export class Overwatch extends EventBus<
         if (newShotsRemaining <= 0) {
             // Out of shots, deactivate overwatch
             this.clearCharacterOverwatch(overwatcherName);
+            
+            // Clear interaction mode if this was the active overwatch character
+            this.dispatch(UpdateStateEvent.uiInteractionMode, {
+                type: 'normal'
+            });
         } else {
             // Update remaining shots
             this.dispatch(UpdateStateEvent.setOverwatchData, {
@@ -477,16 +517,20 @@ export class Overwatch extends EventBus<
                 shotsRemaining: newShotsRemaining
             });
             
-            // Update interaction mode to show remaining shots
-            if (weapon) {
-                this.dispatch(UpdateStateEvent.uiInteractionMode, {
-                    type: 'overwatch',
-                    data: {
-                        characterId: overwatcherName,
-                        weapon: weapon,
-                        shotsRemaining: newShotsRemaining
-                    } as any
-                });
+            // Update interaction mode to show remaining shots only if data changed
+            const currentMode = this.state.ui.interactionMode;
+            if (weapon && currentMode.type === 'overwatch') {
+                const currentData = currentMode.data as any;
+                if (currentData?.shotsRemaining !== newShotsRemaining) {
+                    this.dispatch(UpdateStateEvent.uiInteractionMode, {
+                        type: 'overwatch',
+                        data: {
+                            characterId: overwatcherName,
+                            weapon: weapon,
+                            shotsRemaining: newShotsRemaining
+                        } as any
+                    });
+                }
             }
         }
     }

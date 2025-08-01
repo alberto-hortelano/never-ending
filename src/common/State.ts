@@ -435,11 +435,6 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         // Process all updates in batch
         data.updates.forEach(update => {
             if (update.visualState) {
-                const currentVisual = this.#ui.visualStates.cells[update.cellKey] || {
-                    isHighlighted: false,
-                    classList: []
-                };
-
                 // Track update types for logging
                 if (update.visualState.highlightTypes?.includes('overwatch')) {
                     overwatchUpdates.push(update.cellKey);
@@ -447,17 +442,8 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
                     otherUpdates.push(update.cellKey);
                 }
 
-                // If both have highlightTypes, merge them
-                const mergedVisualState = { ...update.visualState };
-                if (currentVisual.highlightTypes && update.visualState.highlightTypes) {
-                    const mergedTypes = new Set([...currentVisual.highlightTypes, ...update.visualState.highlightTypes]);
-                    mergedVisualState.highlightTypes = Array.from(mergedTypes);
-                }
-
-                this.#ui.visualStates.cells[update.cellKey] = {
-                    ...currentVisual,
-                    ...mergedVisualState
-                } as ICellVisualState;
+                // Replace the visual state entirely (don't merge)
+                this.#ui.visualStates.cells[update.cellKey] = update.visualState as ICellVisualState;
             } else {
                 clearUpdates.push(update.cellKey);
                 delete this.#ui.visualStates.cells[update.cellKey];
