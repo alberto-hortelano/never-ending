@@ -104,6 +104,12 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
         for (const [id] of this.activeAnimations) {
             if (!stateAnimations[id]) {
                 this.activeAnimations.delete(id);
+                
+                // Dispatch animation removal to state
+                this.dispatch(UpdateStateEvent.uiCharacterAnimation, {
+                    characterId: id,
+                    animation: null
+                });
             }
         }
         
