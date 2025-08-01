@@ -73,7 +73,7 @@
 :host(.highlight-overwatch)::after {
     @include interactive-overlay;
     --overwatch-color: 0, 100, 255;
-    background-color: rgba(var(--overwatch-color), 0.4);
+    background-color: rgb(255 50 0 / 15%);
     cursor: crosshair;
 }
 
