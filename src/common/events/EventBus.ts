@@ -64,7 +64,7 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
         const filterBucket = EventBus.listeners.get(filterKey);
         if (!bucket && !filterBucket) {
             if (!isTestEnvironment) {
-                console.warn(`${this.constructor.name}: no listeners for "${key}"`);
+                console.log(`${this.constructor.name}: no listeners for "${key}"`);
             }
             return;
         }

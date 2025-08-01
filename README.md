@@ -24,6 +24,9 @@ Lets build the shoot action. When the user clicks the shoot button, the cells in
 1. Movimiento
 1. Cobertura: Se coloca en una cobertura adyacente
 1. Lanzar granada
+    1. Explosiva: hace danio en area
+    1. Flash: Rompe los overwqatches que en los que caiga (porcentaje segun el del overwatch)
+    1. humo: Reduce danio en area en ambas direcciones
 1. Talk: Hablar con alguien
 1. Ataque CC: Se abre un selector con los ataques disponibles:
     1. Fuerte
