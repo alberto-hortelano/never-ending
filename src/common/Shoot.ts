@@ -23,8 +23,6 @@ const SHOOT_CONSTANTS = {
     VISIBILITY_THRESHOLD: 0.01,
     DISTANCE_DAMAGE_FALLOFF: 0.5, // 50% damage reduction at max range
     AIM_RANGE_BONUS: 0.5, // 50% range increase per aim level
-    AIM_ACCURACY_BONUS: 0.15, // 15% accuracy increase per aim level
-    BASE_ACCURACY: 0.7, // 70% base hit chance
     CRITICAL_HIT_BASE_CHANCE: 0.05, // 5% base critical chance
     CRITICAL_HIT_AIM_BONUS: 0.05, // 5% additional critical chance per aim level
     CRITICAL_HIT_MULTIPLIER: 2.0, // Double damage on critical hits
@@ -235,45 +233,36 @@ export class Shoot extends EventBus<
                     type: projectileType
                 });
 
-                // Calculate hit chance
+                // Calculate damage based on equipped weapon
+                const baseDamage = this.getWeaponDamage(this.shootingCharacter);
                 const distance = this.getDistance(this.shootingCharacter.position, position);
                 const maxRange = this.getWeaponRange(this.shootingCharacter);
-                const hitChance = this.calculateHitChance(distance, maxRange);
 
-                // Check if the shot hits
-                if (this.rollHit(hitChance)) {
-                    // Calculate damage based on equipped weapon
-                    const baseDamage = this.getWeaponDamage(this.shootingCharacter);
+                // Apply distance falloff
+                const distanceFactor = 1 - (distance / maxRange) * SHOOT_CONSTANTS.DISTANCE_DAMAGE_FALLOFF;
+                let finalDamage = Math.round(baseDamage * distanceFactor);
 
-                    // Apply distance falloff
-                    const distanceFactor = 1 - (distance / maxRange) * SHOOT_CONSTANTS.DISTANCE_DAMAGE_FALLOFF;
-                    let finalDamage = Math.round(baseDamage * distanceFactor);
-
-                    // Check for critical hit
-                    const critChance = this.calculateCriticalChance();
-                    const isCritical = this.rollCritical(critChance);
-                    
-                    if (isCritical) {
-                        finalDamage = Math.round(finalDamage * SHOOT_CONSTANTS.CRITICAL_HIT_MULTIPLIER);
-                    }
-
-                    // Dispatch damage number event for visual feedback
-                    this.dispatch(GUIEvent.damageNumber, {
-                        position: position,
-                        damage: finalDamage,
-                        isCritical: isCritical
-                    });
-
-                    // Apply damage to target
-                    this.dispatch(UpdateStateEvent.damageCharacter, {
-                        targetName: targetCharacter.name,
-                        damage: finalDamage,
-                        attackerName: this.shootingCharacter.name
-                    });
-                } else {
-                    // Shot missed
-                    this.dispatch(ActionEvent.error, `Shot missed! (${Math.round(hitChance * 100)}% chance)`);
+                // Check for critical hit
+                const critChance = this.calculateCriticalChance();
+                const isCritical = this.rollCritical(critChance);
+                
+                if (isCritical) {
+                    finalDamage = Math.round(finalDamage * SHOOT_CONSTANTS.CRITICAL_HIT_MULTIPLIER);
                 }
+
+                // Dispatch damage number event for visual feedback
+                this.dispatch(GUIEvent.damageNumber, {
+                    position: position,
+                    damage: finalDamage,
+                    isCritical: isCritical
+                });
+
+                // Apply damage to target
+                this.dispatch(UpdateStateEvent.damageCharacter, {
+                    targetName: targetCharacter.name,
+                    damage: finalDamage,
+                    attackerName: this.shootingCharacter.name
+                });
 
             }
 
@@ -306,7 +295,6 @@ export class Shoot extends EventBus<
 
         // Only process if this is for the current shooting character
         if (!this.shootingCharacter || this.shootingCharacter.name !== characterName) {
-            console.error('[Shoot] Not current shooting character. Current:', this.shootingCharacter?.name, 'Received:', characterName);
             return;
         }
 
@@ -546,29 +534,10 @@ export class Shoot extends EventBus<
         return baseRange * (1 + SHOOT_CONSTANTS.AIM_RANGE_BONUS * this.aimLevel);
     }
 
-    private calculateHitChance(distance: number, maxRange: number): number {
-        // Base accuracy
-        let accuracy = SHOOT_CONSTANTS.BASE_ACCURACY;
-        
-        // Add aim level bonus
-        accuracy += this.aimLevel * SHOOT_CONSTANTS.AIM_ACCURACY_BONUS;
-        
-        // Apply distance penalty (no penalty at point blank, max penalty at max range)
-        const distancePenalty = (distance / maxRange) * 0.3; // Up to 30% penalty
-        accuracy -= distancePenalty;
-        
-        // Clamp between 0.05 (5% minimum) and 0.95 (95% maximum)
-        return Math.max(0.05, Math.min(0.95, accuracy));
-    }
-
     private calculateCriticalChance(): number {
         const baseChance = SHOOT_CONSTANTS.CRITICAL_HIT_BASE_CHANCE;
         const aimBonus = this.aimLevel * SHOOT_CONSTANTS.CRITICAL_HIT_AIM_BONUS;
         return Math.min(0.5, baseChance + aimBonus); // Cap at 50%
-    }
-
-    private rollHit(hitChance: number): boolean {
-        return Math.random() < hitChance;
     }
 
     private rollCritical(critChance: number): boolean {

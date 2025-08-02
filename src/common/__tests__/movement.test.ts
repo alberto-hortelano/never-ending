@@ -360,6 +360,135 @@ describe('Movement', () => {
         });
     });
 
+    describe('defeated character handling', () => {
+        it('should stop movement when character is defeated during animation', () => {
+            const characterWithPath: ICharacter = createMockCharacter({
+                player: 'human',
+                name: 'testChar',
+                health: 50,
+                path: [
+                    { x: 2, y: 1 },
+                    { x: 3, y: 1 },
+                    { x: 4, y: 1 }
+                ]
+            });
+
+            const defeatedCharacter = {
+                ...characterWithPath,
+                health: 0
+            };
+
+            const updatePathSpy = jest.fn();
+            const highlightsSpy = jest.fn();
+            const listener = createTestListener();
+            listener.listen(UpdateStateEvent.characterPath, updatePathSpy);
+            listener.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
+
+            // Start movement by dispatching characterPath event
+            superEventBus.dispatch(StateChangeEvent.characterPath, characterWithPath);
+
+            // Character is defeated during movement
+            superEventBus.dispatch(StateChangeEvent.characterDefeated, defeatedCharacter);
+
+            // Verify path was cleared for defeated character
+            expect(updatePathSpy).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    name: 'testChar',
+                    path: []
+                })
+            );
+
+            // Verify highlights were cleared
+            expect(highlightsSpy).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    reachableCells: [],
+                    pathCells: []
+                })
+            );
+        });
+
+        it('should not allow movement selection for defeated characters', () => {
+            const defeatedCharacter = createMockCharacter({
+                player: 'human',
+                name: 'deadChar',
+                health: 0
+            });
+
+            mockState.findCharacter.mockReturnValue(defeatedCharacter);
+
+            const highlightsSpy = jest.fn();
+            const listener = createTestListener();
+            listener.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
+
+            // Try to show movement for defeated character
+            superEventBus.dispatch(ControlsEvent.showMovement, 'deadChar');
+
+            // Verify no highlights were dispatched
+            expect(highlightsSpy).not.toHaveBeenCalled();
+            expect(getReachableCells).not.toHaveBeenCalled();
+        });
+
+        it('should clear path when character is defeated', () => {
+            const character = createMockCharacter({
+                player: 'human',
+                name: 'testChar',
+                health: 50,
+                path: [{ x: 2, y: 1 }, { x: 3, y: 1 }]
+            });
+
+            const defeatedCharacter = {
+                ...character,
+                health: 0
+            };
+
+            const updatePathSpy = jest.fn();
+            const listener = createTestListener();
+            listener.listen(UpdateStateEvent.characterPath, updatePathSpy);
+
+            // Character is defeated
+            superEventBus.dispatch(StateChangeEvent.characterDefeated, defeatedCharacter);
+
+            // Verify path was cleared
+            expect(updatePathSpy).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    name: 'testChar',
+                    path: []
+                })
+            );
+        });
+
+        it('should not create animation for defeated character', () => {
+            const defeatedCharacter = createMockCharacter({
+                player: 'human',
+                name: 'deadChar',
+                health: 0,
+                path: [{ x: 2, y: 1 }, { x: 3, y: 1 }]
+            });
+
+            mockState.findCharacter.mockReturnValue(defeatedCharacter);
+
+            const animationSpy = jest.fn();
+            const updatePathSpy = jest.fn();
+            const listener = createTestListener();
+            listener.listen(UpdateStateEvent.uiCharacterAnimation, animationSpy);
+            listener.listen(UpdateStateEvent.characterPath, updatePathSpy);
+
+            // Dispatch characterPath event for defeated character
+            superEventBus.dispatch(StateChangeEvent.characterPath, defeatedCharacter);
+
+            // Verify no animation was created
+            expect(animationSpy).not.toHaveBeenCalled();
+            
+            // Verify path was cleared immediately
+            expect(updatePathSpy).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    name: 'deadChar',
+                    path: []
+                })
+            );
+        });
+    });
+
     describe('event cleanup', () => {
         it('should properly handle multiple movement sequences', () => {
             const character1 = createMockCharacter({ player: 'human', name: 'char1' });

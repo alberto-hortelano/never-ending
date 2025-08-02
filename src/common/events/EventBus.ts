@@ -64,7 +64,7 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
         const filterBucket = EventBus.listeners.get(filterKey);
         if (!bucket && !filterBucket) {
             if (!isTestEnvironment) {
-                console.warn(`${this.constructor.name}: no listeners for "${key}"`);
+                console.log(`${this.constructor.name}: no listeners for "${key}"`);
             }
             return;
         }
@@ -75,7 +75,7 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
                     cb(structuredClone(eventData));
                 } catch (err) {
                     if (!isTestEnvironment) {
-                        console.error(`Error in listener for "${key}":`, err);
+                        console.log(`Error in listener for "${key}":`, err);
                     }
                 }
             }
@@ -86,7 +86,7 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
                     cb(structuredClone(eventData));
                 } catch (err) {
                     if (!isTestEnvironment) {
-                        console.error(`Error in listener for "${filterKey}":`, err);
+                        console.log(`Error in listener for "${filterKey}":`, err);
                     }
                 }
             }

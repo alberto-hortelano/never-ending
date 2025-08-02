@@ -6,7 +6,7 @@ export default class Cell extends Component {
     static get observedAttributes() {
         return ['content'];
     }
-    static states = ['highlight', 'highlight-intensity', 'highlight-movement', 'highlight-path', 'highlight-attack', 'path'];
+    static states = ['highlight', 'highlight-intensity', 'highlight-movement', 'highlight-path', 'highlight-attack', 'highlight-overwatch', 'path'];
     protected override hasCss = true;
     protected override hasHtml = false;
     private coords: ICoord = { x: -1, y: -1 };
@@ -77,7 +77,13 @@ export default class Cell extends Component {
             if (visualState.isHighlighted) {
                 this.classList.add('highlight');
 
-                if (visualState.highlightType) {
+                // Handle multiple highlight types (new)
+                if (visualState.highlightTypes && visualState.highlightTypes.length > 0) {
+                    visualState.highlightTypes.forEach(type => {
+                        this.classList.add(`highlight-${type}`);
+                    });
+                } else if (visualState.highlightType) {
+                    // Fallback to single highlight type (backward compatibility)
                     this.classList.add(`highlight-${visualState.highlightType}`);
                 }
 

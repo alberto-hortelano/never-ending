@@ -33,6 +33,7 @@ export class Movement extends EventBus<
         this.addListener(StateChangeEvent.characterPath, character => this.onCharacterPath(character));
         this.addListener(StateChangeEvent.uiAnimations, animations => this.onAnimationsChange(animations));
         this.addListener(StateChangeEvent.uiInteractionMode, mode => this.onInteractionModeChange(mode));
+        this.addListener(StateChangeEvent.characterDefeated, character => this.onCharacterDefeated(character));
     }
 
     private addListener<K extends keyof (GameEventsMap & ControlsEventsMap & StateChangeEventsMap)>(
@@ -40,7 +41,7 @@ export class Movement extends EventBus<
         handler: (data: (GameEventsMap & ControlsEventsMap & StateChangeEventsMap)[K]) => void
     ) {
         this.listen(event, handler);
-        this.listeners.push({ event: event as string, handler });
+        this.listeners.push({ event, handler });
     }
 
     destroy() {
@@ -70,6 +71,15 @@ export class Movement extends EventBus<
         }
     }
     private onCharacterPath(character: StateChangeEventsMap[StateChangeEvent.characterPath]) {
+        // Check if character is defeated
+        if (character.health <= 0) {
+            // Clear path for defeated character only if it's not already empty
+            if (character.path && character.path.length > 0) {
+                this.dispatch(UpdateStateEvent.characterPath, { ...character, path: [] });
+            }
+            return;
+        }
+        
         // When a character path is set, create a movement animation
         if (character.path && character.path.length > 0) {
 
@@ -129,6 +139,11 @@ export class Movement extends EventBus<
     private onShowMovement(characterName: ControlsEventsMap[ControlsEvent.showMovement]) {
         const character = this.state.findCharacter(characterName);
         if (!character) return;
+        
+        // Check if character is defeated
+        if (character.health <= 0) {
+            return;
+        }
 
         // Check if the character belongs to the current turn
         const currentTurn = this.state.game.turn;
@@ -193,6 +208,26 @@ export class Movement extends EventBus<
         // Set the character path which will trigger animation
         this.dispatch(UpdateStateEvent.characterPath, { ...character, path });
     }
+    private onCharacterDefeated(character: StateChangeEventsMap[StateChangeEvent.characterDefeated]) {
+        // Clear any active movement for the defeated character
+        if (this.movingCharacter && this.movingCharacter.name === character.name) {
+            this.movingCharacter = undefined;
+            this.reachableCells = undefined;
+        }
+        
+        // Clear the character's path
+        this.dispatch(UpdateStateEvent.characterPath, { ...character, path: [] });
+        
+        // Clear any highlights
+        this.dispatch(UpdateStateEvent.uiHighlights, {
+            reachableCells: [],
+            pathCells: []
+        });
+        
+        // Remove from completed movements tracking
+        this.completedMovements.delete(character.name);
+    }
+    
     private showMovement(character: DeepReadonly<ICharacter>) {
         // Always get fresh character data from state to ensure we have the latest position
         const freshCharacter = this.state.findCharacter(character.name);

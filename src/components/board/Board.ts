@@ -12,6 +12,7 @@ export default class Board extends Component {
   protected override hasCss = true;
   protected override hasHtml = true;
   private shootingCharacterName?: string;
+  private overwatchCharacterName?: string;
 
   constructor() {
     super();
@@ -181,27 +182,28 @@ export default class Board extends Component {
   }
   
   private onInteractionModeChange(mode: IInteractionMode) {
-    console.log('[Board] Interaction mode changed:', mode);
+    // Clear previous modes
+    this.shootingCharacterName = undefined;
+    this.overwatchCharacterName = undefined;
+    
     if (mode.type === 'shooting' && mode.data) {
       const shootingData = mode.data as { characterId: string };
-      console.log('[Board] Shooting mode enabled for character:', shootingData.characterId);
       this.shootingCharacterName = shootingData.characterId;
-    } else {
-      console.log('[Board] Shooting mode disabled');
-      this.shootingCharacterName = undefined;
+    } else if (mode.type === 'overwatch' && mode.data) {
+      const overwatchData = mode.data as { characterId: string };
+      this.overwatchCharacterName = overwatchData.characterId;
     }
   }
   
   private onCellMouseEnter(coord: ICoord) {
-    // Only process if we're in shooting mode
-    if (!this.shootingCharacterName) return;
+    // Process for both shooting and overwatch modes
+    const activeCharacterName = this.shootingCharacterName || this.overwatchCharacterName;
+    if (!activeCharacterName) return;
     
-    console.log('[Board] Cell mouse enter:', coord, 'Shooting character:', this.shootingCharacterName);
-    
-    // Dispatch the coordinate update to Shoot service
+    // Dispatch the coordinate update to appropriate service
     this.dispatch(ControlsEvent.mousePositionUpdate, {
-      characterName: this.shootingCharacterName,
-      newDirection: 'down', // Placeholder, will be calculated in Shoot service
+      characterName: activeCharacterName,
+      newDirection: 'down', // Placeholder, will be calculated in service
       mouseCoord: coord
     });
   }

@@ -300,6 +300,7 @@ export const initialState = (x: number, y: number, playerData: Partial<ICharacte
         map,
         characters: positionCharacters(characters, map),
         messages,
+        overwatchData: {},
         ui: {
             animations: {
                 characters: {}

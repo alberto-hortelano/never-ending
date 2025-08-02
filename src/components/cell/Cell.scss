@@ -1,14 +1,32 @@
 @use '../variables' as *;
 
+// Reusable mixins for overlays
+@mixin cell-overlay {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+@mixin interactive-overlay {
+    @include cell-overlay;
+    pointer-events: auto;
+}
+
+// Main cell styles
 :host {
-    width: var(--cell-width);
-    height: var(--cell-width);
+    --cell-size: var(--cell-width);
+    --cell-pos-x: calc(var(--cell-x, 0) * var(--cell-size));
+    --cell-pos-y: calc(var(--cell-y, 0) * var(--cell-size));
+
+    position: absolute;
+    left: var(--cell-pos-x);
+    top: var(--cell-pos-y);
+    width: var(--cell-size);
+    height: var(--cell-size);
     display: flex;
     align-items: center;
     justify-content: center;
-    position: absolute;
-    left: calc(var(--cell-x, 0) * var(--cell-width));
-    top: calc(var(--cell-y, 0) * var(--cell-width));
     box-sizing: border-box;
     box-shadow: $shadow-inner;
     background: $gray-200;
@@ -16,61 +34,52 @@
     perspective: 30vmin;
 }
 
-:host(.wall) {}
-
+// Cell types
 :host(.floor) {
     background-color: $color-bg-secondary;
     color: $color-text-dim;
 }
 
-:host(.highlight):after {
-    content: '';
+:host(.path) {
+    background-color: $color-path;
+    z-index: 10;
+}
+
+// Highlight states
+:host(.highlight)::after {
+    @include interactive-overlay;
     background-color: $color-highlight;
     box-shadow: $shadow-inner-highlight;
     cursor: pointer;
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
 }
 
-:host(.highlight-intensity):before {
-    content: '';
-    // Red-based color for shooting/targeting
-    $shooting-color: rgba(255, 0, 0, 0.6);
-    background-color: rgba($shooting-color, var(--highlight-intensity, 0.5));
-    box-shadow: 0 0 calc(15px * var(--highlight-intensity, 0.5)) rgba($shooting-color, calc(var(--highlight-intensity, 0.5) * 0.6)) inset;
+:host(.highlight-movement)::after {
+    @include interactive-overlay;
+    --move-color: 150, 255, 0;
+    background-color: rgb(0 255 18 / 25%);
+    cursor: pointer;
+}
+
+:host(.highlight-intensity)::before {
+    @include interactive-overlay;
+    --shoot-color: 255, 0, 0;
+    --intensity: var(--highlight-intensity, 0.5);
+    background-color: rgba(var(--shoot-color), calc(0.6 * var(--intensity)));
+    box-shadow: 0 0 calc(15px * var(--intensity)) rgba(var(--shoot-color), calc(var(--intensity) * 0.36)) inset;
     cursor: crosshair;
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
     transition: background-color $transition-duration-base ease-in-out;
-
-    // Add a subtle pulsing effect for high intensity cells
-    &:where([style*="--highlight-intensity: 0.9"],
-        [style*="--highlight-intensity: 0.8"],
-        [style*="--highlight-intensity: 1"]) {
-        animation: pulse 1s ease-in-out infinite;
-    }
 }
 
-@keyframes pulse {
-
-    0%,
-    100% {
-        opacity: 1;
-    }
-
-    50% {
-        opacity: 0.8;
-    }
+:host(.highlight-overwatch)::after {
+    @include interactive-overlay;
+    --overwatch-color: 0, 100, 255;
+    background-color: rgb(255 50 0 / 15%);
+    cursor: crosshair;
 }
 
-:host(.path) {
-    background-color: $color-path;
-    border: $border-width solid $color-path-border;
-    z-index: 10;
+// Combined states
+:host(.highlight-overwatch.highlight-movement)::after {
+    @include interactive-overlay;
+    background-color: rgb(255 116 0 / 30%);
+    cursor: pointer;
 }

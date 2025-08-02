@@ -4,6 +4,17 @@ export interface IState {
     characters: ICharacter[];
     messages: IMessage[];
     ui: IUIState;
+    overwatchData: Record<string, IOverwatchData>;
+}
+
+export interface IOverwatchData {
+    active: boolean;
+    direction: Direction;
+    position: ICoord;
+    range: number;
+    shotsRemaining: number;
+    watchedCells?: ICoord[];
+    shotCells?: string[]; // Track cells already shot at to prevent duplicate shots
 }
 export interface IGame {
     turn: string;
@@ -167,7 +178,8 @@ export interface ICharacterVisualState {
 export interface ICellVisualState {
     isHighlighted: boolean;
     highlightIntensity?: number;
-    highlightType?: 'movement' | 'attack' | 'path';
+    highlightType?: 'movement' | 'attack' | 'path' | 'overwatch'; // Deprecated, use highlightTypes
+    highlightTypes?: Array<'movement' | 'attack' | 'path' | 'overwatch'>; // New: supports multiple types
     classList: string[];
 }
 
@@ -240,7 +252,7 @@ export interface IHighlightStates {
 }
 
 export interface IInteractionMode {
-    type: 'normal' | 'moving' | 'shooting' | 'selecting' | 'rotating';
+    type: 'normal' | 'moving' | 'shooting' | 'selecting' | 'rotating' | 'overwatch';
     data?: IInteractionModeData;
 }
 
@@ -248,7 +260,8 @@ export type IInteractionModeData =
     | IMovingModeData
     | IShootingModeData
     | ISelectingModeData
-    | IRotatingModeData;
+    | IRotatingModeData
+    | IOverwatchModeData;
 
 export interface IMovingModeData {
     characterId: string;
@@ -261,6 +274,12 @@ export interface IShootingModeData {
     weapon: IWeapon;
     targetPosition?: ICoord;
     aimLevel?: number;
+}
+export interface IOverwatchModeData {
+    characterId: string;
+    weapon: IWeapon;
+    remainingPoints?: number;
+    shotsRemaining?: number;
 }
 
 export interface ISelectingModeData {
