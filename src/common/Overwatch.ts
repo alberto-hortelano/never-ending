@@ -273,7 +273,6 @@ export class Overwatch extends EventBus<
     private checkOverwatchTriggers(character: DeepReadonly<ICharacter>): void {
         const overwatchData = this.state.overwatchData;
         if (!overwatchData || Object.keys(overwatchData).length === 0) {
-            this.log('No overwatch data in state');
             return;
         }
 
