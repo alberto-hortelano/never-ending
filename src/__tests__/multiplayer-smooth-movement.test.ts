@@ -144,7 +144,7 @@ describe.skip('Multiplayer Smooth Movement - NEEDS REWRITE', () => {
 
     test('should animate character movement smoothly along path for network updates', async () => {
         // Connect as player1
-        await networkService.connect('Player1');
+        await networkService.connect('Player1', 'ws://localhost:3000');
 
         // Wait for connection to be established
         await new Promise(resolve => setTimeout(resolve, 50));
@@ -243,7 +243,7 @@ describe.skip('Multiplayer Smooth Movement - NEEDS REWRITE', () => {
 
     test('should not deduct action points for network movements', async () => {
         // Connect as player1  
-        await networkService.connect('Player1');
+        await networkService.connect('Player1', 'ws://localhost:3000');
         await new Promise(resolve => setTimeout(resolve, 50));
         mockWebSocket.simulateMessage({
             type: 'connect',
@@ -293,7 +293,7 @@ describe.skip('Multiplayer Smooth Movement - NEEDS REWRITE', () => {
 
     test('should handle rapid path updates without jumping', async () => {
         // Connect as player1
-        await networkService.connect('Player1');
+        await networkService.connect('Player1', 'ws://localhost:3000');
         await new Promise(resolve => setTimeout(resolve, 50));
         mockWebSocket.simulateMessage({
             type: 'connect',

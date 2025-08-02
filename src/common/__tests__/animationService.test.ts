@@ -1,4 +1,4 @@
-import { animationService } from '../services/AnimationService';
+import { AnimationService } from '../services/AnimationService';
 import { superEventBus, StateChangeEvent, UpdateStateEvent } from "../events";
 import type { ICharacterAnimation } from "../interfaces";
 
@@ -18,11 +18,14 @@ class TestEventListener {
 
 describe('AnimationService', () => {
     let testListener: TestEventListener;
+    let animationService: AnimationService;
 
     beforeEach(() => {
         jest.clearAllMocks();
         jest.useFakeTimers();
         testListener = new TestEventListener();
+        // Create a fresh instance for each test
+        animationService = new AnimationService();
     });
 
     afterEach(() => {
@@ -43,7 +46,10 @@ describe('AnimationService', () => {
                 duration: 1000,
                 from: { x: 0, y: 0 },
                 to: { x: 2, y: 0 },
-                path: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }]
+                path: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }],
+                currentStep: 0,
+                fromDirection: 'right',
+                toDirection: 'right'
             };
 
             const visualUpdateSpy = jest.fn();
@@ -54,14 +60,22 @@ describe('AnimationService', () => {
             // Start the animation
             animationService.startAnimation(characterId, animation);
 
-            // Clear initial calls
+            // Sync animations to activate them
+            superEventBus.dispatch(StateChangeEvent.uiAnimations, {
+                characters: {
+                    [characterId]: animation
+                }
+            });
+
+            // Clear initial calls from startAnimation
             visualUpdateSpy.mockClear();
 
-            // Advance time to trigger animation updates
-            // Need to advance enough to see step changes
-            jest.advanceTimersByTime(600);
+            // Advance time to trigger animation frames and cell transitions
+            // The animation duration is 1000ms for 2 cells (3 path points), so ~500ms per cell
+            jest.advanceTimersByTime(16); // First frame
+            jest.advanceTimersByTime(500); // Should transition to second cell
 
-            // Should have visual updates
+            // Should have visual updates from cell transitions
             const beforeDefeatCalls = visualUpdateSpy.mock.calls.length;
             expect(beforeDefeatCalls).toBeGreaterThan(0);
             
@@ -74,27 +88,22 @@ describe('AnimationService', () => {
             });
 
             // Advance time more - should NOT get any more visual updates
-            jest.advanceTimersByTime(300);
+            jest.advanceTimersByTime(500);
 
             // No visual updates should occur after animation is removed
             expect(visualUpdateSpy).not.toHaveBeenCalled();
         });
 
-        it('should not update position for defeated character animations', () => {
-            const characterId = 'defeatedChar';
+        it('should update visual state as character moves', () => {
+            const characterId = 'movingChar';
             const animation: ICharacterAnimation = {
                 type: 'walk',
                 startTime: Date.now(),
-                duration: 1000,
-                from: { x: 0, y: 0 },
-                to: { x: 5, y: 0 },
-                path: [
-                    { x: 1, y: 0 },
-                    { x: 2, y: 0 },
-                    { x: 3, y: 0 },
-                    { x: 4, y: 0 },
-                    { x: 5, y: 0 }
-                ]
+                duration: 500, // 500ms for 2 cells
+                path: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }],
+                currentStep: 0,
+                fromDirection: 'right',
+                toDirection: 'right'
             };
 
             const visualUpdateSpy = jest.fn();
@@ -103,88 +112,102 @@ describe('AnimationService', () => {
             // Start animation
             animationService.startAnimation(characterId, animation);
 
-            // Trigger initial animation frame
-            jest.advanceTimersByTime(16);
-            
-            // Advance time partway through animation
-            jest.advanceTimersByTime(300);
-
-            // Character should have visual updates
-            expect(visualUpdateSpy).toHaveBeenCalled();
-            visualUpdateSpy.mockClear();
-
-            // Mark character as defeated by removing from animations
+            // Sync animations
             superEventBus.dispatch(StateChangeEvent.uiAnimations, {
-                characters: {}
+                characters: {
+                    [characterId]: animation
+                }
             });
 
-            // Advance time more
-            jest.advanceTimersByTime(300);
+            // Clear initial calls
+            visualUpdateSpy.mockClear();
+            
+            // Advance through the animation to see multiple cell transitions
+            jest.advanceTimersByTime(16); // First frame
+            jest.advanceTimersByTime(300); // Past first cell transition
 
-            // No more visual updates should occur
-            expect(visualUpdateSpy).not.toHaveBeenCalled();
+            // Should have visual updates
+            expect(visualUpdateSpy).toHaveBeenCalled();
+            
+            // Check that we got position updates
+            const positionUpdate = visualUpdateSpy.mock.calls.find(call => 
+                call[0].visualState.styles && call[0].visualState.styles['--x']
+            );
+            expect(positionUpdate).toBeDefined();
         });
 
-        it('should handle multiple characters with one being defeated', () => {
-            const aliveCharId = 'aliveChar';
-            const deadCharId = 'deadChar';
+        it('should handle multiple characters independently', () => {
+            const char1Id = 'char1';
+            const char2Id = 'char2';
             
-            const aliveAnimation: ICharacterAnimation = {
+            const animation1: ICharacterAnimation = {
                 type: 'walk',
                 startTime: Date.now(),
-                duration: 1000,
-                from: { x: 0, y: 0 },
-                to: { x: 2, y: 0 },
-                path: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }]
+                duration: 400, // 200ms per cell
+                path: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }],
+                currentStep: 0,
+                fromDirection: 'right',
+                toDirection: 'right'
             };
 
-            const deadAnimation: ICharacterAnimation = {
+            const animation2: ICharacterAnimation = {
                 type: 'walk',
                 startTime: Date.now(),
-                duration: 1000,
-                from: { x: 5, y: 5 },
-                to: { x: 7, y: 5 },
-                path: [{ x: 5, y: 5 }, { x: 6, y: 5 }, { x: 7, y: 5 }]
+                duration: 400,
+                path: [{ x: 5, y: 5 }, { x: 6, y: 5 }, { x: 7, y: 5 }],
+                currentStep: 0,
+                fromDirection: 'right',
+                toDirection: 'right'
             };
 
             const visualUpdateSpy = jest.fn();
             testListener.listen(UpdateStateEvent.uiCharacterVisual, visualUpdateSpy);
 
             // Start animations for both characters
-            animationService.startAnimation(aliveCharId, aliveAnimation);
-            animationService.startAnimation(deadCharId, deadAnimation);
+            animationService.startAnimation(char1Id, animation1);
+            animationService.startAnimation(char2Id, animation2);
+
+            // Sync both animations
+            superEventBus.dispatch(StateChangeEvent.uiAnimations, {
+                characters: {
+                    [char1Id]: animation1,
+                    [char2Id]: animation2
+                }
+            });
 
             // Clear initial calls
             visualUpdateSpy.mockClear();
 
-            // Advance time to get some updates
-            jest.advanceTimersByTime(600);
+            // Advance time to trigger cell transitions
+            jest.advanceTimersByTime(16); // First frame
+            jest.advanceTimersByTime(250); // Past first cell transition
 
-            // Both characters should be updating
-            const aliveCharUpdates = visualUpdateSpy.mock.calls.filter(call => call[0].characterId === aliveCharId);
-            const deadCharUpdates = visualUpdateSpy.mock.calls.filter(call => call[0].characterId === deadCharId);
+            // Both characters should have updates
+            const char1Updates = visualUpdateSpy.mock.calls.filter(call => call[0].characterId === char1Id);
+            const char2Updates = visualUpdateSpy.mock.calls.filter(call => call[0].characterId === char2Id);
             
-            expect(aliveCharUpdates.length).toBeGreaterThan(0);
-            expect(deadCharUpdates.length).toBeGreaterThan(0);
+            expect(char1Updates.length).toBeGreaterThan(0);
+            expect(char2Updates.length).toBeGreaterThan(0);
             
             visualUpdateSpy.mockClear();
 
-            // Simulate only alive character having animation (dead one removed)
+            // Remove one character's animation
             superEventBus.dispatch(StateChangeEvent.uiAnimations, {
                 characters: {
-                    [aliveCharId]: aliveAnimation
+                    [char1Id]: animation1
+                    // char2 removed
                 }
             });
 
             // Advance time more
             jest.advanceTimersByTime(200);
 
-            // Only alive character should be updating now
-            const afterDefeatAliveUpdates = visualUpdateSpy.mock.calls.filter(call => call[0].characterId === aliveCharId);
-            const afterDefeatDeadUpdates = visualUpdateSpy.mock.calls.filter(call => call[0].characterId === deadCharId);
+            // Only char1 should be updating now
+            const afterRemovalChar1Updates = visualUpdateSpy.mock.calls.filter(call => call[0].characterId === char1Id);
+            const afterRemovalChar2Updates = visualUpdateSpy.mock.calls.filter(call => call[0].characterId === char2Id);
             
-            expect(afterDefeatAliveUpdates.length).toBeGreaterThan(0);
-            expect(afterDefeatDeadUpdates.length).toBe(0);
+            expect(afterRemovalChar1Updates.length).toBeGreaterThan(0);
+            expect(afterRemovalChar2Updates.length).toBe(0);
         });
     });
 });

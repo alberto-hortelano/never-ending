@@ -15,7 +15,7 @@ export const weapons: IWeapon[] = [
         weaponType: 'oneHanded',
         category: 'ranged',
         class: 'pistol',
-        damage: 150,
+        damage: 15,
         range: 10
     },
     {

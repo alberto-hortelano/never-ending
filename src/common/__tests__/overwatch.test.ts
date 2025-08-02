@@ -107,7 +107,7 @@ describe('Overwatch', () => {
         testMap = createMockMap(15, 15);
 
         // Create mock State with mutable overwatchData
-        const mockOverwatchData = new Map();
+        const mockOverwatchDataMap = new Map();
         mockState = {
             map: testMap,
             findCharacter: jest.fn(),
@@ -119,10 +119,15 @@ describe('Overwatch', () => {
             },
             characters: [testCharacter, enemyCharacter],
             get overwatchData() {
-                return mockOverwatchData;
+                // Convert Map to object for the state interface
+                const obj: any = {};
+                mockOverwatchDataMap.forEach((value, key) => {
+                    obj[key] = value;
+                });
+                return obj;
             },
             // Helper property to access mutable map in tests
-            _overwatchData: mockOverwatchData
+            _overwatchData: mockOverwatchDataMap
         } as any;
 
         // Create Overwatch instance
@@ -562,7 +567,7 @@ describe('Overwatch', () => {
 
             // Both overwatches should be active
             expect(cellBatchSpy).toHaveBeenCalled();
-            expect(mockState.overwatchData.size).toBe(1); // Mock doesn't actually update
+            expect(Object.keys(mockState.overwatchData).length).toBe(1); // Mock doesn't actually update
         });
     });
 
@@ -666,7 +671,7 @@ describe('Overwatch', () => {
                 range: 15,
                 shotsRemaining: 20, // Enough shots for all cells
                 watchedCells: watchedCells,
-                shotCells: new Set()
+                shotCells: []
             });
 
             mockState.findCharacter.mockImplementation((name) => {
@@ -738,8 +743,8 @@ describe('Overwatch', () => {
                         
                         // Update mock state's shotCells to simulate the real behavior
                         const overwatchData = (mockState as any)._overwatchData.get(testCharacter.name);
-                        if (overwatchData) {
-                            overwatchData.shotCells.add(cellKey);
+                        if (overwatchData && !overwatchData.shotCells.includes(cellKey)) {
+                            overwatchData.shotCells.push(cellKey);
                         }
                     }
 
@@ -779,7 +784,7 @@ describe('Overwatch', () => {
                 { x: 9, y: 5 }
             ];
 
-            const shotCellsSet = new Set<string>();
+            const shotCellsArray: string[] = [];
             (mockState as any)._overwatchData.set(testCharacter.name, {
                 active: true,
                 direction: testCharacter.direction,
@@ -787,7 +792,7 @@ describe('Overwatch', () => {
                 range: 15,
                 shotsRemaining: 10,
                 watchedCells: watchedCells,
-                shotCells: shotCellsSet
+                shotCells: shotCellsArray
             });
 
             mockState.findCharacter.mockImplementation((name) => {
@@ -804,7 +809,7 @@ describe('Overwatch', () => {
                     if (currentData) {
                         currentData.shotsRemaining = overwatchUpdate.shotsRemaining;
                         // Track the shot cell
-                        shotCellsSet.add('8,5');
+                        shotCellsArray.push('8,5');
                     }
                 }
             });
@@ -910,7 +915,7 @@ describe('Overwatch', () => {
                 range: 15,
                 shotsRemaining: 10,
                 watchedCells: [{ x: 7, y: 5 }, { x: 8, y: 5 }, { x: 9, y: 5 }],
-                shotCells: new Set() // Track cells already shot at
+                shotCells: [] // Track cells already shot at
             });
 
             // Simulate very fast movement (teleport/dash)

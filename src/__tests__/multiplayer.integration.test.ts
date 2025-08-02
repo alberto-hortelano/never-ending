@@ -7,7 +7,7 @@ import { StartGameEvent } from '../common/events/NetworkEvents';
 import { IState } from '../common/interfaces';
 import { UpdateStateEvent, GameEvent } from '../common/events';
 import { baseCharacter } from '../data/state';
-import { getDefaultUIState } from './helpers/testUIState.helper';
+import { createTestState } from './helpers/testState.helper';
 
 // Mock the WebSocket connection
 class MockWebSocket {
@@ -132,10 +132,10 @@ class MultiplayerTestHelper {
         this.player2Socket.simulateIncoming('roomStateUpdate', roomState);
     }
 
-    simulateGameStart(roomId: string, player1Id: string, player2Id: string, state: State): void {
+    simulateGameStart(roomId: string, player1Id: string, player2Id: string): void {
         const gameState: StartGameEvent = {
             roomId,
-            initialState: {
+            initialState: createTestState({
                 map: [] as any,
                 characters: [
                     {
@@ -167,19 +167,16 @@ class MultiplayerTestHelper {
                     players: [player1Id, player2Id],
                     turn: player1Id
                 },
-                messages: [],
-                ui: getDefaultUIState()
-            }
+                messages: []
+            })
         };
 
         this.player1Socket.simulateIncoming('gameStarted', gameState);
         this.player2Socket.simulateIncoming('gameStarted', gameState);
 
-        // Update the state directly since we're simulating
-        (state as any).game = gameState.initialState.game;
-        (state as any).characters = gameState.initialState.characters;
-        (state as any).map = gameState.initialState.map;
-        (state as any).messages = gameState.initialState.messages;
+        // The state will be updated through the gameStarted event handler
+        // For testing, we need to reinitialize the state with the game data
+        // This simulates what would happen in the real app when gameStarted is received
     }
 
     getPlayer1Socket(): MockWebSocket {
@@ -206,7 +203,46 @@ class MultiplayerTestHelper {
 describe('Multiplayer Integration Tests', () => {
     let helper: MultiplayerTestHelper;
     let state: State;
+    let testStateData: IState;
     let eventBus: EventBus<any, any>;
+
+    // Helper to create game state for tests
+    const createGameState = (player1Id: string, player2Id: string): IState => {
+        return createTestState({
+            map: [] as any,
+            characters: [
+                {
+                    ...baseCharacter,
+                    name: 'Player 1',
+                    player: player1Id,
+                    position: { x: 20, y: 25 },
+                    health: 100,
+                    maxHealth: 100,
+                    actions: {
+                        ...baseCharacter.actions,
+                        pointsLeft: 10
+                    }
+                },
+                {
+                    ...baseCharacter,
+                    name: 'Player 2',
+                    player: player2Id,
+                    position: { x: 25, y: 25 },
+                    health: 100,
+                    maxHealth: 100,
+                    actions: {
+                        ...baseCharacter.actions,
+                        pointsLeft: 10
+                    }
+                }
+            ],
+            game: {
+                players: [player1Id, player2Id],
+                turn: player1Id
+            },
+            messages: []
+        });
+    };
 
     beforeAll(() => {
         // Mock localStorage for tests
@@ -222,7 +258,16 @@ describe('Multiplayer Integration Tests', () => {
 
     beforeEach(() => {
         helper = new MultiplayerTestHelper();
-        state = new State();
+        // Create state with empty initial data to avoid default character
+        state = new State(createTestState({
+            map: [],
+            characters: [],
+            game: {
+                turn: '',
+                players: []
+            },
+            messages: []
+        }));
         eventBus = new EventBus();
     });
 
@@ -253,8 +298,10 @@ describe('Multiplayer Integration Tests', () => {
             // Both players ready
             helper.simulatePlayersReady(roomId, player1Id, player2Id);
 
-            // Start game
-            helper.simulateGameStart(roomId, player1Id, player2Id, state);
+            // Start game - create state with game data
+            testStateData = createGameState(player1Id, player2Id);
+            state = new State(testStateData);
+            helper.simulateGameStart(roomId, player1Id, player2Id);
 
             // Wait for state to update
             await new Promise(resolve => setTimeout(resolve, 10));
@@ -292,7 +339,10 @@ describe('Multiplayer Integration Tests', () => {
 
             helper.simulatePlayerJoin(roomId, player1Id, player2Id);
             helper.simulatePlayersReady(roomId, player1Id, player2Id);
-            helper.simulateGameStart(roomId, player1Id, player2Id, state);
+            
+            // Create state with game data
+            state = new State(createGameState(player1Id, player2Id));
+            helper.simulateGameStart(roomId, player1Id, player2Id);
 
             await new Promise(resolve => setTimeout(resolve, 10));
 
@@ -344,7 +394,10 @@ describe('Multiplayer Integration Tests', () => {
 
             helper.simulatePlayerJoin(roomId, player1Id, player2Id);
             helper.simulatePlayersReady(roomId, player1Id, player2Id);
-            helper.simulateGameStart(roomId, player1Id, player2Id, state);
+            
+            // Create state with game data
+            state = new State(createGameState(player1Id, player2Id));
+            helper.simulateGameStart(roomId, player1Id, player2Id);
 
             await new Promise(resolve => setTimeout(resolve, 10));
 
@@ -388,7 +441,10 @@ describe('Multiplayer Integration Tests', () => {
 
             helper.simulatePlayerJoin(roomId, player1Id, player2Id);
             helper.simulatePlayersReady(roomId, player1Id, player2Id);
-            helper.simulateGameStart(roomId, player1Id, player2Id, state);
+            
+            // Create state with game data
+            state = new State(createGameState(player1Id, player2Id));
+            helper.simulateGameStart(roomId, player1Id, player2Id);
 
             await new Promise(resolve => setTimeout(resolve, 10));
 
@@ -425,12 +481,15 @@ describe('Multiplayer Integration Tests', () => {
 
             helper.simulatePlayerJoin(roomId, player1Id, player2Id);
             helper.simulatePlayersReady(roomId, player1Id, player2Id);
-            helper.simulateGameStart(roomId, player1Id, player2Id, state);
+            
+            // Create state with game data
+            state = new State(createGameState(player1Id, player2Id));
+            helper.simulateGameStart(roomId, player1Id, player2Id);
 
             await new Promise(resolve => setTimeout(resolve, 10));
 
             // Simulate a state sync from the host
-            const syncedState: IState = {
+            const syncedState = createTestState({
                 map: structuredClone(state.map) as IState['map'],
                 characters: structuredClone(state.characters).map((c: any) => ({
                     ...c,
@@ -440,13 +499,11 @@ describe('Multiplayer Integration Tests', () => {
                     }
                 })) as IState['characters'],
                 game: { ...state.game, players: [...state.game.players] },
-                messages: [...state.messages],
-                ui: getDefaultUIState()
-            };
+                messages: [...state.messages]
+            });
 
-            // The stateSynced event would normally create a new state instance
-            // For testing, we'll update the state directly
-            (state as State & { characters: IState['characters'] }).characters = syncedState.characters;
+            // For testing, simulate state sync by creating a new state instance
+            state = new State(syncedState);
 
             await new Promise(resolve => setTimeout(resolve, 10));
 
@@ -473,7 +530,10 @@ describe('Multiplayer Integration Tests', () => {
 
             helper.simulatePlayerJoin(roomId, player1Id, player2Id);
             helper.simulatePlayersReady(roomId, player1Id, player2Id);
-            helper.simulateGameStart(roomId, player1Id, player2Id, state);
+            
+            // Create state with game data
+            state = new State(createGameState(player1Id, player2Id));
+            helper.simulateGameStart(roomId, player1Id, player2Id);
 
             await new Promise(resolve => setTimeout(resolve, 10));
 
@@ -508,7 +568,10 @@ describe('Multiplayer Integration Tests', () => {
 
             helper.simulatePlayerJoin(roomId, player1Id, player2Id);
             helper.simulatePlayersReady(roomId, player1Id, player2Id);
-            helper.simulateGameStart(roomId, player1Id, player2Id, state);
+            
+            // Create state with game data
+            state = new State(createGameState(player1Id, player2Id));
+            helper.simulateGameStart(roomId, player1Id, player2Id);
 
             await new Promise(resolve => setTimeout(resolve, 10));
 

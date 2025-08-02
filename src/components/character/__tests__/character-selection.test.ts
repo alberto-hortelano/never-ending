@@ -1,7 +1,8 @@
 import { State } from '../../../common/State';
-import { ICharacter, IState } from '../../../common/interfaces';
+import { ICharacter } from '../../../common/interfaces';
 import { baseCharacter } from '../../../data/state';
-import { getDefaultUIState } from '../../../__tests__/helpers/testUIState.helper';
+import { createTestState } from '../../../__tests__/helpers/testState.helper';
+import { EventBus, GameEvent } from '../../../common/events';
 
 describe('Character Selection Restriction', () => {
     let state: State;
@@ -39,16 +40,15 @@ describe('Character Selection Restriction', () => {
         };
 
         // Create a simple test state without using initialState to avoid map generation
-        const testState: IState = {
+        const testState = createTestState({
             game: {
                 turn: 'human',
                 players: ['human', 'ai']
             },
             map: [], // Empty map for testing - we don't need it for character selection tests
             characters: [humanCharacter, aiCharacter],
-            messages: [],
-            ui: getDefaultUIState()
-        };
+            messages: []
+        });
 
         state = new State(testState);
     });
@@ -82,11 +82,11 @@ describe('Character Selection Restriction', () => {
         expect(state.game.turn).toBe('human');
         
         // Simulate turn change to AI
-        state['onChangeTurn']({
-            turn: 'ai',
-            previousTurn: 'human'
-        });
+        // Use an EventBus to dispatch the turn change event
+        const eventBus = new EventBus<any, any>();
+        eventBus.dispatch(GameEvent.changeTurn, { turn: 'ai' });
         
+        // Wait for the event to be processed
         expect(state.game.turn).toBe('ai');
         
         // Now AI should be able to select their character

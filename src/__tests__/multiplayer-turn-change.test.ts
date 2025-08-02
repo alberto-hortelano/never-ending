@@ -2,7 +2,7 @@
 import { EventBus, GameEvent, StateChangeEvent } from '../common/events';
 import { MultiplayerManager } from '../common/services/MultiplayerManager';
 import { State } from '../common/State';
-import { getDefaultUIState } from './helpers/testUIState.helper';
+import { createTestState } from './helpers/testState.helper';
 
 describe('Multiplayer Turn Change', () => {
     let eventBus: EventBus<any, any>;
@@ -18,7 +18,7 @@ describe('Multiplayer Turn Change', () => {
     it('should broadcast turn changes to other players', (done) => {
         // Set up multiplayer mode
         (multiplayerManager as any).isMultiplayer = true;
-        (multiplayerManager as any).state = new State({
+        (multiplayerManager as any).state = new State(createTestState({
             game: {
                 players: ['player1', 'player2'],
                 turn: 'player1',
@@ -29,9 +29,8 @@ describe('Multiplayer Turn Change', () => {
             },
             map: [],
             characters: [],
-            messages: [],
-            ui: getDefaultUIState()
-        });
+            messages: []
+        }));
 
         // Mock the broadcastAction method
         const broadcastSpy = jest.spyOn(multiplayerManager as any, 'broadcastAction');
@@ -56,7 +55,7 @@ describe('Multiplayer Turn Change', () => {
     it('should not rebroadcast turn changes that came from network', (done) => {
         // Set up multiplayer mode
         (multiplayerManager as any).isMultiplayer = true;
-        const state = new State({
+        const state = new State(createTestState({
             game: {
                 players: ['player1', 'player2'],
                 turn: 'player1',
@@ -67,9 +66,8 @@ describe('Multiplayer Turn Change', () => {
             },
             map: [],
             characters: [],
-            messages: [],
-            ui: getDefaultUIState()
-        });
+            messages: []
+        }));
         (multiplayerManager as any).state = state;
 
         // Mock the broadcastAction method after state is set
@@ -92,7 +90,7 @@ describe('Multiplayer Turn Change', () => {
     });
 
     it('should update game state when turn changes', (done) => {
-        const initialState = {
+        const initialState = createTestState({
             game: {
                 players: ['player1', 'player2'],
                 turn: 'player1',
@@ -103,9 +101,8 @@ describe('Multiplayer Turn Change', () => {
             },
             map: [],
             characters: [],
-            messages: [],
-            ui: getDefaultUIState()
-        };
+            messages: []
+        });
 
         new State(initialState); // This creates the state and sets up listeners
 

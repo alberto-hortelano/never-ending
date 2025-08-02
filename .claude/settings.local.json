@@ -17,7 +17,11 @@
       "Bash(npx sass:*)",
       "Bash(grep:*)",
       "Bash(find:*)",
-      "Bash(NODE_ENV=test npm test -- shoot.test.ts)"
+      "Bash(NODE_ENV=test npm test -- shoot.test.ts)",
+      "Bash(npx jest:*)",
+      "Bash(npx tsc:*)",
+      "Bash(sed:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": []
   }
