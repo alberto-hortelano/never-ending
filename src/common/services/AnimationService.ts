@@ -16,16 +16,26 @@ export interface AnimationUpdate {
 export class AnimationService extends EventBus<StateChangeEventsMap, UpdateStateEventsMap> {
     private animationFrame?: number;
     private activeAnimations = new Map<string, ICharacterAnimation>();
-    
+
     constructor() {
         super();
-        
+
         // Listen for animation state changes
         this.listen(StateChangeEvent.uiAnimations, (animations) => {
             this.syncAnimations(animations.characters as Record<string, ICharacterAnimation | undefined>);
         });
+
+        // Listen for character defeat to stop animations
+        this.listen(StateChangeEvent.characterDefeated, (character) => {
+            // Use the default movement speed (300ms per cell) as the delay
+            // This ensures the character stops after completing one cell of movement
+            const movementSpeed = 300; // matches the default speed in createMovementAnimation
+            setTimeout(() => {
+                this.stopAnimation(character.name);
+            }, movementSpeed);
+        });
     }
-    
+
     /**
      * Start tracking an animation
      */
@@ -35,7 +45,7 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
             characterId,
             animation
         });
-        
+
         // Add 'walk' class for walk animations
         if (animation.type === 'walk') {
             this.dispatch(UpdateStateEvent.uiCharacterVisual, {
@@ -45,13 +55,13 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
                 }
             });
         }
-        
+
         // Start animation loop if not already running
         if (!this.animationFrame) {
             this.tick();
         }
     }
-    
+
     /**
      * Stop tracking an animation
      */
@@ -61,7 +71,7 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
             animation: null
         });
     }
-    
+
     /**
      * Create a movement animation from a path
      */
@@ -69,7 +79,7 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
         // Path now includes starting position
         // Duration is based on number of movements (path.length - 1)
         const movements = Math.max(1, path.length - 1);
-        
+
         return {
             type: 'walk',
             startTime: Date.now(),
@@ -81,7 +91,7 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
             progress: 0
         };
     }
-    
+
     /**
      * Create a rotation animation
      */
@@ -95,7 +105,7 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
             progress: 0
         };
     }
-    
+
     /**
      * Sync local animation tracking with state
      */
@@ -104,7 +114,7 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
         for (const [id] of this.activeAnimations) {
             if (!stateAnimations[id]) {
                 this.activeAnimations.delete(id);
-                
+
                 // Dispatch animation removal to state
                 this.dispatch(UpdateStateEvent.uiCharacterAnimation, {
                     characterId: id,
@@ -112,14 +122,14 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
                 });
             }
         }
-        
+
         // Add or update animations from state
         for (const [id, animation] of Object.entries(stateAnimations)) {
             if (animation) {
                 this.activeAnimations.set(id, animation);
             }
         }
-        
+
         // Start or stop animation loop as needed
         if (this.activeAnimations.size > 0 && !this.animationFrame) {
             this.tick();
@@ -128,7 +138,7 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
             this.animationFrame = undefined;
         }
     }
-    
+
     /**
      * Animation tick - updates all active animations
      */
@@ -136,12 +146,12 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
         const now = Date.now();
         const updates: AnimationUpdate[] = [];
         const completedAnimations: string[] = [];
-        
+
         // Update each active animation
         for (const [characterId, animation] of this.activeAnimations) {
             const elapsed = now - animation.startTime;
             const progress = Math.min(elapsed / animation.duration, 1);
-            
+
             // Calculate current state based on animation type
             if (animation.type === 'walk' && animation.path) {
                 const update = this.updateMovementAnimation(characterId, animation, progress);
@@ -154,24 +164,24 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
                     updates.push(update);
                 }
             }
-            
+
             // Mark completed animations
             if (progress >= 1) {
                 completedAnimations.push(characterId);
             }
         }
-        
+
         // Update visual state only when stepping to a new cell
         for (const update of updates) {
             // Check if this animation has a stored state
             const animState = this.activeAnimations.get(update.characterId);
             if (animState && animState.type === 'walk' && animState.path) {
                 const currentStepIndex = Math.floor(update.progress * animState.path.length);
-                
+
                 // Only update if we've moved to a new cell
                 if (currentStepIndex !== animState.currentStep) {
                     animState.currentStep = currentStepIndex;
-                    
+
                     // Update visual state with new cell position
                     this.dispatch(UpdateStateEvent.uiCharacterVisual, {
                         characterId: update.characterId,
@@ -186,12 +196,12 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
                 }
             }
         }
-        
+
         // Remove completed animations
         for (const characterId of completedAnimations) {
             this.completeAnimation(characterId);
         }
-        
+
         // Continue animation loop if there are active animations
         if (this.activeAnimations.size > 0) {
             this.animationFrame = requestAnimationFrame(this.tick);
@@ -199,41 +209,41 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
             this.animationFrame = undefined;
         }
     };
-    
+
     /**
      * Update movement animation and return current interpolated state
      */
     private updateMovementAnimation(characterId: string, animation: ICharacterAnimation, progress: number): AnimationUpdate | null {
         if (!animation.path || animation.path.length === 0) return null;
-        
+
         // Calculate which segment of the path we're on
         const totalSteps = animation.path.length - 1; // -1 because we move between positions
         const currentStepFloat = progress * totalSteps;
         const currentStepIndex = Math.floor(currentStepFloat);
         const stepProgress = currentStepFloat - currentStepIndex;
-        
+
         // Get current and next positions
         const fromIndex = Math.min(currentStepIndex, animation.path.length - 1);
         const toIndex = Math.min(currentStepIndex + 1, animation.path.length - 1);
         const fromPos = animation.path[fromIndex];
         const toPos = animation.path[toIndex];
-        
+
         if (!fromPos || !toPos) return null;
-        
+
         // Interpolate position
         const currentPosition: ICoord = {
             x: fromPos.x + (toPos.x - fromPos.x) * stepProgress,
             y: fromPos.y + (toPos.y - fromPos.y) * stepProgress
         };
-        
+
         // Calculate direction based on movement
         let currentDirection = animation.fromDirection || 'down';
-        
+
         // Only calculate direction when we're actually moving between different cells
         if (fromIndex < toIndex && fromPos && toPos) {
             currentDirection = DirectionsService.calculateDirection(fromPos, toPos);
         }
-        
+
         return {
             characterId,
             progress,
@@ -241,16 +251,16 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
             currentDirection
         };
     }
-    
+
     /**
      * Update rotation animation and return current interpolated state
      */
     private updateRotationAnimation(characterId: string, animation: ICharacterAnimation, progress: number): AnimationUpdate | null {
         // For rotation, we'll just snap to the target direction when complete
-        const currentDirection = progress >= 1 ? 
-            (animation.toDirection || animation.fromDirection || 'down') : 
+        const currentDirection = progress >= 1 ?
+            (animation.toDirection || animation.fromDirection || 'down') :
             (animation.fromDirection || 'down');
-        
+
         return {
             characterId,
             progress,
@@ -258,26 +268,26 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
             currentDirection
         };
     }
-    
+
     /**
      * Calculate direction from one position to another
      */
-        
+
     /**
      * Complete an animation and clean up
      */
     private completeAnimation(characterId: string) {
         const animation = this.activeAnimations.get(characterId);
         if (!animation) return;
-        
+
         // For movement animations, ensure we end at the final position
         if (animation.type === 'walk' && animation.path && animation.path.length > 0) {
             const finalPosition = animation.path[animation.path.length - 1];
             const secondLastPos = animation.path.length > 1 ? animation.path[animation.path.length - 2] : null;
-            const finalDirection = (animation.path.length > 1 && secondLastPos && finalPosition) ? 
+            const finalDirection = (animation.path.length > 1 && secondLastPos && finalPosition) ?
                 DirectionsService.calculateDirection(secondLastPos, finalPosition) :
                 (animation.toDirection || animation.fromDirection || 'down');
-            
+
             // Set final position and remove 'walk' class
             this.dispatch(UpdateStateEvent.uiCharacterVisual, {
                 characterId,
@@ -291,11 +301,11 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
                 }
             });
         }
-        
+
         // Remove animation from state
         this.stopAnimation(characterId);
     }
-    
+
     /**
      * Clean up resources
      */
