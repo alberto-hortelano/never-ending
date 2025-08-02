@@ -63,6 +63,9 @@ export class UIState extends EventBus<UpdateStateEventsMap, StateChangeEventsMap
     }
 
     private onUICharacterVisual(data: UpdateStateEventsMap[UpdateStateEvent.uiCharacterVisual]) {
+        console.log(`[UIState] onUICharacterVisual called for ${data.characterId}`, data.visualState);
+        console.log(`[UIState] Incoming isDefeated value: ${data.visualState.isDefeated}`);
+        
         const currentVisual = this.#ui.visualStates.characters[data.characterId] || {
             direction: 'down',
             classList: [],
@@ -75,18 +78,94 @@ export class UIState extends EventBus<UpdateStateEventsMap, StateChangeEventsMap
             isCurrentTurn: false
         };
 
-        const updatedVisual = {
-            ...currentVisual,
-            ...data.visualState
-        };
+        console.log(`[UIState] Current visual state for ${data.characterId}:`, currentVisual);
+        console.log(`[UIState] Current isDefeated value: ${currentVisual.isDefeated}`);
 
-        if (data.visualState.temporaryClasses !== undefined) {
-            updatedVisual.temporaryClasses = data.visualState.temporaryClasses;
-        }
-        if (data.visualState.classList !== undefined) {
-            updatedVisual.classList = data.visualState.classList;
+        // Start with current visual state to preserve all existing properties
+        const updatedVisual = { ...currentVisual };
+        
+        // Check if this is a network update with a full visual state object
+        const isNetworkUpdate = (data as any).fromNetwork === true;
+        const hasFullVisualState = isNetworkUpdate && 
+            data.visualState.direction !== undefined &&
+            data.visualState.classList !== undefined &&
+            data.visualState.styles !== undefined;
+        
+        if (hasFullVisualState) {
+            // This is a full state sync from network - merge carefully
+            console.log(`[UIState] Network sync for ${data.characterId} - preserving critical local state`);
+            
+            // Update all properties from network EXCEPT critical local-only state
+            updatedVisual.direction = data.visualState.direction || 'down';
+            updatedVisual.classList = data.visualState.classList ? [...data.visualState.classList] : [];
+            updatedVisual.temporaryClasses = data.visualState.temporaryClasses ? [...data.visualState.temporaryClasses] : [];
+            updatedVisual.weaponClass = data.visualState.weaponClass;
+            updatedVisual.styles = data.visualState.styles || {};
+            updatedVisual.healthBarPercentage = data.visualState.healthBarPercentage ?? updatedVisual.healthBarPercentage;
+            updatedVisual.healthBarColor = data.visualState.healthBarColor || updatedVisual.healthBarColor;
+            
+            // If health is 0 from network sync, ensure defeated state is set
+            if (updatedVisual.healthBarPercentage === 0 && !updatedVisual.isDefeated) {
+                console.log(`[UIState] Network sync shows health is 0, marking ${data.characterId} as defeated`);
+                updatedVisual.isDefeated = true;
+            }
+            updatedVisual.isCurrentTurn = data.visualState.isCurrentTurn ?? false;
+            updatedVisual.isMyCharacter = data.visualState.isMyCharacter ?? false;
+            updatedVisual.isOpponentCharacter = data.visualState.isOpponentCharacter ?? false;
+            
+            // CRITICAL: Preserve isDefeated state - it's determined by health/damage events, not visual sync
+            // isDefeated is already preserved from currentVisual
+            console.log(`[UIState] Preserved isDefeated=${updatedVisual.isDefeated} during network sync`);
+        } else {
+            // Normal partial update - only update provided properties
+            if (data.visualState.direction !== undefined) {
+                updatedVisual.direction = data.visualState.direction;
+            }
+            if (data.visualState.classList !== undefined) {
+                updatedVisual.classList = [...data.visualState.classList];
+            }
+            if (data.visualState.temporaryClasses !== undefined) {
+                updatedVisual.temporaryClasses = [...data.visualState.temporaryClasses];
+            }
+            if (data.visualState.weaponClass !== undefined) {
+                updatedVisual.weaponClass = data.visualState.weaponClass;
+            }
+            if (data.visualState.styles !== undefined) {
+                // Merge styles instead of replacing them entirely
+                updatedVisual.styles = {
+                    ...updatedVisual.styles,
+                    ...data.visualState.styles
+                };
+            }
+            if (data.visualState.healthBarPercentage !== undefined) {
+                updatedVisual.healthBarPercentage = data.visualState.healthBarPercentage;
+                // If health is 0, ensure defeated state is set
+                if (data.visualState.healthBarPercentage === 0 && !updatedVisual.isDefeated) {
+                    console.log(`[UIState] Health is 0, marking ${data.characterId} as defeated`);
+                    updatedVisual.isDefeated = true;
+                }
+            }
+            if (data.visualState.healthBarColor !== undefined) {
+                updatedVisual.healthBarColor = data.visualState.healthBarColor;
+            }
+            // Only update isDefeated if explicitly provided (not from network sync)
+            if (data.visualState.isDefeated !== undefined && !isNetworkUpdate) {
+                updatedVisual.isDefeated = data.visualState.isDefeated;
+                console.log(`[UIState] Explicitly setting isDefeated=${data.visualState.isDefeated} for ${data.characterId}`);
+            }
+            if (data.visualState.isCurrentTurn !== undefined) {
+                updatedVisual.isCurrentTurn = data.visualState.isCurrentTurn;
+            }
+            if (data.visualState.isMyCharacter !== undefined) {
+                updatedVisual.isMyCharacter = data.visualState.isMyCharacter;
+            }
+            if (data.visualState.isOpponentCharacter !== undefined) {
+                updatedVisual.isOpponentCharacter = data.visualState.isOpponentCharacter;
+            }
         }
 
+        console.log(`[UIState] Final updated visual state for ${data.characterId}:`, updatedVisual);
+        
         this.#ui.visualStates.characters[data.characterId] = updatedVisual as ICharacterVisualState;
         this.dispatch(StateChangeEvent.uiVisualStates, structuredClone(this.#ui.visualStates));
     }
@@ -289,19 +368,35 @@ export class UIState extends EventBus<UpdateStateEventsMap, StateChangeEventsMap
     }
 
     updateCharacterDefeated(characterName: string) {
-        const visualState = this.#ui.visualStates.characters[characterName] || {
-            direction: 'down',
-            classList: [],
-            temporaryClasses: [],
-            weaponClass: undefined,
-            styles: {},
-            healthBarPercentage: 0,
-            healthBarColor: '#f44336',
-            isDefeated: false,
-            isCurrentTurn: false
-        };
-        visualState.isDefeated = true;
-        this.#ui.visualStates.characters[characterName] = visualState;
+        console.log(`[UIState] updateCharacterDefeated called for ${characterName}`);
+        
+        // Get existing visual state or create a minimal one
+        const existingState = this.#ui.visualStates.characters[characterName];
+        
+        if (existingState) {
+            // Update existing state
+            existingState.isDefeated = true;
+            // Ensure health bar shows 0 for defeated characters
+            existingState.healthBarPercentage = 0;
+            existingState.healthBarColor = '#f44336';
+            console.log(`[UIState] Set isDefeated=true for existing state of ${characterName}`, existingState);
+        } else {
+            // Create new visual state with defeated flag
+            this.#ui.visualStates.characters[characterName] = {
+                direction: 'down',
+                classList: [],
+                temporaryClasses: [],
+                weaponClass: undefined,
+                styles: {},
+                healthBarPercentage: 0,
+                healthBarColor: '#f44336',
+                isDefeated: true,  // Set to true directly
+                isCurrentTurn: false
+            };
+            console.log(`[UIState] Created new defeated state for ${characterName}`);
+        }
+        
+        console.log(`[UIState] Dispatching StateChangeEvent.uiVisualStates with defeated state for ${characterName}`);
         this.dispatch(StateChangeEvent.uiVisualStates, structuredClone(this.#ui.visualStates));
     }
 

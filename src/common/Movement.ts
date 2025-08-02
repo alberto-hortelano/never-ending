@@ -111,7 +111,7 @@ export class Movement extends EventBus<
             this.dispatch(UpdateStateEvent.uiCharacterVisual, {
                 characterId: character.name,
                 visualState: {
-                    classList: ['walk']
+                    temporaryClasses: ['walk']  // Use temporaryClasses instead of classList
                 }
             });
 

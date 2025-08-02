@@ -43,6 +43,12 @@ export default class Character extends Component {
         this.weaponElement = root.querySelector('.weapon') as HTMLElement;
 
         // Initialize visual state in UI state
+        // Check if character is already defeated based on health
+        const health = parseInt(this.dataset.health || '100');
+        const maxHealth = parseInt(this.dataset.maxHealth || '100');
+        const healthPercentage = Math.max(0, (health / maxHealth) * 100);
+        const isDefeated = health <= 0;
+        
         const initialVisualState: Partial<ICharacterVisualState> = {
             direction: direction || 'down',
             classList: [race],
@@ -53,9 +59,9 @@ export default class Character extends Component {
                 '--helmet': palette.helmet,
                 '--suit': palette.suit
             },
-            healthBarPercentage: 100,
-            healthBarColor: '#4ade80',
-            isDefeated: false,
+            healthBarPercentage: healthPercentage,
+            healthBarColor: CharacterService.calculateHealthColor(healthPercentage),
+            isDefeated: isDefeated,
             isCurrentTurn: false
         };
 
@@ -72,6 +78,7 @@ export default class Character extends Component {
             this.listen(StateChangeEvent.uiVisualStates, (visualStates) => {
                 const myVisualState = visualStates.characters[this.id];
                 if (myVisualState) {
+                    console.log(`[Character ${this.id}] Received visual state update:`, myVisualState);
                     this.applyVisualState(myVisualState as ICharacterVisualState);
                 }
             });
@@ -140,6 +147,7 @@ export default class Character extends Component {
                     visualState: {
                         healthBarPercentage: percentage,
                         healthBarColor: color
+                        // Note: NOT setting isDefeated here - that's handled by the defeated event
                     }
                 });
             }
@@ -147,10 +155,12 @@ export default class Character extends Component {
 
         // Listen for character defeat
         this.listen(StateChangeEvent.characterDefeated, (character) => {
+            console.log(`[Character ${this.id}] Received characterDefeated event for ${character.name}`);
             if (character.name === this.id) {
+                console.log(`[Character ${this.id}] This character is defeated!`);
                 this.onDefeated();
             }
-        }, this.id);
+        });
 
         // Listen for character direction changes
         this.listen(StateChangeEvent.characterDirection, (character) => {
@@ -160,17 +170,17 @@ export default class Character extends Component {
         });
 
         // Initialize health bar
-        const health = parseInt(this.dataset.health || '100');
-        const maxHealth = parseInt(this.dataset.maxHealth || '100');
-        const percentage = Math.max(0, (health / maxHealth) * 100);
-        const color = CharacterService.calculateHealthColor(percentage);
+        const currentHealth = parseInt(this.dataset.health || '100');
+        const currentMaxHealth = parseInt(this.dataset.maxHealth || '100');
+        const healthPercent = Math.max(0, (currentHealth / currentMaxHealth) * 100);
+        const healthColor = CharacterService.calculateHealthColor(healthPercent);
 
         // Update health in visual state
         this.dispatch(UpdateStateEvent.uiCharacterVisual, {
             characterId: this.id,
             visualState: {
-                healthBarPercentage: percentage,
-                healthBarColor: color
+                healthBarPercentage: healthPercent,
+                healthBarColor: healthColor
             }
         });
 
@@ -258,6 +268,8 @@ export default class Character extends Component {
     private updateCharacterClasses() {
         if (!this.characterElement) return;
 
+        console.log(`[Character ${this.id}] updateCharacterClasses called, currentVisualState:`, this.currentVisualState);
+
         // Start with base class
         const classes = ['character'];
 
@@ -295,10 +307,12 @@ export default class Character extends Component {
                 classes.push('opponent-character');
             }
             if (this.currentVisualState.isDefeated) {
+                console.log(`[Character ${this.id}] Adding defeated class`);
                 classes.push('defeated');
             }
         }
 
+        console.log(`[Character ${this.id}] Final classes:`, classes);
 
         // Apply all classes at once
         this.characterElement.className = classes.join(' ');
@@ -348,9 +362,11 @@ export default class Character extends Component {
     private applyVisualState(visualState: ICharacterVisualState) {
         if (!this.characterElement || !this.movable) return;
 
-
+        console.log(`[Character ${this.id}] applyVisualState called with isDefeated=${visualState.isDefeated}`);
+        
         // Store the visual state for class management
         this.currentVisualState = visualState;
+        
 
         // Update all classes using centralized method
         this.updateCharacterClasses();
@@ -416,13 +432,16 @@ export default class Character extends Component {
 
 
     private onDefeated() {
-        // Update visual state to defeated
-        this.dispatch(UpdateStateEvent.uiCharacterVisual, {
-            characterId: this.id,
-            visualState: {
-                isDefeated: true
-            }
-        });
+        console.log(`[Character ${this.id}] onDefeated called`);
+        // The defeated visual state is already being set by UIState.updateCharacterDefeated
+        // which is called by the State class when it receives the characterDefeated event.
+        // However, let's ensure our local visual state is updated immediately
+        if (this.currentVisualState) {
+            this.currentVisualState.isDefeated = true;
+            console.log(`[Character ${this.id}] Set local visual state isDefeated=true`);
+            // Update classes immediately
+            this.updateCharacterClasses();
+        }
     }
 
 }

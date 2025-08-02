@@ -271,6 +271,12 @@ export class Overwatch extends EventBus<
     }
 
     private checkOverwatchTriggers(character: DeepReadonly<ICharacter>): void {
+        // Skip checking triggers for defeated characters
+        if (character.health <= 0) {
+            this.log(`Skipping overwatch triggers for defeated character ${character.name}`);
+            return;
+        }
+
         const overwatchData = this.state.overwatchData;
         if (!overwatchData || Object.keys(overwatchData).length === 0) {
             return;
@@ -378,6 +384,12 @@ export class Overwatch extends EventBus<
         data: DeepReadonly<IOverwatchData>,
         target: DeepReadonly<ICharacter>
     ): boolean {
+        // Check if target is already defeated
+        if (target.health <= 0) {
+            this.log(`${target.name} is already defeated, skipping overwatch`);
+            return false;
+        }
+
         if (!data.active || data.shotsRemaining <= 0) {
             this.log(`${overwatcherName} is inactive or out of shots`);
             return false;

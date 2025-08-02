@@ -47,11 +47,12 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
         });
 
         // Add 'walk' class for walk animations
+        // Note: This is a temporary class that should be managed separately
         if (animation.type === 'walk') {
             this.dispatch(UpdateStateEvent.uiCharacterVisual, {
                 characterId,
                 visualState: {
-                    classList: ['walk']
+                    temporaryClasses: ['walk']  // Use temporaryClasses instead of classList
                 }
             });
         }
@@ -280,6 +281,8 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
         const animation = this.activeAnimations.get(characterId);
         if (!animation) return;
 
+        console.log(`[AnimationService] Completing animation for ${characterId}`);
+
         // For movement animations, ensure we end at the final position
         if (animation.type === 'walk' && animation.path && animation.path.length > 0) {
             const finalPosition = animation.path[animation.path.length - 1];
@@ -288,6 +291,8 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
                 DirectionsService.calculateDirection(secondLastPos, finalPosition) :
                 (animation.toDirection || animation.fromDirection || 'down');
 
+            console.log(`[AnimationService] Dispatching visual update for ${characterId} - clearing walk class`);
+            
             // Set final position and remove 'walk' class
             this.dispatch(UpdateStateEvent.uiCharacterVisual, {
                 characterId,
@@ -297,7 +302,7 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
                         '--x': `${finalPosition?.x || 0}`,
                         '--y': `${finalPosition?.y || 0}`
                     },
-                    classList: [] // Remove walk class by setting empty array
+                    temporaryClasses: [] // Clear temporary classes (removes 'walk')
                 }
             });
         }
