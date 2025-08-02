@@ -81,8 +81,15 @@ export class Overwatch extends EventBus<
         // Game events
         this.listen(GameEvent.changeTurn, this.handleTurnChange.bind(this));
 
+        // State events
+        this.listen(StateChangeEvent.overwatchData, this.renderAllOverwatchHighlights.bind(this));
+        this.listen(StateChangeEvent.game, this.renderAllOverwatchHighlights.bind(this));
+
         // Clear overwatch mode when popup is shown
         this.listen(GUIEvent.popupShow, () => this.clearOverwatchMode());
+
+        // Initial render of any existing overwatch highlights
+        this.renderAllOverwatchHighlights();
     }
 
     // Event Handlers
@@ -161,7 +168,6 @@ export class Overwatch extends EventBus<
 
             if (!this.hasPositionChanged(lastPos, position)) continue;
 
-            this.log(`Character ${characterId} animated to cell ${position.x},${position.y}`);
             this.trackedCharacterPositions.set(characterId, position);
 
             const character = this.state.findCharacter(characterId);
@@ -176,8 +182,6 @@ export class Overwatch extends EventBus<
     }
 
     private handleCharacterMove(character: DeepReadonly<ICharacter>): void {
-        this.log(`Character ${character.name} moved to ${character.position.x},${character.position.y}`);
-
         this.trackedCharacterPositions.set(character.name, {
             x: character.position.x,
             y: character.position.y
@@ -213,6 +217,9 @@ export class Overwatch extends EventBus<
             this.clearCharacterOverwatch(characterName);
             this.clearInteractionModeIfNeeded(characterName);
         });
+
+        // Re-render all active overwatches after turn change
+        this.renderAllOverwatchHighlights();
     }
 
     // Core Overwatch Logic
@@ -239,8 +246,6 @@ export class Overwatch extends EventBus<
 
     private activateOverwatch(character: DeepReadonly<ICharacter>): void {
         const pointsToConsume = character.actions.pointsLeft;
-
-        this.log(`Activating overwatch for ${character.name} with ${pointsToConsume} shots`);
 
         this.dispatch(UpdateStateEvent.setOverwatchData, {
             characterName: character.name,
@@ -272,8 +277,6 @@ export class Overwatch extends EventBus<
             return;
         }
 
-        this.log(`Found ${Object.keys(overwatchData).length} overwatch entries for ${character.name} at ${character.position.x},${character.position.y}`);
-
         // Iterate over the object entries
         Object.entries(overwatchData).forEach(([overwatcherName, data]) => {
             this.processOverwatchTrigger(overwatcherName, data, character);
@@ -287,8 +290,6 @@ export class Overwatch extends EventBus<
         data: DeepReadonly<IOverwatchData>,
         target: DeepReadonly<ICharacter>
     ): void {
-        this.log(`Checking ${overwatcherName}: active=${data.active}, shots=${data.shotsRemaining}`);
-
         if (!this.canExecuteOverwatch(overwatcherName, data, target)) {
             return;
         }
@@ -305,7 +306,6 @@ export class Overwatch extends EventBus<
             return;
         }
 
-        this.log(`EXECUTING SHOT at ${cellKey}`);
         this.executeOverwatchShot(overwatcherName, data, target);
     }
 
@@ -394,7 +394,6 @@ export class Overwatch extends EventBus<
             cell.x === target.position.x && cell.y === target.position.y
         );
 
-        this.log(`${target.name} in watched cell: ${isInWatchedCell}`);
         return !!isInWatchedCell;
     }
 
@@ -470,10 +469,8 @@ export class Overwatch extends EventBus<
         const updatedShotCells = addShotCellIfNotExists([...existingShotCells], cellKey);
 
         const newShotsRemaining = overwatchData.shotsRemaining - 1;
-        this.log(`Shots remaining: ${overwatchData.shotsRemaining} -> ${newShotsRemaining}`);
 
         if (newShotsRemaining <= 0) {
-            this.log('Out of shots, deactivating overwatch');
             this.clearCharacterOverwatch(overwatcherName);
             this.dispatch(UpdateStateEvent.uiInteractionMode, { type: 'normal' });
         } else {
@@ -555,7 +552,7 @@ export class Overwatch extends EventBus<
 
         const character = this.state.findCharacter(characterName);
         if (!character) return;
-        
+
         const weapon = ShootingService.getEquippedRangedWeapon(character);
         if (!weapon) return;
 
@@ -604,6 +601,53 @@ export class Overwatch extends EventBus<
         }));
 
         this.dispatch(UpdateStateEvent.uiCellVisualBatch, { updates: clearUpdates });
+    }
+
+    private renderAllOverwatchHighlights(): void {
+        // Skip if we're actively setting up overwatch for a character
+        if (this.activeOverwatchCharacter) {
+            return;
+        }
+
+        const overwatchData = this.state.overwatchData;
+        if (!overwatchData || Object.keys(overwatchData).length === 0) {
+            return;
+        }
+
+        const allCellUpdates: CellVisualUpdate[] = [];
+
+        // Process each character's overwatch
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        Object.entries(overwatchData).forEach(([_, data]) => {
+            if (!data.active) return;
+
+            // Calculate visible cells for this overwatch
+            const visibleCells = ShootingService.calculateVisibleCells(
+                this.state.map,
+                data.position,
+                data.direction,
+                data.range,
+                SHOOT_CONSTANTS.DEFAULT_ANGLE_OF_VISION
+            );
+
+            // Add cell updates for this overwatch
+            visibleCells.forEach(vc => {
+                allCellUpdates.push({
+                    cellKey: createCellKey(vc.coord),
+                    visualState: {
+                        isHighlighted: true,
+                        highlightTypes: ['overwatch'],
+                        highlightIntensity: vc.intensity,
+                        classList: ['highlight', 'overwatch']
+                    }
+                });
+            });
+        });
+
+        // Batch update all overwatch cells
+        if (allCellUpdates.length > 0) {
+            this.dispatch(UpdateStateEvent.uiCellVisualBatch, { updates: allCellUpdates });
+        }
     }
 
     private clearOverwatchMode(): void {

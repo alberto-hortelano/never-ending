@@ -1,7 +1,7 @@
 import { EventBus, EventsMap } from '../events/EventBus';
 import { NetworkService } from './NetworkService';
 import { State } from '../State';
-import { IState, IUIState, ICharacter } from '../interfaces';
+import { IState, IUIState, ICharacter, IOverwatchData } from '../interfaces';
 import { GameEvent, UpdateStateEvent } from '../events';
 import { getBaseState } from '../../data/state';
 import { StateDiffService, StateDiff } from './StateDiffService';
@@ -178,6 +178,28 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
         
         // Handle UI state changes
         this.dispatchUIStateChanges(oldState.ui, newState.ui);
+        
+        // Overwatch data changes
+        const oldOverwatchData = oldState.overwatchData || {};
+        const newOverwatchData = newState.overwatchData || {};
+        
+        // Check for added or updated overwatch entries
+        for (const [characterName, data] of Object.entries(newOverwatchData)) {
+            const oldData = oldOverwatchData[characterName];
+            if (!oldData || JSON.stringify(oldData) !== JSON.stringify(data)) {
+                const overwatchData = data as IOverwatchData;
+                const eventData = Object.assign({ characterName }, overwatchData, { fromNetwork: true });
+                this.dispatch(UpdateStateEvent.setOverwatchData, eventData);
+            }
+        }
+        
+        // Check for removed overwatch entries
+        for (const characterName of Object.keys(oldOverwatchData)) {
+            if (!newOverwatchData[characterName]) {
+                const eventData = { characterName, active: false, fromNetwork: true };
+                this.dispatch(UpdateStateEvent.setOverwatchData, eventData);
+            }
+        }
     }
     
     private dispatchUIStateChanges(oldUI: IUIState, newUI: IUIState) {
@@ -241,7 +263,7 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
             characters: structuredClone(this.state.characters) as IState['characters'],
             messages: structuredClone(this.state.messages) as IState['messages'],
             ui: structuredClone(this.state.ui) as IState['ui'],
-            overwatchData: {} // Don't sync overwatch data for now
+            overwatchData: structuredClone(this.state.overwatchData) as IState['overwatchData']
         };
 
         if (this.lastSyncedState) {
@@ -352,6 +374,15 @@ this.broadcastAction(UpdateStateEvent.characterPosition, data);
             if (this.isMultiplayer && this.state) {
                 if (!(data as NetworkEventData).fromNetwork) {
                     this.broadcastAction(UpdateStateEvent.uiCharacterVisual, data);
+                }
+            }
+        });
+        
+        // Listen for overwatch data updates
+        this.listen(UpdateStateEvent.setOverwatchData, (data) => {
+            if (this.isMultiplayer && this.state) {
+                if (!(data as NetworkEventData).fromNetwork) {
+                    this.broadcastAction(UpdateStateEvent.setOverwatchData, data);
                 }
             }
         });
