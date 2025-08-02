@@ -323,11 +323,8 @@ export class Overwatch extends EventBus<
 
         const shotResult = this.calculateShot(overwatcher, overwatchData, target);
 
-        if (shotResult.hit && 'damage' in shotResult && shotResult.damage !== undefined && shotResult.isCritical !== undefined) {
-            this.applyDamage(overwatcherName, target, { damage: shotResult.damage, isCritical: shotResult.isCritical });
-        } else {
-            this.dispatch(ActionEvent.error, `Overwatch shot missed! (${Math.round(shotResult.hitChance * 100)}% chance)`);
-        }
+        // Shot always hits now, apply damage
+        this.applyDamage(overwatcherName, target, { damage: shotResult.damage, isCritical: shotResult.isCritical });
 
         this.updateOverwatchAfterShot(overwatcherName, overwatchData, target.position);
     }
@@ -416,17 +413,6 @@ export class Overwatch extends EventBus<
         target: DeepReadonly<ICharacter>
     ) {
         const distance = ShootingService.getDistance(overwatchData.position, target.position);
-        const hitChance = ShootingService.calculateHitChance(
-            distance,
-            overwatchData.range,
-            OVERWATCH_CONSTANTS.NO_AIM_BONUS
-        );
-        const hit = ShootingService.rollHit(hitChance);
-
-        if (!hit) {
-            return { hit: false, hitChance };
-        }
-
         const baseDamage = ShootingService.getWeaponDamage(overwatcher);
         const critChance = ShootingService.calculateCriticalChance(OVERWATCH_CONSTANTS.NO_AIM_BONUS);
         const isCritical = ShootingService.rollCritical(critChance);
@@ -437,7 +423,7 @@ export class Overwatch extends EventBus<
             isCritical
         );
 
-        return { hit: true, hitChance, damage: finalDamage, isCritical };
+        return { hit: true, damage: finalDamage, isCritical };
     }
 
     private showProjectileAnimation(

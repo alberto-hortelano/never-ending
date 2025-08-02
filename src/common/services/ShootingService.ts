@@ -15,8 +15,6 @@ export const SHOOT_CONSTANTS = {
     VISIBILITY_THRESHOLD: 0.01,
     DISTANCE_DAMAGE_FALLOFF: 0.5, // 50% damage reduction at max range
     AIM_RANGE_BONUS: 0.5, // 50% range increase per aim level
-    AIM_ACCURACY_BONUS: 0.15, // 15% accuracy increase per aim level
-    BASE_ACCURACY: 0.7, // 70% base hit chance
     CRITICAL_HIT_BASE_CHANCE: 0.05, // 5% base critical chance
     CRITICAL_HIT_AIM_BONUS: 0.05, // 5% additional critical chance per aim level
     CRITICAL_HIT_MULTIPLIER: 2.0, // Double damage on critical hits
@@ -192,13 +190,14 @@ export class ShootingService {
 
     /**
      * Calculate hit chance based on distance and aim level
+     * @deprecated Shots now always hit with damage falloff instead of hit/miss mechanics
      */
     static calculateHitChance(distance: number, maxRange: number, aimLevel: number = 0): number {
         // Base accuracy
-        let accuracy = SHOOT_CONSTANTS.BASE_ACCURACY;
+        let accuracy = 0.7; // Previously SHOOT_CONSTANTS.BASE_ACCURACY
         
         // Add aim level bonus
-        accuracy += aimLevel * SHOOT_CONSTANTS.AIM_ACCURACY_BONUS;
+        accuracy += aimLevel * 0.15; // Previously SHOOT_CONSTANTS.AIM_ACCURACY_BONUS
         
         // Apply distance penalty (no penalty at point blank, max penalty at max range)
         const distancePenalty = (distance / maxRange) * 0.3; // Up to 30% penalty
@@ -249,6 +248,7 @@ export class ShootingService {
 
     /**
      * Roll for hit based on hit chance
+     * @deprecated Shots now always hit with damage falloff instead of hit/miss mechanics
      */
     static rollHit(hitChance: number): boolean {
         return Math.random() < hitChance;

@@ -75,7 +75,7 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
                     cb(structuredClone(eventData));
                 } catch (err) {
                     if (!isTestEnvironment) {
-                        console.error(`Error in listener for "${key}":`, err);
+                        console.log(`Error in listener for "${key}":`, err);
                     }
                 }
             }
@@ -86,7 +86,7 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
                     cb(structuredClone(eventData));
                 } catch (err) {
                     if (!isTestEnvironment) {
-                        console.error(`Error in listener for "${filterKey}":`, err);
+                        console.log(`Error in listener for "${filterKey}":`, err);
                     }
                 }
             }
