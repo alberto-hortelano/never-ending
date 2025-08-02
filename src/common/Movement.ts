@@ -73,8 +73,10 @@ export class Movement extends EventBus<
     private onCharacterPath(character: StateChangeEventsMap[StateChangeEvent.characterPath]) {
         // Check if character is defeated
         if (character.health <= 0) {
-            // Clear path for defeated character
-            this.dispatch(UpdateStateEvent.characterPath, { ...character, path: [] });
+            // Clear path for defeated character only if it's not already empty
+            if (character.path && character.path.length > 0) {
+                this.dispatch(UpdateStateEvent.characterPath, { ...character, path: [] });
+            }
             return;
         }
         

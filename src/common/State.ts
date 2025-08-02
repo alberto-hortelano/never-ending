@@ -119,7 +119,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.dispatch(StateChangeEvent.characterPosition, eventData);
         this.save();
     }
-    private onCharacterPath(characterData: UpdateStateEventsMap[UpdateStateEvent.characterPosition]) {
+    private onCharacterPath(characterData: UpdateStateEventsMap[UpdateStateEvent.characterPath]) {
         const character = this.#characters.find(character => character.name === characterData.name);
         if (!character) {
             throw new Error(`No character "${characterData.name}" found`);
