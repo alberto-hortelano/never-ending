@@ -78,7 +78,6 @@ export default class Character extends Component {
             this.listen(StateChangeEvent.uiVisualStates, (visualStates) => {
                 const myVisualState = visualStates.characters[this.id];
                 if (myVisualState) {
-                    console.log(`[Character ${this.id}] Received visual state update:`, myVisualState);
                     this.applyVisualState(myVisualState as ICharacterVisualState);
                 }
             });
@@ -155,9 +154,7 @@ export default class Character extends Component {
 
         // Listen for character defeat
         this.listen(StateChangeEvent.characterDefeated, (character) => {
-            console.log(`[Character ${this.id}] Received characterDefeated event for ${character.name}`);
             if (character.name === this.id) {
-                console.log(`[Character ${this.id}] This character is defeated!`);
                 this.onDefeated();
             }
         });
@@ -268,8 +265,6 @@ export default class Character extends Component {
     private updateCharacterClasses() {
         if (!this.characterElement) return;
 
-        console.log(`[Character ${this.id}] updateCharacterClasses called, currentVisualState:`, this.currentVisualState);
-
         // Start with base class
         const classes = ['character'];
 
@@ -307,12 +302,9 @@ export default class Character extends Component {
                 classes.push('opponent-character');
             }
             if (this.currentVisualState.isDefeated) {
-                console.log(`[Character ${this.id}] Adding defeated class`);
                 classes.push('defeated');
             }
         }
-
-        console.log(`[Character ${this.id}] Final classes:`, classes);
 
         // Apply all classes at once
         this.characterElement.className = classes.join(' ');
@@ -362,8 +354,6 @@ export default class Character extends Component {
     private applyVisualState(visualState: ICharacterVisualState) {
         if (!this.characterElement || !this.movable) return;
 
-        console.log(`[Character ${this.id}] applyVisualState called with isDefeated=${visualState.isDefeated}`);
-        
         // Store the visual state for class management
         this.currentVisualState = visualState;
         
@@ -432,13 +422,11 @@ export default class Character extends Component {
 
 
     private onDefeated() {
-        console.log(`[Character ${this.id}] onDefeated called`);
         // The defeated visual state is already being set by UIState.updateCharacterDefeated
         // which is called by the State class when it receives the characterDefeated event.
         // However, let's ensure our local visual state is updated immediately
         if (this.currentVisualState) {
             this.currentVisualState.isDefeated = true;
-            console.log(`[Character ${this.id}] Set local visual state isDefeated=true`);
             // Update classes immediately
             this.updateCharacterClasses();
         }

@@ -281,8 +281,6 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
         const animation = this.activeAnimations.get(characterId);
         if (!animation) return;
 
-        console.log(`[AnimationService] Completing animation for ${characterId}`);
-
         // For movement animations, ensure we end at the final position
         if (animation.type === 'walk' && animation.path && animation.path.length > 0) {
             const finalPosition = animation.path[animation.path.length - 1];
@@ -290,8 +288,6 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
             const finalDirection = (animation.path.length > 1 && secondLastPos && finalPosition) ?
                 DirectionsService.calculateDirection(secondLastPos, finalPosition) :
                 (animation.toDirection || animation.fromDirection || 'down');
-
-            console.log(`[AnimationService] Dispatching visual update for ${characterId} - clearing walk class`);
             
             // Set final position and remove 'walk' class
             this.dispatch(UpdateStateEvent.uiCharacterVisual, {

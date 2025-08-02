@@ -51,7 +51,6 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         // Handle character defeat - coordinate between character and UI state
         // Since all EventBus instances share listeners, we can listen on 'this'
         this.listen(StateChangeEvent.characterDefeated as any, (character: any) => {
-            console.log(`[State] Received characterDefeated event for ${character.name}`);
             this.uiState.updateCharacterDefeated(character.name);
         });
     }

@@ -202,13 +202,10 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
 
         const previousHealth = character.health;
         character.health = Math.max(0, character.health - data.damage);
-        
-        console.log(`[CharacterState] Damage dealt to ${character.name}: ${data.damage}, health: ${previousHealth} -> ${character.health}`);
 
         this.dispatch(StateChangeEvent.characterHealth, structuredClone(character));
 
         if (character.health === 0 && previousHealth > 0) {
-            console.log(`[CharacterState] Character ${character.name} defeated! Dispatching characterDefeated event`);
             this.dispatch(StateChangeEvent.characterDefeated, structuredClone(character));
         }
         
