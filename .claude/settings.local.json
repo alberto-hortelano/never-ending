@@ -21,7 +21,8 @@
       "Bash(npx jest:*)",
       "Bash(npx tsc:*)",
       "Bash(sed:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(./tutorial/generate-screenshots.sh:*)"
     ],
     "deny": []
   }
