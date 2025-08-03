@@ -7,6 +7,9 @@ export abstract class Component extends HTMLElement {
     protected eventBus = new EventBus<EventsMap, EventsMap>();
     protected listen = this.eventBus.listen.bind(this.eventBus);
     protected dispatch = this.eventBus.dispatch.bind(this.eventBus);
+    
+    // Store shadow root reference for testing purposes
+    private _testingShadowRoot?: ShadowRoot;
 
     // Static caches shared by all subclasses
     private static styleSheetCache = new Map<string, Promise<CSSStyleSheet>>();
@@ -16,6 +19,12 @@ export abstract class Component extends HTMLElement {
         if (this.shadowRoot) return;  // already initialized
 
         const root = this.attachShadow({ mode: 'closed' });
+        
+        // Store reference for testing if in test environment
+        if (typeof window !== 'undefined' && (window as any).__PLAYWRIGHT_TEST__) {
+            this._testingShadowRoot = root;
+        }
+        
         const styleSheetPromise = this.loadCss();
         const templatePromise = this.loadHtml();
 
@@ -33,12 +42,20 @@ export abstract class Component extends HTMLElement {
 
         return root;
     }
+    
+    // Method to access shadow root in tests
+    public getTestingShadowRoot(): ShadowRoot | null {
+        if (typeof window !== 'undefined' && (window as any).__PLAYWRIGHT_TEST__) {
+            return this._testingShadowRoot || null;
+        }
+        return null;
+    }
 
     private loadCss() {
         if (!this.hasCss) {
             return;
         }
-        const cssUrl = new URL(`./${this.name.toLowerCase()}/${this.name}.css`, import.meta.url).href.replace('/js/', '/css/');
+        const cssUrl = new URL(`./${this.name.toLowerCase()}/${this.name}.css`, import.meta.url).href.replace('/js/components/', '/css/components/');
         let cssPromise = Component.styleSheetCache.get(this.name);
         if (!cssPromise) {
             cssPromise = this.createStyleSheet(cssUrl);
@@ -74,7 +91,7 @@ export abstract class Component extends HTMLElement {
 
     // Helper to fetch and build an HTMLTemplateElement
     private async createTemplate(): Promise<HTMLTemplateElement> {
-        const url = new URL(`./${this.name.toLowerCase()}/${this.name}.html`, import.meta.url).href.replace('/js/', '/html/');
+        const url = new URL(`./${this.name.toLowerCase()}/${this.name}.html`, import.meta.url).href.replace('/js/components/', '/html/components/');
         const res = await fetch(url);
         if (!res.ok) {
             console.error(`Failed to load template ${url}: ${res.statusText}`);

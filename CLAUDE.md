@@ -19,9 +19,36 @@ This is "Never Ending", a turn-based strategy game with AI integration built usi
 - `npm run build` - One-time TypeScript compilation
 
 ### Testing
+
+#### Unit Tests (Jest)
 - Run all tests: `npm test`
 - Run specific test: `npm test -- corridorGenerator.test.ts`
 - Tests are located in `__tests__/` directory
+
+#### End-to-End Tests (Playwright)
+- Run all E2E tests: `npm run test:e2e`
+- Run with UI mode: `npm run test:e2e:ui`
+- Debug mode: `npm run test:e2e:debug`
+- View test report: `npm run test:e2e:report`
+- Run specific test: `npm run test:e2e -- e2e/tests/basic.spec.ts`
+
+**E2E Test Structure:**
+- `/e2e/tests/` - Test specifications
+- `/e2e/pages/` - Page Object Models for clean test organization
+- `/e2e/fixtures/` - Test fixtures and utilities
+- `playwright.config.ts` - Playwright configuration
+
+**Docker Support:**
+The E2E tests are configured to run in Docker with headless browsers:
+- Dependencies installed via `npx playwright install-deps`
+- Screenshots captured on failure to `/test-results/`
+- Videos recorded for debugging
+
+**Important Notes:**
+- Web components' shadow DOM may take time to initialize in tests
+- Tests automatically start the development server before running
+- Screenshots and videos are saved for failed tests
+- Tests run in Chromium, Firefox, and WebKit by default
 
 ## Architecture Overview
 
