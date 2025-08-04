@@ -218,7 +218,8 @@ export class Overwatch extends EventBus<
             character.position,
             character.direction,
             range,
-            angleOfVision
+            angleOfVision,
+            this.state.characters
         );
         
         // Update overwatch data with new direction and watched cells
@@ -266,7 +267,8 @@ export class Overwatch extends EventBus<
             character.position,
             character.direction,
             range,
-            angleOfVision
+            angleOfVision,
+            this.state.characters
         );
 
         this.updateCharacterVisuals(character);
@@ -443,7 +445,7 @@ export class Overwatch extends EventBus<
     }
 
     private hasLineOfSight(from: ICoord, to: ICoord): boolean {
-        return ShootingService.checkLineOfSight(this.state.map, from, to);
+        return ShootingService.checkLineOfSight(this.state.map, from, to, this.state.characters);
     }
 
     private calculateShot(
@@ -534,14 +536,20 @@ export class Overwatch extends EventBus<
             character.position,
             character.direction,
             movingCharacterOverwatch.range,
-            SHOOT_CONSTANTS.DEFAULT_ANGLE_OF_VISION
+            SHOOT_CONSTANTS.DEFAULT_ANGLE_OF_VISION,
+            this.state.characters
         );
 
         this.dispatch(UpdateStateEvent.setOverwatchData, {
             characterName: character.name,
             active: true,
             position: character.position,
-            watchedCells: newWatchedCells.map(vc => vc.coord)
+            direction: character.direction,
+            watchedCells: newWatchedCells.map(vc => vc.coord),
+            // Preserve existing data
+            range: movingCharacterOverwatch.range,
+            shotsRemaining: movingCharacterOverwatch.shotsRemaining,
+            shotCells: movingCharacterOverwatch.shotCells ? [...movingCharacterOverwatch.shotCells] : undefined
         });
     }
 
@@ -650,11 +658,35 @@ export class Overwatch extends EventBus<
         }
 
         const overwatchData = this.state.overwatchData;
-        if (!overwatchData || Object.keys(overwatchData).length === 0) {
-            return;
+        
+        // Collect all cells that need to be updated (either highlighted or cleared)
+        const cellsToUpdate = new Map<CellKey, CellVisualUpdate>();
+        
+        // First, find all cells currently highlighted as overwatch
+        const currentHighlightedCells = new Set<CellKey>();
+        const visualStates = this.state.ui?.visualStates;
+        if (visualStates?.cells) {
+            Object.entries(visualStates.cells).forEach(([cellKey, visualState]) => {
+                if (visualState?.highlightTypes?.includes('overwatch')) {
+                    currentHighlightedCells.add(cellKey);
+                    // Mark for clearing initially
+                    cellsToUpdate.set(cellKey, {
+                        cellKey,
+                        visualState: null
+                    });
+                }
+            });
         }
 
-        const allCellUpdates: CellVisualUpdate[] = [];
+        if (!overwatchData || Object.keys(overwatchData).length === 0) {
+            // No active overwatches, just clear all overwatch highlights
+            if (cellsToUpdate.size > 0) {
+                this.dispatch(UpdateStateEvent.uiCellVisualBatch, { 
+                    updates: Array.from(cellsToUpdate.values()) 
+                });
+            }
+            return;
+        }
 
         // Process each character's overwatch
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -667,13 +699,16 @@ export class Overwatch extends EventBus<
                 data.position,
                 data.direction,
                 data.range,
-                SHOOT_CONSTANTS.DEFAULT_ANGLE_OF_VISION
+                SHOOT_CONSTANTS.DEFAULT_ANGLE_OF_VISION,
+                this.state.characters
             );
 
             // Add cell updates for this overwatch
             visibleCells.forEach(vc => {
-                allCellUpdates.push({
-                    cellKey: createCellKey(vc.coord),
+                const cellKey = createCellKey(vc.coord);
+                // Update or add this cell
+                cellsToUpdate.set(cellKey, {
+                    cellKey,
                     visualState: {
                         isHighlighted: true,
                         highlightTypes: ['overwatch'],
@@ -684,9 +719,11 @@ export class Overwatch extends EventBus<
             });
         });
 
-        // Batch update all overwatch cells
-        if (allCellUpdates.length > 0) {
-            this.dispatch(UpdateStateEvent.uiCellVisualBatch, { updates: allCellUpdates });
+        // Batch update all cells (both clearing old and adding new)
+        if (cellsToUpdate.size > 0) {
+            this.dispatch(UpdateStateEvent.uiCellVisualBatch, { 
+                updates: Array.from(cellsToUpdate.values()) 
+            });
         }
     }
 

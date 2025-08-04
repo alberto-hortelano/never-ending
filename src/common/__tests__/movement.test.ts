@@ -142,7 +142,9 @@ describe('Movement', () => {
             expect(getReachableCells).toHaveBeenCalledWith(
                 testCharacter.position,
                 maxDistance,
-                testMap
+                testMap,
+                mockState.characters,
+                testCharacter.name
             );
 
             // Verify highlights were updated with reachable cells
@@ -204,7 +206,9 @@ describe('Movement', () => {
             expect(calculatePath).toHaveBeenCalledWith(
                 testCharacter.position,
                 destination,
-                testMap
+                testMap,
+                mockState.characters,
+                testCharacter.name
             );
 
             // Verify character path was updated
@@ -354,7 +358,9 @@ describe('Movement', () => {
                 expect(getReachableCells).toHaveBeenCalledWith(
                     character.position,
                     expectedDistance,
-                    testMap
+                    testMap,
+                    mockState.characters,
+                    character.name
                 );
             });
         });

@@ -1,5 +1,6 @@
 import type { IState, ICoord, ICharacter, ICell } from "../interfaces";
 import type { DeepReadonly } from "./types";
+import { CharacterService } from "../services/CharacterService";
 
 export const getNeighbors = (pos: ICoord): ICoord[] => [
     { x: pos.x, y: pos.y - 1 }, // up
@@ -8,7 +9,12 @@ export const getNeighbors = (pos: ICoord): ICoord[] => [
     { x: pos.x + 1, y: pos.y }  // right
 ];
 
-const isValidCell = (pos: ICoord, map: DeepReadonly<IState['map']>): boolean => {
+const isValidCell = (
+    pos: ICoord, 
+    map: DeepReadonly<IState['map']>,
+    characters?: DeepReadonly<ICharacter[]>,
+    excludeCharacter?: string
+): boolean => {
     const mapHeight = map.length;
     const mapWidth = map[0]?.length || 0;
 
@@ -17,12 +23,27 @@ const isValidCell = (pos: ICoord, map: DeepReadonly<IState['map']>): boolean => 
     }
 
     const cell = map[pos.y]?.[pos.x];
-    return !cell?.content?.blocker;
+    if (cell?.content?.blocker) {
+        return false;
+    }
+
+    // Check if a living character is blocking the cell
+    if (characters && CharacterService.isCharacterAtPosition(characters, pos, excludeCharacter)) {
+        return false;
+    }
+
+    return true;
 };
 
 const coordToKey = (pos: ICoord): string => `${pos.x},${pos.y}`;
 
-export const getReachableCells = (start: ICoord, range: number, map: DeepReadonly<IState['map']>): ICoord[] => {
+export const getReachableCells = (
+    start: ICoord, 
+    range: number, 
+    map: DeepReadonly<IState['map']>,
+    characters?: DeepReadonly<ICharacter[]>,
+    excludeCharacter?: string
+): ICoord[] => {
     const reachable: ICoord[] = [];
     const visited = new Set<string>();
     const queue: { pos: ICoord; distance: number }[] = [{ pos: start, distance: 0 }];
@@ -38,7 +59,7 @@ export const getReachableCells = (start: ICoord, range: number, map: DeepReadonl
 
         if (distance < range) {
             for (const neighbor of getNeighbors(pos)) {
-                if (isValidCell(neighbor, map)) {
+                if (isValidCell(neighbor, map, characters, excludeCharacter)) {
                     queue.push({ pos: neighbor, distance: distance + 1 });
                 }
             }
@@ -48,7 +69,13 @@ export const getReachableCells = (start: ICoord, range: number, map: DeepReadonl
     return reachable;
 };
 
-export const calculatePath = (start: ICoord, destination: ICoord, map: DeepReadonly<IState['map']>): ICoord[] => {
+export const calculatePath = (
+    start: ICoord, 
+    destination: ICoord, 
+    map: DeepReadonly<IState['map']>,
+    characters?: DeepReadonly<ICharacter[]>,
+    excludeCharacter?: string
+): ICoord[] => {
     if (start.x === destination.x && start.y === destination.y) {
         return [];
     }
@@ -68,7 +95,9 @@ export const calculatePath = (start: ICoord, destination: ICoord, map: DeepReado
         }
 
         for (const neighbor of getNeighbors(pos)) {
-            if (isValidCell(neighbor, map)) {
+            // Allow destination even if a character is there (we might be moving to attack)
+            const isDestination = neighbor.x === destination.x && neighbor.y === destination.y;
+            if (isDestination || isValidCell(neighbor, map, characters, excludeCharacter)) {
                 queue.push({
                     pos: neighbor,
                     path: [...path, neighbor]

@@ -642,6 +642,9 @@ describe('Shoot', () => {
             const listener = createTestListener();
             listener.listen(UpdateStateEvent.damageCharacter, damageSpy);
 
+            // First update mock state to have only the shooter and close target
+            (mockState as any).characters = [testCharacter, closeTarget];
+
             // Shoot close target
             superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
             superEventBus.dispatch(ControlsEvent.characterClick, {
@@ -651,8 +654,10 @@ describe('Shoot', () => {
 
             const closeDamage = damageSpy.mock.calls[0][0].damage;
 
-            // Clear and shoot far target
+            // Clear and update mock state to have only the shooter and far target
             damageSpy.mockClear();
+            (mockState as any).characters = [testCharacter, farTarget];
+            
             superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
             superEventBus.dispatch(ControlsEvent.characterClick, {
                 characterName: 'farTarget',

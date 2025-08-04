@@ -9,6 +9,7 @@ import {
     ActionEvent, ActionEventsMap,
 } from "./events";
 import { DirectionsService } from "./services/DirectionsService";
+import { CharacterService } from "./services/CharacterService";
 
 export interface VisibleCell {
     coord: ICoord;
@@ -106,6 +107,32 @@ export class Shoot extends EventBus<
                 const targetCell = map[y]?.[x];
                 if (targetCell?.content?.blocker) {
                     continue; // Skip blocked cells
+                }
+
+                // Check if a living character is blocking this cell (but allow targeting characters)
+                if (CharacterService.isCharacterAtPosition(this.state.characters, { x, y })) {
+                    // We can see the character, but not cells behind them
+                    const hasLineOfSight = this.checkLineOfSight(map, position, { x, y });
+                    if (hasLineOfSight) {
+                        // Calculate visibility for the character's cell
+                        const angleToTarget = Math.atan2(dy, dx) * 180 / Math.PI;
+                        const relativeAngle = this.normalizeAngle(angleToTarget - baseAngle);
+                        
+                        if (Math.abs(relativeAngle) <= halfAngle) {
+                            const angleVisibility = this.calculateAngleVisibility(relativeAngle, halfAngle);
+                            const distance = Math.sqrt(distanceSquared);
+                            const distanceVisibility = this.calculateDistanceVisibility(distance, range);
+                            
+                            const intensity = angleVisibility * distanceVisibility;
+                            if (intensity > SHOOT_CONSTANTS.VISIBILITY_THRESHOLD) {
+                                visibleCells.push({
+                                    coord: { x, y },
+                                    intensity
+                                });
+                            }
+                        }
+                    }
+                    continue; // Don't check cells behind characters
                 }
 
                 // Now do the precise angle calculation for cells that passed early checks
@@ -490,6 +517,13 @@ export class Shoot extends EventBus<
                 const cell = map[y]?.[x];
                 if (cell?.content?.blocker) {
                     return false; // Obstacle blocks line of sight
+                }
+
+                // Check if a living character is blocking line of sight (except at the target position)
+                if (!(x === to.x && y === to.y)) {
+                    if (CharacterService.isCharacterAtPosition(this.state.characters, { x, y })) {
+                        return false; // Character blocks line of sight
+                    }
                 }
             }
 

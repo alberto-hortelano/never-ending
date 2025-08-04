@@ -1,6 +1,7 @@
 import type { DeepReadonly } from "../helpers/types";
 import type { ICharacter, ICoord, ICell, Direction, IWeapon } from "../interfaces";
 import { DirectionsService } from "./DirectionsService";
+import { CharacterService } from "./CharacterService";
 
 export interface VisibleCell {
     coord: ICoord;
@@ -32,7 +33,8 @@ export class ShootingService {
         position: ICoord,
         direction: Direction,
         range: number,
-        angleOfVision: number = 90
+        angleOfVision: number = 90,
+        characters?: DeepReadonly<ICharacter[]>
     ): VisibleCell[] {
         const visibleCells: VisibleCell[] = [];
         const halfAngle = angleOfVision / 2;
@@ -93,7 +95,7 @@ export class ShootingService {
                 // Check if within field of vision
                 if (Math.abs(relativeAngle) <= halfAngle) {
                     // Check for obstacles blocking line of sight
-                    const hasLineOfSight = this.checkLineOfSight(map, position, { x, y });
+                    const hasLineOfSight = this.checkLineOfSight(map, position, { x, y }, characters);
 
                     if (hasLineOfSight) {
                         // Calculate visibility based on angle and distance
@@ -119,7 +121,12 @@ export class ShootingService {
     /**
      * Check if there's a clear line of sight between two positions
      */
-    static checkLineOfSight(map: DeepReadonly<ICell[][]>, from: ICoord, to: ICoord): boolean {
+    static checkLineOfSight(
+        map: DeepReadonly<ICell[][]>, 
+        from: ICoord, 
+        to: ICoord,
+        characters?: DeepReadonly<ICharacter[]>
+    ): boolean {
         // Bresenham's line algorithm to check for obstacles
         const dx = Math.abs(to.x - from.x);
         const dy = Math.abs(to.y - from.y);
@@ -135,6 +142,13 @@ export class ShootingService {
                 const cell = map[y]?.[x];
                 if (cell?.content?.blocker) {
                     return false; // Obstacle blocks line of sight
+                }
+
+                // Check if a living character is blocking line of sight (except at the target position)
+                if (characters && !(x === to.x && y === to.y)) {
+                    if (CharacterService.isCharacterAtPosition(characters, { x, y })) {
+                        return false; // Character blocks line of sight
+                    }
                 }
             }
 

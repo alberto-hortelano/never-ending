@@ -190,7 +190,13 @@ export class Movement extends EventBus<
     }
     // Helpers
     private selectDestination(character: DeepReadonly<ICharacter>, _reachableCells: ICoord[], destination: ICoord) {
-        const path = calculatePath(character.position, destination, this.state.map);
+        const path = calculatePath(
+            character.position, 
+            destination, 
+            this.state.map,
+            this.state.characters,
+            character.name
+        );
 
         // Clear highlights
         this.dispatch(UpdateStateEvent.uiHighlights, {
@@ -240,7 +246,13 @@ export class Movement extends EventBus<
         const pointsLeft = freshCharacter.actions.pointsLeft;
         const maxDistance = Math.floor(pointsLeft / moveCost);
 
-        const reachableCells = getReachableCells(freshCharacter.position, maxDistance, this.state.map);
+        const reachableCells = getReachableCells(
+            freshCharacter.position, 
+            maxDistance, 
+            this.state.map,
+            this.state.characters,
+            freshCharacter.name
+        );
         this.movingCharacter = freshCharacter;
         this.reachableCells = reachableCells;
 
@@ -259,7 +271,13 @@ export class Movement extends EventBus<
         if (!this.movingCharacter || !this.reachableCells) return;
 
         // Calculate path
-        const path = calculatePath(this.movingCharacter.position, destination, this.state.map);
+        const path = calculatePath(
+            this.movingCharacter.position, 
+            destination, 
+            this.state.map,
+            this.state.characters,
+            this.movingCharacter.name
+        );
 
         // Update UI state with path preview cells while preserving reachable cells
         this.dispatch(UpdateStateEvent.uiHighlights, {

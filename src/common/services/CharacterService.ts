@@ -218,4 +218,44 @@ export class CharacterService extends EventBus {
     return '#f44336'; // Red
   }
 
+  /**
+   * Check if a character exists at the given position
+   * @param characters Array of characters to check
+   * @param position Position to check
+   * @param excludeCharacter Optional character name to exclude from check
+   * @returns True if a living character occupies the position
+   */
+  public static isCharacterAtPosition(
+    characters: DeepReadonly<ICharacter[]>,
+    position: ICoord,
+    excludeCharacter?: string
+  ): boolean {
+    return characters.some(character => 
+      character.position.x === position.x && 
+      character.position.y === position.y &&
+      character.health > 0 && // Only living characters block
+      character.name !== excludeCharacter
+    );
+  }
+
+  /**
+   * Get character at the given position
+   * @param characters Array of characters to check
+   * @param position Position to check
+   * @param excludeCharacter Optional character name to exclude from check
+   * @returns Character at position or undefined
+   */
+  public static getCharacterAtPosition(
+    characters: DeepReadonly<ICharacter[]>,
+    position: ICoord,
+    excludeCharacter?: string
+  ): DeepReadonly<ICharacter> | undefined {
+    return characters.find(character => 
+      character.position.x === position.x && 
+      character.position.y === position.y &&
+      character.health > 0 && // Only living characters are considered
+      character.name !== excludeCharacter
+    );
+  }
+
 }
