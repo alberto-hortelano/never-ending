@@ -1,4 +1,5 @@
 import { Page, Locator } from '@playwright/test';
+import type { TestableComponent, TestableWindow } from '../types/test-component';
 
 export class MainMenuPage {
   readonly page: Page;
@@ -10,7 +11,7 @@ export class MainMenuPage {
     
     // Set test mode flag for shadow DOM access
     page.addInitScript(() => {
-      (window as any).__PLAYWRIGHT_TEST__ = true;
+      (window as TestableWindow).__PLAYWRIGHT_TEST__ = true;
     });
   }
 
@@ -36,8 +37,8 @@ export class MainMenuPage {
     // Wait for shadow DOM to be attached (using testing method)
     await this.page.waitForFunction(() => {
       const menu = document.querySelector('main-menu');
-      if (!menu || typeof (menu as any).getTestingShadowRoot !== 'function') return false;
-      const shadowRoot = (menu as any).getTestingShadowRoot();
+      if (!menu || typeof (menu as TestableComponent).getTestingShadowRoot !== 'function') return false;
+      const shadowRoot = (menu as TestableComponent).getTestingShadowRoot();
       return shadowRoot && shadowRoot.querySelector('#singlePlayerBtn');
     }, { timeout: 10000 });
   }
@@ -46,8 +47,8 @@ export class MainMenuPage {
     // Use testing method to access closed shadow DOM
     await this.page.evaluate(() => {
       const menu = document.querySelector('main-menu');
-      if (menu && (menu as any).getTestingShadowRoot) {
-        const shadowRoot = (menu as any).getTestingShadowRoot();
+      if (menu && (menu as TestableComponent).getTestingShadowRoot) {
+        const shadowRoot = (menu as TestableComponent).getTestingShadowRoot();
         const button = shadowRoot?.querySelector('#singlePlayerBtn') as HTMLButtonElement;
         if (button) button.click();
       }
@@ -60,8 +61,8 @@ export class MainMenuPage {
   async openMultiplayer() {
     await this.page.evaluate(() => {
       const menu = document.querySelector('main-menu');
-      if (menu && (menu as any).getTestingShadowRoot) {
-        const shadowRoot = (menu as any).getTestingShadowRoot();
+      if (menu && (menu as TestableComponent).getTestingShadowRoot) {
+        const shadowRoot = (menu as TestableComponent).getTestingShadowRoot();
         const button = shadowRoot?.querySelector('#multiplayerBtn') as HTMLButtonElement;
         if (button) button.click();
       }
@@ -71,8 +72,8 @@ export class MainMenuPage {
   async openCharacterCreator() {
     await this.page.evaluate(() => {
       const menu = document.querySelector('main-menu');
-      if (menu && (menu as any).getTestingShadowRoot) {
-        const shadowRoot = (menu as any).getTestingShadowRoot();
+      if (menu && (menu as TestableComponent).getTestingShadowRoot) {
+        const shadowRoot = (menu as TestableComponent).getTestingShadowRoot();
         const button = shadowRoot?.querySelector('#characterCreatorBtn') as HTMLButtonElement;
         if (button) button.click();
       }
