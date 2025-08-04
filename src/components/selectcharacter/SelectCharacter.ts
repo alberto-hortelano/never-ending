@@ -71,7 +71,6 @@ export class SelectCharacter extends Component {
                 const characterIcon = document.createElement('character-component') as Character;
                 characterIcon.classList.add('character-icon');
                 characterIcon.id = `icon-${character.name}`;
-                characterIcon.dataset.isPreview = 'true';
                 
                 // Create a preview state with the character data
                 const previewState = createPreviewState(character);

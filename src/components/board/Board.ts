@@ -115,8 +115,6 @@ export default class Board extends Component {
 
     cellsToRender.forEach(cellData => {
       const cellElement = document.createElement('cell-component');
-      cellElement.dataset.x = cellData.x.toString();
-      cellElement.dataset.y = cellData.y.toString();
       cellElement.id = cellData.id;
       cellElement.setAttribute('content', cellData.content);
       cellElement.style.setProperty('--cell-x', cellData.x.toString());

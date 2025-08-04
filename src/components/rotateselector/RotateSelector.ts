@@ -58,7 +58,6 @@ export class RotateSelector extends Component {
         const characterIcon = document.createElement('character-component') as Character;
         characterIcon.classList.add('character-preview');
         characterIcon.id = `rotate-preview-${this.options.character.name}`;
-        characterIcon.dataset.isPreview = 'true';
         
         // Create a preview state with the character data
         const previewState = createPreviewState(this.options.character);

@@ -180,7 +180,6 @@ export default class CharacterCreator extends Component {
 
     this.characterPreview = document.createElement('character-component') as Character;
     this.characterPreview.id = 'preview-character';
-    this.characterPreview.dataset.isPreview = 'true'; // Flag to prevent state events
 
     // Create preview state with the character data
     const previewCharacter = {

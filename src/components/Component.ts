@@ -17,7 +17,7 @@ export abstract class Component extends HTMLElement {
     private static templateCache = new Map<string, Promise<HTMLTemplateElement>>();
     
     // Static state reference shared by all components
-    private static gameState: State | null = null;
+    protected static gameState: State | null = null;
     
     // Instance-specific state (for preview components)
     private instanceState: State | null = null;

@@ -20,21 +20,17 @@ export default class Projectile extends Component {
         const state = this.getState();
         const projectileData = state?.ui.transientUI.projectiles.find(p => p.id === this.id);
         
-        if (projectileData) {
-            // Use state data
-            this.fromX = projectileData.from.x;
-            this.fromY = projectileData.from.y;
-            this.toX = projectileData.to.x;
-            this.toY = projectileData.to.y;
-            this.type = projectileData.type;
-        } else {
-            // Fall back to dataset (for compatibility)
-            this.fromX = parseFloat(this.dataset.fromX || '0');
-            this.fromY = parseFloat(this.dataset.fromY || '0');
-            this.toX = parseFloat(this.dataset.toX || '0');
-            this.toY = parseFloat(this.dataset.toY || '0');
-            this.type = (this.dataset.type as 'bullet' | 'laser') || 'bullet';
+        if (!projectileData) {
+            console.error('[Projectile] No projectile data found in state for id:', this.id);
+            return root;
         }
+        
+        // Use state data
+        this.fromX = projectileData.from.x;
+        this.fromY = projectileData.from.y;
+        this.toX = projectileData.to.x;
+        this.toY = projectileData.to.y;
+        this.type = projectileData.type;
 
         // Calculate angle
         const dx = this.toX - this.fromX;

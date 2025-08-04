@@ -18,6 +18,11 @@ export default class Character extends Component {
     private networkService: NetworkService = NetworkService.getInstance();
     private weaponElement?: HTMLElement;
     private currentVisualState: ICharacterVisualState | null = null;
+    
+    // Check if this is a preview component (has instance state instead of global state)
+    private get isPreview(): boolean {
+        return this.getState() !== Component.gameState;
+    }
 
     constructor() {
         super();
@@ -71,7 +76,7 @@ export default class Character extends Component {
         };
 
         // Dispatch initial visual state (skip if preview mode)
-        if (!this.dataset.isPreview) {
+        if (!this.isPreview) {
             this.dispatch(UpdateStateEvent.uiCharacterVisual, {
                 characterId: this.id,
                 visualState: initialVisualState
@@ -79,7 +84,7 @@ export default class Character extends Component {
         }
 
         // Listen for visual state changes (skip if preview mode)
-        if (!this.dataset.isPreview) {
+        if (!this.isPreview) {
             this.listen(StateChangeEvent.uiVisualStates, (visualStates) => {
                 const myVisualState = visualStates.characters[this.id];
                 if (myVisualState) {
@@ -89,8 +94,8 @@ export default class Character extends Component {
         }
 
         // Apply initial action if in preview mode
-        if (this.dataset.isPreview && this.dataset.action && this.characterElement) {
-            this.characterElement.classList.add(this.dataset.action);
+        if (this.isPreview && stateCharacter.action && this.characterElement) {
+            this.characterElement.classList.add(stateCharacter.action);
         }
 
         // Remove the transitionend listener - walk class removal is handled by AnimationService
@@ -223,7 +228,7 @@ export default class Character extends Component {
         }
 
         // Update weapon
-        if (this.dataset.isPreview) {
+        if (this.isPreview) {
             // In preview mode, handle weapon classes directly without updateCharacterClasses
             if (weapon && currentActionClass === 'shoot') {
                 this.characterElement.classList.add(weapon);
@@ -361,8 +366,7 @@ export default class Character extends Component {
             Object.entries(visualState.styles).forEach(([prop, value]) => {
                 if (prop === '--x' || prop === '--y') {
                     // Position updates for movable element
-                    const coord = prop === '--x' ? 'x' : 'y';
-                    this.movable!.dataset[coord] = value;
+                    this.movable!.style.setProperty(prop, value);
                 } else if (prop === '--skin' || prop === '--helmet' || prop === '--suit') {
                     // Palette updates on the component itself
                     this.style.setProperty(prop, value);

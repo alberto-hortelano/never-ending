@@ -21,10 +21,18 @@ export default class Cell extends Component {
 
     override async connectedCallback(): Promise<ShadowRoot | undefined> {
         const root = await super.connectedCallback();
-        this.coords = {
-            x: parseInt(this.dataset.x!),
-            y: parseInt(this.dataset.y!),
-        };
+        
+        // Parse coordinates from ID (format: "cell-x-y")
+        const idParts = this.id.split('-');
+        if (idParts.length === 3 && idParts[0] === 'cell' && idParts[1] && idParts[2]) {
+            this.coords = {
+                x: parseInt(idParts[1], 10),
+                y: parseInt(idParts[2], 10),
+            };
+        } else {
+            console.error('[Cell] Invalid cell ID format:', this.id);
+            this.coords = { x: -1, y: -1 };
+        }
         this.cellKey = `${this.coords.x},${this.coords.y}`;
 
         // Check for initial visual state from state
