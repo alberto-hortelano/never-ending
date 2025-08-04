@@ -22,6 +22,7 @@ export class UIState extends EventBus<UpdateStateEventsMap, StateChangeEventsMap
         this.listen(UpdateStateEvent.uiRemoveProjectile, (data) => this.onUIRemoveProjectile(data));
         this.listen(UpdateStateEvent.uiHighlights, (data) => this.onUIHighlights(data));
         this.listen(UpdateStateEvent.uiInteractionMode, (data) => this.onUIInteractionMode(data));
+        this.listen(UpdateStateEvent.uiSelectedCharacter, (characterName) => this.onUISelectedCharacter(characterName));
     }
 
     private getInitialUIState(): IUIState {
@@ -49,7 +50,8 @@ export class UIState extends EventBus<UpdateStateEventsMap, StateChangeEventsMap
             },
             interactionMode: {
                 type: 'normal'
-            }
+            },
+            selectedCharacter: undefined
         };
     }
 
@@ -409,12 +411,18 @@ export class UIState extends EventBus<UpdateStateEventsMap, StateChangeEventsMap
         this.dispatch(StateChangeEvent.uiInteractionMode, structuredClone(this.#ui.interactionMode));
     }
 
+    private onUISelectedCharacter(characterName: string | undefined) {
+        this.#ui.selectedCharacter = characterName;
+        this.dispatch(StateChangeEvent.uiSelectedCharacter, characterName);
+    }
+
     set ui(ui: IState['ui']) {
         this.#ui = ui;
         this.dispatch(StateChangeEvent.uiAnimations, structuredClone(this.#ui.animations));
         this.dispatch(StateChangeEvent.uiVisualStates, structuredClone(this.#ui.visualStates));
         this.dispatch(StateChangeEvent.uiTransient, structuredClone(this.#ui.transientUI));
         this.dispatch(StateChangeEvent.uiInteractionMode, structuredClone(this.#ui.interactionMode));
+        this.dispatch(StateChangeEvent.uiSelectedCharacter, this.#ui.selectedCharacter);
     }
 
     get ui(): DeepReadonly<IState['ui']> {

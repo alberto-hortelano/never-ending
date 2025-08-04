@@ -2,7 +2,7 @@ import type { IItem, IWeapon } from "../../common/interfaces";
 import type { InventoryUpdateData } from "../../common/events";
 
 import { Component } from "../Component";
-import { InventoryEvent } from "../../common/events";
+import { InventoryEvent, StateChangeEvent } from "../../common/events";
 
 export class Inventory extends Component {
     protected override hasCss = true;
@@ -12,9 +12,6 @@ export class Inventory extends Component {
     private root?: ShadowRoot;
 
     override async connectedCallback() {
-        // Get character name from attribute BEFORE calling super
-        this.characterName = this.getAttribute('character-name') || undefined;
-        
         // Listen for inventory updates BEFORE initializing shadow DOM
         this.listen(InventoryEvent.update, data => this.onInventoryUpdate(data));
         this.listen(InventoryEvent.error, error => this.onError(error));
@@ -26,10 +23,20 @@ export class Inventory extends Component {
         // Store the shadow root reference
         this.root = root;
         
-        // Now that shadow DOM is ready, request inventory data
-        if (this.characterName) {
+        // Get selected character from state
+        const state = this.getState();
+        if (state?.ui.selectedCharacter) {
+            this.characterName = state.ui.selectedCharacter;
             this.dispatch(InventoryEvent.request, this.characterName);
         }
+        
+        // Listen for selected character changes
+        this.listen(StateChangeEvent.uiSelectedCharacter, (characterName) => {
+            if (characterName && characterName !== this.characterName) {
+                this.characterName = characterName;
+                this.dispatch(InventoryEvent.request, characterName);
+            }
+        });
         
         return root;
     }

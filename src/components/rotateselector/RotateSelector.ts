@@ -3,6 +3,7 @@ import type { ICharacter, Direction } from "../../common/interfaces";
 import { Component } from "../Component";
 import type Character from "../character/Character";
 import { DirectionsService } from "../../common/services/DirectionsService";
+import { createPreviewState } from "../../common/helpers/previewState";
 
 export interface RotateSelectorOptions {
     character: DeepReadonly<ICharacter>;
@@ -56,14 +57,11 @@ export class RotateSelector extends Component {
         
         const characterIcon = document.createElement('character-component') as Character;
         characterIcon.classList.add('character-preview');
-        characterIcon.setAttribute('data-name', this.options.character.name);
-        characterIcon.setAttribute('data-race', this.options.character.race);
-        characterIcon.setAttribute('data-palette', JSON.stringify(this.options.character.palette));
-        characterIcon.setAttribute('data-x', '0');
-        characterIcon.setAttribute('data-y', '0');
-        characterIcon.setAttribute('data-direction', this.options.character.direction || 'down');
-        characterIcon.setAttribute('data-is-preview', 'true');
         characterIcon.id = `rotate-preview-${this.options.character.name}`;
+        
+        // Create a preview state with the character data
+        const previewState = createPreviewState(this.options.character);
+        characterIcon.setInstanceState(previewState);
         
         centerDisplay.appendChild(characterIcon);
 
@@ -95,7 +93,7 @@ export class RotateSelector extends Component {
         if (!this.options) return;
 
         // Update the preview character's direction
-        const previewCharacter = this.querySelector(`#rotate-preview-${this.options.character.name}`) as Character;
+        const previewCharacter = this.shadowRoot?.querySelector(`#rotate-preview-${this.options.character.name}`) as Character;
         if (previewCharacter && previewCharacter.updateAppearance) {
             previewCharacter.updateAppearance(
                 this.options.character.race,

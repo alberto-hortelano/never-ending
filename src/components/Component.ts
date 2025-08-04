@@ -1,4 +1,5 @@
 import { EventBus, EventsMap } from "../common/events";
+import type { State } from "../common/State";
 
 export abstract class Component extends HTMLElement {
     protected name = this.constructor.name;
@@ -14,6 +15,28 @@ export abstract class Component extends HTMLElement {
     // Static caches shared by all subclasses
     private static styleSheetCache = new Map<string, Promise<CSSStyleSheet>>();
     private static templateCache = new Map<string, Promise<HTMLTemplateElement>>();
+    
+    // Static state reference shared by all components
+    protected static gameState: State | null = null;
+    
+    // Instance-specific state (for preview components)
+    private instanceState: State | null = null;
+    
+    // Static method to set the game state (called from web.ts)
+    public static setGameState(state: State | null): void {
+        Component.gameState = state;
+    }
+    
+    // Method to set instance-specific state (for preview components)
+    public setInstanceState(state: State | null): void {
+        this.instanceState = state;
+    }
+    
+    // Protected getter for components to access state
+    protected getState(): State | null {
+        // Instance state takes precedence over global state
+        return this.instanceState || Component.gameState;
+    }
 
     async connectedCallback() {
         if (this.shadowRoot) return;  // already initialized
@@ -55,7 +78,11 @@ export abstract class Component extends HTMLElement {
         if (!this.hasCss) {
             return;
         }
-        const cssUrl = new URL(`./${this.name.toLowerCase()}/${this.name}.css`, import.meta.url).href.replace('/js/components/', '/css/components/');
+        // Skip loading CSS in test environment
+        if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
+            return Promise.resolve(new CSSStyleSheet());
+        }
+        const cssUrl = new URL(`./${this.name.toLowerCase()}/${this.name}.css`, (import.meta as any).url).href.replace('/js/components/', '/css/components/');
         let cssPromise = Component.styleSheetCache.get(this.name);
         if (!cssPromise) {
             cssPromise = this.createStyleSheet(cssUrl);
@@ -67,6 +94,13 @@ export abstract class Component extends HTMLElement {
     private loadHtml() {
         if (!this.hasHtml) {
             return;
+        }
+        // Skip loading HTML in test environment
+        if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
+            const tmpl = document.createElement('template');
+            tmpl.id = this.name;
+            tmpl.innerHTML = '<div>Test Template</div>';
+            return Promise.resolve(tmpl);
         }
         let templatePromise = Component.templateCache.get(this.name);
         if (!templatePromise) {
@@ -91,7 +125,7 @@ export abstract class Component extends HTMLElement {
 
     // Helper to fetch and build an HTMLTemplateElement
     private async createTemplate(): Promise<HTMLTemplateElement> {
-        const url = new URL(`./${this.name.toLowerCase()}/${this.name}.html`, import.meta.url).href.replace('/js/components/', '/html/components/');
+        const url = new URL(`./${this.name.toLowerCase()}/${this.name}.html`, (import.meta as any).url).href.replace('/js/components/', '/html/components/');
         const res = await fetch(url);
         if (!res.ok) {
             console.error(`Failed to load template ${url}: ${res.statusText}`);

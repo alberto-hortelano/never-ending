@@ -17,6 +17,29 @@ export default class TopBar extends Component {
         const root = await super.connectedCallback();
         if (!root) return root;
         
+        // Initialize from state if available
+        const state = this.getState();
+        if (state) {
+            this.players = [...state.game.players];
+            this.currentTurn = state.game.turn;
+            
+            // Update UI with initial state
+            const playerNameElement = root.querySelector('#player-name');
+            if (playerNameElement) {
+                const playerName = state.game.playerInfo?.[state.game.turn]?.name || state.game.turn || 'Loading...';
+                playerNameElement.textContent = playerName;
+                
+                const isAI = state.game.playerInfo?.[state.game.turn]?.isAI;
+                if (isAI) {
+                    playerNameElement.classList.add('ai');
+                    playerNameElement.classList.remove('human');
+                } else {
+                    playerNameElement.classList.add('human');
+                    playerNameElement.classList.remove('ai');
+                }
+            }
+        }
+        
         this.setupEventListeners(root);
         return root;
     }

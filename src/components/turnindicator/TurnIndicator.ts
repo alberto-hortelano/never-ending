@@ -14,6 +14,14 @@ export default class TurnIndicator extends Component {
         const root = await super.connectedCallback();
         if (!root) return root;
 
+        // Initialize from state if available
+        const state = this.getState();
+        if (state) {
+            this.currentTurn = state.game.turn;
+            this.players = [...state.game.players];
+            this.playerInfo = state.game.playerInfo || {};
+        }
+
         // Get elements from HTML template
         const playerName = root.getElementById('player-name') as HTMLSpanElement;
         const endTurnButton = root.getElementById('end-turn-button') as HTMLButtonElement;
@@ -21,6 +29,9 @@ export default class TurnIndicator extends Component {
         if (playerName) {
             const displayName = this.playerInfo[this.currentTurn]?.name || this.currentTurn || 'Loading...';
             playerName.textContent = displayName;
+            if (this.currentTurn) {
+                playerName.className = `player-name ${this.currentTurn}`;
+            }
         }
 
         if (endTurnButton) {

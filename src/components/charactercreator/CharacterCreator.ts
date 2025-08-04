@@ -2,9 +2,10 @@ import { Component } from '../Component.js';
 import { ControlsEvent } from '../../common/events/index.js';
 import { CharacterCreationService } from '../../common/services/CharacterCreationService.js';
 import Character from '../character/Character.js';
-import type { Direction, ICreatorData } from '../../common/interfaces.js';
+import type { Direction, ICreatorData, Action } from '../../common/interfaces.js';
 import { weapons } from '../../data/state.js';
 import { DirectionsService } from '../../common/services/DirectionsService.js';
+import { createPreviewState } from '../../common/helpers/previewState.js';
 
 export default class CharacterCreator extends Component {
   protected override hasCss = true;
@@ -180,20 +181,22 @@ export default class CharacterCreator extends Component {
     this.characterPreview = document.createElement('character-component') as Character;
     this.characterPreview.id = 'preview-character';
 
-    // Set initial dataset attributes
-    this.characterPreview.dataset.race = this.characterData.race;
-    this.characterPreview.dataset.player = 'preview';
-    this.characterPreview.dataset.isPreview = 'true'; // Flag to prevent state events
-
-    // Character component expects palette as JSON string
-    const paletteData = {
-      skin: this.characterData.colors.skin,
-      helmet: this.characterData.colors.helmet,
-      suit: this.characterData.colors.suit
+    // Create preview state with the character data
+    const previewCharacter = {
+      name: 'preview-character',
+      race: this.characterData.race,
+      player: 'preview',
+      palette: {
+        skin: this.characterData.colors.skin,
+        helmet: this.characterData.colors.helmet,
+        suit: this.characterData.colors.suit
+      },
+      direction: this.currentDirection,
+      action: this.currentAction as Action
     };
-    this.characterPreview.dataset.palette = JSON.stringify(paletteData);
-    this.characterPreview.dataset.direction = this.currentDirection;
-    this.characterPreview.dataset.action = this.currentAction;
+    
+    const previewState = createPreviewState(previewCharacter);
+    this.characterPreview.setInstanceState(previewState);
 
     previewContainer.appendChild(this.characterPreview);
 
@@ -259,9 +262,22 @@ export default class CharacterCreator extends Component {
 
     // Update preview
     if (this.characterPreview) {
-      this.characterPreview.dataset.action = action;
+      // Create new preview state with updated action
+      const previewCharacter = {
+        name: 'preview-character',
+        race: this.characterData.race,
+        player: 'preview',
+        palette: {
+          skin: this.characterData.colors.skin,
+          helmet: this.characterData.colors.helmet,
+          suit: this.characterData.colors.suit
+        },
+        direction: this.currentDirection,
+        action: action as Action
+      };
       
-      // Since we can't access the closed shadow DOM, we'll rely on updateAppearance
+      const previewState = createPreviewState(previewCharacter);
+      this.characterPreview.setInstanceState(previewState);
       this.updateCharacterPreview();
     }
   }
@@ -447,7 +463,22 @@ export default class CharacterCreator extends Component {
 
     // Update preview race
     if (this.characterPreview) {
-      this.characterPreview.dataset.race = race;
+      // Create new preview state with updated race
+      const previewCharacter = {
+        name: 'preview-character',
+        race: race,
+        player: 'preview',
+        palette: {
+          skin: this.characterData.colors.skin,
+          helmet: this.characterData.colors.helmet,
+          suit: this.characterData.colors.suit
+        },
+        direction: this.currentDirection,
+        action: this.currentAction as Action
+      };
+      
+      const previewState = createPreviewState(previewCharacter);
+      this.characterPreview.setInstanceState(previewState);
       this.updateCharacterPreview();
     }
   }

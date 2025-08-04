@@ -9,21 +9,27 @@ export default class Characters extends Component {
         super();
         this.listen(StateChangeEvent.characters, (characters) => this.printCharacters(characters));
     }
+    
+    override async connectedCallback() {
+        const root = await super.connectedCallback();
+        if (!root) return root;
+        
+        // Initialize characters from state if available
+        const state = this.getState();
+        if (state && state.characters.length > 0) {
+            this.printCharacters(state.characters);
+        }
+        
+        return root;
+    }
     private printCharacters(characters: StateChangeEventsMap[StateChangeEvent.characters]) {
         // Clear existing characters first
         this.innerHTML = '';
         
         characters.forEach(characterData => {
             const characterElement = document.createElement('character-component');
-            characterElement.dataset.x = characterData.position.x.toString();
-            characterElement.dataset.y = characterData.position.y.toString();
             characterElement.id = characterData.name;
-            characterElement.dataset.palette = JSON.stringify(characterData.palette);
-            characterElement.dataset.race = characterData.race;
-            characterElement.dataset.direction = characterData.direction;
-            characterElement.dataset.player = characterData.player;
-            characterElement.dataset.health = characterData.health.toString();
-            characterElement.dataset.maxHealth = characterData.maxHealth.toString();
+            // Character will get its data from the global state
             this.appendChild(characterElement);
         });
     }
