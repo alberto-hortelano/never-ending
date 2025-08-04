@@ -135,6 +135,7 @@ export interface IUIState {
     visualStates: IVisualStates;
     transientUI: ITransientUI;
     interactionMode: IInteractionMode;
+    selectedCharacter?: string; // Currently selected character name
 }
 
 export interface IAnimationStates {

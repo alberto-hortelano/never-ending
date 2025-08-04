@@ -32,12 +32,14 @@ export default class BottomBar extends Component {
         // Clear any existing highlights before showing new character actions
         this.clearMovementHighlights();
         
+        // Update selected character in state
+        this.dispatch(UpdateStateEvent.uiSelectedCharacter, characterName);
+        
         // Clear existing content
         actionsContainer.innerHTML = '';
         
-        // Create and append actions component
+        // Create and append actions component (no longer needs character-name attribute)
         const actionsComponent = document.createElement('actions-component') as Actions;
-        actionsComponent.setAttribute('character-name', characterName);
         actionsContainer.appendChild(actionsComponent);
         
         // Update state

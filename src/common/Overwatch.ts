@@ -76,6 +76,7 @@ export class Overwatch extends EventBus<
         // State change events
         this.listen(StateChangeEvent.characterPosition, this.handleCharacterMove.bind(this));
         this.listen(StateChangeEvent.characterHealth, this.handleCharacterHealthChange.bind(this));
+        this.listen(StateChangeEvent.characterDirection, this.handleCharacterDirectionChange.bind(this));
         this.listen(StateChangeEvent.uiVisualStates, this.handleVisualStatesChange.bind(this));
 
         // Game events
@@ -130,8 +131,11 @@ export class Overwatch extends EventBus<
     private handleMousePositionUpdate(data: ControlsEventsMap[ControlsEvent.mousePositionUpdate]): void {
         const { characterName, mouseCoord } = data;
 
-        // Only process if this is for the current overwatch setup
-        if (!this.isActiveOverwatchCharacter(characterName)) {
+        // Only process if this is for the current overwatch setup or active overwatch
+        const overwatchData = this.getOverwatchData(characterName);
+        const isInOverwatchMode = this.isActiveOverwatchCharacter(characterName) || overwatchData?.active;
+        
+        if (!isInOverwatchMode) {
             return;
         }
 
@@ -197,6 +201,33 @@ export class Overwatch extends EventBus<
                 this.clearCharacterOverwatch(character.name);
             }
         }
+    }
+
+    private handleCharacterDirectionChange(character: DeepReadonly<ICharacter>): void {
+        const overwatchData = this.getOverwatchData(character.name);
+        if (!overwatchData?.active) {
+            return;
+        }
+
+        // Recalculate watched cells with new direction
+        const range = ShootingService.getWeaponRange(character);
+        const angleOfVision = SHOOT_CONSTANTS.DEFAULT_ANGLE_OF_VISION;
+        
+        const newWatchedCells = ShootingService.calculateVisibleCells(
+            this.state.map,
+            character.position,
+            character.direction,
+            range,
+            angleOfVision
+        );
+        
+        // Update overwatch data with new direction and watched cells
+        this.dispatch(UpdateStateEvent.setOverwatchData, {
+            characterName: character.name,
+            active: true,
+            direction: character.direction,
+            watchedCells: newWatchedCells.map(vc => vc.coord)
+        });
     }
 
     private handleTurnChange(data: GameEventsMap[GameEvent.changeTurn]): void {

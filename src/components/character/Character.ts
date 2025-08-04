@@ -33,19 +33,24 @@ export default class Character extends Component {
         // Store the shadow root reference for later use
         this.root = root;
 
-        // Initialize from dataset
-        const { race, player, palette, direction, position } = CharacterService.initializeFromDataset(this.dataset);
-        this.player = player;
-
         // Set up DOM elements
         this.characterElement = root.getElementById('character') as HTMLElement;
         this.movable = root.getElementById('movable') as Movable;
         this.weaponElement = root.querySelector('.weapon') as HTMLElement;
 
-        // Initialize visual state in UI state
-        // Check if character is already defeated based on health
-        const health = parseInt(this.dataset.health || '100');
-        const maxHealth = parseInt(this.dataset.maxHealth || '100');
+        // Get character data from state
+        const state = this.getState();
+        const stateCharacter = state?.findCharacter(this.id);
+        
+        if (!stateCharacter) {
+            console.error(`Character ${this.id} not found in state`);
+            return root;
+        }
+        
+        // Extract all data from state
+        const { race, player, palette, direction, position, health, maxHealth } = stateCharacter;
+        this.player = player;
+        
         const healthPercentage = Math.max(0, (health / maxHealth) * 100);
         const isDefeated = health <= 0;
         
@@ -93,27 +98,20 @@ export default class Character extends Component {
         this.addEventListener('click', () => {
             if (this.isShootingMode) {
                 // In shooting mode, dispatch character click event
-                const position = CharacterService.getPositionFromDataset(this.movable!.dataset);
                 this.dispatch(ControlsEvent.characterClick, {
                     characterName: this.id,
-                    position
+                    position: stateCharacter.position
                 });
             } else if (this.canControlThisCharacter()) {
                 this.dispatch(ControlsEvent.showActions, this.id);
             }
         });
 
-        // Get initial turn from CharacterService singleton
-        try {
-            const characterService = CharacterService.getInstance();
-            const currentTurn = characterService.getCurrentTurn();
-            if (currentTurn) {
-                this.currentTurn = currentTurn;
-                this.updateTurnIndicator();
-            }
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        } catch (error) {
-            // CharacterService not initialized yet - will get turn from state change event
+        // Get initial turn from state
+        const gameState = this.getState();
+        if (gameState) {
+            this.currentTurn = gameState.game.turn;
+            this.updateTurnIndicator();
         }
 
         // Listen for turn changes
@@ -167,9 +165,8 @@ export default class Character extends Component {
         });
 
         // Initialize health bar
-        const currentHealth = parseInt(this.dataset.health || '100');
-        const currentMaxHealth = parseInt(this.dataset.maxHealth || '100');
-        const healthPercent = Math.max(0, (currentHealth / currentMaxHealth) * 100);
+        // Already have health data from above, reuse it
+        const healthPercent = healthPercentage;
         const healthColor = CharacterService.calculateHealthColor(healthPercent);
 
         // Update health in visual state
@@ -223,11 +220,6 @@ export default class Character extends Component {
             this.style.setProperty('--skin', palette.skin || '#E5B887');
             this.style.setProperty('--helmet', palette.helmet || '#4A5568');
             this.style.setProperty('--suit', palette.suit || '#2D3748');
-
-            // Update dataset with new palette values
-            this.dataset.skin = palette.skin;
-            this.dataset.helmet = palette.helmet;
-            this.dataset.suit = palette.suit;
         }
 
         // Update weapon
@@ -268,8 +260,10 @@ export default class Character extends Component {
         // Start with base class
         const classes = ['character'];
 
-        // Add race class
-        const race = this.dataset.race || 'human';
+        // Add race class from state
+        const state = this.getState();
+        const stateCharacter = state?.findCharacter(this.id);
+        const race = stateCharacter?.race || 'human';
         classes.push(race);
 
         // Add visual state classes if available
@@ -313,19 +307,16 @@ export default class Character extends Component {
     private updateDirection(direction: Direction) {
         if (!this.characterElement) return;
 
-        // Get current character state
-        const race = this.dataset.race || 'human';
-        const palette = {
-            skin: this.dataset.skin || 'white',
-            helmet: this.dataset.helmet || 'black',
-            suit: this.dataset.suit || 'red'
-        };
+        // Get current character state from state instead of dataset
+        const state = this.getState();
+        const stateCharacter = state?.findCharacter(this.id);
+        if (!stateCharacter) return;
+        
+        const race = stateCharacter.race;
+        const palette = stateCharacter.palette;
 
         // Update the character's visual appearance with new direction
         this.updateAppearance(race, palette, direction);
-
-        // Update the dataset for consistency
-        this.dataset.direction = direction;
 
         // Update visual state
         this.dispatch(UpdateStateEvent.uiCharacterVisual, {
@@ -340,13 +331,17 @@ export default class Character extends Component {
         // In multiplayer, check if this character belongs to the current network player
         // and it's their turn
         const networkPlayerId = this.networkService.getPlayerId();
+        
+        // Get current turn from state for most up-to-date value
+        const state = this.getState();
+        const currentTurn = state?.game.turn ?? this.currentTurn;
 
         if (networkPlayerId) {
             // Multiplayer mode: must be this player's character AND their turn
-            return this.player === networkPlayerId && this.player === this.currentTurn;
+            return this.player === networkPlayerId && this.player === currentTurn;
         } else {
             // Single player mode: use normal turn logic
-            return CharacterService.canControlCharacter(this.player, this.currentTurn);
+            return CharacterService.canControlCharacter(this.player, currentTurn);
         }
     }
 
@@ -371,9 +366,6 @@ export default class Character extends Component {
                 } else if (prop === '--skin' || prop === '--helmet' || prop === '--suit') {
                     // Palette updates on the component itself
                     this.style.setProperty(prop, value);
-                    // Also update the dataset to keep it in sync
-                    const paletteKey = prop.substring(2); // Remove '--' prefix
-                    this.dataset[paletteKey] = value;
                 } else if (prop.startsWith('--')) {
                     // Other CSS custom properties
                     this.style.setProperty(prop, value);

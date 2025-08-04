@@ -8,10 +8,7 @@ export default {
       "ts-jest",
       {
         useESM: true,
-        tsconfig: {
-          experimentalDecorators: true,
-          emitDecoratorMetadata: true
-        }
+        tsconfig: 'tsconfig.test.json'
       }
     ]
   },

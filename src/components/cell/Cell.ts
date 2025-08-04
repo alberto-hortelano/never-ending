@@ -27,6 +27,12 @@ export default class Cell extends Component {
         };
         this.cellKey = `${this.coords.x},${this.coords.y}`;
 
+        // Check for initial visual state from state
+        const state = this.getState();
+        if (state?.ui.visualStates.cells[this.cellKey]) {
+            this.applyVisualState(state.ui.visualStates.cells[this.cellKey] as ICellVisualState);
+        }
+
         // Listen for UI state changes
         this.listen(StateChangeEvent.uiVisualStates, (visualStates) => {
             const cellVisualState = visualStates.cells[this.cellKey];

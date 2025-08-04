@@ -60,6 +60,19 @@ export default class Board extends Component {
 
   override async connectedCallback() {
     const root = await super.connectedCallback();
+    
+    // Initialize map from state if available
+    const state = this.getState();
+    if (state && state.map.length > 0) {
+      this.updateMap(state.map);
+      
+      // Also center on player if available
+      const player = state.findCharacter('player');
+      if (player) {
+        this.centerScreen(player.position);
+      }
+    }
+    
     const fullScreenButton = root?.getElementById('full-screen');
     fullScreenButton?.addEventListener('click', () => {
       fullScreenButton.remove();
@@ -163,11 +176,7 @@ export default class Board extends Component {
       if (!existingProjectiles.has(projectile.id)) {
         const projectileElement = document.createElement('projectile-component');
         projectileElement.id = projectile.id;
-        projectileElement.dataset.fromX = projectile.from.x.toString();
-        projectileElement.dataset.fromY = projectile.from.y.toString();
-        projectileElement.dataset.toX = projectile.to.x.toString();
-        projectileElement.dataset.toY = projectile.to.y.toString();
-        projectileElement.dataset.type = projectile.type;
+        // No need to set dataset attributes - projectile will get data from state
         this.appendChild(projectileElement);
       }
     });

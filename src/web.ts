@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import './components';
+import { Component } from './components/Component';
 import { Movement } from "./common/Movement";
 import { Talk } from "./common/Talk";
 import { Shoot } from "./common/Shoot";
@@ -45,9 +46,15 @@ const play = (state?: State) => {
         }
     });
     gameServices = [];
+    
+    // Clear component state reference
+    Component.setGameState(null);
 
     // Use provided state or create new one
     gameState = state || new State(initialState(50, 50));
+    
+    // Set state reference for components
+    Component.setGameState(gameState);
     
     // Initialize singleton services
     CharacterService.initialize(gameState);

@@ -1,10 +1,11 @@
 import { Component } from "../Component";
-import { ActionEvent, ActionEventsMap, ActionUpdateData } from "../../common/events";
+import { ActionEvent, ActionEventsMap, ActionUpdateData, StateChangeEvent } from "../../common/events";
 
 export class Actions extends Component {
     protected override hasCss = true;
     protected override hasHtml = false;
     private actionsGrid?: HTMLElement;
+    private selectedCharacter?: string;
 
     override async connectedCallback() {
         const root = await super.connectedCallback();
@@ -16,12 +17,11 @@ export class Actions extends Component {
         // Listen for action updates
         this.setupEventListeners();
 
-        // Get character name from attribute and request actions
-        const characterName = this.getAttribute('character-name');
-        if (characterName) {
-            this.dispatch(ActionEvent.request, characterName);
-        } else {
-            console.warn('Actions component: No character-name attribute found');
+        // Get selected character from state
+        const state = this.getState();
+        if (state?.ui.selectedCharacter) {
+            this.selectedCharacter = state.ui.selectedCharacter;
+            this.dispatch(ActionEvent.request, this.selectedCharacter);
         }
 
         return root;
@@ -42,12 +42,19 @@ export class Actions extends Component {
         this.listen(ActionEvent.error, (error: ActionEventsMap[ActionEvent.error]) => {
             console.warn('Action error:', error);
         });
+        
+        // Listen for selected character changes
+        this.listen(StateChangeEvent.uiSelectedCharacter, (characterName) => {
+            if (characterName && characterName !== this.selectedCharacter) {
+                this.selectedCharacter = characterName;
+                this.dispatch(ActionEvent.request, characterName);
+            }
+        });
     }
 
     private updateDisplay(data: ActionUpdateData): void {
         // Only update if this is for our current character
-        const characterName = this.getAttribute('character-name');
-        if (data.characterName !== characterName) return;
+        if (data.characterName !== this.selectedCharacter) return;
 
         if (!this.actionsGrid) return;
 

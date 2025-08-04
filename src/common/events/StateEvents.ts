@@ -52,6 +52,8 @@ export enum UpdateStateEvent {
     uiInteractionMode = 'UpdateStateEvent.uiInteractionMode',
     /** Set overwatch data for character */
     setOverwatchData = 'UpdateStateEvent.setOverwatchData',
+    /** Update selected character */
+    uiSelectedCharacter = 'UpdateStateEvent.uiSelectedCharacter',
 }
 
 export interface UpdateStateEventsMap {
@@ -135,6 +137,7 @@ export interface UpdateStateEventsMap {
         watchedCells?: DeepReadonly<{ x: number; y: number }>[];
         shotCells?: string[]; // Array instead of Set for serialization
     };
+    [UpdateStateEvent.uiSelectedCharacter]: string | undefined;
 }
 
 /** Events when the state has changed. All can listen. Only State can dispatch */
@@ -164,6 +167,8 @@ export enum StateChangeEvent {
     uiInteractionMode = 'StateChangeEvent.uiInteractionMode',
     /** Overwatch state changed */
     overwatchData = 'StateChangeEvent.overwatchData',
+    /** Selected character changed */
+    uiSelectedCharacter = 'StateChangeEvent.uiSelectedCharacter',
 }
 
 export interface StateChangeEventsMap {
@@ -193,4 +198,5 @@ export interface StateChangeEventsMap {
         watchedCells?: { x: number; y: number }[];
         shotCells?: string[];
     }>>;
+    [StateChangeEvent.uiSelectedCharacter]: string | undefined;
 }

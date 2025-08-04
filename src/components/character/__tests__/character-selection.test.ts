@@ -3,6 +3,7 @@ import { ICharacter } from '../../../common/interfaces';
 import { baseCharacter } from '../../../data/state';
 import { createTestState } from '../../../__tests__/helpers/testState.helper';
 import { EventBus, GameEvent } from '../../../common/events';
+import { setupComponentState } from '../../../__tests__/helpers/componentState.helper';
 
 describe('Character Selection Restriction', () => {
     let state: State;
@@ -52,6 +53,8 @@ describe('Character Selection Restriction', () => {
 
         state = new State(testState);
     });
+    
+    // Skip component state setup for now due to import.meta issues in test environment
 
     test('should only allow selection of characters belonging to current turn', () => {
         // Check initial state

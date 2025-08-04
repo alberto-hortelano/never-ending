@@ -3,6 +3,7 @@ import type { ICharacter } from "../../common/interfaces";
 import { Component } from "../Component";
 import type Character from "../character/Character";
 import { CharacterService } from "../../common/services/CharacterService";
+import { createPreviewState } from "../../common/helpers/previewState";
 
 export interface SelectCharacterOptions {
     characters: DeepReadonly<ICharacter[]>;
@@ -69,13 +70,12 @@ export class SelectCharacter extends Component {
                 
                 const characterIcon = document.createElement('character-component') as Character;
                 characterIcon.classList.add('character-icon');
-                characterIcon.setAttribute('data-name', character.name);
-                characterIcon.setAttribute('data-race', character.race);
-                characterIcon.setAttribute('data-palette', JSON.stringify(character.palette));
-                // Set position to 0,0 for icon display
-                characterIcon.setAttribute('data-x', '0');
-                characterIcon.setAttribute('data-y', '0');
                 characterIcon.id = `icon-${character.name}`;
+                characterIcon.dataset.isPreview = 'true';
+                
+                // Create a preview state with the character data
+                const previewState = createPreviewState(character);
+                characterIcon.setInstanceState(previewState);
                 
                 iconWrapper.appendChild(characterIcon);
                 

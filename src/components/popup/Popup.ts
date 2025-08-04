@@ -223,10 +223,12 @@ export class Popup extends Component {
 
     private showInventory(characterName: ControlsEventsMap[ControlsEvent.showInventory]) {
         this.clearContent();
+        
+        // Update selected character in state
+        this.dispatch(UpdateStateEvent.uiSelectedCharacter, characterName);
 
-        // Create and append inventory component
+        // Create and append inventory component (no longer needs character-name attribute)
         const inventoryComponent = document.createElement('inventory-component') as Inventory;
-        inventoryComponent.setAttribute('character-name', characterName);
         this.appendChild(inventoryComponent);
 
         this.show(`${characterName} - Inventory`);
