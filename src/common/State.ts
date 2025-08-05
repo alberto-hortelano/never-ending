@@ -10,6 +10,7 @@ import { CharacterState } from './state/CharacterState';
 import { MessageState } from './state/MessageState';
 import { UIState } from './state/UIState';
 import { OverwatchState } from './state/OverwatchState';
+import { UIStateService } from './services/UIStateService';
 
 export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateChangeEventsMap & ControlsEventsMap> {
     private readonly storageName = 'state';
@@ -20,6 +21,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
     private characterState: CharacterState;
     private messageState: MessageState;
     private uiState: UIState;
+    private uiStateService: UIStateService;
     private overwatchState: OverwatchState;
 
     constructor(initialState?: IState) {
@@ -31,6 +33,11 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.characterState = new CharacterState(() => this.gameState.getCurrentTurn(), () => this.save());
         this.messageState = new MessageState(() => this.save());
         this.uiState = new UIState();
+        this.uiStateService = new UIStateService(
+            () => this,
+            () => this.uiState.ui,
+            (ui) => { this.uiState.ui = ui; }
+        );
         this.overwatchState = new OverwatchState(() => this.save());
         
         // Load initial state
@@ -39,7 +46,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         // Handle turn changes - coordinate between sub-states
         this.listen(GameEvent.changeTurn, (data) => {
             // Clear UI state for turn change
-            this.uiState.clearTurnBasedUI();
+            this.uiStateService.clearTurnBasedUI();
             
             // Reset action points for the new turn
             this.characterState.resetActionPointsForTurn(data.turn);
@@ -51,7 +58,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         // Handle character defeat - coordinate between character and UI state
         // Since all EventBus instances share listeners, we can listen on 'this'
         this.listen(StateChangeEvent.characterDefeated as any, (character: any) => {
-            this.uiState.updateCharacterDefeated(character.name);
+            this.uiStateService.updateCharacterDefeated(character.name);
         });
     }
 

@@ -23,7 +23,8 @@
       "Bash(sed:*)",
       "Bash(git checkout:*)",
       "Bash(./tutorial/generate-screenshots.sh:*)",
-      "Bash(npx playwright test:*)"
+      "Bash(npx playwright test:*)",
+      "Bash(node:*)"
     ],
     "deny": []
   }

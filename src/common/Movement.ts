@@ -9,6 +9,7 @@ import {
 } from "./events";
 import { animationService } from "./services/AnimationService";
 import { DirectionsService } from "./services/DirectionsService";
+import { InteractionModeManager } from "./InteractionModeManager";
 
 export class Movement extends EventBus<
     GameEventsMap & ControlsEventsMap & StateChangeEventsMap,
@@ -20,11 +21,18 @@ export class Movement extends EventBus<
     // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     private listeners: Array<{ event: string; handler: Function }> = [];
     private completedMovements = new Map<string, { path: ICoord[], finalDirection: string, fromNetwork?: boolean }>();
+    private modeManager: InteractionModeManager;
 
     constructor(
         private state: State,
     ) {
         super();
+        this.modeManager = InteractionModeManager.getInstance();
+        
+        // Register cleanup handler for movement mode
+        this.modeManager.registerCleanupHandler('moving', () => {
+            this.cleanupMovementMode();
+        });
         // Store references to listeners for cleanup
         this.addListener(ControlsEvent.cellClick, position => this.onCellClick(position));
         this.addListener(ControlsEvent.cellMouseEnter, position => this.onCellMouseEnter(position));
@@ -49,10 +57,17 @@ export class Movement extends EventBus<
         this.remove(this);
         this.listeners = [];
     }
+    
+    private cleanupMovementMode() {
+        this.movingCharacter = undefined;
+        this.reachableCells = undefined;
+        this.clearPathPreview();
+    }
     // Listeners
     private onCellClick(position: ControlsEventsMap[ControlsEvent.cellClick]) {
         if (this.movingCharacter && this.reachableCells?.find(c => c.x === position.x && c.y === position.y)) {
             this.selectDestination(this.movingCharacter, this.reachableCells, position);
+        } else {
         }
     }
     private onCellMouseEnter(position: ControlsEventsMap[ControlsEvent.cellMouseEnter]) {
@@ -68,6 +83,9 @@ export class Movement extends EventBus<
         // Clear path preview when leaving movement mode
         if (mode.type !== 'moving') {
             this.clearPathPreview();
+            // Also clear our internal state
+            this.movingCharacter = undefined;
+            this.reachableCells = undefined;
         }
     }
     private onCharacterPath(character: StateChangeEventsMap[StateChangeEvent.characterPath]) {
@@ -121,7 +139,9 @@ export class Movement extends EventBus<
             const animation = animationService.createMovementAnimation(
                 character.name,
                 fullPath,
-                initialDirection
+                initialDirection,
+                300, // default speed
+                character.fromNetwork
             );
 
             // Start the animation
@@ -161,14 +181,14 @@ export class Movement extends EventBus<
                 // Animation just completed
                 const character = this.state.findCharacter(characterId);
                 if (character && pathData && pathData.path.length > 0) {
-                    // Update final position in state
-                    const finalPosition = pathData.path[pathData.path.length - 1];
+                    // Position has already been updated incrementally during movement
+                    // Just update the final direction to ensure it's correct
                     const finalDirection = pathData.finalDirection as Direction;
 
-                    if (finalPosition) {
-                        this.dispatch(UpdateStateEvent.characterPosition, {
-                            ...character,
-                            position: finalPosition,
+                    // Only update direction if it's different from current
+                    if (character.direction !== finalDirection) {
+                        this.dispatch(UpdateStateEvent.characterDirection, {
+                            characterName: character.name,
                             direction: finalDirection
                         });
                     }
@@ -256,15 +276,17 @@ export class Movement extends EventBus<
         this.movingCharacter = freshCharacter;
         this.reachableCells = reachableCells;
 
-        // Update UI state with highlighted cells
-        this.dispatch(UpdateStateEvent.uiHighlights, {
-            reachableCells: reachableCells
-        });
-
-        // Update interaction mode
-        this.dispatch(UpdateStateEvent.uiInteractionMode, {
+        // Use mode manager to request mode change first
+        // This will clear highlights, but overwatch will be preserved by UIState
+        this.modeManager.requestModeChange({
             type: 'moving',
             data: { characterId: character.name }
+        });
+
+        // Then update UI state with highlighted cells
+        // This will merge with any preserved overwatch cells
+        this.dispatch(UpdateStateEvent.uiHighlights, {
+            reachableCells: reachableCells
         });
     }
     private showPathPreview(destination: ICoord) {

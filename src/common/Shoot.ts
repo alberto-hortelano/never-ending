@@ -10,6 +10,7 @@ import {
 } from "./events";
 import { DirectionsService } from "./services/DirectionsService";
 import { CharacterService } from "./services/CharacterService";
+import { InteractionModeManager } from "./InteractionModeManager";
 
 export interface VisibleCell {
     coord: ICoord;
@@ -36,11 +37,18 @@ export class Shoot extends EventBus<
     private shootingCharacter?: DeepReadonly<ICharacter>;
     private visibleCells?: VisibleCell[];
     private aimLevel: number = 0;
+    private modeManager: InteractionModeManager;
 
     constructor(
         private state: State,
     ) {
         super();
+        this.modeManager = InteractionModeManager.getInstance();
+        
+        // Register cleanup handler for shooting mode
+        this.modeManager.registerCleanupHandler('shooting', () => {
+            this.cleanupShootingMode();
+        });
         this.listen(ControlsEvent.showShooting, characterName => this.onShowShooting(characterName));
         this.listen(ControlsEvent.showAiming, characterName => this.onShowAiming(characterName));
         this.listen(ControlsEvent.characterClick, data => this.onCharacterClick(data));
@@ -386,7 +394,8 @@ export class Shoot extends EventBus<
         });
 
         if (weapon) {
-            this.dispatch(UpdateStateEvent.uiInteractionMode, {
+            // Use mode manager to request mode change
+            this.modeManager.requestModeChange({
                 type: 'shooting',
                 data: {
                     characterId: character.name,
@@ -471,7 +480,7 @@ export class Shoot extends EventBus<
             this.aimLevel = 0; // Reset aim level
 
             // Reset interaction mode to normal
-            this.dispatch(UpdateStateEvent.uiInteractionMode, {
+            this.modeManager.requestModeChange({
                 type: 'normal'
             });
         }
@@ -576,5 +585,12 @@ export class Shoot extends EventBus<
 
     private rollCritical(critChance: number): boolean {
         return Math.random() < critChance;
+    }
+    
+    private cleanupShootingMode(): void {
+        this.shootingCharacter = undefined;
+        this.visibleCells = undefined;
+        this.aimLevel = 0;
+        this.clearShootingHighlights();
     }
 }

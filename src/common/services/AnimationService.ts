@@ -76,7 +76,7 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
     /**
      * Create a movement animation from a path
      */
-    public createMovementAnimation(_characterId: string, path: ICoord[], fromDirection: Direction, speed: number = 300): ICharacterAnimation {
+    public createMovementAnimation(_characterId: string, path: ICoord[], fromDirection: Direction, speed: number = 300, fromNetwork?: boolean): ICharacterAnimation {
         // Path now includes starting position
         // Duration is based on number of movements (path.length - 1)
         const movements = Math.max(1, path.length - 1);
@@ -89,7 +89,8 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
             currentStep: 0,
             fromDirection,
             toDirection: fromDirection, // Will be updated as character moves
-            progress: 0
+            progress: 0,
+            fromNetwork
         };
     }
 
@@ -182,6 +183,19 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
                 // Only update if we've moved to a new cell
                 if (currentStepIndex !== animState.currentStep) {
                     animState.currentStep = currentStepIndex;
+
+                    // Get the actual cell position from the path
+                    const cellPosition = animState.path[Math.min(currentStepIndex, animState.path.length - 1)];
+                    
+                    if (cellPosition) {
+                        // Update character position in state
+                        this.dispatch(UpdateStateEvent.characterPosition, {
+                            name: update.characterId,
+                            position: cellPosition,
+                            direction: update.currentDirection,
+                            fromNetwork: animState.fromNetwork
+                        } as any);
+                    }
 
                     // Update visual state with new cell position
                     this.dispatch(UpdateStateEvent.uiCharacterVisual, {

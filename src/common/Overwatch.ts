@@ -11,6 +11,7 @@ import {
 } from "./events";
 import { ShootingService, SHOOT_CONSTANTS, VisibleCell } from "./services/ShootingService";
 import { DirectionsService } from "./services/DirectionsService";
+import { InteractionModeManager } from "./InteractionModeManager";
 
 // Type aliases for better readability
 type CharacterName = string;
@@ -59,11 +60,19 @@ export class Overwatch extends EventBus<
     private activeOverwatchCharacter?: DeepReadonly<ICharacter>;
     private visibleCells?: VisibleCell[];
     private readonly trackedCharacterPositions = new Map<CharacterName, TrackedPosition>();
+    private modeManager: InteractionModeManager;
 
     constructor(
         private readonly state: State,
     ) {
         super();
+        this.modeManager = InteractionModeManager.getInstance();
+        
+        // Register cleanup handler for overwatch mode
+        this.modeManager.registerCleanupHandler('overwatch', () => {
+            this.cleanupOverwatchMode();
+        });
+        
         this.setupEventListeners();
     }
 
@@ -176,6 +185,7 @@ export class Overwatch extends EventBus<
 
             const character = this.state.findCharacter(characterId);
             if (character) {
+                
                 const characterAtPosition: DeepReadonly<ICharacter> = {
                     ...character,
                     position
@@ -186,6 +196,7 @@ export class Overwatch extends EventBus<
     }
 
     private handleCharacterMove(character: DeepReadonly<ICharacter>): void {
+        
         this.trackedCharacterPositions.set(character.name, {
             x: character.position.x,
             y: character.position.y
@@ -218,8 +229,8 @@ export class Overwatch extends EventBus<
             character.position,
             character.direction,
             range,
-            angleOfVision,
-            this.state.characters
+            angleOfVision
+            // Don't pass characters - overwatch areas should be static
         );
         
         // Update overwatch data with new direction and watched cells
@@ -254,11 +265,17 @@ export class Overwatch extends EventBus<
         this.renderAllOverwatchHighlights();
     }
 
+
     // Core Overwatch Logic
     private showOverwatchRange(character: DeepReadonly<ICharacter>): void {
         const range = ShootingService.getWeaponRange(character);
         const angleOfVision = SHOOT_CONSTANTS.DEFAULT_ANGLE_OF_VISION;
 
+        // Check if we're in movement mode before clearing
+        const wasInMovementMode = this.state.ui?.interactionMode?.type === 'moving';
+
+        // Clear any existing movement mode or highlights first
+        this.clearMovementMode();
         this.clearVisibleCells();
 
         this.activeOverwatchCharacter = character;
@@ -267,13 +284,24 @@ export class Overwatch extends EventBus<
             character.position,
             character.direction,
             range,
-            angleOfVision,
-            this.state.characters
+            angleOfVision
+            // Don't pass characters - overwatch areas should be static
         );
 
         this.updateCharacterVisuals(character);
         this.updateInteractionMode(character);
-        this.updateHighlights();
+        
+        // If we were in movement mode, make sure to clear those highlights when showing overwatch
+        if (wasInMovementMode) {
+            this.dispatch(UpdateStateEvent.uiHighlights, {
+                reachableCells: [],
+                pathCells: [],
+                targetableCells: this.visibleCells.map(vc => vc.coord)
+            });
+        } else {
+            this.updateHighlights();
+        }
+        
         this.updateCellVisuals();
     }
 
@@ -327,6 +355,7 @@ export class Overwatch extends EventBus<
         data: DeepReadonly<IOverwatchData>,
         target: DeepReadonly<ICharacter>
     ): void {
+        
         if (!this.canExecuteOverwatch(overwatcherName, data, target)) {
             return;
         }
@@ -334,12 +363,10 @@ export class Overwatch extends EventBus<
         const cellKey = createCellKey(target.position);
 
         if (this.hasAlreadyShotAtCell(data, cellKey)) {
-            this.log(`Already shot at cell ${cellKey}`);
             return;
         }
 
         if (!this.hasLineOfSight(data.position, target.position)) {
-            this.log('No line of sight');
             return;
         }
 
@@ -422,13 +449,11 @@ export class Overwatch extends EventBus<
         }
 
         if (!data.active || data.shotsRemaining <= 0) {
-            this.log(`${overwatcherName} is inactive or out of shots`);
             return false;
         }
 
         const overwatcher = this.state.findCharacter(overwatcherName);
         if (!overwatcher || overwatcher.player === target.player) {
-            this.log(`${overwatcherName} won't shoot at friendly ${target.name} (${target.player})`);
             return false;
         }
 
@@ -445,6 +470,8 @@ export class Overwatch extends EventBus<
     }
 
     private hasLineOfSight(from: ICoord, to: ICoord): boolean {
+        // Still check characters for line of sight when shooting
+        // We only ignore characters for overwatch area calculation, not for shooting
         return ShootingService.checkLineOfSight(this.state.map, from, to, this.state.characters);
     }
 
@@ -536,8 +563,8 @@ export class Overwatch extends EventBus<
             character.position,
             character.direction,
             movingCharacterOverwatch.range,
-            SHOOT_CONSTANTS.DEFAULT_ANGLE_OF_VISION,
-            this.state.characters
+            SHOOT_CONSTANTS.DEFAULT_ANGLE_OF_VISION
+            // Don't pass characters - overwatch areas should be static
         );
 
         this.dispatch(UpdateStateEvent.setOverwatchData, {
@@ -584,7 +611,8 @@ export class Overwatch extends EventBus<
             remainingPoints: character.actions.pointsLeft
         };
 
-        this.dispatch(UpdateStateEvent.uiInteractionMode, {
+        // Use mode manager to request mode change
+        this.modeManager.requestModeChange({
             type: 'overwatch',
             data: modeData
         });
@@ -693,14 +721,14 @@ export class Overwatch extends EventBus<
         Object.entries(overwatchData).forEach(([_, data]) => {
             if (!data.active) return;
 
-            // Calculate visible cells for this overwatch
+            // Calculate visible cells for this overwatch (ignoring character positions)
             const visibleCells = ShootingService.calculateVisibleCells(
                 this.state.map,
                 data.position,
                 data.direction,
                 data.range,
-                SHOOT_CONSTANTS.DEFAULT_ANGLE_OF_VISION,
-                this.state.characters
+                SHOOT_CONSTANTS.DEFAULT_ANGLE_OF_VISION
+                // Don't pass characters - overwatch areas should be static
             );
 
             // Add cell updates for this overwatch
@@ -782,11 +810,30 @@ export class Overwatch extends EventBus<
         }
     }
 
-    // Logging helpers
-    private log(message: string): void {
-        console.log(`${OVERWATCH_CONSTANTS.LOG_PREFIX} ${message}`);
+    // Helper method to clear movement mode
+    private clearMovementMode(): void {
+        const currentMode = this.state.ui?.interactionMode;
+        // If we're in movement mode, clear it
+        if (currentMode?.type === 'moving') {
+            // Clear movement highlights - explicitly set all highlight types to empty
+            this.dispatch(UpdateStateEvent.uiHighlights, {
+                reachableCells: [],
+                pathCells: [],
+                targetableCells: []
+            });
+            
+            // Reset interaction mode to normal
+            this.dispatch(UpdateStateEvent.uiInteractionMode, { type: 'normal' });
+        }
     }
 
+    private cleanupOverwatchMode(): void {
+        this.activeOverwatchCharacter = undefined;
+        this.visibleCells = undefined;
+        this.clearVisibleCells();
+    }
+
+    // Logging helpers
     private logError(message: string): void {
         console.error(`${OVERWATCH_CONSTANTS.LOG_PREFIX} ${message}`);
     }

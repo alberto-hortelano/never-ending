@@ -153,6 +153,7 @@ export interface ICharacterAnimation {
     progress?: number; // 0-1
     path?: ICoord[]; // For multi-step movements
     currentStep?: number; // Current step in path
+    fromNetwork?: boolean; // Track if this animation is from network
 }
 
 export interface IVisualStates {
