@@ -130,9 +130,9 @@ describe('Overwatch to Movement Transition', () => {
         
         // Create UIStateService to handle visual state updates
         uiStateService = new UIStateService(
-            () => mockState,
-            () => uiState,
-            (ui) => { uiState = ui; }
+            () => mockState as any,
+            () => uiState as any,
+            (ui) => { uiState = ui as any; }
         );
     });
 

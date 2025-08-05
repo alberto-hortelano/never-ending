@@ -1,4 +1,4 @@
-import type { ICell, ICharacter, IState } from "./interfaces";
+import type { ICell, ICharacter, IState, IUIState } from "./interfaces";
 import { EventBus, UpdateStateEventsMap, StateChangeEventsMap, StateChangeEvent, ControlsEventsMap, GameEvent, GameEventsMap } from "./events";
 import { DeepReadonly } from "./helpers/types";
 import { getBaseState } from '../data/state';
@@ -34,8 +34,15 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         this.messageState = new MessageState(() => this.save());
         this.uiState = new UIState();
         this.uiStateService = new UIStateService(
-            () => this,
-            () => this.uiState.ui,
+            () => ({
+                game: this.game,
+                map: this.map,
+                characters: this.characters,
+                messages: this.messages,
+                ui: this.ui,
+                overwatchData: this.overwatchData
+            } as IState),
+            () => this.uiState.ui as IUIState,
             (ui) => { this.uiState.ui = ui; }
         );
         this.overwatchState = new OverwatchState(() => this.save());

@@ -1,6 +1,6 @@
 import type { 
-    ICharacterAnimation, ICharacterVisualState, 
-    ICellVisualState, IPopupState, IOverwatchData, ICharacter
+    ICellVisualState, IPopupState,
+    IState, IUIState, IProjectileState, ICoord
 } from "../interfaces";
 import { EventBus, UpdateStateEventsMap, StateChangeEventsMap, UpdateStateEvent, StateChangeEvent } from "../events";
 import { InteractionModeManager } from "../InteractionModeManager";
@@ -10,12 +10,18 @@ interface CellVisualUpdate {
     visualState: Partial<ICellVisualState> | null;
 }
 
-export class UIStateService extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> {
-    private getFullState: () => any;
-    private getUIState: () => any;
-    private setUIState: (ui: any) => void;
+// Extended type for network updates
+type UICharacterVisualData = UpdateStateEventsMap[UpdateStateEvent.uiCharacterVisual];
+interface UICharacterVisualWithNetwork extends UICharacterVisualData {
+    fromNetwork?: boolean;
+}
 
-    constructor(getFullState: () => any, getUIState: () => any, setUIState: (ui: any) => void) {
+export class UIStateService extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> {
+    private getFullState: () => IState;
+    private getUIState: () => IUIState;
+    private setUIState: (ui: IUIState) => void;
+
+    constructor(getFullState: () => IState, getUIState: () => IUIState, setUIState: (ui: IUIState) => void) {
         super();
         this.getFullState = getFullState;
         this.getUIState = getUIState;
@@ -72,7 +78,8 @@ export class UIStateService extends EventBus<UpdateStateEventsMap, StateChangeEv
     private onUICharacterAnimation(data: UpdateStateEventsMap[UpdateStateEvent.uiCharacterAnimation]) {
         const uiState = this.getUIState();
         if (data.animation) {
-            uiState.animations.characters[data.characterId] = structuredClone(data.animation) as ICharacterAnimation;
+            // Cast needed because structuredClone returns DeepReadonly type
+            uiState.animations.characters[data.characterId] = structuredClone(data.animation) as typeof uiState.animations.characters[string];
         } else {
             delete uiState.animations.characters[data.characterId];
         }
@@ -98,7 +105,7 @@ export class UIStateService extends EventBus<UpdateStateEventsMap, StateChangeEv
         const updatedVisual = { ...currentVisual };
         
         // Check if this is a network update with a full visual state object
-        const isNetworkUpdate = (data as any).fromNetwork === true;
+        const isNetworkUpdate = (data as UICharacterVisualWithNetwork).fromNetwork === true;
         const hasFullVisualState = isNetworkUpdate && 
             data.visualState.direction !== undefined &&
             data.visualState.classList !== undefined &&
@@ -171,7 +178,7 @@ export class UIStateService extends EventBus<UpdateStateEventsMap, StateChangeEv
             }
         }
 
-        uiState.visualStates.characters[data.characterId] = updatedVisual as ICharacterVisualState;
+        uiState.visualStates.characters[data.characterId] = updatedVisual;
         this.setUIState(uiState);
         this.dispatch(StateChangeEvent.uiVisualStates, structuredClone(uiState.visualStates));
     }
@@ -243,7 +250,7 @@ export class UIStateService extends EventBus<UpdateStateEventsMap, StateChangeEv
     private onUIRemoveProjectile(data: UpdateStateEventsMap[UpdateStateEvent.uiRemoveProjectile]) {
         const uiState = this.getUIState();
         uiState.transientUI.projectiles = uiState.transientUI.projectiles.filter(
-            (p: any) => p.id !== data.projectileId
+            (p: IProjectileState) => p.id !== data.projectileId
         );
         this.setUIState(uiState);
         this.dispatch(StateChangeEvent.uiTransient, structuredClone(uiState.transientUI));
@@ -409,23 +416,23 @@ export class UIStateService extends EventBus<UpdateStateEventsMap, StateChangeEv
         } else {
             // When clearing all highlights, check if we should preserve overwatch from other players
             const fullState = this.getFullState();
-            const currentTurn = fullState.game.turn as string;
+            const currentTurn = fullState.game.turn;
             
             // Clear all overwatch cells that don't belong to active overwatches
             overwatchCells.forEach((cell, cellKey) => {
                 let shouldPreserve = false;
                 
                 // Look through overwatch data to find which player owns this overwatch
-                const overwatchDataObj = fullState.overwatchData as Record<string, IOverwatchData>;
+                const overwatchDataObj = fullState.overwatchData;
                 Object.entries(overwatchDataObj || {}).forEach(([characterName, overwatchData]) => {
                     if (overwatchData.active && overwatchData.watchedCells) {
-                        const hasThisCell = overwatchData.watchedCells.some((watchedCell: any) => 
+                        const hasThisCell = overwatchData.watchedCells.some((watchedCell: ICoord) => 
                             `${watchedCell.x},${watchedCell.y}` === cellKey
                         );
                         
                         if (hasThisCell) {
-                            const characters = fullState.characters as ICharacter[];
-                            const overwatchCharacter = characters.find((c: ICharacter) => c.name === characterName);
+                            const characters = fullState.characters;
+                            const overwatchCharacter = characters.find(c => c.name === characterName);
                             // Preserve if it's from a different player
                             if (overwatchCharacter && overwatchCharacter.player !== currentTurn) {
                                 shouldPreserve = true;
