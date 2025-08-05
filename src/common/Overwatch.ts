@@ -185,7 +185,6 @@ export class Overwatch extends EventBus<
 
             const character = this.state.findCharacter(characterId);
             if (character) {
-                
                 const characterAtPosition: DeepReadonly<ICharacter> = {
                     ...character,
                     position
@@ -196,7 +195,6 @@ export class Overwatch extends EventBus<
     }
 
     private handleCharacterMove(character: DeepReadonly<ICharacter>): void {
-        
         this.trackedCharacterPositions.set(character.name, {
             x: character.position.x,
             y: character.position.y
@@ -307,6 +305,8 @@ export class Overwatch extends EventBus<
 
     private activateOverwatch(character: DeepReadonly<ICharacter>): void {
         const pointsToConsume = character.actions.pointsLeft;
+        const shootCost = character.actions.rangedCombat.shoot;
+        const maxShots = Math.floor(pointsToConsume / shootCost);
 
         this.dispatch(UpdateStateEvent.setOverwatchData, {
             characterName: character.name,
@@ -314,7 +314,7 @@ export class Overwatch extends EventBus<
             direction: character.direction,
             position: character.position,
             range: ShootingService.getWeaponRange(character),
-            shotsRemaining: pointsToConsume,
+            shotsRemaining: maxShots,
             watchedCells: this.visibleCells!.map(vc => vc.coord),
             shotCells: []
         });
@@ -341,7 +341,7 @@ export class Overwatch extends EventBus<
         if (!overwatchData || Object.keys(overwatchData).length === 0) {
             return;
         }
-
+        
         // Iterate over the object entries
         Object.entries(overwatchData).forEach(([overwatcherName, data]) => {
             this.processOverwatchTrigger(overwatcherName, data, character);
@@ -355,14 +355,19 @@ export class Overwatch extends EventBus<
         data: DeepReadonly<IOverwatchData>,
         target: DeepReadonly<ICharacter>
     ): void {
-        
         if (!this.canExecuteOverwatch(overwatcherName, data, target)) {
             return;
         }
 
         const cellKey = createCellKey(target.position);
 
-        if (this.hasAlreadyShotAtCell(data, cellKey)) {
+        // Get fresh data from state to ensure we have the latest shotCells
+        const freshData = this.getOverwatchData(overwatcherName);
+        if (!freshData) {
+            return;
+        }
+        
+        if (this.hasAlreadyShotAtCell(freshData, cellKey)) {
             return;
         }
 
@@ -370,7 +375,7 @@ export class Overwatch extends EventBus<
             return;
         }
 
-        this.executeOverwatchShot(overwatcherName, data, target);
+        this.executeOverwatchShot(overwatcherName, freshData, target);
     }
 
     private executeOverwatchShot(
@@ -382,6 +387,9 @@ export class Overwatch extends EventBus<
         if (!overwatcher) {
             return;
         }
+
+        // Don't deduct action points here - they were already consumed when activating overwatch
+        // The cost tracking is done via shotsRemaining
 
         this.showProjectileAnimation(overwatcher, overwatchData.position, target.position);
 
@@ -456,6 +464,10 @@ export class Overwatch extends EventBus<
         if (!overwatcher || overwatcher.player === target.player) {
             return false;
         }
+
+        // In overwatch mode, action points were already consumed when activating overwatch
+        // We track remaining shots via shotsRemaining in the overwatch data
+        // So we don't need to check action points here
 
         const isInWatchedCell = data.watchedCells?.some(cell =>
             cell.x === target.position.x && cell.y === target.position.y
@@ -605,10 +617,14 @@ export class Overwatch extends EventBus<
         const weapon = ShootingService.getEquippedRangedWeapon(character);
         if (!weapon) return;
 
+        const shootCost = character.actions.rangedCombat.shoot;
+        const maxShots = Math.floor(character.actions.pointsLeft / shootCost);
+
         const modeData: IOverwatchModeData = {
             characterId: character.name,
             weapon,
-            remainingPoints: character.actions.pointsLeft
+            remainingPoints: character.actions.pointsLeft,
+            shotsRemaining: maxShots
         };
 
         // Use mode manager to request mode change

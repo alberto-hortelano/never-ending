@@ -32,6 +32,17 @@ export class InteractionModeManager extends EventBus<StateChangeEventsMap, Updat
     }
     
     /**
+     * Reset the singleton instance - for testing only
+     */
+    static resetInstance(): void {
+        if (InteractionModeManager.instance) {
+            // Clean up any existing listeners
+            InteractionModeManager.instance.cleanupCurrentMode();
+            InteractionModeManager.instance = null as any;
+        }
+    }
+    
+    /**
      * Register a cleanup handler for a specific mode
      */
     registerCleanupHandler(mode: InteractionMode['type'], cleanup: () => void): void {

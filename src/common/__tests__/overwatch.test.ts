@@ -5,9 +5,64 @@ import type { State } from "../State";
 import { superEventBus, ControlsEvent, GUIEvent, UpdateStateEvent, GameEvent, StateChangeEvent, ActionEvent } from "../events";
 import { Overwatch } from "../Overwatch";
 import { baseCharacter } from "../../data/state";
+import { InteractionModeManager } from "../InteractionModeManager";
 
 // Mock the State class
 jest.mock('../State');
+
+// Mock ShootingService
+jest.mock('../services/ShootingService', () => ({
+    ShootingService: {
+        getWeaponRange: jest.fn().mockReturnValue(15),
+        getWeaponDamage: jest.fn().mockReturnValue(20),
+        getEquippedRangedWeapon: jest.fn().mockImplementation((character: any) => character.inventory?.equippedWeapons?.primary),
+        getProjectileType: jest.fn().mockReturnValue('bullet'),
+        calculateVisibleCells: jest.fn().mockImplementation((map, position, direction, range) => {
+            // Simple implementation that returns cells in a line
+            const cells = [];
+            for (let i = 1; i <= range; i++) {
+                const x = position.x + i;
+                if (x < map[0]?.length) {
+                    cells.push({ coord: { x, y: position.y }, intensity: 1 });
+                }
+            }
+            return cells;
+        }),
+        checkLineOfSight: jest.fn().mockImplementation((map, from, to) => {
+            // Check if there's a blocker between from and to
+            const dx = Math.sign(to.x - from.x);
+            const dy = Math.sign(to.y - from.y);
+            let x = from.x + dx;
+            let y = from.y + dy;
+            
+            while (x !== to.x || y !== to.y) {
+                if (map[y]?.[x]?.content?.blocker) {
+                    return false;
+                }
+                if (x !== to.x) x += dx;
+                if (y !== to.y) y += dy;
+            }
+            return true;
+        }),
+        getDistance: jest.fn().mockImplementation((from, to) => 
+            Math.sqrt(Math.pow(to.x - from.x, 2) + Math.pow(to.y - from.y, 2))
+        ),
+        calculateCriticalChance: jest.fn().mockReturnValue(0.05),
+        rollCritical: jest.fn().mockReturnValue(false),
+        calculateDamage: jest.fn().mockReturnValue(20)
+    },
+    SHOOT_CONSTANTS: {
+        DEFAULT_ANGLE_OF_VISION: 120,
+        DEFAULT_UNARMED_DAMAGE: 5,
+        DEFAULT_UNARMED_RANGE: 10,
+        VISIBILITY_THRESHOLD: 0.01,
+        DISTANCE_DAMAGE_FALLOFF: 0.5,
+        AIM_RANGE_BONUS: 0.5,
+        CRITICAL_HIT_BASE_CHANCE: 0.05,
+        CRITICAL_HIT_AIM_BONUS: 0.05,
+        CRITICAL_HIT_MULTIPLIER: 2.0,
+    }
+}));
 
 describe('Overwatch', () => {
     let overwatch: Overwatch;
@@ -60,6 +115,18 @@ describe('Overwatch', () => {
     beforeEach(() => {
         // Clear all mocks before each test
         jest.clearAllMocks();
+        
+        // Clear all event listeners from superEventBus to ensure complete isolation
+        (superEventBus as any).listeners = new Map();
+        
+        // Reset the InteractionModeManager singleton
+        InteractionModeManager.resetInstance();
+        
+        // Clean up any existing overwatch instance
+        if (overwatch) {
+            superEventBus.remove(overwatch);
+            overwatch = null as any;
+        }
 
         // Create test data
         testCharacter = createMockCharacter({
@@ -69,7 +136,7 @@ describe('Overwatch', () => {
             player: 'human',
             actions: {
                 ...baseCharacter.actions,
-                pointsLeft: 10,
+                pointsLeft: 100, // Enough points for multiple shots
                 rangedCombat: {
                     ...baseCharacter.actions.rangedCombat,
                     overwatch: 0 // Overwatch consumes all remaining points
@@ -130,14 +197,15 @@ describe('Overwatch', () => {
                 visualStates: {
                     cells: {},
                     characters: {}
-                }
+                },
+                interactionMode: { type: 'normal' }
             },
             // Helper property to access mutable map in tests
             _overwatchData: mockOverwatchDataMap
         } as any;
 
-        // Create Overwatch instance
-        overwatch = new Overwatch(mockState);
+        // Don't create Overwatch instance here - let individual tests create it
+        // This prevents event handling conflicts
 
         // Reset test listeners
         testListeners = [];
@@ -147,7 +215,9 @@ describe('Overwatch', () => {
         // Clean up all test listeners
         testListeners.forEach(listener => superEventBus.remove(listener));
         // Clean up overwatch listeners
-        superEventBus.remove(overwatch);
+        if (overwatch) {
+            superEventBus.remove(overwatch);
+        }
     });
 
     // Helper to create a test listener and track it
@@ -156,9 +226,20 @@ describe('Overwatch', () => {
         testListeners.push(listener);
         return listener;
     };
+    
+    // Helper to create overwatch instance for tests that need it
+    const createOverwatch = () => {
+        if (overwatch) {
+            superEventBus.remove(overwatch);
+        }
+        overwatch = new Overwatch(mockState);
+        return overwatch;
+    };
 
     describe('Overwatch Activation', () => {
         it('should activate overwatch mode when showOverwatch event is dispatched', () => {
+            createOverwatch(); // Create overwatch instance for this test
+            
             const listener = createTestListener();
             const cellBatchSpy = jest.fn();
             const interactionModeSpy = jest.fn();
@@ -189,6 +270,8 @@ describe('Overwatch', () => {
         });
 
         it('should consume all remaining action points when overwatch is activated', () => {
+            createOverwatch(); // Create overwatch instance for this test
+            
             const listener = createTestListener();
             const deductPointsSpy = jest.fn();
 
@@ -211,6 +294,8 @@ describe('Overwatch', () => {
         });
 
         it('should store overwatch data in state when activated', () => {
+            createOverwatch(); // Create overwatch instance for this test
+            
             const listener = createTestListener();
             const updateOverwatchSpy = jest.fn();
 
@@ -232,13 +317,15 @@ describe('Overwatch', () => {
             expect(call.direction).toBe(testCharacter.direction);
             expect(call.position).toEqual(testCharacter.position);
             expect(call.range).toBe(15);
-            expect(call.shotsRemaining).toBe(testCharacter.actions.pointsLeft);
+            expect(call.shotsRemaining).toBe(5); // 100 action points / 20 shoot cost = 5 shots
             expect(call.watchedCells).toBeDefined();
             expect(Array.isArray(call.watchedCells)).toBe(true);
             expect(call.watchedCells.length).toBeGreaterThan(0);
         });
 
         it('should not allow overwatch if character has no action points', () => {
+            createOverwatch(); // Create overwatch instance for this test
+            
             const listener = createTestListener();
             const errorSpy = jest.fn();
 
@@ -255,6 +342,8 @@ describe('Overwatch', () => {
         });
 
         it('should not allow overwatch if not current turn', () => {
+            createOverwatch(); // Create overwatch instance for this test
+            
             const listener = createTestListener();
             const cellBatchSpy = jest.fn();
 
@@ -276,7 +365,12 @@ describe('Overwatch', () => {
     });
 
     describe('Overwatch Triggering', () => {
+        let localOverwatch: Overwatch;
+        
         beforeEach(() => {
+            // Create overwatch instance for triggering tests
+            localOverwatch = createOverwatch();
+            
             // Set up overwatch for test character
             mockState.findCharacter.mockReturnValue(testCharacter);
             (mockState as any)._overwatchData.set(testCharacter.name, {
@@ -284,9 +378,16 @@ describe('Overwatch', () => {
                 direction: testCharacter.direction,
                 position: testCharacter.position,
                 range: 15,
-                shotsRemaining: 10,
+                shotsRemaining: 5, // 100 action points / 20 shoot cost = 5 shots
                 watchedCells: [{ x: 6, y: 5 }, { x: 7, y: 5 }, { x: 8, y: 5 }, { x: 9, y: 5 }, { x: 10, y: 5 }]
             });
+        });
+        
+        afterEach(() => {
+            // Clean up local overwatch instance
+            if (localOverwatch) {
+                superEventBus.remove(localOverwatch);
+            }
         });
 
         it('should shoot at enemy entering overwatch zone', () => {
@@ -381,8 +482,131 @@ describe('Overwatch', () => {
             // Should update overwatch data with reduced shots
             expect(updateOverwatchSpy).toHaveBeenCalledWith(expect.objectContaining({
                 characterName: testCharacter.name,
-                shotsRemaining: 9 // One shot fired
+                shotsRemaining: 4 // One shot fired from 5
             }));
+        });
+
+        it('should NOT deduct action points when shooting in overwatch (already consumed)', () => {
+            const listener = createTestListener();
+            const deductPointsSpy = jest.fn();
+
+            listener.listen(UpdateStateEvent.deductActionPoints, deductPointsSpy);
+
+            // Set up character - but remember, in real game they'll have 0 points after activating overwatch
+            const characterWithPoints = { 
+                ...testCharacter, 
+                actions: { 
+                    ...testCharacter.actions, 
+                    pointsLeft: 0 // No points left after overwatch activation
+                } 
+            };
+
+            mockState.findCharacter.mockImplementation((name) => {
+                if (name === enemyCharacter.name) return enemyCharacter;
+                if (name === testCharacter.name) return characterWithPoints;
+                return undefined;
+            });
+
+            // Simulate enemy movement into overwatch zone
+            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+                ...enemyCharacter,
+                position: { x: 8, y: 5 }
+            });
+
+            // Should NOT deduct action points when shooting (they were consumed during activation)
+            expect(deductPointsSpy).not.toHaveBeenCalled();
+        });
+
+        it('should calculate correct number of shots based on shoot cost', () => {
+            // Test different action point amounts
+            const testCases = [
+                { actionPoints: 100, shootCost: 20, expectedShots: 5 },
+                { actionPoints: 40, shootCost: 20, expectedShots: 2 },
+                { actionPoints: 50, shootCost: 20, expectedShots: 2 }, // 50/20 = 2.5, floor to 2
+                { actionPoints: 19, shootCost: 20, expectedShots: 0 }, // Not enough for even one shot
+                { actionPoints: 60, shootCost: 15, expectedShots: 4 },
+            ];
+
+            testCases.forEach(({ actionPoints, shootCost, expectedShots }) => {
+                const listener = createTestListener();
+                const dispatchSpy = jest.fn();
+                listener.listen(UpdateStateEvent.setOverwatchData, dispatchSpy);
+
+                const overwatch = new Overwatch(mockState as any);
+                const character = {
+                    ...testCharacter,
+                    actions: {
+                        ...testCharacter.actions,
+                        pointsLeft: actionPoints,
+                        rangedCombat: {
+                            ...testCharacter.actions.rangedCombat,
+                            shoot: shootCost
+                        }
+                    }
+                };
+
+                // Mock visible cells for activation
+                overwatch['visibleCells'] = [{ coord: { x: 8, y: 5 }, intensity: 1 }];
+                overwatch['activeOverwatchCharacter'] = character;
+
+                // Activate overwatch
+                overwatch['activateOverwatch'](character);
+
+                // Verify the correct number of shots was set
+                expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({
+                    shotsRemaining: expectedShots
+                }));
+            });
+        });
+
+        it('should be able to shoot even with 0 action points (points already consumed)', () => {
+            const listener = createTestListener();
+            const projectileSpy = jest.fn();
+            const damageSpy = jest.fn();
+
+            listener.listen(GUIEvent.shootProjectile, projectileSpy);
+            listener.listen(UpdateStateEvent.damageCharacter, damageSpy);
+
+            // Set up character with 0 action points (realistic after overwatch activation)
+            const zeroPointsCharacter = { 
+                ...testCharacter, 
+                actions: { 
+                    ...testCharacter.actions, 
+                    pointsLeft: 0 // No points left after overwatch
+                } 
+            };
+
+            // Set up overwatch with shots remaining
+            (mockState as any)._overwatchData.set(testCharacter.name, {
+                active: true,
+                direction: testCharacter.direction,
+                position: testCharacter.position,
+                range: 15,
+                shotsRemaining: 10, // Can still shoot 10 times
+                watchedCells: [{ x: 8, y: 5 }]
+            });
+
+            mockState.findCharacter.mockImplementation((name) => {
+                if (name === enemyCharacter.name) return enemyCharacter;
+                if (name === testCharacter.name) return zeroPointsCharacter;
+                return undefined;
+            });
+
+            // Mock Math.random to ensure hit
+            const mockRandom = jest.spyOn(Math, 'random').mockReturnValue(0.5);
+
+            // Simulate enemy movement
+            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+                ...enemyCharacter,
+                position: { x: 8, y: 5 }
+            });
+
+            // Should fire even with 0 action points
+            expect(projectileSpy).toHaveBeenCalled();
+            expect(damageSpy).toHaveBeenCalled();
+
+            // Clean up
+            mockRandom.mockRestore();
         });
 
         it('should deactivate overwatch when shots run out', () => {
@@ -482,6 +706,11 @@ describe('Overwatch', () => {
     });
 
     describe('Overwatch Turn Management', () => {
+        beforeEach(() => {
+            // Create overwatch instance for turn management tests
+            createOverwatch();
+        });
+        
         it('should clear overwatch when character\'s turn starts', () => {
             const listener = createTestListener();
             const updateOverwatchSpy = jest.fn();
@@ -496,7 +725,7 @@ describe('Overwatch', () => {
                 direction: testCharacter.direction,
                 position: testCharacter.position,
                 range: 15,
-                shotsRemaining: 10,
+                shotsRemaining: 5, // 100 action points / 20 shoot cost = 5 shots
                 watchedCells: [{ x: 8, y: 5 }]
             });
 
@@ -528,7 +757,7 @@ describe('Overwatch', () => {
                 direction: testCharacter.direction,
                 position: testCharacter.position,
                 range: 15,
-                shotsRemaining: 10,
+                shotsRemaining: 5, // 100 action points / 20 shoot cost = 5 shots
                 watchedCells: [{ x: 8, y: 5 }]
             });
 
@@ -562,7 +791,7 @@ describe('Overwatch', () => {
                 direction: testCharacter.direction,
                 position: testCharacter.position,
                 range: 15,
-                shotsRemaining: 10,
+                shotsRemaining: 5, // 100 action points / 20 shoot cost = 5 shots
                 watchedCells: [{ x: 8, y: 5 }]
             });
 
@@ -579,6 +808,8 @@ describe('Overwatch', () => {
 
     describe('Overwatch Visual Indicators', () => {
         it('should show persistent overwatch highlights', () => {
+            createOverwatch(); // Create overwatch instance for this test
+            
             const listener = createTestListener();
             const cellBatchSpy = jest.fn();
 
@@ -599,6 +830,8 @@ describe('Overwatch', () => {
         });
 
         it('should add overwatch class to character', () => {
+            createOverwatch(); // Create overwatch instance for this test
+            
             const listener = createTestListener();
             const characterVisualSpy = jest.fn();
 
@@ -620,16 +853,17 @@ describe('Overwatch', () => {
         });
 
         it('should show remaining shots in UI', () => {
+            createOverwatch(); // Create overwatch instance for this test
+            
             const listener = createTestListener();
             const interactionModeSpy = jest.fn();
 
             listener.listen(UpdateStateEvent.uiInteractionMode, interactionModeSpy);
 
             mockState.findCharacter.mockReturnValue(testCharacter);
-            (mockState as any)._overwatchData.set(testCharacter.name, {
-                active: true,
-                shotsRemaining: 5
-            });
+            
+            // Don't set up active overwatch - we're testing the preview mode
+            // when setting up overwatch
 
             // Update overwatch display
             superEventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
@@ -640,13 +874,19 @@ describe('Overwatch', () => {
                 data: expect.objectContaining({
                     characterId: testCharacter.name,
                     weapon: testCharacter.inventory.equippedWeapons.primary,
-                    remainingPoints: testCharacter.actions.pointsLeft
+                    remainingPoints: 100, // testCharacter has 100 action points
+                    shotsRemaining: 5 // 100 action points / 20 shoot cost = 5 shots
                 })
             });
         });
     });
 
     describe('Overwatch Cell Coverage', () => {
+        beforeEach(() => {
+            // Create overwatch instance for cell coverage tests
+            createOverwatch();
+        });
+        
         it('should shoot at enemy on every cell they enter in overwatch area', () => {
             // Note: With character blocking implemented, the enemy character blocks line of sight
             // to some cells as they move, so we may get fewer shots than cells entered
@@ -803,7 +1043,7 @@ describe('Overwatch', () => {
                 direction: testCharacter.direction,
                 position: testCharacter.position,
                 range: 15,
-                shotsRemaining: 10,
+                shotsRemaining: 5, // 100 action points / 20 shoot cost = 5 shots
                 watchedCells: watchedCells,
                 shotCells: shotCellsArray
             });
@@ -851,7 +1091,166 @@ describe('Overwatch', () => {
         });
     });
 
+    describe('Overwatch Integration', () => {
+        beforeEach(() => {
+            // Create overwatch instance for integration tests
+            createOverwatch();
+        });
+        
+        it('should not shoot multiple times if character stays in same cell', () => {
+            const listener = createTestListener();
+            const projectileSpy = jest.fn();
+
+            listener.listen(GUIEvent.shootProjectile, projectileSpy);
+
+            // Set up overwatch data
+            const overwatchData = {
+                active: true,
+                direction: testCharacter.direction,
+                position: testCharacter.position,
+                range: 15,
+                shotsRemaining: 5, // 100 action points / 20 shoot cost = 5 shots
+                watchedCells: [{ x: 8, y: 5 }],
+                shotCells: [] as string[]
+            };
+            (mockState as any)._overwatchData.set(testCharacter.name, overwatchData);
+
+            // Listen for overwatch updates and update our mock data
+            listener.listen(UpdateStateEvent.setOverwatchData, (update) => {
+                if (update && typeof update === 'object' && 'characterName' in update) {
+                    const updateData = update as any;
+                    if (updateData.characterName === testCharacter.name) {
+                        // Update the mock overwatch data
+                        if (updateData.shotCells) {
+                            overwatchData.shotCells = updateData.shotCells;
+                        }
+                        if (updateData.shotsRemaining !== undefined) {
+                            overwatchData.shotsRemaining = updateData.shotsRemaining;
+                        }
+                    }
+                }
+            });
+
+            mockState.findCharacter.mockImplementation((name) => {
+                if (name === enemyCharacter.name) return enemyCharacter;
+                if (name === testCharacter.name) return testCharacter;
+                return undefined;
+            });
+
+            // Enemy enters overwatch zone
+            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+                ...enemyCharacter,
+                position: { x: 8, y: 5 }
+            });
+
+            expect(projectileSpy).toHaveBeenCalledTimes(1);
+
+            // Dispatch same position again (simulating duplicate events)
+            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+                ...enemyCharacter,
+                position: { x: 8, y: 5 }
+            });
+
+            // Should still only have shot once because shotCells now contains "8,5"
+            expect(projectileSpy).toHaveBeenCalledTimes(1);
+
+            // Dispatch visual state change with same position
+            superEventBus.dispatch(StateChangeEvent.uiVisualStates, {
+                characters: {
+                    [enemyCharacter.name]: {
+                        direction: 'left',
+                        classList: [],
+                        temporaryClasses: [],
+                        styles: { '--x': '8', '--y': '5' },
+                        healthBarPercentage: 100,
+                        healthBarColor: 'green',
+                        isDefeated: false,
+                        isCurrentTurn: false
+                    }
+                },
+                cells: {},
+                board: { 
+                    mapWidth: 15,
+                    mapHeight: 15,
+                    hasPopupActive: false
+                }
+            });
+
+            // Should still only have shot once
+            expect(projectileSpy).toHaveBeenCalledTimes(1);
+        });
+
+        it('should shoot when enemy moves into overwatch zone - full integration test', () => {
+            const listener = createTestListener();
+            const projectileSpy = jest.fn();
+            const deductPointsSpy = jest.fn();
+            const damageSpy = jest.fn();
+            let characterActionPoints = 100;
+
+            listener.listen(GUIEvent.shootProjectile, projectileSpy);
+            listener.listen(UpdateStateEvent.deductActionPoints, (data) => {
+                if (data && typeof data === 'object' && 'characterName' in data) {
+                    const deductData = data as any;
+                    if (deductData.characterName === testCharacter.name) {
+                        characterActionPoints -= deductData.cost;
+                    }
+                }
+                deductPointsSpy(data);
+            });
+            listener.listen(UpdateStateEvent.damageCharacter, damageSpy);
+
+            // Set up character with plenty of action points
+            const overwatchChar = { 
+                ...testCharacter, 
+                actions: { 
+                    ...testCharacter.actions, 
+                    pointsLeft: characterActionPoints,
+                    rangedCombat: {
+                        ...testCharacter.actions.rangedCombat,
+                        shoot: 20 // Explicit shoot cost
+                    }
+                } 
+            };
+
+            // Set up overwatch data
+            (mockState as any)._overwatchData.set(overwatchChar.name, {
+                active: true,
+                direction: overwatchChar.direction,
+                position: overwatchChar.position,
+                range: 15,
+                shotsRemaining: 5, // 100 action points / 20 shoot cost = 5 shots
+                watchedCells: [{ x: 8, y: 5 }],
+                shotCells: []
+            });
+
+            mockState.findCharacter.mockImplementation((name) => {
+                if (name === enemyCharacter.name) return enemyCharacter;
+                if (name === overwatchChar.name) {
+                    // Return character with current action points
+                    return { ...overwatchChar, actions: { ...overwatchChar.actions, pointsLeft: characterActionPoints }};
+                }
+                return undefined;
+            });
+
+            // Simulate enemy movement into overwatch zone
+            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+                ...enemyCharacter,
+                position: { x: 8, y: 5 }
+            });
+
+            // Verify shooting occurred
+            expect(projectileSpy).toHaveBeenCalled();
+            expect(deductPointsSpy).not.toHaveBeenCalled(); // Points already consumed during activation
+            expect(damageSpy).toHaveBeenCalled();
+        });
+    });
+
     describe('Overwatch Edge Cases', () => {
+        beforeEach(() => {
+            // Create overwatch instance for edge case tests
+            createOverwatch();
+        });
+        
         it('should handle character death during overwatch', () => {
             const listener = createTestListener();
             const updateOverwatchSpy = jest.fn();
@@ -864,7 +1263,7 @@ describe('Overwatch', () => {
                 direction: testCharacter.direction,
                 position: testCharacter.position,
                 range: 15,
-                shotsRemaining: 10
+                shotsRemaining: 100
             });
 
             // Simulate character death
@@ -892,7 +1291,7 @@ describe('Overwatch', () => {
                 direction: testCharacter.direction,
                 position: testCharacter.position,
                 range: 15,
-                shotsRemaining: 10
+                shotsRemaining: 100
             });
 
             // Simulate character being moved (e.g., knocked back)
@@ -926,7 +1325,7 @@ describe('Overwatch', () => {
                 direction: testCharacter.direction,
                 position: testCharacter.position,
                 range: 15,
-                shotsRemaining: 10,
+                shotsRemaining: 5, // 100 action points / 20 shoot cost = 5 shots
                 watchedCells: [{ x: 7, y: 5 }, { x: 8, y: 5 }, { x: 9, y: 5 }],
                 shotCells: [] // Track cells already shot at
             });
@@ -957,7 +1356,7 @@ describe('Overwatch', () => {
                 direction: 'right',
                 position: initialPosition,
                 range: 10,
-                shotsRemaining: 10,
+                shotsRemaining: 5, // 100 action points / 20 shoot cost = 5 shots
                 watchedCells: []
             });
 
