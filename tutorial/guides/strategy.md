@@ -63,7 +63,7 @@ Controlled advance:
 ## Mid-Game Strategies
 
 ### Flanking Maneuvers
-![Movement Patterns](../images/04-movement-basics.png)
+![Movement Patterns](../images/05-movement-highlight.png)
 
 Execute pincer attacks:
 1. **Pin**: Fix enemy with suppression

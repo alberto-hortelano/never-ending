@@ -3,7 +3,7 @@
 ## Overview
 Overwatch is a defensive action that allows your characters to automatically shoot at enemies who move within their line of sight. It's a powerful tool for area denial and protecting key positions.
 
-![Overwatch Setup](../images/10-overwatch-setup.png)
+![Overwatch Setup](../images/06-actions-menu.png)
 
 ## What is Overwatch?
 
@@ -21,7 +21,7 @@ Overwatch puts your character in a defensive stance where they will:
 3. **Choose Coverage Area** - Select direction or cone to watch
 4. **Confirm** - Your character enters overwatch stance
 
-![Overwatch Trigger](../images/11-overwatch-trigger.png)
+![Overwatch Trigger](../images/08-shooting-mode.png)
 
 ### Overwatch Cost
 - **Standard Overwatch**: 30 AP

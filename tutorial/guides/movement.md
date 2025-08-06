@@ -3,7 +3,7 @@
 ## Overview
 Movement is the foundation of tactical positioning in Never Ending. Understanding how to efficiently move your characters across the battlefield is crucial for success.
 
-![Movement Basics](../images/04-movement-basics.png)
+![Movement Basics](../images/05-movement-highlight.png)
 
 ## Basic Movement
 
@@ -12,7 +12,7 @@ Movement is the foundation of tactical positioning in Never Ending. Understandin
 2. **Choose Destination** - Click on a highlighted hex to move there
 3. **Confirm Path** - The game will show the movement path before executing
 
-![Movement Path](../images/05-movement-path.png)
+![Movement Path](../images/03-game-board.png)
 
 ### Movement Costs
 Every movement action consumes Action Points (AP):
@@ -119,7 +119,7 @@ Retreat while maintaining defense:
 - **Green Path**: Selected movement route
 
 ### AP Display
-![Action Points](../images/06-action-points.png)
+![Action Points](../images/04-action-points.png)
 
 The AP display shows:
 - Current AP remaining

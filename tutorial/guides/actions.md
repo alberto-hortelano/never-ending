@@ -3,11 +3,11 @@
 ## Overview
 Every turn in Never Ending, you have 100 Action Points (AP) to spend on various actions. Understanding all available actions and their costs is crucial for effective gameplay.
 
-![Actions Menu](../images/12-actions-menu.png)
+![Actions Menu](../images/06-actions-menu.png)
 
 ## Action Points System
 
-![Action Points Display](../images/06-action-points.png)
+![Action Points Display](../images/04-action-points.png)
 
 ### AP Basics
 - **Starting AP**: 100 points per turn
@@ -146,7 +146,7 @@ Every turn in Never Ending, you have 100 Action Points (AP) to spend on various 
 - **Cost**: Variable (15-30 AP)
 - **Description**: Activate equipment item
 - **Examples**: Medkit, stimpak, scanner
-- **Access**: Via [Inventory](../images/13-inventory.png)
+- **Access**: Via [Inventory](../images/07-inventory.png)
 
 ### Drop Item
 - **Cost**: 5 AP
@@ -157,7 +157,7 @@ Every turn in Never Ending, you have 100 Action Points (AP) to spend on various 
 ## Turn Management
 
 ### End Turn
-![End Turn Button](../images/14-end-turn.png)
+![End Turn Button](../images/09-end-turn.png)
 - **Cost**: All remaining AP
 - **Description**: Finish your turn
 - **Use When**: All desired actions complete

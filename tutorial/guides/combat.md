@@ -3,7 +3,7 @@
 ## Overview
 Combat in Never Ending is a tactical, turn-based system where positioning, timing, and resource management determine victory. Every shot counts, and understanding the combat mechanics is essential for survival.
 
-![Shooting Setup](../images/07-shooting-setup.png)
+![Shooting Setup](../images/08-shooting-mode.png)
 
 ## Basic Shooting
 
@@ -21,7 +21,7 @@ Combat in Never Ending is a tactical, turn-based system where positioning, timin
 
 ## Line of Sight
 
-![Line of Sight](../images/08-line-of-sight.png)
+![Line of Sight](../images/03-game-board.png)
 
 ### Understanding LOS
 Line of Sight (LOS) determines what you can see and shoot:
