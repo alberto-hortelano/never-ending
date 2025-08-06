@@ -137,10 +137,12 @@ describe('Shoot', () => {
 
             // Should also update highlights
             expect(highlightsSpy).toHaveBeenCalled();
-            const highlightCall = highlightsSpy.mock.calls[0][0];
-            expect(highlightCall).toHaveProperty('targetableCells');
-            expect(Array.isArray(highlightCall.targetableCells)).toBe(true);
-            expect(highlightCall.targetableCells.length).toBeGreaterThan(0);
+            // Find a call with targetableCells (might be cleared by subsequent calls)
+            const callWithTargets = highlightsSpy.mock.calls.find(call => 
+                call[0].targetableCells && call[0].targetableCells.length > 0
+            );
+            expect(callWithTargets).toBeDefined();
+            expect(callWithTargets[0].targetableCells.length).toBeGreaterThan(0);
         });
 
         it('should apply distance falloff to visibility', () => {

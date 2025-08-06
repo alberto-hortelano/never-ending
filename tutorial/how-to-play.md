@@ -10,11 +10,19 @@ Welcome to Never Ending, a turn-based strategy game where you control characters
 5. [Combat](#combat)
 6. [Strategy Tips](#strategy-tips)
 
+## In-Depth Guides
+For detailed information on specific game mechanics:
+- 📍 **[Movement Guide](guides/movement.md)** - Master positioning and terrain
+- ⚔️ **[Combat Guide](guides/combat.md)** - Shooting mechanics and damage
+- 🛡️ **[Overwatch Guide](guides/overwatch.md)** - Defensive tactics and area control
+- 🎮 **[Actions Guide](guides/actions.md)** - Complete list of all actions and AP costs
+- 🧠 **[Strategy Guide](guides/strategy.md)** - Advanced tactics and team compositions
+
 ## Getting Started
 
 When you first launch Never Ending, you'll see the main menu screen:
 
-![Start Screen](images/01-start-screen.png)
+![Start Screen](images/01-main-menu.png)
 
 From here you can:
 - **Play**: Start a single player game
@@ -23,11 +31,19 @@ From here you can:
 
 Click the **"Play"** button to start a new game.
 
+### Character Selection
+
+After starting a game, you'll need to select your character:
+
+![Character Selection](images/02-character-selection.png)
+
+Choose from different character classes, each with unique abilities and stats.
+
 ## Game Interface
 
 Once in the game, you'll see the main game interface:
 
-![Game Interface](images/03-game-interface.png)
+![Game Interface](images/03-game-board.png)
 
 The game interface consists of:
 - **Game Board**: The hexagonal grid where characters move and fight
@@ -97,10 +113,12 @@ Actions vary based on your character and equipment:
 4. **Manage Resources**: Don't waste all AP on movement
 
 ### Advanced Tactics
-- **Overwatch Traps**: Set up crossfire zones
-- **Flanking Maneuvers**: Force enemies out of cover
-- **AP Conservation**: Save AP for reaction shots
+- **Overwatch Traps**: Set up crossfire zones (see [Overwatch Guide](guides/overwatch.md))
+- **Flanking Maneuvers**: Force enemies out of cover (see [Movement Guide](guides/movement.md))
+- **AP Conservation**: Save AP for reaction shots (see [Actions Guide](guides/actions.md))
 - **Terrain Usage**: Use obstacles to block enemy movement
+
+For comprehensive strategy information, read the **[Complete Strategy Guide](guides/strategy.md)**.
 
 ## Controls
 

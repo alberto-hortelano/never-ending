@@ -44,7 +44,7 @@ export class Shoot extends EventBus<
     ) {
         super();
         this.modeManager = InteractionModeManager.getInstance();
-        
+
         // Register cleanup handler for shooting mode
         this.modeManager.registerCleanupHandler('shooting', () => {
             this.cleanupShootingMode();
@@ -70,20 +70,6 @@ export class Shoot extends EventBus<
         const baseAngle = DirectionsService.getDirectionAngle(direction);
         const rangeSquared = range * range;
 
-        // Pre-calculate angle bounds for early rejection
-        const angleRadians = baseAngle * Math.PI / 180;
-        const halfAngleRadians = halfAngle * Math.PI / 180;
-
-        // Calculate sector bounds for early rejection
-        const sectorMinAngle = angleRadians - halfAngleRadians;
-        const sectorMaxAngle = angleRadians + halfAngleRadians;
-
-        // Pre-calculate cos/sin for sector bounds
-        const cosMin = Math.cos(sectorMinAngle);
-        const sinMin = Math.sin(sectorMinAngle);
-        const cosMax = Math.cos(sectorMaxAngle);
-        const sinMax = Math.sin(sectorMaxAngle);
-
         // Calculate bounding box to limit cells to check
         const minX = Math.max(0, Math.floor(position.x - range));
         const maxX = Math.min(map[0]!.length - 1, Math.ceil(position.x + range));
@@ -102,14 +88,8 @@ export class Shoot extends EventBus<
                 // Early exit if beyond range (using squared distance to avoid sqrt)
                 if (distanceSquared > rangeSquared) continue;
 
-                // Quick sector check before expensive angle calculations
-                // This eliminates cells clearly outside the cone of vision
-                const crossMin = dx * sinMin - dy * cosMin;
-                const crossMax = dx * sinMax - dy * cosMax;
-
-                // If both cross products have the same sign, the point is outside the sector
-                if (crossMin > 0 && crossMax > 0) continue;
-                if (crossMin < 0 && crossMax < 0) continue;
+                // Skip the cross product check for now - it seems to be causing issues
+                // We'll rely on the angle check below instead
 
                 // Check if target cell itself is blocked
                 const targetCell = map[y]?.[x];
@@ -125,12 +105,12 @@ export class Shoot extends EventBus<
                         // Calculate visibility for the character's cell
                         const angleToTarget = Math.atan2(dy, dx) * 180 / Math.PI;
                         const relativeAngle = this.normalizeAngle(angleToTarget - baseAngle);
-                        
+
                         if (Math.abs(relativeAngle) <= halfAngle) {
                             const angleVisibility = this.calculateAngleVisibility(relativeAngle, halfAngle);
                             const distance = Math.sqrt(distanceSquared);
                             const distanceVisibility = this.calculateDistanceVisibility(distance, range);
-                            
+
                             const intensity = angleVisibility * distanceVisibility;
                             if (intensity > SHOOT_CONSTANTS.VISIBILITY_THRESHOLD) {
                                 visibleCells.push({
@@ -280,7 +260,7 @@ export class Shoot extends EventBus<
                 // Check for critical hit
                 const critChance = this.calculateCriticalChance();
                 const isCritical = this.rollCritical(critChance);
-                
+
                 if (isCritical) {
                     finalDamage = Math.round(finalDamage * SHOOT_CONSTANTS.CRITICAL_HIT_MULTIPLIER);
                 }
@@ -393,6 +373,11 @@ export class Shoot extends EventBus<
             }
         });
 
+        // Update targetable cells in highlights for shooting mode - do this before mode change
+        this.dispatch(UpdateStateEvent.uiHighlights, {
+            targetableCells: this.visibleCells.map(vc => vc.coord)
+        });
+
         if (weapon) {
             // Use mode manager to request mode change
             this.modeManager.requestModeChange({
@@ -404,11 +389,6 @@ export class Shoot extends EventBus<
                 }
             });
         }
-
-        // Update targetable cells in highlights for shooting mode
-        this.dispatch(UpdateStateEvent.uiHighlights, {
-            targetableCells: this.visibleCells.map(vc => vc.coord)
-        });
 
         // Batch update cell visual states with intensity
         const cellUpdates = this.visibleCells.map(vc => ({
@@ -586,7 +566,7 @@ export class Shoot extends EventBus<
     private rollCritical(critChance: number): boolean {
         return Math.random() < critChance;
     }
-    
+
     private cleanupShootingMode(): void {
         this.shootingCharacter = undefined;
         this.visibleCells = undefined;

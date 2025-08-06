@@ -1,72 +1,56 @@
 #!/bin/bash
 
 # Generate Tutorial Screenshots
-# This script runs the tutorial E2E test and copies screenshots to the tutorial/images folder
+# This script runs the comprehensive E2E test that generates all tutorial screenshots
 
 echo "🎮 Generating tutorial screenshots..."
+echo "This will run the complete game flow test and capture screenshots at each stage."
+echo ""
 
 # Create images directory if it doesn't exist
 mkdir -p tutorial/images
 
-# Run the tutorial screenshots test
-echo "📸 Running screenshot generation test..."
-# Use the actual version that only captures real game features
-npm run test:e2e -- tutorial-screenshots-actual.spec.ts --reporter=list
+# Clean old screenshots (optional - uncomment if desired)
+# echo "🧹 Cleaning old screenshots..."
+# rm -f tutorial/images/*.png
 
-# Wait a moment for files to be written
+# Run the comprehensive game flow test
+echo "📸 Running complete game flow test..."
+npm run test:e2e -- game-complete-flow.spec.ts --reporter=list
+
+# Wait for files to be written
 sleep 2
 
-# Clean up old screenshots first
-echo "🧹 Cleaning old screenshots..."
-rm -f tutorial/images/*.png
-
-# Find and copy all tutorial screenshots
-echo "📁 Moving screenshots to tutorial/images..."
-
-# Define the mapping of generated files to final names
-declare -A screenshot_map=(
-    ["tutorial-01-start-screen.png"]="01-start-screen.png"
-    ["tutorial-02-character-selection.png"]="02-character-selection.png"
-    ["tutorial-03-game-interface.png"]="03-game-interface.png"
-    ["tutorial-04-action-points.png"]="04-action-points.png"
-    ["tutorial-05-movement-highlight.png"]="05-movement-highlight.png"
-    ["tutorial-06-actions-menu.png"]="06-actions-menu.png"
-    ["tutorial-07-inventory.png"]="07-inventory.png"
-    ["tutorial-08-shooting-mode.png"]="08-shooting-mode.png"
-    ["tutorial-09-end-turn.png"]="09-end-turn.png"
-    ["tutorial-10-settings.png"]="10-settings.png"
-)
-
-# Copy screenshots from test results
-for src_file in "${!screenshot_map[@]}"; do
-    dest_file="${screenshot_map[$src_file]}"
-    
-    # Look for the file in common Playwright output locations
-    if [ -f "$src_file" ]; then
-        cp "$src_file" "tutorial/images/$dest_file"
-        echo "✅ Copied $src_file → tutorial/images/$dest_file"
-    elif [ -f "test-results/$src_file" ]; then
-        cp "test-results/$src_file" "tutorial/images/$dest_file"
-        echo "✅ Copied test-results/$src_file → tutorial/images/$dest_file"
-    elif [ -f "playwright-report/$src_file" ]; then
-        cp "playwright-report/$src_file" "tutorial/images/$dest_file"
-        echo "✅ Copied playwright-report/$src_file → tutorial/images/$dest_file"
-    else
-        # Search for the file
-        found_file=$(find . -name "$src_file" -type f 2>/dev/null | head -n 1)
-        if [ -n "$found_file" ]; then
-            cp "$found_file" "tutorial/images/$dest_file"
-            echo "✅ Found and copied $found_file → tutorial/images/$dest_file"
-        else
-            echo "⚠️  Could not find $src_file"
-        fi
-    fi
-done
-
+echo ""
 echo "✨ Screenshot generation complete!"
 echo "📝 Tutorial images are in: tutorial/images/"
-
-# List generated images
 echo ""
-echo "Generated images:"
-ls -la tutorial/images/*.png 2>/dev/null || echo "No images found yet."
+
+# List generated images with descriptions
+echo "Generated screenshots:"
+echo "----------------------"
+echo "  01-main-menu.png         - Game start screen"
+echo "  02-character-selection.png - Character selection"
+echo "  03-game-board.png        - Initial game state"
+echo "  04-movement-basics.png   - Movement highlighting"
+echo "  05-movement-path.png     - Path visualization"
+echo "  06-action-points.png     - AP display"
+echo "  07-shooting-setup.png    - Targeting mode"
+echo "  08-line-of-sight.png     - LOS visualization"
+echo "  09-hit-probability.png   - Combat calculations"
+echo "  10-overwatch-setup.png   - Setting overwatch"
+echo "  11-overwatch-trigger.png - Overwatch activation"
+echo "  12-actions-menu.png      - Available actions"
+echo "  13-inventory.png         - Equipment screen"
+echo "  14-end-turn.png          - Turn management"
+echo "  15-victory.png           - Win condition"
+echo ""
+
+# Count actual files generated
+ACTUAL_COUNT=$(ls -1 tutorial/images/*.png 2>/dev/null | wc -l)
+echo "Total images generated: $ACTUAL_COUNT"
+
+if [ "$ACTUAL_COUNT" -lt 10 ]; then
+    echo "⚠️  Warning: Expected at least 10 screenshots, but only found $ACTUAL_COUNT"
+    echo "Some screenshots may have failed to generate. Check the test output for errors."
+fi

@@ -148,8 +148,11 @@ describe('Movement', () => {
             );
 
             // Verify highlights were updated with reachable cells
-            expect(highlightsSpy).toHaveBeenCalledTimes(1);
-            expect(highlightsSpy).toHaveBeenCalledWith(
+            // First call is from mode cleanup (empty), second is with actual cells
+            expect(highlightsSpy).toHaveBeenCalledTimes(2);
+            
+            // Check the second call has the reachable cells
+            expect(highlightsSpy).toHaveBeenNthCalledWith(2,
                 expect.objectContaining({
                     reachableCells: reachableCells
                 })
