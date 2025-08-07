@@ -8,7 +8,6 @@ export * from './actions/Actions';
 export * from './popup/Popup';
 export * from './selectcharacter/SelectCharacter';
 export * from './conversation/Conversation';
-export * from './rotateselector/RotateSelector';
 export * from './inventory/Inventory';
 export * from './turnindicator/TurnIndicator';
 export * from './mainmenu/MainMenu';

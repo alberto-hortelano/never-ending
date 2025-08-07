@@ -15,8 +15,6 @@ export enum ControlsEvent {
     cellMouseLeave = 'ControlsEvent.cellMouseLeave',
     moveCharacter = 'ControlsEvent.moveCharacter',
     showTalk = 'ControlsEvent.showTalk',
-    rotate = 'ControlsEvent.rotate',
-    showRotate = 'ControlsEvent.showRotate',
     inventory = 'ControlsEvent.inventory',
     showInventory = 'ControlsEvent.showInventory',
     equipWeapon = 'ControlsEvent.equipWeapon',
@@ -43,8 +41,6 @@ export interface ControlsEventsMap {
         talkingCharacter: DeepReadonly<ICharacter>;
         availableCharacters: DeepReadonly<ICharacter[]>;
     };
-    [ControlsEvent.rotate]: ICharacter['name'];
-    [ControlsEvent.showRotate]: DeepReadonly<ICharacter>;
     [ControlsEvent.inventory]: ICharacter['name'];
     [ControlsEvent.showInventory]: ICharacter['name'];
     [ControlsEvent.equipWeapon]: {

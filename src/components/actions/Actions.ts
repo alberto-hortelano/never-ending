@@ -191,7 +191,6 @@ export class Actions extends Component {
             'move': characterActions.general.move,
             'talk': characterActions.general.talk,
             'use': characterActions.general.use,
-            'rotate': characterActions.general.rotate,
             'inventory': characterActions.general.inventory,
             // Ranged Combat
             'shoot': characterActions.rangedCombat.shoot,

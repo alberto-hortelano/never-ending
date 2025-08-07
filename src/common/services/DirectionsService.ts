@@ -126,4 +126,17 @@ export class DirectionsService {
         return direction;
     }
 
+    /**
+     * Calculate the direction from one coordinate to another
+     * @param from Source coordinate
+     * @param to Target coordinate
+     * @returns Direction facing from source to target
+     */
+    public static getDirectionFromCoords(from: ICoord, to: ICoord): Direction {
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        return this.getDirectionFromAngle(angle);
+    }
+
 }

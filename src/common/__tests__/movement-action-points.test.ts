@@ -49,7 +49,6 @@ describe('Movement action points deduction', () => {
                     move: 10, // 10 points per cell
                     talk: 20,
                     use: 15,
-                    rotate: 5,
                     inventory: 0
                 },
                 rangedCombat: {

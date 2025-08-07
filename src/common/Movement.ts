@@ -355,6 +355,20 @@ export class Movement extends EventBus<
             reachableCells: this.reachableCells,
             pathCells: path
         });
+
+        // Get the direction from character to destination (where mouse is)
+        const newDirection = DirectionsService.getDirectionFromCoords(
+            this.movingCharacter.position,
+            destination
+        );
+
+        // Update character direction if it changed
+        if (this.movingCharacter.direction !== newDirection) {
+            this.dispatch(UpdateStateEvent.characterDirection, {
+                characterName: this.movingCharacter.name,
+                direction: newDirection
+            });
+        }
     }
     private clearPathPreview() {
         // Clear pending cost if we have a moving character
@@ -363,6 +377,7 @@ export class Movement extends EventBus<
                 characterName: this.movingCharacter.name,
                 cost: 0
             });
+            // Keep the last previewed direction - don't restore original
         }
         
         // Clear path preview in UI state but keep reachable cells

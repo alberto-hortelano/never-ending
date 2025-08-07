@@ -419,10 +419,7 @@ export class Overwatch extends EventBus<
     }
 
     private calculateDirectionToCoord(from: ICoord, to: ICoord): ReturnType<typeof DirectionsService.getDirectionFromAngle> {
-        const dx = to.x - from.x;
-        const dy = to.y - from.y;
-        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-        return DirectionsService.getDirectionFromAngle(angle);
+        return DirectionsService.getDirectionFromCoords(from, to);
     }
 
     private extractPositionFromStyles(styles: Record<string, string>): TrackedPosition | null {

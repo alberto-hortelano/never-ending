@@ -49,7 +49,7 @@ export function createPreviewState(character: Partial<ICharacter> | DeepReadonly
             },
             actions: character.actions || {
                 pointsLeft: 100,
-                general: { move: 10, talk: 10, use: 10, rotate: 5, inventory: 5 },
+                general: { move: 10, talk: 10, use: 10, inventory: 5 },
                 rangedCombat: { shoot: 20, aim: 15, overwatch: 25, cover: 10, throw: 15 },
                 closeCombat: { powerStrike: 25, slash: 20, fastAttack: 15, feint: 10, breakGuard: 20 }
             },

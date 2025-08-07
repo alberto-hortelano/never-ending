@@ -89,7 +89,6 @@ export interface ICharacterActions {
         move: number;
         talk: number;
         use: number;
-        rotate: number;
         inventory: number;
     };
     rangedCombat: {
