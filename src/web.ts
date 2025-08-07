@@ -5,6 +5,7 @@ import { Movement } from "./common/Movement";
 import { Talk } from "./common/Talk";
 import { Shoot } from "./common/Shoot";
 import { Overwatch } from "./common/Overwatch";
+import { MeleeCombat } from "./common/MeleeCombat";
 import { State } from "./common/State";
 import { Conversation } from "./common/Conversation";
 import { Action } from "./common/Action";
@@ -64,6 +65,7 @@ const play = (state?: State) => {
         new Talk(gameState),
         new Shoot(gameState),
         new Overwatch(gameState),
+        new MeleeCombat(gameState),
         new Inventory(gameState),
         new Conversation(),
         new Action(gameState),

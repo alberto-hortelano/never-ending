@@ -54,6 +54,10 @@ export enum UpdateStateEvent {
     setOverwatchData = 'UpdateStateEvent.setOverwatchData',
     /** Update selected character */
     uiSelectedCharacter = 'UpdateStateEvent.uiSelectedCharacter',
+    /** Initiate melee defense UI */
+    uiMeleeDefense = 'UpdateStateEvent.uiMeleeDefense',
+    /** Show melee combat result */
+    uiMeleeCombatResult = 'UpdateStateEvent.uiMeleeCombatResult',
 }
 
 export interface UpdateStateEventsMap {
@@ -138,6 +142,23 @@ export interface UpdateStateEventsMap {
         shotCells?: string[]; // Array instead of Set for serialization
     };
     [UpdateStateEvent.uiSelectedCharacter]: string | undefined;
+    [UpdateStateEvent.uiMeleeDefense]: {
+        attacker: string;
+        defender: string;
+        attackType: string;
+        weaponInfo: {
+            attackerWeapon: string;
+            defenderWeapon: string;
+        };
+    };
+    [UpdateStateEvent.uiMeleeCombatResult]: {
+        attacker: string;
+        defender: string;
+        attackType: string;
+        defenseType: string;
+        damage: number;
+        blocked: boolean;
+    };
 }
 
 /** Events when the state has changed. All can listen. Only State can dispatch */

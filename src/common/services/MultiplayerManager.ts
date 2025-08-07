@@ -2,7 +2,7 @@ import { EventBus, EventsMap } from '../events/EventBus';
 import { NetworkService } from './NetworkService';
 import { State } from '../State';
 import { IState, IUIState, ICharacter, IOverwatchData } from '../interfaces';
-import { GameEvent, UpdateStateEvent } from '../events';
+import { GameEvent, UpdateStateEvent, ControlsEvent } from '../events';
 import { getBaseState } from '../../data/state';
 import { StateDiffService, StateDiff } from './StateDiffService';
 
@@ -399,6 +399,31 @@ this.broadcastAction(UpdateStateEvent.characterPosition, data);
             if (this.isMultiplayer && this.state) {
                 if (!(data as NetworkEventData).fromNetwork) {
                     this.broadcastAction(UpdateStateEvent.uiRemoveProjectile, data);
+                }
+            }
+        });
+        
+        // Listen for melee combat events
+        this.listen(UpdateStateEvent.uiMeleeDefense, (data) => {
+            if (this.isMultiplayer && this.state) {
+                if (!(data as NetworkEventData).fromNetwork) {
+                    this.broadcastAction(UpdateStateEvent.uiMeleeDefense, data);
+                }
+            }
+        });
+        
+        this.listen(ControlsEvent.meleeDefenseSelected, (data) => {
+            if (this.isMultiplayer && this.state) {
+                if (!(data as NetworkEventData).fromNetwork) {
+                    this.broadcastAction(ControlsEvent.meleeDefenseSelected, data);
+                }
+            }
+        });
+        
+        this.listen(UpdateStateEvent.uiMeleeCombatResult, (data) => {
+            if (this.isMultiplayer && this.state) {
+                if (!(data as NetworkEventData).fromNetwork) {
+                    this.broadcastAction(UpdateStateEvent.uiMeleeCombatResult, data);
                 }
             }
         });

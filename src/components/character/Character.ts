@@ -14,6 +14,7 @@ export default class Character extends Component {
     private player: string = '';
     private currentTurn: string = '';
     private isShootingMode: boolean = false;
+    private isMeleeMode: boolean = false;
     private root?: ShadowRoot;
     private networkService: NetworkService = NetworkService.getInstance();
     private weaponElement?: HTMLElement;
@@ -118,8 +119,8 @@ export default class Character extends Component {
         // Remove the transitionend listener - walk class removal is handled by AnimationService
         // when the full movement animation completes, not when individual transitions end
         this.addEventListener('click', () => {
-            if (this.isShootingMode) {
-                // In shooting mode, dispatch character click event
+            if (this.isShootingMode || this.isMeleeMode) {
+                // In shooting or melee mode, dispatch character click event
                 this.dispatch(ControlsEvent.characterClick, {
                     characterName: this.id,
                     position: stateCharacter.position
@@ -203,12 +204,18 @@ export default class Character extends Component {
         // Listen for interaction mode changes
         this.listen(StateChangeEvent.uiInteractionMode, (mode) => {
             this.isShootingMode = mode.type === 'shooting';
+            this.isMeleeMode = mode.type === 'melee';
 
-            // Update visual state to reflect shooting mode
+            // Update visual state to reflect combat modes
             if (this.isShootingMode) {
                 this.classList.add('shooting-mode');
+                this.classList.remove('melee-mode');
+            } else if (this.isMeleeMode) {
+                this.classList.add('melee-mode');
+                this.classList.remove('shooting-mode');
             } else {
                 this.classList.remove('shooting-mode');
+                this.classList.remove('melee-mode');
             }
         });
 
