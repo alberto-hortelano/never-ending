@@ -19,9 +19,15 @@ export default class Character extends Component {
     private weaponElement?: HTMLElement;
     private currentVisualState: ICharacterVisualState | null = null;
     
-    // Check if this is a preview component (has instance state instead of global state)
+    // Check if this is a preview component
     private get isPreview(): boolean {
-        return this.getState() !== Component.gameState;
+        // Check if marked as preview or has instance state instead of global state
+        return this.hasAttribute('data-preview') || this.getState() !== Component.gameState;
+    }
+    
+    // Check if this is a standalone preview (no state at all)
+    private get isStandalone(): boolean {
+        return this.hasAttribute('data-standalone');
     }
 
     constructor() {
@@ -42,6 +48,11 @@ export default class Character extends Component {
         this.characterElement = root.getElementById('character') as HTMLElement;
         this.movable = root.getElementById('movable') as Movable;
         this.weaponElement = root.querySelector('.weapon') as HTMLElement;
+
+        // If standalone, just setup basic display and wait for updateAppearance calls
+        if (this.isStandalone) {
+            return root;
+        }
 
         // Get character data from state
         const state = this.getState();

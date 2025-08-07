@@ -7,8 +7,16 @@
     background-color: $color-bg-primary;
     color: $color-text-primary;
     font-family: $font-family-mono;
-    height: 100vh;
+    height: 100vh; // Fallback for browsers that don't support dvh
+    height: 100dvh; // Dynamic viewport height - accounts for browser UI
     overflow: hidden;
+    
+    // Account for safe areas on mobile devices
+    @supports (padding: env(safe-area-inset-top)) {
+        padding-top: env(safe-area-inset-top);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
 }
 
 .content {

@@ -20,7 +20,7 @@ export class Movement extends EventBus<
     private reachableCells?: ICoord[];
     // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     private listeners: Array<{ event: string; handler: Function }> = [];
-    private completedMovements = new Map<string, { path: ICoord[], finalDirection: string, fromNetwork?: boolean }>();
+    private completedMovements = new Map<string, { path: ICoord[], finalDirection: string, fromNetwork?: boolean, paidCells: number }>();
     private modeManager: InteractionModeManager;
 
     constructor(
@@ -39,6 +39,7 @@ export class Movement extends EventBus<
         this.addListener(ControlsEvent.cellMouseLeave, () => this.onCellMouseLeave());
         this.addListener(ControlsEvent.showMovement, character => this.onShowMovement(character));
         this.addListener(StateChangeEvent.characterPath, character => this.onCharacterPath(character));
+        this.addListener(StateChangeEvent.characterPosition, character => this.onCharacterPosition(character));
         this.addListener(StateChangeEvent.uiAnimations, animations => this.onAnimationsChange(animations));
         this.addListener(StateChangeEvent.uiInteractionMode, mode => this.onInteractionModeChange(mode));
         this.addListener(StateChangeEvent.characterDefeated, character => this.onCharacterDefeated(character));
@@ -119,10 +120,12 @@ export class Movement extends EventBus<
 
             // Track this movement for completion (for action point deduction)
             // Check if this movement is from the network
+            console.log(`[Movement] Starting to track movement for ${character.name}: ${character.path.length} cells, fromNetwork: ${character.fromNetwork}`);
             this.completedMovements.set(character.name, {
                 path: [...character.path],
                 finalDirection,
-                fromNetwork: character.fromNetwork
+                fromNetwork: character.fromNetwork,
+                paidCells: 0  // Track how many cells we've already paid for
             });
 
             // Add walk class at the start
@@ -156,6 +159,42 @@ export class Movement extends EventBus<
             this.dispatch(UpdateStateEvent.characterPath, { ...character, path: [] });
         }
     }
+    private onCharacterPosition(character: StateChangeEventsMap[StateChangeEvent.characterPosition]) {
+        // Check if we're tracking a movement for this character
+        const movementData = this.completedMovements.get(character.name);
+        if (!movementData || movementData.fromNetwork) {
+            // Don't deduct points for network movements or if not tracking
+            return;
+        }
+
+        // Check if this character belongs to the current turn
+        if (character.player !== this.state.game.turn) {
+            return;
+        }
+
+        // We need to deduct action points for each cell moved
+        // The animation updates position cell by cell, so we deduct one cell's worth of points
+        const fullCharacter = this.state.findCharacter(character.name);
+        if (!fullCharacter) return;
+
+        const moveCost = fullCharacter.actions.general.move;
+        
+        // Only deduct if we haven't paid for all cells yet
+        if (movementData.paidCells < movementData.path.length) {
+            // Deduct for one cell
+            console.log(`[Movement] Deducting ${moveCost} points for cell ${movementData.paidCells + 1}/${movementData.path.length} of ${character.name}'s movement`);
+            this.dispatch(UpdateStateEvent.deductActionPoints, {
+                characterName: character.name,
+                actionId: 'move',
+                cost: moveCost
+            });
+            
+            // Increment the paid cells counter
+            movementData.paidCells++;
+            console.log(`[Movement] Paid for ${movementData.paidCells}/${movementData.path.length} cells`);
+        }
+    }
+    
     private onShowMovement(characterName: ControlsEventsMap[ControlsEvent.showMovement]) {
         const character = this.state.findCharacter(characterName);
         if (!character) return;
@@ -179,6 +218,7 @@ export class Movement extends EventBus<
             // If this character is NOT in the animations anymore, it means the animation completed
             if (!animations.characters[characterId]) {
                 // Animation just completed
+                console.log(`[Movement] Animation completed for ${characterId}. Paid for ${pathData.paidCells}/${pathData.path.length} cells`);
                 const character = this.state.findCharacter(characterId);
                 if (character && pathData && pathData.path.length > 0) {
                     // Position has already been updated incrementally during movement
@@ -193,15 +233,8 @@ export class Movement extends EventBus<
                         });
                     }
 
-                    // Deduct action points if this is the current player's character and not from network
-                    if (character.player === this.state.game.turn && !pathData.fromNetwork) {
-                        const moveCost = character.actions.general.move * pathData.path.length;
-                        this.dispatch(UpdateStateEvent.deductActionPoints, {
-                            characterName: character.name,
-                            actionId: 'move',
-                            cost: moveCost
-                        });
-                    }
+                    // Action points have already been deducted progressively in onCharacterPosition
+                    // No need to deduct them here anymore
 
                     this.completedMovements.delete(characterId);
                 }
@@ -217,6 +250,12 @@ export class Movement extends EventBus<
             this.state.characters,
             character.name
         );
+
+        // Clear pending cost
+        this.dispatch(UpdateStateEvent.setPendingActionCost, {
+            characterName: character.name,
+            cost: 0
+        });
 
         // Clear highlights
         this.dispatch(UpdateStateEvent.uiHighlights, {
@@ -301,6 +340,16 @@ export class Movement extends EventBus<
             this.movingCharacter.name
         );
 
+        // Calculate pending cost for this path
+        const moveCost = this.movingCharacter.actions.general.move;
+        const pendingCost = moveCost * path.length;
+
+        // Set pending action cost
+        this.dispatch(UpdateStateEvent.setPendingActionCost, {
+            characterName: this.movingCharacter.name,
+            cost: pendingCost
+        });
+
         // Update UI state with path preview cells while preserving reachable cells
         this.dispatch(UpdateStateEvent.uiHighlights, {
             reachableCells: this.reachableCells,
@@ -308,6 +357,14 @@ export class Movement extends EventBus<
         });
     }
     private clearPathPreview() {
+        // Clear pending cost if we have a moving character
+        if (this.movingCharacter) {
+            this.dispatch(UpdateStateEvent.setPendingActionCost, {
+                characterName: this.movingCharacter.name,
+                cost: 0
+            });
+        }
+        
         // Clear path preview in UI state but keep reachable cells
         if (this.reachableCells) {
             this.dispatch(UpdateStateEvent.uiHighlights, {

@@ -3,7 +3,6 @@ import type { ICharacter, Direction } from "../../common/interfaces";
 import { Component } from "../Component";
 import type Character from "../character/Character";
 import { DirectionsService } from "../../common/services/DirectionsService";
-import { createPreviewState } from "../../common/helpers/previewState";
 
 export interface RotateSelectorOptions {
     character: DeepReadonly<ICharacter>;
@@ -55,15 +54,23 @@ export class RotateSelector extends Component {
         const centerDisplay = document.createElement('div');
         centerDisplay.className = 'center-display';
         
+        // Create a character component in standalone mode (no state needed)
         const characterIcon = document.createElement('character-component') as Character;
         characterIcon.classList.add('character-preview');
-        characterIcon.id = `rotate-preview-${this.options.character.name}`;
-        
-        // Create a preview state with the character data
-        const previewState = createPreviewState(this.options.character);
-        characterIcon.setInstanceState(previewState);
-        
+        characterIcon.id = 'rotate-preview';
+        characterIcon.setAttribute('data-standalone', 'true');
         centerDisplay.appendChild(characterIcon);
+        
+        // Initialize appearance after DOM is ready
+        setTimeout(() => {
+            if (this.options && characterIcon.updateAppearance) {
+                characterIcon.updateAppearance(
+                    this.options.character.race,
+                    this.options.character.palette,
+                    this.options.character.direction || 's'
+                );
+            }
+        }, 0);
 
         // Direction buttons - 8 directions
         const directions = DirectionsService.getAllDirections();
@@ -93,7 +100,7 @@ export class RotateSelector extends Component {
         if (!this.options) return;
 
         // Update the preview character's direction
-        const previewCharacter = this.shadowRoot?.querySelector(`#rotate-preview-${this.options.character.name}`) as Character;
+        const previewCharacter = this.shadowRoot?.querySelector('#rotate-preview') as Character;
         if (previewCharacter && previewCharacter.updateAppearance) {
             previewCharacter.updateAppearance(
                 this.options.character.race,

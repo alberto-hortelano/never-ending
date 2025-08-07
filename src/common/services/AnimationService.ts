@@ -180,8 +180,8 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
             if (animState && animState.type === 'walk' && animState.path) {
                 const currentStepIndex = Math.floor(update.progress * animState.path.length);
 
-                // Only update if we've moved to a new cell
-                if (currentStepIndex !== animState.currentStep) {
+                // Only update if we've moved to a new cell AND it's not the starting position (index 0)
+                if (currentStepIndex !== animState.currentStep && currentStepIndex > 0) {
                     animState.currentStep = currentStepIndex;
 
                     // Get the actual cell position from the path
@@ -189,6 +189,7 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
                     
                     if (cellPosition) {
                         // Update character position in state
+                        console.log(`[AnimationService] Updating position for ${update.characterId} to cell ${currentStepIndex}: (${cellPosition.x}, ${cellPosition.y})`);
                         this.dispatch(UpdateStateEvent.characterPosition, {
                             name: update.characterId,
                             position: cellPosition,

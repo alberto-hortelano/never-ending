@@ -38,6 +38,8 @@
 .character-preview {
     width: 2.5rem; // 40px
     height: 2.5rem; // 40px
+    position: relative;
+    display: block;
 }
 
 .direction-button {

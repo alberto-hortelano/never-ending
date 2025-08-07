@@ -1,8 +1,20 @@
 <div class="bottom-bar">
-    <button class="toggle-button mobile-only" title="Collapse actions bar">▼</button>
     <div class="bar-content">
+        <div class="tab-navigation">
+            <button class="tab-button active" data-tab="general">
+                <span class="tab-icon">🎯</span>
+                <span class="tab-label">General</span>
+            </button>
+            <button class="tab-button" data-tab="ranged">
+                <span class="tab-icon">🔫</span>
+                <span class="tab-label">Ranged</span>
+            </button>
+            <button class="tab-button" data-tab="melee">
+                <span class="tab-icon">⚔️</span>
+                <span class="tab-label">Melee</span>
+            </button>
+        </div>
         <div class="actions-section">
-            <h3 class="section-title">Actions</h3>
             <div class="actions-container">
                 <slot name="actions"></slot>
             </div>
