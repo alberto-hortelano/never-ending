@@ -18,10 +18,22 @@ export default class Character extends Component {
     private networkService: NetworkService = NetworkService.getInstance();
     private weaponElement?: HTMLElement;
     private currentVisualState: ICharacterVisualState | null = null;
+    private _currentDirection: Direction = 'down'; // Store direction for standalone mode
     
-    // Check if this is a preview component (has instance state instead of global state)
+    // Getter for current direction (useful for standalone mode)
+    public get currentDirection(): Direction {
+        return this._currentDirection;
+    }
+    
+    // Check if this is a preview component
     private get isPreview(): boolean {
-        return this.getState() !== Component.gameState;
+        // Check if marked as preview or has instance state instead of global state
+        return this.hasAttribute('data-preview') || this.getState() !== Component.gameState;
+    }
+    
+    // Check if this is a standalone preview (no state at all)
+    private get isStandalone(): boolean {
+        return this.hasAttribute('data-standalone');
     }
 
     constructor() {
@@ -42,6 +54,11 @@ export default class Character extends Component {
         this.characterElement = root.getElementById('character') as HTMLElement;
         this.movable = root.getElementById('movable') as Movable;
         this.weaponElement = root.querySelector('.weapon') as HTMLElement;
+
+        // If standalone, just setup basic display and wait for updateAppearance calls
+        if (this.isStandalone) {
+            return root;
+        }
 
         // Get character data from state
         const state = this.getState();
@@ -204,20 +221,44 @@ export default class Character extends Component {
             return;
         }
 
-        // Store current action class - use the provided action parameter directly
-        const currentActionClass = action;
+        // Store direction for standalone mode
+        this._currentDirection = direction as Direction;
 
-        // Update race class
-        this.characterElement.className = 'character';
+        // Remove old rotation classes
+        const allRotationClasses = CharacterService.getDirectionClasses();
+        allRotationClasses.forEach(cls => {
+            this.characterElement!.classList.remove(cls);
+        });
+
+        // Remove old race classes
+        ['human', 'robot', 'alien'].forEach(r => {
+            if (r !== race) {
+                this.characterElement!.classList.remove(r);
+            }
+        });
+
+        // Remove old action classes
+        ['idle', 'walk', 'shoot'].forEach(a => {
+            if (a !== action) {
+                this.characterElement!.classList.remove(a);
+            }
+        });
+
+        // Ensure base class is present
+        if (!this.characterElement.classList.contains('character')) {
+            this.characterElement.classList.add('character');
+        }
+
+        // Add race class
         this.characterElement.classList.add(race);
 
-        // Update direction
+        // Add direction/rotation class
         const directionClass = CharacterService.getDirectionClass(direction as Direction);
         this.characterElement.classList.add(directionClass);
 
         // Apply action class
-        if (currentActionClass) {
-            this.characterElement.classList.add(currentActionClass);
+        if (action) {
+            this.characterElement.classList.add(action);
         }
 
         // Update palette on the host element (this component)
@@ -228,9 +269,9 @@ export default class Character extends Component {
         }
 
         // Update weapon
-        if (this.isPreview) {
-            // In preview mode, handle weapon classes directly without updateCharacterClasses
-            if (weapon && currentActionClass === 'shoot') {
+        if (this.isPreview || this.isStandalone) {
+            // In preview/standalone mode, handle weapon classes directly
+            if (weapon && action === 'shoot') {
                 this.characterElement.classList.add(weapon);
             }
         } else {

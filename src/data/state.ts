@@ -163,7 +163,6 @@ export const baseCharacter: ICharacter = {
             move: 20,
             talk: 0,
             use: 5,
-            rotate: 0,
             inventory: 20,
         },
         rangedCombat: {

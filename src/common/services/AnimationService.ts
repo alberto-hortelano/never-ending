@@ -180,8 +180,8 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
             if (animState && animState.type === 'walk' && animState.path) {
                 const currentStepIndex = Math.floor(update.progress * animState.path.length);
 
-                // Only update if we've moved to a new cell
-                if (currentStepIndex !== animState.currentStep) {
+                // Only update if we've moved to a new cell AND it's not the starting position (index 0)
+                if (currentStepIndex !== animState.currentStep && currentStepIndex > 0) {
                     animState.currentStep = currentStepIndex;
 
                     // Get the actual cell position from the path

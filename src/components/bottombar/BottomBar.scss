@@ -1,4 +1,5 @@
 @use '../variables' as *;
+@use 'sass:color';
 
 :host {
     display: block;
@@ -7,84 +8,160 @@
     border-top: 2px solid $color-border-primary;
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
     z-index: $z-index-header;
+    
+    // Add padding for safe area on mobile devices (home indicator)
+    @supports (padding: env(safe-area-inset-bottom)) {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
 }
 
 .bottom-bar {
     position: relative;
-    transition: transform $transition-duration-base ease-in-out;
+}
+
+.bar-content {
+    padding: $spacing-sm;
+    min-height: 3rem;
     
-    &.collapsed {
-        @include md-down {
-            transform: translateY(calc(100% - 2.5rem));
-        }
+    @include md-up {
+        padding: $spacing-md;
+        min-height: 4rem;
     }
 }
 
-.toggle-button {
-    position: absolute;
-    top: -2rem;
-    left: 50%;
-    transform: translateX(-50%);
-    background: $color-bg-secondary;
-    border: 2px solid $color-border-primary;
-    border-bottom: none;
-    border-radius: $border-radius-sm $border-radius-sm 0 0;
-    padding: $spacing-xs $spacing-md;
+// Tab Navigation
+.tab-navigation {
+    display: flex;
+    gap: $spacing-xs;
+    margin-bottom: $spacing-sm;
+    border-bottom: 1px solid $color-border-secondary;
+    padding-bottom: $spacing-xs;
+    
+    @include md-up {
+        gap: $spacing-sm;
+        margin-bottom: $spacing-md;
+    }
+}
+
+.tab-button {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    padding: $spacing-xs $spacing-sm;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: $color-text-muted;
     cursor: pointer;
-    font-size: $font-size-sm;
-    color: $color-text-secondary;
     transition: $transition-all;
+    font-size: $font-size-sm;
+    white-space: nowrap;
+    
+    @include md-up {
+        padding: $spacing-sm $spacing-md;
+        font-size: $font-size-base;
+    }
+    
+    .tab-icon {
+        font-size: $font-size-base;
+        line-height: 1;
+        
+        @include sm-down {
+            font-size: $font-size-lg;
+        }
+    }
+    
+    .tab-label {
+        @include sm-down {
+            display: none;
+        }
+    }
     
     &:hover {
         background: $color-bg-tertiary;
         color: $color-text-primary;
     }
     
-    &.mobile-only {
-        display: none;
+    &.active {
+        color: $color-highlight;
+        border-bottom-color: $color-highlight;
         
-        @include md-down {
-            display: block;
+        .tab-icon {
+            filter: none;
+        }
+    }
+    
+    &.combat-tab {
+        @include sm-down {
+            flex: 1;
+            justify-content: center;
         }
     }
 }
 
-.bar-content {
-    padding: $spacing-md;
-    min-height: 5rem;
+.combat-toggle {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    padding: $spacing-xs $spacing-sm;
+    background: $gray-600;
+    border: 1px solid $color-border-secondary;
+    border-radius: $border-radius-sm;
+    color: $color-text-secondary;
+    cursor: pointer;
+    transition: $transition-all;
+    font-size: $font-size-sm;
     
-    @include sm-down {
-        padding: $spacing-sm;
-        min-height: 4rem;
+    @include md-up {
+        padding: $spacing-sm $spacing-md;
+    }
+    
+    .combat-icon {
+        font-size: $font-size-base;
+        line-height: 1;
+    }
+    
+    .combat-label {
+        @include sm-down {
+            display: none;
+        }
+    }
+    
+    &:hover {
+        background: $color-bg-hover;
+        border-color: $color-highlight;
+    }
+    
+    &.active {
+        background: $color-danger;
+        border-color: $color-danger;
+        color: white;
+        
+        &:hover {
+            background: color.adjust($color-danger, $lightness: -10%);
+        }
     }
 }
 
 .actions-section {
-    margin-bottom: $spacing-md;
-    
     @include lg-up {
         display: flex;
         align-items: center;
         gap: $spacing-md;
-        margin-bottom: 0;
-    }
-}
-
-.section-title {
-    margin: 0 0 $spacing-sm 0;
-    font-size: $font-size-lg;
-    color: $color-text-secondary;
-    
-    @include lg-up {
-        margin: 0;
     }
 }
 
 .actions-container {
     display: flex;
     flex-wrap: wrap;
-    gap: $spacing-sm;
+    gap: $spacing-xs;
     align-items: center;
+    min-height: 2.5rem;
+    
+    @include md-up {
+        gap: $spacing-sm;
+    }
     
     &:empty::after {
         content: 'Select a character to see available actions';
@@ -100,15 +177,19 @@
 
 .quick-actions {
     position: absolute;
-    top: $spacing-md;
-    right: $spacing-md;
+    top: $spacing-sm;
+    right: $spacing-sm;
     display: flex;
-    gap: $spacing-sm;
+    gap: $spacing-xs;
+    
+    @include md-up {
+        top: $spacing-md;
+        right: $spacing-md;
+        gap: $spacing-sm;
+    }
     
     @include sm-down {
-        position: static;
-        margin-top: $spacing-sm;
-        justify-content: flex-end;
+        display: none; // Hide on mobile to save space
     }
 }
 

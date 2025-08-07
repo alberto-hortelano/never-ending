@@ -320,13 +320,11 @@ export class Shoot extends EventBus<
             return;
         }
 
-        // Calculate angle from character to mouse
-        const dx = mouseCoord.x - character.position.x;
-        const dy = mouseCoord.y - character.position.y;
-        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-
-        // Get the nearest direction
-        const newDirection = DirectionsService.getDirectionFromAngle(angle);
+        // Get the direction from character to mouse position
+        const newDirection = DirectionsService.getDirectionFromCoords(
+            character.position,
+            mouseCoord
+        );
 
         // Check if the direction actually changed
         if (character.direction === newDirection) {

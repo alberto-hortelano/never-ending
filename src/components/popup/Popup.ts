@@ -1,6 +1,5 @@
 import type { SelectCharacter } from "../selectcharacter/SelectCharacter";
 import type { Conversation } from "../conversation/Conversation";
-import type { RotateSelector } from "../rotateselector/RotateSelector";
 import type { Inventory } from "../inventory/Inventory";
 
 import { Component } from "../Component";
@@ -74,15 +73,6 @@ export class Popup extends Component {
             }, 50);
         });
 
-        this.listen(ControlsEvent.showRotate, (character: ControlsEventsMap[ControlsEvent.showRotate]) => {
-            isShowing = true;
-            this.showRotate(character);
-
-            // Reset the flag after a short delay to allow the click event to finish bubbling
-            setTimeout(() => {
-                isShowing = false;
-            }, 50);
-        });
 
         this.listen(ControlsEvent.showInventory, (characterName: ControlsEventsMap[ControlsEvent.showInventory]) => {
             isShowing = true;
@@ -192,34 +182,6 @@ export class Popup extends Component {
         });
     }
 
-    private showRotate(character: ControlsEventsMap[ControlsEvent.showRotate]) {
-        this.clearContent();
-
-        // Create and append rotate selector component
-        const rotateSelectorComponent = document.createElement('rotate-selector') as RotateSelector;
-        this.appendChild(rotateSelectorComponent);
-
-        this.show(`${character.name} - Rotate`);
-
-        // Set options on rotate selector component
-        rotateSelectorComponent.setOptions({
-            character: character
-        });
-
-        // Listen for direction selection
-        rotateSelectorComponent.addEventListener('direction-selected', (e: Event) => {
-            const customEvent = e as CustomEvent;
-            const { character, direction } = customEvent.detail;
-            // Dispatch event to update character direction
-            this.dispatch(UpdateStateEvent.characterDirection, {
-                characterName: character.name,
-                direction: direction
-            });
-            if (!this.isPinned) {
-                this.hide();
-            }
-        });
-    }
 
     private showInventory(characterName: ControlsEventsMap[ControlsEvent.showInventory]) {
         this.clearContent();

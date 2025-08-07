@@ -6,14 +6,17 @@ export default class BottomBar extends Component {
     protected override hasCss = true;
     protected override hasHtml = true;
     
-    private isCollapsed = false;
+    private activeTab = 'general';
+    private touchStartX = 0;
+    private touchEndX = 0;
     
     override async connectedCallback() {
         const root = await super.connectedCallback();
         if (!root) return root;
         
         this.setupEventListeners(root);
-        this.setupCollapsibleBehavior(root);
+        this.setupTabNavigation(root);
+        this.setupSwipeGestures(root);
         
         return root;
     }
@@ -38,24 +41,13 @@ export default class BottomBar extends Component {
         // Clear existing content
         actionsContainer.innerHTML = '';
         
-        // Create and append actions component (no longer needs character-name attribute)
+        // Create and append actions component with active tab filter
         const actionsComponent = document.createElement('actions-component') as Actions;
+        actionsComponent.setAttribute('active-category', this.activeTab);
         actionsContainer.appendChild(actionsComponent);
         
         // Update state
         actionsContainer.classList.add('has-actions');
-        
-        // Expand the bar on mobile if collapsed
-        if (this.isCollapsed && window.innerWidth <= 768) {
-            const toggleButton = root.querySelector('.toggle-button') as HTMLButtonElement;
-            const bottomBar = root.querySelector('.bottom-bar') as HTMLElement;
-            if (toggleButton && bottomBar) {
-                this.isCollapsed = false;
-                bottomBar.classList.remove('collapsed');
-                toggleButton.innerHTML = '▼';
-                toggleButton.setAttribute('title', 'Collapse actions bar');
-            }
-        }
         
         // Automatically show movement reachable cells when character is selected
         this.dispatch(ControlsEvent.showMovement, characterName);
@@ -74,31 +66,84 @@ export default class BottomBar extends Component {
         });
     }
     
-    private setupCollapsibleBehavior(root: ShadowRoot) {
-        const toggleButton = root.querySelector('.toggle-button') as HTMLButtonElement;
-        const bottomBar = root.querySelector('.bottom-bar') as HTMLElement;
+    private setupTabNavigation(root: ShadowRoot) {
+        const tabButtons = root.querySelectorAll('.tab-button');
         
-        if (toggleButton && bottomBar) {
-            toggleButton.addEventListener('click', () => {
-                this.isCollapsed = !this.isCollapsed;
+        tabButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                const target = e.currentTarget as HTMLButtonElement;
+                const tabName = target.dataset.tab;
+                if (!tabName) return;
                 
-                if (this.isCollapsed) {
-                    bottomBar.classList.add('collapsed');
-                    toggleButton.innerHTML = '▲';
-                    toggleButton.setAttribute('title', 'Expand actions bar');
-                } else {
-                    bottomBar.classList.remove('collapsed');
-                    toggleButton.innerHTML = '▼';
-                    toggleButton.setAttribute('title', 'Collapse actions bar');
+                // Update active tab
+                this.activeTab = tabName;
+                
+                // Update UI
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                target.classList.add('active');
+                
+                // Update actions component if it exists
+                const actionsContainer = root.querySelector('.actions-container');
+                const existingActions = actionsContainer?.querySelector('actions-component') as Actions;
+                if (existingActions) {
+                    existingActions.setAttribute('active-category', tabName);
                 }
                 
-                this.dispatchEvent(new CustomEvent('collapsed-changed', {
-                    detail: { collapsed: this.isCollapsed },
-                    bubbles: true,
-                    composed: true
-                }));
+                // Refresh actions display
+                const state = this.getState();
+                if (state?.ui?.selectedCharacter) {
+                    this.showCharacterActions(state.ui.selectedCharacter, root);
+                }
             });
+        });
+    }
+
+
+    private setupSwipeGestures(root: ShadowRoot) {
+        const barContent = root.querySelector('.bar-content') as HTMLElement;
+        if (!barContent) return;
+        
+        // Touch event handlers for swipe detection
+        barContent.addEventListener('touchstart', (e) => {
+            const touch = e.changedTouches[0];
+            if (touch) {
+                this.touchStartX = touch.screenX;
+            }
+        }, { passive: true });
+        
+        barContent.addEventListener('touchend', (e) => {
+            const touch = e.changedTouches[0];
+            if (touch) {
+                this.touchEndX = touch.screenX;
+                this.handleSwipe(root);
+            }
+        }, { passive: true });
+    }
+
+    private handleSwipe(root: ShadowRoot) {
+        const swipeThreshold = 50;
+        const diff = this.touchStartX - this.touchEndX;
+        
+        if (Math.abs(diff) < swipeThreshold) return;
+        
+        const tabs = this.getAvailableTabs();
+        const currentIndex = tabs.indexOf(this.activeTab);
+        
+        if (diff > 0 && currentIndex < tabs.length - 1) {
+            // Swipe left - next tab
+            const nextTab = tabs[currentIndex + 1];
+            const button = root.querySelector(`[data-tab="${nextTab}"]`) as HTMLButtonElement;
+            if (button) button.click();
+        } else if (diff < 0 && currentIndex > 0) {
+            // Swipe right - previous tab
+            const prevTab = tabs[currentIndex - 1];
+            const button = root.querySelector(`[data-tab="${prevTab}"]`) as HTMLButtonElement;
+            if (button) button.click();
         }
+    }
+
+    private getAvailableTabs(): string[] {
+        return ['general', 'ranged', 'melee'];
     }
 }
 
