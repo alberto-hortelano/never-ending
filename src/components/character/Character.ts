@@ -18,6 +18,12 @@ export default class Character extends Component {
     private networkService: NetworkService = NetworkService.getInstance();
     private weaponElement?: HTMLElement;
     private currentVisualState: ICharacterVisualState | null = null;
+    private _currentDirection: Direction = 'down'; // Store direction for standalone mode
+    
+    // Getter for current direction (useful for standalone mode)
+    public get currentDirection(): Direction {
+        return this._currentDirection;
+    }
     
     // Check if this is a preview component
     private get isPreview(): boolean {
@@ -215,20 +221,44 @@ export default class Character extends Component {
             return;
         }
 
-        // Store current action class - use the provided action parameter directly
-        const currentActionClass = action;
+        // Store direction for standalone mode
+        this._currentDirection = direction as Direction;
 
-        // Update race class
-        this.characterElement.className = 'character';
+        // Remove old rotation classes
+        const allRotationClasses = CharacterService.getDirectionClasses();
+        allRotationClasses.forEach(cls => {
+            this.characterElement!.classList.remove(cls);
+        });
+
+        // Remove old race classes
+        ['human', 'robot', 'alien'].forEach(r => {
+            if (r !== race) {
+                this.characterElement!.classList.remove(r);
+            }
+        });
+
+        // Remove old action classes
+        ['idle', 'walk', 'shoot'].forEach(a => {
+            if (a !== action) {
+                this.characterElement!.classList.remove(a);
+            }
+        });
+
+        // Ensure base class is present
+        if (!this.characterElement.classList.contains('character')) {
+            this.characterElement.classList.add('character');
+        }
+
+        // Add race class
         this.characterElement.classList.add(race);
 
-        // Update direction
+        // Add direction/rotation class
         const directionClass = CharacterService.getDirectionClass(direction as Direction);
         this.characterElement.classList.add(directionClass);
 
         // Apply action class
-        if (currentActionClass) {
-            this.characterElement.classList.add(currentActionClass);
+        if (action) {
+            this.characterElement.classList.add(action);
         }
 
         // Update palette on the host element (this component)
@@ -239,9 +269,9 @@ export default class Character extends Component {
         }
 
         // Update weapon
-        if (this.isPreview) {
-            // In preview mode, handle weapon classes directly without updateCharacterClasses
-            if (weapon && currentActionClass === 'shoot') {
+        if (this.isPreview || this.isStandalone) {
+            // In preview/standalone mode, handle weapon classes directly
+            if (weapon && action === 'shoot') {
                 this.characterElement.classList.add(weapon);
             }
         } else {

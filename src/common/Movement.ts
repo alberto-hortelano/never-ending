@@ -120,7 +120,6 @@ export class Movement extends EventBus<
 
             // Track this movement for completion (for action point deduction)
             // Check if this movement is from the network
-            console.log(`[Movement] Starting to track movement for ${character.name}: ${character.path.length} cells, fromNetwork: ${character.fromNetwork}`);
             this.completedMovements.set(character.name, {
                 path: [...character.path],
                 finalDirection,
@@ -182,7 +181,6 @@ export class Movement extends EventBus<
         // Only deduct if we haven't paid for all cells yet
         if (movementData.paidCells < movementData.path.length) {
             // Deduct for one cell
-            console.log(`[Movement] Deducting ${moveCost} points for cell ${movementData.paidCells + 1}/${movementData.path.length} of ${character.name}'s movement`);
             this.dispatch(UpdateStateEvent.deductActionPoints, {
                 characterName: character.name,
                 actionId: 'move',
@@ -191,7 +189,6 @@ export class Movement extends EventBus<
             
             // Increment the paid cells counter
             movementData.paidCells++;
-            console.log(`[Movement] Paid for ${movementData.paidCells}/${movementData.path.length} cells`);
         }
     }
     
@@ -218,7 +215,6 @@ export class Movement extends EventBus<
             // If this character is NOT in the animations anymore, it means the animation completed
             if (!animations.characters[characterId]) {
                 // Animation just completed
-                console.log(`[Movement] Animation completed for ${characterId}. Paid for ${pathData.paidCells}/${pathData.path.length} cells`);
                 const character = this.state.findCharacter(characterId);
                 if (character && pathData && pathData.path.length > 0) {
                     // Position has already been updated incrementally during movement
@@ -331,6 +327,14 @@ export class Movement extends EventBus<
     private showPathPreview(destination: ICoord) {
         if (!this.movingCharacter || !this.reachableCells) return;
 
+        // Verify character still exists in current state
+        const currentCharacter = this.state.findCharacter(this.movingCharacter.name);
+        if (!currentCharacter) {
+            // Character no longer exists, clear movement mode
+            this.cleanupMovementMode();
+            return;
+        }
+
         // Calculate path
         const path = calculatePath(
             this.movingCharacter.position, 
@@ -362,8 +366,8 @@ export class Movement extends EventBus<
             destination
         );
 
-        // Update character direction if it changed
-        if (this.movingCharacter.direction !== newDirection) {
+        // Update character direction if it changed (and character still exists)
+        if (this.movingCharacter.direction !== newDirection && currentCharacter) {
             this.dispatch(UpdateStateEvent.characterDirection, {
                 characterName: this.movingCharacter.name,
                 direction: newDirection
@@ -373,10 +377,14 @@ export class Movement extends EventBus<
     private clearPathPreview() {
         // Clear pending cost if we have a moving character
         if (this.movingCharacter) {
-            this.dispatch(UpdateStateEvent.setPendingActionCost, {
-                characterName: this.movingCharacter.name,
-                cost: 0
-            });
+            // Only dispatch if character still exists in state
+            const currentCharacter = this.state.findCharacter(this.movingCharacter.name);
+            if (currentCharacter) {
+                this.dispatch(UpdateStateEvent.setPendingActionCost, {
+                    characterName: this.movingCharacter.name,
+                    cost: 0
+                });
+            }
             // Keep the last previewed direction - don't restore original
         }
         

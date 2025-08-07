@@ -189,7 +189,6 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
                     
                     if (cellPosition) {
                         // Update character position in state
-                        console.log(`[AnimationService] Updating position for ${update.characterId} to cell ${currentStepIndex}: (${cellPosition.x}, ${cellPosition.y})`);
                         this.dispatch(UpdateStateEvent.characterPosition, {
                             name: update.characterId,
                             position: cellPosition,
