@@ -2,6 +2,7 @@
 @use './rotate';
 @use './shoot';
 @use './walk';
+@use './melee';
 
 $transition-duration: $transition-duration-base;
 // Using from global variables

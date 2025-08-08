@@ -1,0 +1,357 @@
+@use '../_variables' as *;
+@use 'sass:map';
+@use 'sass:color';
+
+// Keyframe animations for different attack types
+@keyframes sword-slash {
+    0% {
+        transform: rotate(0deg) translateY(0);
+    }
+    30% {
+        transform: rotate(-45deg) translateY(-5px);
+    }
+    60% {
+        transform: rotate(120deg) translateY(5px);
+    }
+    100% {
+        transform: rotate(0deg) translateY(0);
+    }
+}
+
+@keyframes sword-thrust {
+    0% {
+        transform: translateY(0) scale(1);
+    }
+    30% {
+        transform: translateY(-10px) scale(1);
+    }
+    60% {
+        transform: translateY(15px) scale(1.05);
+    }
+    100% {
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes knife-stab {
+    0% {
+        transform: translateY(0) rotate(0deg);
+    }
+    25% {
+        transform: translateY(-8px) rotate(-10deg);
+    }
+    50% {
+        transform: translateY(12px) rotate(5deg);
+    }
+    75% {
+        transform: translateY(10px) rotate(0deg);
+    }
+    100% {
+        transform: translateY(0) rotate(0deg);
+    }
+}
+
+@keyframes polearm-sweep {
+    0% {
+        transform: rotate(0deg) translateX(0);
+    }
+    25% {
+        transform: rotate(-30deg) translateX(-10px);
+    }
+    75% {
+        transform: rotate(90deg) translateX(10px);
+    }
+    100% {
+        transform: rotate(0deg) translateX(0);
+    }
+}
+
+@keyframes arm-swing {
+    0% {
+        transform: rotate(0deg);
+    }
+    30% {
+        transform: rotate(-60deg);
+    }
+    60% {
+        transform: rotate(30deg);
+    }
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+.character.melee-ready {
+    @for $i from 0 through $orientations - 1 {
+        $angle: $i * $degrees;
+        $x: map.get($cosine-values, $angle);
+        $y: map.get($cosine-values, normalizeAngle($angle + 90));
+
+        &.rotate-#{$angle} {
+            &.sword {
+                .arm {
+                    &.right {
+                        z-index: 34 + 20*$x;
+                        transform: rotate(normalizeAngle(-$angle - 15deg));
+                        height: calc(30 * var(--size));
+                    }
+
+                    // Sword weapon
+                    .weapon {
+                        position: absolute;
+                        display: block;
+                        transform-origin: 50% 90%;
+                        z-index: $z-index-weapon;
+                        bottom: calc(-45 * var(--size));
+                        right: calc((2 + $x * -5) * var(--size));
+                        width: calc(5 * var(--size));
+                        height: calc(35 * var(--size));
+                        border-radius: calc(1 * var(--size));
+                        border: 1px solid $gray-700;
+                        background: linear-gradient(
+                            to bottom,
+                            $color-weapon-light 0%,
+                            $gray-300 50%,
+                            $color-weapon-light 100%
+                        );
+
+                        // Sword guard/crossguard
+                        &::after {
+                            content: '';
+                            position: absolute;
+                            bottom: calc(5 * var(--size));
+                            right: calc(-4 * var(--size));
+                            width: calc(13 * var(--size));
+                            height: calc(3 * var(--size));
+                            border-radius: calc(1 * var(--size));
+                            border: 1px solid $gray-700;
+                            background-color: $color-weapon-dark;
+                        }
+
+                        // Sword handle/grip
+                        &::before {
+                            content: '';
+                            position: absolute;
+                            bottom: calc(-3 * var(--size));
+                            right: calc(1 * var(--size));
+                            width: calc(3 * var(--size));
+                            height: calc(10 * var(--size));
+                            border-radius: calc(1 * var(--size));
+                            border: 1px solid $gray-800;
+                            background-color: color.adjust($color-weapon-dark, $lightness: -10%);
+                        }
+                    }
+                }
+            }
+
+            &.knife {
+                .arm {
+                    &.right {
+                        z-index: 34 + 20*$x;
+                        transform: rotate(normalizeAngle(-$angle - 10deg));
+                        height: calc(30 * var(--size));
+                    }
+
+                    // Knife weapon
+                    .weapon {
+                        position: absolute;
+                        display: block;
+                        transform-origin: 50% 90%;
+                        z-index: $z-index-weapon;
+                        bottom: calc(-20 * var(--size));
+                        right: calc((1 + $x * -3) * var(--size));
+                        width: calc(3 * var(--size));
+                        height: calc(15 * var(--size));
+                        border-radius: calc(1 * var(--size)) calc(1 * var(--size)) 0 0;
+                        border: 1px solid $gray-700;
+                        background: linear-gradient(
+                            to bottom,
+                            $gray-300 0%,
+                            $color-weapon-light 100%
+                        );
+                        clip-path: polygon(50% 0%, 100% 70%, 100% 100%, 0% 100%, 0% 70%);
+
+                        // Knife handle
+                        &::after {
+                            content: '';
+                            position: absolute;
+                            bottom: calc(0 * var(--size));
+                            right: calc(0 * var(--size));
+                            width: calc(3 * var(--size));
+                            height: calc(6 * var(--size));
+                            border-radius: calc(1 * var(--size));
+                            border: 1px solid $gray-800;
+                            background-color: $color-weapon-dark;
+                        }
+                    }
+                }
+            }
+
+            &.polearm {
+                .arm {
+                    &.right {
+                        z-index: 34 + 20*$x;
+                        transform: rotate(normalizeAngle(-$angle - 20deg));
+                        height: calc(35 * var(--size));
+                    }
+
+                    // Polearm weapon (spear/halberd)
+                    .weapon {
+                        position: absolute;
+                        display: block;
+                        transform-origin: 50% 85%;
+                        z-index: $z-index-weapon;
+                        bottom: calc(-65 * var(--size));
+                        right: calc((1 + $x * -3) * var(--size));
+                        width: calc(4 * var(--size));
+                        height: calc(55 * var(--size));
+                        border-radius: calc(2 * var(--size));
+                        border: 1px solid $gray-800;
+                        background: linear-gradient(
+                            to bottom,
+                            $color-weapon-dark 0%,
+                            $color-weapon-dark 80%,
+                            color.adjust($color-weapon-dark, $lightness: -15%) 100%
+                        );
+
+                        // Polearm blade/point
+                        &::after {
+                            content: '';
+                            position: absolute;
+                            top: calc(-10 * var(--size));
+                            right: calc(-2 * var(--size));
+                            width: calc(8 * var(--size));
+                            height: calc(15 * var(--size));
+                            border-radius: calc(1 * var(--size));
+                            background: linear-gradient(
+                                to top,
+                                $color-weapon-dark 0%,
+                                $gray-300 50%,
+                                $color-weapon-light 100%
+                            );
+                            clip-path: polygon(50% 0%, 100% 60%, 80% 100%, 20% 100%, 0% 60%);
+                        }
+
+                        // Polearm grip wrap
+                        &::before {
+                            content: '';
+                            position: absolute;
+                            bottom: calc(10 * var(--size));
+                            right: calc(0 * var(--size));
+                            width: calc(4 * var(--size));
+                            height: calc(15 * var(--size));
+                            background: repeating-linear-gradient(
+                                45deg,
+                                $gray-700,
+                                $gray-700 2px,
+                                color.adjust($color-weapon-dark, $lightness: -10%) 2px,
+                                color.adjust($color-weapon-dark, $lightness: -10%) 4px
+                            );
+                            border-radius: calc(1 * var(--size));
+                        }
+                    }
+                }
+            }
+
+            &.unarmed {
+                .arm {
+                    &.right {
+                        z-index: 34 + 20*$x;
+                        transform: rotate(normalizeAngle(-$angle));
+                        height: calc(30 * var(--size));
+                    }
+
+                    .weapon {
+                        display: none;
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Attack animation classes for different melee attack types
+.character.melee-attack {
+    // Power Strike - overhead swing
+    &.power-strike {
+        &.sword .weapon {
+            animation: sword-thrust 0.6s ease-in-out;
+        }
+        &.knife .weapon {
+            animation: knife-stab 0.5s ease-in-out;
+        }
+        &.polearm .weapon {
+            animation: polearm-sweep 0.7s ease-in-out;
+        }
+    }
+
+    // Slash - horizontal swing
+    &.slash {
+        &.sword .weapon {
+            animation: sword-slash 0.6s ease-in-out;
+        }
+        &.knife .weapon {
+            animation: knife-stab 0.4s ease-in-out 2;
+        }
+        &.polearm .weapon {
+            animation: polearm-sweep 0.8s ease-in-out;
+        }
+    }
+
+    // Fast Attack - quick jab
+    &.fast-attack {
+        &.sword .weapon {
+            animation: sword-thrust 0.3s ease-out;
+        }
+        &.knife .weapon {
+            animation: knife-stab 0.3s ease-out;
+        }
+        &.polearm .weapon {
+            animation: sword-thrust 0.4s ease-out;
+        }
+    }
+
+    // Break Guard - powerful thrust
+    &.break-guard {
+        &.sword .weapon {
+            animation: sword-thrust 0.7s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        &.knife .weapon {
+            animation: knife-stab 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        &.polearm .weapon {
+            animation: sword-thrust 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+    }
+
+    // Feint - deceptive attack
+    &.feint {
+        &.sword .weapon {
+            animation: sword-slash 0.5s ease-in-out reverse;
+        }
+        &.knife .weapon {
+            animation: knife-stab 0.4s ease-in-out reverse;
+        }
+        &.polearm .weapon {
+            animation: polearm-sweep 0.6s ease-in-out reverse;
+        }
+    }
+
+    // Special attack
+    &.special {
+        &.sword .weapon {
+            animation: sword-slash 0.4s ease-in-out 2;
+        }
+        &.knife .weapon {
+            animation: knife-stab 0.3s linear 3;
+        }
+        &.polearm .weapon {
+            animation: polearm-sweep 1s ease-in-out;
+        }
+    }
+
+    // Animate the arm during attacks
+    .arm.right {
+        animation: arm-swing 0.6s ease-in-out;
+    }
+}
