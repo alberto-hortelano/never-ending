@@ -22,18 +22,18 @@ export default class Character extends Component {
     private currentVisualState: ICharacterVisualState | null = null;
     private _currentDirection: Direction = 'down'; // Store direction for standalone mode
     private previewData: DeepReadonly<ICharacter> | null = null; // Lightweight preview data
-    
+
     // Getter for current direction (useful for standalone mode)
     public get currentDirection(): Direction {
         return this._currentDirection;
     }
-    
+
     // Check if this is a preview component
     private get isPreview(): boolean {
         // Check if marked as preview or has preview data or instance state
         return this.hasAttribute('data-preview') || this.previewData !== null || this.getState() !== Component.gameState;
     }
-    
+
     // Check if this is a standalone preview (no state at all)
     private get isStandalone(): boolean {
         return this.hasAttribute('data-standalone');
@@ -48,7 +48,7 @@ export default class Character extends Component {
         if (this.isPreview) {
             // Clear preview data to allow garbage collection
             this.previewData = null;
-            
+
             // If we still have an instance state (legacy), clear it
             if (this.getState() !== Component.gameState) {
                 const state = this.getState();
@@ -81,7 +81,7 @@ export default class Character extends Component {
         if (this.isStandalone) {
             return root;
         }
-        
+
         // If we have preview data, use it instead of looking up in state
         if (this.previewData) {
             this.applyPreviewData();
@@ -93,19 +93,19 @@ export default class Character extends Component {
         // For preview characters with IDs like "icon-data", extract the actual character name
         const characterName = this.id.startsWith('icon-') ? this.id.substring(5) : this.id;
         const stateCharacter = state?.findCharacter(characterName);
-        
+
         if (!stateCharacter) {
             console.error(`Character ${this.id} not found in state`);
             return root;
         }
-        
+
         // Extract all data from state
         const { race, player, palette, direction, position, health, maxHealth } = stateCharacter;
         this.player = player;
-        
+
         const healthPercentage = Math.max(0, (health / maxHealth) * 100);
         const isDefeated = health <= 0;
-        
+
         const initialVisualState: Partial<ICharacterVisualState> = {
             direction: direction || 'down',
             classList: [race],
@@ -313,8 +313,8 @@ export default class Character extends Component {
             // In preview/standalone mode, handle weapon classes directly
             // First remove all weapon classes
             const allWeapons = ['pistol', 'sword', 'knife', 'rifle', 'polearm', 'shotgun', 'smg'];
-            allWeapons.forEach(w => this.characterElement.classList.remove(w));
-            
+            allWeapons.forEach(w => this.characterElement?.classList.remove(w));
+
             // Then add the current weapon if needed
             const meleeActions = ['powerStrike', 'slash', 'fastAttack', 'feint', 'breakGuard'];
             const showWeapon = weapon && (action === 'shoot' || meleeActions.includes(action || ''));
@@ -408,7 +408,7 @@ export default class Character extends Component {
         const characterName = this.id.startsWith('icon-') ? this.id.substring(5) : this.id;
         const stateCharacter = state?.findCharacter(characterName);
         if (!stateCharacter) return;
-        
+
         const race = stateCharacter.race;
         const palette = stateCharacter.palette;
 
@@ -428,7 +428,7 @@ export default class Character extends Component {
         // In multiplayer, check if this character belongs to the current network player
         // and it's their turn
         const networkPlayerId = this.networkService.getPlayerId();
-        
+
         // Get current turn from state for most up-to-date value
         const state = this.getState();
         const currentTurn = state?.game.turn ?? this.currentTurn;
@@ -448,7 +448,7 @@ export default class Character extends Component {
 
         // Store the visual state for class management
         this.currentVisualState = visualState;
-        
+
 
         // Update all classes using centralized method
         this.updateCharacterClasses();
@@ -526,7 +526,7 @@ export default class Character extends Component {
      */
     public setPreviewData(character: DeepReadonly<ICharacter>) {
         this.previewData = character;
-        
+
         // If shadow root exists, update the display immediately
         if (this.root && this.characterElement) {
             this.applyPreviewData();
@@ -537,27 +537,27 @@ export default class Character extends Component {
         if (!this.previewData || !this.characterElement) return;
 
         const character = this.previewData;
-        
+
         // Apply basic appearance
         this.characterElement.className = 'character';
         this.characterElement.classList.add(character.race || 'human');
         this.characterElement.classList.add(character.action || 'idle');
-        
+
         // Apply palette if available
         if (character.palette) {
             this.style.setProperty('--skin', character.palette.skin);
             this.style.setProperty('--helmet', character.palette.helmet);
             this.style.setProperty('--suit', character.palette.suit);
         }
-        
+
         // Apply health bar
         const healthPercentage = Math.max(0, ((character.health ?? 100) / (character.maxHealth ?? 100)) * 100);
         this.updateHealthBar(healthPercentage, healthPercentage > 25 ? 'green' : 'red');
-        
+
         // Apply direction
         this._currentDirection = character.direction || 'down';
         this.characterElement.dataset.direction = this._currentDirection;
-        
+
         // Apply defeated state if needed
         if ((character.health ?? 100) <= 0) {
             this.characterElement.classList.add('defeated');
