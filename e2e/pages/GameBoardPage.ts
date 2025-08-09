@@ -118,4 +118,92 @@ export class GameBoardPage {
         .map(char => char.id);
     });
   }
+
+  async goto() {
+    await this.page.goto('/');
+  }
+
+  async startSinglePlayerGame() {
+    // Click single player button on main menu
+    await this.page.click('button:has-text("Single Player")');
+  }
+
+  async waitForGameToLoad() {
+    await this.waitForGameToStart();
+    // Additional wait for game initialization
+    await this.page.waitForTimeout(1000);
+  }
+
+  async openActionMenu() {
+    // Click on the actions button in bottom bar
+    await this.page.evaluate(() => {
+      const bottomBar = document.querySelector('bottom-bar');
+      if (bottomBar && bottomBar.shadowRoot) {
+        const actionsBtn = bottomBar.shadowRoot.querySelector('.actions-btn') as HTMLElement;
+        if (actionsBtn) actionsBtn.click();
+      }
+    });
+    await this.page.waitForTimeout(500);
+  }
+
+  async moveCharacterTo(x: number, y: number) {
+    await this.clickCell(x, y);
+    await this.page.waitForTimeout(500);
+  }
+
+  async getCharacterAP(characterName: string): Promise<number> {
+    return await this.page.evaluate((name) => {
+      const character = document.querySelector(`character-component[id="${name}"]`);
+      if (character && character.shadowRoot) {
+        const apDisplay = character.shadowRoot.querySelector('.ap-display');
+        if (apDisplay) {
+          const ap = apDisplay.getAttribute('data-ap');
+          return ap ? parseInt(ap, 10) : 0;
+        }
+      }
+      return 0;
+    }, characterName);
+  }
+
+  async setupAdjacentCombat() {
+    // Position two characters adjacent to each other
+    await this.selectCharacter('Character1');
+    await this.moveCharacterTo(5, 5);
+    await this.endTurn();
+    
+    await this.selectCharacter('Character2');
+    await this.moveCharacterTo(6, 5);
+    await this.endTurn();
+  }
+
+  async equipWeapon(characterName: string, weaponType: string) {
+    await this.selectCharacter(characterName);
+    // Open inventory
+    await this.page.evaluate(() => {
+      const bottomBar = document.querySelector('bottom-bar');
+      if (bottomBar && bottomBar.shadowRoot) {
+        const inventoryBtn = bottomBar.shadowRoot.querySelector('.inventory-btn') as HTMLElement;
+        if (inventoryBtn) inventoryBtn.click();
+      }
+    });
+    
+    // Equip weapon of specified type
+    await this.page.click(`.weapon-item[data-type="${weaponType}"]`);
+    await this.page.click('button:has-text("Equip")');
+  }
+
+  async unequipAllWeapons(characterName: string) {
+    await this.selectCharacter(characterName);
+    // Open inventory
+    await this.page.evaluate(() => {
+      const bottomBar = document.querySelector('bottom-bar');
+      if (bottomBar && bottomBar.shadowRoot) {
+        const inventoryBtn = bottomBar.shadowRoot.querySelector('.inventory-btn') as HTMLElement;
+        if (inventoryBtn) inventoryBtn.click();
+      }
+    });
+    
+    // Unequip all weapons
+    await this.page.click('button:has-text("Unequip All")');
+  }
 }

@@ -199,11 +199,15 @@ export default class Board extends Component {
     } else if (mode.type === 'overwatch' && mode.data) {
       const overwatchData = mode.data as { characterId: string };
       this.overwatchCharacterName = overwatchData.characterId;
+    } else if (mode.type === 'melee' && mode.data) {
+      // Add support for melee mode rotation
+      const meleeData = mode.data as { attacker: string };
+      this.shootingCharacterName = meleeData.attacker; // Reuse shootingCharacterName for melee
     }
   }
   
   private onCellMouseEnter(coord: ICoord) {
-    // Process for both shooting and overwatch modes
+    // Process for shooting, overwatch, and melee modes
     const activeCharacterName = this.shootingCharacterName || this.overwatchCharacterName;
     if (!activeCharacterName) return;
     

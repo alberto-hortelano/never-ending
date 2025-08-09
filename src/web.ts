@@ -5,6 +5,7 @@ import { Movement } from "./common/Movement";
 import { Talk } from "./common/Talk";
 import { Shoot } from "./common/Shoot";
 import { Overwatch } from "./common/Overwatch";
+import { MeleeCombat } from "./common/MeleeCombat";
 import { State } from "./common/State";
 import { Conversation } from "./common/Conversation";
 import { Action } from "./common/Action";
@@ -57,6 +58,7 @@ const play = (state?: State) => {
     
     // Initialize singleton services
     CharacterService.initialize(gameState);
+    MeleeCombat.initialize(gameState);
 
     // Create new game services
     gameServices.push(

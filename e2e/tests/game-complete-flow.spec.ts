@@ -71,30 +71,8 @@ test.describe('Complete Game Flow - Happy Path', () => {
     expect(menuInteracted).toBe(true);
 
     // ========================================
-    // 3. CHARACTER SELECTION
+    // 3. GAME STARTS DIRECTLY
     // ========================================
-    const charSelectFound = await waitForElement(page, 'select-character', 8000);
-    
-    if (charSelectFound) {
-      await page.waitForTimeout(1000);
-      await saveScreenshot(page, '02-character-selection.png');
-
-      // Select first character
-      await page.evaluate(() => {
-        const selectChar = document.querySelector('select-character');
-        if (selectChar && (selectChar as any).getTestingShadowRoot) {
-          const shadowRoot = (selectChar as any).getTestingShadowRoot();
-          const firstChar = shadowRoot?.querySelector('.character-option') as HTMLElement;
-          if (firstChar) {
-            firstChar.click();
-            setTimeout(() => {
-              const submitBtn = shadowRoot?.querySelector('button[type="submit"]') as HTMLElement;
-              if (submitBtn) submitBtn.click();
-            }, 500);
-          }
-        }
-      });
-    }
 
     // ========================================
     // 4. GAME BOARD & INITIAL STATE
@@ -372,22 +350,7 @@ test.describe('Complete Game Flow - Happy Path', () => {
       }
     });
 
-    // Skip character selection if it appears
-    const charSelect = await waitForElement(page, 'select-character', 5000);
-    if (charSelect) {
-      await page.evaluate(() => {
-        const selectChar = document.querySelector('select-character');
-        if (selectChar && (selectChar as any).getTestingShadowRoot) {
-          const shadowRoot = (selectChar as any).getTestingShadowRoot();
-          const firstChar = shadowRoot?.querySelector('.character-option') as HTMLElement;
-          if (firstChar) firstChar.click();
-          setTimeout(() => {
-            const submitBtn = shadowRoot?.querySelector('button[type="submit"]') as HTMLElement;
-            if (submitBtn) submitBtn.click();
-          }, 100);
-        }
-      });
-    }
+    // Game starts directly without character selection
 
     // Wait for game to load - try both container and board
     const gameLoaded = await waitForElement(page, 'container-component', 10000) || 

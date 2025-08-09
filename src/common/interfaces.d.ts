@@ -250,10 +250,11 @@ export interface IHighlightStates {
     reachableCells: ICoord[];
     pathCells: ICoord[];
     targetableCells: ICoord[];
+    meleeTargets?: Array<{ position: ICoord; type: 'melee-target' }>;
 }
 
 export interface IInteractionMode {
-    type: 'normal' | 'moving' | 'shooting' | 'selecting' | 'rotating' | 'overwatch';
+    type: 'normal' | 'moving' | 'shooting' | 'selecting' | 'rotating' | 'overwatch' | 'melee';
     data?: IInteractionModeData;
 }
 
@@ -262,7 +263,8 @@ export type IInteractionModeData =
     | IShootingModeData
     | ISelectingModeData
     | IRotatingModeData
-    | IOverwatchModeData;
+    | IOverwatchModeData
+    | IMeleeModeData;
 
 export interface IMovingModeData {
     characterId: string;
@@ -291,6 +293,12 @@ export interface ISelectingModeData {
 export interface IRotatingModeData {
     characterId: string;
     targetDirection?: Direction;
+}
+
+export interface IMeleeModeData {
+    attacker: string;
+    attackType?: string;
+    targets: readonly string[];
 }
 
 // Character Creation Interfaces

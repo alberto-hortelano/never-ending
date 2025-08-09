@@ -1,0 +1,216 @@
+@use '../variables' as *;
+
+:host {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: $z-index-popup;
+}
+
+:host(.hidden) {
+    display: none;
+}
+
+.defense-wheel-container {
+    background-color: $color-bg-secondary;
+    border: 2px solid $color-border-primary;
+    border-radius: $border-radius-lg;
+    padding: $spacing-xl;
+    max-width: 600px;
+    width: 90%;
+    box-shadow: $shadow-xl;
+}
+
+.defense-title {
+    text-align: center;
+    margin-bottom: $spacing-lg;
+    
+    h2 {
+        color: $color-danger;
+        font-size: $font-size-xl;
+        margin-bottom: $spacing-sm;
+    }
+    
+    p {
+        color: $color-text-secondary;
+        font-size: $font-size-base;
+        margin: $spacing-xs 0;
+        
+        &.instruction {
+            color: $color-text-primary;
+            font-weight: $font-weight-bold;
+            margin-top: $spacing-md;
+        }
+    }
+}
+
+.defense-wheel {
+    position: relative;
+    width: 300px;
+    height: 300px;
+    margin: 0 auto $spacing-xl;
+}
+
+.center-circle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 60px;
+    height: 60px;
+    transform: translate(-50%, -50%);
+    background-color: $color-bg-tertiary;
+    border: 2px solid $color-border-secondary;
+    border-radius: 50%;
+}
+
+.defense-option {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 80px;
+    height: 80px;
+    margin-left: -40px;
+    margin-top: -40px;
+    background-color: $color-bg-primary;
+    border: 2px solid $color-border-primary;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: $transition-all;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: $spacing-xs;
+    
+    &:hover {
+        transform: translate(var(--x), var(--y)) scale(1.1);
+        z-index: 10;
+    }
+    
+    &.selected {
+        border-color: $color-highlight;
+        background-color: rgba($color-highlight, 0.2);
+        transform: translate(var(--x), var(--y)) scale(1.15);
+    }
+    
+    &.damage-block {
+        background-color: rgba(0, 255, 0, 0.2);
+        border-color: #00ff00;
+        
+        .damage-hint {
+            color: #00ff00;
+        }
+    }
+    
+    &.damage-low {
+        background-color: rgba(255, 255, 0, 0.2);
+        border-color: #ffff00;
+        
+        .damage-hint {
+            color: #ffff00;
+        }
+    }
+    
+    &.damage-medium {
+        background-color: rgba(255, 165, 0, 0.2);
+        border-color: #ffa500;
+        
+        .damage-hint {
+            color: #ffa500;
+        }
+    }
+    
+    &.damage-high {
+        background-color: rgba(255, 0, 0, 0.2);
+        border-color: #ff0000;
+        
+        .damage-hint {
+            color: #ff0000;
+        }
+    }
+    
+    .attack-name {
+        font-size: $font-size-xs;
+        font-weight: $font-weight-bold;
+        color: $color-text-primary;
+        text-align: center;
+        line-height: 1.2;
+    }
+    
+    .damage-hint {
+        font-size: $font-size-xs;
+        margin-top: $spacing-xs;
+        font-weight: $font-weight-bold;
+    }
+}
+
+.info-panel {
+    border-top: 1px solid $color-border-secondary;
+    padding-top: $spacing-md;
+}
+
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: $spacing-md;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    font-size: $font-size-sm;
+    color: $color-text-secondary;
+    
+    .indicator {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 2px solid;
+        
+        &.block {
+            background-color: rgba(0, 255, 0, 0.2);
+            border-color: #00ff00;
+        }
+        
+        &.low {
+            background-color: rgba(255, 255, 0, 0.2);
+            border-color: #ffff00;
+        }
+        
+        &.medium {
+            background-color: rgba(255, 165, 0, 0.2);
+            border-color: #ffa500;
+        }
+        
+        &.high {
+            background-color: rgba(255, 0, 0, 0.2);
+            border-color: #ff0000;
+        }
+    }
+}
+
+@include md-up {
+    .defense-wheel {
+        width: 400px;
+        height: 400px;
+    }
+    
+    .defense-option {
+        width: 100px;
+        height: 100px;
+        margin-left: -50px;
+        margin-top: -50px;
+        
+        .attack-name {
+            font-size: $font-size-sm;
+        }
+    }
+}

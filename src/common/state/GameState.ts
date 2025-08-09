@@ -5,10 +5,12 @@ import { DeepReadonly } from "../helpers/types";
 export class GameState extends EventBus<UpdateStateEventsMap & GameEventsMap, StateChangeEventsMap> {
     #game: IState['game'] = { turn: '', players: [] };
     private onSave?: () => void;
+    private skipEvents = false;
 
-    constructor(onSave?: () => void) {
+    constructor(onSave?: () => void, skipEvents = false) {
         super();
         this.onSave = onSave;
+        this.skipEvents = skipEvents;
         this.listen(GameEvent.changeTurn, (data) => this.onChangeTurn(data));
     }
 
@@ -19,7 +21,9 @@ export class GameState extends EventBus<UpdateStateEventsMap & GameEventsMap, St
 
     set game(game: IState['game']) {
         this.#game = game;
-        this.dispatch(StateChangeEvent.game, structuredClone(this.#game));
+        if (!this.skipEvents) {
+            this.dispatch(StateChangeEvent.game, structuredClone(this.#game));
+        }
         this.onSave?.();
     }
 

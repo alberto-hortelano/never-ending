@@ -1,7 +1,7 @@
 # Combat Guide
 
 ## Overview
-Combat in Never Ending is a tactical, turn-based system where positioning, timing, and resource management determine victory. Every shot counts, and understanding the combat mechanics is essential for survival.
+Combat in Never Ending is a tactical, turn-based system where positioning, timing, and resource management determine victory. Whether engaging at range with firearms or up close with melee weapons, understanding the combat mechanics is essential for survival.
 
 ![Shooting Setup](../images/08-shooting-mode.png)
 
@@ -133,6 +133,142 @@ Suppression affects enemy behavior:
 - Costs ammunition but doesn't need to hit
 - Useful for controlling enemy movement
 
+## Melee Combat
+
+### Overview
+Close combat introduces a unique defense system where the defender actively participates in combat resolution. Success depends on predicting your opponent's moves and choosing the right defense.
+
+### Initiating Melee Combat
+1. **Select Character** - Click on your character
+2. **Open Close Combat Tab** - Switch to the "CLOSE COMBAT" tab in the action menu
+3. **Choose Attack Type** - Select from 6 available melee attacks
+4. **Select Target** - Click on an adjacent enemy (including diagonals)
+5. **Defense Phase** - Defender chooses their defense
+6. **Resolution** - Damage is calculated based on attack vs defense
+
+### Melee Attack Types
+Each attack occupies a position on the defense wheel (360° circle):
+
+#### Power Strike (0°)
+- **AP Cost**: 20
+- **Description**: Heavy overhead strike
+- **Best Against**: Fast, light defenses
+- **Weak Against**: Strong blocks
+
+#### Slash (60°)
+- **AP Cost**: 20
+- **Description**: Horizontal slash
+- **Best Against**: Vertical defenses
+- **Weak Against**: Lateral movements
+
+#### Fast Attack (120°)
+- **AP Cost**: 15
+- **Description**: Quick jab
+- **Best Against**: Heavy, slow defenses
+- **Weak Against**: Quick counters
+
+#### Break Guard (180°)
+- **AP Cost**: 20
+- **Description**: Guard-breaking thrust
+- **Best Against**: Defensive stances
+- **Weak Against**: Evasive moves
+
+#### Feint (240°)
+- **AP Cost**: 15
+- **Description**: Deceptive attack
+- **Best Against**: Predictive defenses
+- **Weak Against**: Patient guards
+
+#### Special (300°)
+- **AP Cost**: 25
+- **Description**: Unique weapon technique
+- **Best Against**: Standard defenses
+- **Weak Against**: Specialized counters
+
+### Defense Wheel System
+When attacked in melee, the defender sees a circular wheel with 6 defense options:
+
+#### Defense Mechanics
+- **Perfect Block (0° difference)**: Same attack as defense = 0 damage
+- **Good Defense (60° difference)**: Adjacent attacks = 33% damage
+- **Partial Defense (120° difference)**: Two positions away = 66% damage
+- **Poor Defense (180° difference)**: Opposite attack = 100% damage
+
+#### Damage Calculation Example
+```
+Attacker: Power Strike (0°)
+Defender Options:
+- Power Strike (0°): Block - 0 damage
+- Slash (60°): Good - 33% damage
+- Fast Attack (120°): Partial - 66% damage
+- Break Guard (180°): Poor - 100% damage
+- Feint (240°): Partial - 66% damage
+- Special (300°): Good - 33% damage
+```
+
+### Melee Weapons
+
+#### Swords
+- **Range**: 1-2 hexes
+- **Damage**: 40-50
+- **Special**: Balanced offense and defense
+- **Strong vs**: Knives
+- **Weak vs**: Polearms
+
+#### Polearms
+- **Range**: 2 hexes
+- **Damage**: 45-55
+- **Special**: Extended reach
+- **Strong vs**: Swords
+- **Weak vs**: Fast weapons
+
+#### Knives
+- **Range**: 1 hex
+- **Damage**: 25-35
+- **Special**: Fast attacks, low AP cost
+- **Strong vs**: Heavy weapons
+- **Weak vs**: Swords
+
+### Unarmed Combat
+Fighting without a melee weapon has severe penalties:
+- **Defense Penalty**: 2x damage unless perfect block
+- **Damage Output**: Minimal (5 base damage)
+- **Range**: 1 hex only
+- **Strategy**: Avoid melee when unarmed
+
+### Character Rotation in Melee
+- **Mouse Control**: Character faces mouse position during melee mode
+- **Tactical Advantage**: Face direction affects visual clarity
+- **Animation**: Smooth rotation while selecting targets
+- **Exit Mode**: Returns to default facing after combat
+
+### Melee Combat Strategy
+
+#### Offensive Tactics
+1. **Mix Attacks**: Don't be predictable
+2. **AP Management**: Save AP for follow-up attacks
+3. **Weapon Advantage**: Exploit weapon type advantages
+4. **Range Control**: Use polearm reach when available
+
+#### Defensive Tactics
+1. **Read Patterns**: Observe enemy attack preferences
+2. **Risk Assessment**: Sometimes taking partial damage is acceptable
+3. **Counter Logic**: Think about what opponent expects
+4. **Weapon Awareness**: Know enemy weapon capabilities
+
+### Multiplayer Melee Combat
+In multiplayer games:
+- **Defense Wheel**: Only appears on defender's screen
+- **Time Limit**: Defender has limited time to choose
+- **Network Sync**: All actions synchronized in real-time
+- **Mind Games**: Psychology becomes crucial
+
+### Melee Combat Indicators
+- **Target Highlights**: Valid melee targets glow
+- **Range Indicators**: Shows melee weapon reach
+- **Damage Preview**: Defense wheel shows potential damage
+- **Combat Resolution**: Damage numbers and animations
+
 ## Advanced Combat Techniques
 
 ### Aimed Shots
@@ -207,6 +343,7 @@ Alternate shooting and repositioning:
 
 ## Quick Reference
 
+### Ranged Combat
 | Action | AP Cost | Accuracy Modifier |
 |--------|---------|------------------|
 | Snap Shot | 15 | -20% |
@@ -215,8 +352,19 @@ Alternate shooting and repositioning:
 | Double Aim | 45 | +30% |
 | Burst Fire | 40 | -10% per shot |
 
+### Melee Combat
+| Attack | AP Cost | Angle | Defense Strategy |
+|--------|---------|-------|-----------------|
+| Power Strike | 20 | 0° | Block with same or dodge with Feint/Special |
+| Slash | 20 | 60° | Block with same or dodge with Break Guard |
+| Fast Attack | 15 | 120° | Block with same or dodge with Feint |
+| Break Guard | 20 | 180° | Block with same or dodge with Power Strike |
+| Feint | 15 | 240° | Block with same or dodge with Fast Attack |
+| Special | 25 | 300° | Block with same or dodge with Slash |
+
 ## Damage Table
 
+### Ranged Weapons
 | Weapon Type | Damage | Optimal Range | AP Cost |
 |------------|--------|---------------|---------|
 | Pistol | 20-30 | Close | 20 |
@@ -224,6 +372,14 @@ Alternate shooting and repositioning:
 | Rifle | 30-40 | Medium | 25 |
 | Sniper | 50-70 | Long | 35 |
 | Shotgun | 60-80 | Close | 20 |
+
+### Melee Weapons
+| Weapon Type | Damage | Range | Special |
+|------------|--------|-------|---------|
+| Sword | 40-50 | 1-2 hex | Balanced |
+| Polearm | 45-55 | 2 hex | Extended reach |
+| Knife | 25-35 | 1 hex | Fast, low AP |
+| Unarmed | 5 | 1 hex | 2x damage taken |
 
 ## Related Guides
 - [Movement Guide](movement.md) - Positioning for combat

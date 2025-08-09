@@ -24,27 +24,35 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
     private uiStateService: UIStateService;
     private overwatchState: OverwatchState;
 
-    constructor(initialState?: IState) {
+    constructor(initialState?: IState, isPreview = false) {
         super();
         
         // Initialize sub-state modules
-        this.gameState = new GameState(() => this.save());
-        this.mapState = new MapState(() => this.save());
-        this.characterState = new CharacterState(() => this.gameState.getCurrentTurn(), () => this.save());
-        this.messageState = new MessageState(() => this.save());
+        // For preview states, skip event dispatching to avoid affecting the main game
+        this.gameState = new GameState(isPreview ? undefined : () => this.save(), isPreview);
+        this.mapState = new MapState(isPreview ? undefined : () => this.save(), isPreview);
+        this.characterState = new CharacterState(() => this.gameState.getCurrentTurn(), isPreview ? undefined : () => this.save(), isPreview);
+        this.messageState = new MessageState(isPreview ? undefined : () => this.save());
         this.uiState = new UIState();
-        this.uiStateService = new UIStateService(
-            () => ({
-                game: this.game,
-                map: this.map,
-                characters: this.characters,
-                messages: this.messages,
-                ui: this.ui,
-                overwatchData: this.overwatchData
-            } as IState),
-            () => this.uiState.ui as IUIState,
-            (ui) => { this.uiState.ui = ui; }
-        );
+        // Only set up UIStateService for non-preview states
+        // Preview states shouldn't process or dispatch UI events
+        if (!isPreview) {
+            this.uiStateService = new UIStateService(
+                () => ({
+                    game: this.game,
+                    map: this.map,
+                    characters: this.characters,
+                    messages: this.messages,
+                    ui: this.ui,
+                    overwatchData: this.overwatchData
+                } as IState),
+                () => this.uiState.ui as IUIState,
+                (ui) => { this.uiState.ui = ui; }
+            );
+        } else {
+            // Create a dummy service that doesn't listen or dispatch
+            this.uiStateService = {} as UIStateService;
+        }
         this.overwatchState = new OverwatchState(() => this.save());
         
         // Load initial state
@@ -140,5 +148,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         if (state.overwatchData) {
             this.overwatchState.overwatchData = state.overwatchData;
         }
+        
+        // No need to complete initialization anymore since we handle events differently
     }
 }

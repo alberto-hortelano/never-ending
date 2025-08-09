@@ -1,5 +1,6 @@
 import type { ICoord, ICharacter, IWeapon, IItem, Direction } from "../interfaces";
 import type { DeepReadonly } from "../helpers/types";
+import type { MeleeAttackType } from "../services/MeleeCombatService";
 
 /** Controls Events */
 export enum ControlsEvent {
@@ -23,6 +24,13 @@ export enum ControlsEvent {
     closeCharacterCreator = 'ControlsEvent.closeCharacterCreator',
     openCharacterCreator = 'ControlsEvent.openCharacterCreator',
     mousePositionUpdate = 'ControlsEvent.mousePositionUpdate',
+    'power-strike' = 'ControlsEvent.power-strike',
+    'slash' = 'ControlsEvent.slash',
+    'fast-attack' = 'ControlsEvent.fast-attack',
+    'feint' = 'ControlsEvent.feint',
+    'break-guard' = 'ControlsEvent.break-guard',
+    'special' = 'ControlsEvent.special',
+    meleeDefenseSelected = 'ControlsEvent.meleeDefenseSelected',
 }
 
 export interface ControlsEventsMap {
@@ -76,5 +84,14 @@ export interface ControlsEventsMap {
         characterName: string;
         newDirection: Direction;
         mouseCoord: DeepReadonly<ICoord>;
+    };
+    'ControlsEvent.power-strike': ICharacter['name'];
+    'ControlsEvent.slash': ICharacter['name'];
+    'ControlsEvent.fast-attack': ICharacter['name'];
+    'ControlsEvent.feint': ICharacter['name'];
+    'ControlsEvent.break-guard': ICharacter['name'];
+    'ControlsEvent.special': ICharacter['name'];
+    [ControlsEvent.meleeDefenseSelected]: {
+        defenseType: MeleeAttackType;
     };
 }

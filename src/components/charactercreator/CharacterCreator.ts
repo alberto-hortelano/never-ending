@@ -318,15 +318,51 @@ export default class CharacterCreator extends Component {
     const primarySelect = root.querySelector('#primaryWeapon') as HTMLSelectElement;
     const secondarySelect = root.querySelector('#secondaryWeapon') as HTMLSelectElement;
 
-    CharacterCreationService.AVAILABLE_WEAPONS.forEach(weapon => {
-      const option1 = document.createElement('option');
-      option1.value = weapon.id;
-      option1.textContent = `${weapon.name} (${weapon.weight}kg, ${weapon.cost} credits)`;
-      primarySelect?.appendChild(option1);
+    // Group weapons by category
+    const meleeWeapons = weapons.filter(w => w.category === 'melee');
+    const rangedWeapons = weapons.filter(w => w.category === 'ranged');
+    
+    // Add melee weapons group
+    if (meleeWeapons.length > 0) {
+      const meleeGroup1 = document.createElement('optgroup');
+      meleeGroup1.label = '⚔️ Melee Weapons';
+      const meleeGroup2 = document.createElement('optgroup');
+      meleeGroup2.label = '⚔️ Melee Weapons';
+      
+      meleeWeapons.forEach(weapon => {
+        const option1 = document.createElement('option');
+        option1.value = weapon.id;
+        option1.textContent = `${weapon.name} (dmg: ${weapon.damage}, range: ${weapon.range}, ${weapon.weight}kg, ${weapon.cost}¢)`;
+        meleeGroup1.appendChild(option1);
 
-      const option2 = option1.cloneNode(true) as HTMLOptionElement;
-      secondarySelect?.appendChild(option2);
-    });
+        const option2 = option1.cloneNode(true) as HTMLOptionElement;
+        meleeGroup2.appendChild(option2);
+      });
+      
+      primarySelect?.appendChild(meleeGroup1);
+      secondarySelect?.appendChild(meleeGroup2);
+    }
+    
+    // Add ranged weapons group
+    if (rangedWeapons.length > 0) {
+      const rangedGroup1 = document.createElement('optgroup');
+      rangedGroup1.label = '🔫 Ranged Weapons';
+      const rangedGroup2 = document.createElement('optgroup');
+      rangedGroup2.label = '🔫 Ranged Weapons';
+      
+      rangedWeapons.forEach(weapon => {
+        const option1 = document.createElement('option');
+        option1.value = weapon.id;
+        option1.textContent = `${weapon.name} (dmg: ${weapon.damage}, range: ${weapon.range}, ${weapon.weight}kg, ${weapon.cost}¢)`;
+        rangedGroup1.appendChild(option1);
+
+        const option2 = option1.cloneNode(true) as HTMLOptionElement;
+        rangedGroup2.appendChild(option2);
+      });
+      
+      primarySelect?.appendChild(rangedGroup1);
+      secondarySelect?.appendChild(rangedGroup2);
+    }
 
     // Weapon change handlers
     primarySelect?.addEventListener('change', () => {

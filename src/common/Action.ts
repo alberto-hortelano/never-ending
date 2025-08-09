@@ -34,11 +34,12 @@ export class Action extends EventBus<
         {
             name: "Close Combat",
             actions: [
-                { id: "power-strike", label: "Power Strike", icon: "💪", event: ControlsEvent.showMovement },
-                { id: "slash", label: "Slash", icon: "⚔️", event: ControlsEvent.showMovement },
-                { id: "fast-attack", label: "Fast Attack", icon: "⚡", event: ControlsEvent.showMovement },
-                { id: "feint", label: "Feint", icon: "🎭", event: ControlsEvent.showMovement },
-                { id: "break-guard", label: "Break Guard", icon: "🔨", event: ControlsEvent.showMovement }
+                { id: "power-strike", label: "Power Strike", icon: "💪", event: ControlsEvent['power-strike'] },
+                { id: "slash", label: "Slash", icon: "⚔️", event: ControlsEvent.slash },
+                { id: "fast-attack", label: "Fast Attack", icon: "⚡", event: ControlsEvent['fast-attack'] },
+                { id: "feint", label: "Feint", icon: "🎭", event: ControlsEvent.feint },
+                { id: "break-guard", label: "Break Guard", icon: "🔨", event: ControlsEvent['break-guard'] },
+                { id: "special", label: "Special", icon: "✨", event: ControlsEvent.special }
             ]
         }
     ];
@@ -130,7 +131,8 @@ export class Action extends EventBus<
             'slash': characterActions.closeCombat.slash,
             'fast-attack': characterActions.closeCombat.fastAttack,
             'feint': characterActions.closeCombat.feint,
-            'break-guard': characterActions.closeCombat.breakGuard
+            'break-guard': characterActions.closeCombat.breakGuard,
+            'special': 25 // Default cost for special attack
         };
 
         return actionCosts[actionId] || 0;
@@ -160,7 +162,7 @@ export class Action extends EventBus<
         }
 
         // For actions that don't have their own handlers yet, deduct points here
-        if (cost > 0 && ['use', 'inventory', 'cover', 'throw', 'power-strike', 'slash', 'fast-attack', 'feint', 'break-guard'].includes(actionId)) {
+        if (cost > 0 && ['use', 'inventory', 'cover', 'throw'].includes(actionId)) {
             this.dispatch(UpdateStateEvent.deductActionPoints, {
                 characterName: characterName,
                 actionId: actionId,
@@ -169,7 +171,7 @@ export class Action extends EventBus<
         }
 
         // Dispatch the action's associated event
-        this.dispatch(action.event, characterName);
+        this.dispatch(action.event as any, characterName);
     }
 
     private findActionById(actionId: string): ActionItem | undefined {

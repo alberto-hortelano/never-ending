@@ -2,6 +2,7 @@
 @use './rotate';
 @use './shoot';
 @use './walk';
+@use './melee';
 
 $transition-duration: $transition-duration-base;
 // Using from global variables
@@ -370,32 +371,6 @@ body {
             }
         }
     }
-}
-
-.sword {
-    display: none;
-    position: absolute;
-    bottom: calc(0 * var(--size));
-    right: calc(5 * var(--size));
-    width: calc(60 * var(--size));
-    height: calc(10 * var(--size));
-    background-color: $color-weapon-light;
-    transform: rotateZ(45deg);
-    transform-origin: 100% 50%;
-    z-index: 47;
-}
-
-.shield {
-    display: none;
-    position: absolute;
-    top: calc(-10 * var(--size));
-    right: calc(-20 * var(--size));
-    width: calc(70 * var(--size));
-    height: calc(60 * var(--size));
-    border-radius: calc(20 * var(--size));
-    transform: rotateY(25deg);
-    background-color: $color-weapon-shield;
-    z-index: 45;
 }
 
 @keyframes blink {
