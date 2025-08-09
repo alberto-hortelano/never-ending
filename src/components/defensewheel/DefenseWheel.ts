@@ -1,6 +1,6 @@
 import { Component } from '../Component';
 import { ControlsEvent, UpdateStateEvent } from '../../common/events';
-import { MELEE_ATTACKS, type MeleeAttackType } from '../../common/MeleeCombat';
+import { MELEE_ATTACKS, type MeleeAttackType } from '../../common/services/MeleeCombatService';
 import { NetworkService } from '../../common/services/NetworkService';
 
 interface DefenseData {

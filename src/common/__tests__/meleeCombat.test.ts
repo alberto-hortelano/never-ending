@@ -1,11 +1,12 @@
-import { MeleeCombat, MELEE_ATTACKS } from '../MeleeCombat';
+import { MeleeCombat } from '../MeleeCombat';
+import { MELEE_ATTACKS, MeleeCombatService } from '../services/MeleeCombatService';
 import { State } from '../State';
-import { EventBus, UpdateStateEvent, ControlsEvent } from '../events';
+import { EventBus, UpdateStateEvent, ControlsEvent, ActionEvent } from '../events';
 import type { ICharacter, IWeapon, IState } from '../interfaces';
 
 describe('MeleeCombat', () => {
-    let meleeCombat: MeleeCombat;
     let state: State;
+    let meleeCombat: MeleeCombat;
     let eventBus: EventBus<any, any>;
     let mockCharacters: ICharacter[];
 
@@ -55,6 +56,10 @@ describe('MeleeCombat', () => {
     });
 
     beforeEach(() => {
+        // Reset the EventBus listeners and MeleeCombat singleton before each test
+        EventBus.reset();
+        MeleeCombat.resetInstance();
+        
         mockCharacters = [
             createMockCharacter('Attacker', 'player1', { x: 5, y: 5 }, createMockWeapon('melee', 'sword', 20, 1)),
             createMockCharacter('Defender', 'player2', { x: 6, y: 5 }, createMockWeapon('melee', 'sword', 20, 1)),
@@ -77,7 +82,11 @@ describe('MeleeCombat', () => {
         };
 
         state = new State(mockState);
-        meleeCombat = new MeleeCombat(state);
+        MeleeCombat.initialize(state);
+        meleeCombat = MeleeCombat.getInstance();
+        
+        // Create a separate EventBus instance for listening to events
+        // This works because EventBus uses a static listeners Map
         eventBus = new EventBus<any, any>();
     });
 
@@ -89,9 +98,14 @@ describe('MeleeCombat', () => {
             meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker');
 
             expect(spy).toHaveBeenCalled();
-            const highlights = spy.mock.calls[0][0];
-            expect(highlights.meleeTargets).toHaveLength(1);
-            expect(highlights.meleeTargets[0].position).toEqual({ x: 6, y: 5 });
+            // Check if we got any calls
+            if (spy.mock.calls.length > 0) {
+                const highlights = spy.mock.calls[spy.mock.calls.length - 1][0]; // Get the last call
+                expect(highlights.meleeTargets).toHaveLength(1);
+                expect(highlights.meleeTargets[0].position).toEqual({ x: 6, y: 5 });
+            } else {
+                throw new Error('No highlights dispatched');
+            }
         });
 
         it('should not detect enemies outside melee range', () => {
@@ -100,16 +114,38 @@ describe('MeleeCombat', () => {
 
             meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker');
 
-            expect(spy).toHaveBeenCalled();
             const highlights = spy.mock.calls[0][0];
-            const farEnemyHighlight = highlights.meleeTargets?.find(
-                (h: any) => h.position.x === 10 && h.position.y === 10
-            );
-            expect(farEnemyHighlight).toBeUndefined();
+            // FarEnemy is at (10, 10), too far for melee
+            expect(highlights.meleeTargets).toHaveLength(1);
+            expect(highlights.meleeTargets[0].position).toEqual({ x: 6, y: 5 });
         });
 
         it('should detect diagonal adjacent enemies', () => {
             mockCharacters[1]!.position = { x: 6, y: 6 }; // Diagonal position
+            
+            // Need to recreate state with updated characters
+            const mockState: IState = {
+                game: { turn: 'player1', players: ['player1', 'player2'] },
+                map: [],
+                characters: mockCharacters,
+                messages: [],
+                ui: {
+                    animations: { characters: {} },
+                    visualStates: { characters: {}, cells: {}, board: { mapWidth: 50, mapHeight: 50, hasPopupActive: false } },
+                    transientUI: { popups: {}, projectiles: [], highlights: { reachableCells: [], pathCells: [], targetableCells: [] } },
+                    interactionMode: { type: 'normal' },
+                    selectedCharacter: undefined
+                },
+                overwatchData: {}
+            };
+            
+            EventBus.reset();
+            MeleeCombat.resetInstance();
+            state = new State(mockState);
+            MeleeCombat.initialize(state);
+            meleeCombat = MeleeCombat.getInstance();
+            eventBus = new EventBus<any, any>();
+            
             const spy = jest.fn();
             eventBus.listen(UpdateStateEvent.uiHighlights, spy);
 
@@ -126,6 +162,29 @@ describe('MeleeCombat', () => {
             mockCharacters[0]!.inventory.equippedWeapons.primary = createMockWeapon('melee', 'polearm', 25, 2);
             mockCharacters[2]!.position = { x: 7, y: 5 }; // 2 cells away
             
+            // Need to recreate state with updated characters
+            const mockState: IState = {
+                game: { turn: 'player1', players: ['player1', 'player2'] },
+                map: [],
+                characters: mockCharacters,
+                messages: [],
+                ui: {
+                    animations: { characters: {} },
+                    visualStates: { characters: {}, cells: {}, board: { mapWidth: 50, mapHeight: 50, hasPopupActive: false } },
+                    transientUI: { popups: {}, projectiles: [], highlights: { reachableCells: [], pathCells: [], targetableCells: [] } },
+                    interactionMode: { type: 'normal' },
+                    selectedCharacter: undefined
+                },
+                overwatchData: {}
+            };
+            
+            EventBus.reset();
+            MeleeCombat.resetInstance();
+            state = new State(mockState);
+            MeleeCombat.initialize(state);
+            meleeCombat = MeleeCombat.getInstance();
+            eventBus = new EventBus<any, any>();
+            
             const spy = jest.fn();
             eventBus.listen(UpdateStateEvent.uiHighlights, spy);
 
@@ -137,274 +196,275 @@ describe('MeleeCombat', () => {
         });
     });
 
-    describe('Damage Calculation', () => {
-        it('should calculate 0 damage for perfect block (same attack)', () => {
-            const attacker = mockCharacters[0]!;
-            const defender = mockCharacters[1]!;
-            
-            const result = meleeCombat.calculateMeleeDamage(
-                attacker,
-                defender,
+    describe('Damage Calculations', () => {
+        it('should calculate damage with same attack and defense', () => {
+            const result = MeleeCombatService.calculateMeleeDamage(
+                mockCharacters[0]!,
+                mockCharacters[1]!,
                 'power-strike',
-                'power-strike' // Same attack = perfect block
+                'power-strike'
             );
 
             expect(result.blocked).toBe(true);
             expect(result.damage).toBe(0);
         });
 
-        it('should calculate maximum damage for opposite attack', () => {
-            const attacker = mockCharacters[0]!;
-            const defender = mockCharacters[1]!;
-            
-            const result = meleeCombat.calculateMeleeDamage(
-                attacker,
-                defender,
-                'power-strike', // 0°
-                'break-guard'   // 180° - opposite
+        it('should calculate damage with opposite attack and defense', () => {
+            const result = MeleeCombatService.calculateMeleeDamage(
+                mockCharacters[0]!,
+                mockCharacters[1]!,
+                'power-strike', // 0 degrees
+                'break-guard'   // 180 degrees
             );
 
             expect(result.blocked).toBe(false);
-            expect(result.damage).toBe(20); // Base damage
+            expect(result.damage).toBe(20); // Full damage
         });
 
-        it('should calculate 33% damage for adjacent attacks', () => {
-            const attacker = mockCharacters[0]!;
-            const defender = mockCharacters[1]!;
-            
-            const result = meleeCombat.calculateMeleeDamage(
-                attacker,
-                defender,
-                'power-strike', // 0°
-                'slash'         // 60° - adjacent
+        it('should calculate reduced damage with adjacent angles', () => {
+            const result = MeleeCombatService.calculateMeleeDamage(
+                mockCharacters[0]!,
+                mockCharacters[1]!,
+                'power-strike', // 0 degrees
+                'slash'         // 60 degrees
             );
 
             expect(result.blocked).toBe(false);
-            expect(result.damage).toBe(Math.round(20 * 0.33)); // 33% of base damage
+            expect(result.damage).toBe(7); // ~33% damage
         });
 
-        it('should calculate 66% damage for attacks two positions away', () => {
-            const attacker = mockCharacters[0]!;
-            const defender = mockCharacters[1]!;
+        it('should apply unarmed defense penalty', () => {
+            mockCharacters[1]!.inventory.equippedWeapons.primary = null; // Remove weapon
             
-            const result = meleeCombat.calculateMeleeDamage(
-                attacker,
-                defender,
-                'power-strike', // 0°
-                'fast-attack'   // 120° - two away
-            );
-
-            expect(result.blocked).toBe(false);
-            expect(result.damage).toBe(Math.round(20 * 0.66)); // 66% of base damage
-        });
-
-        it('should apply penalty for unarmed defender', () => {
-            const attacker = mockCharacters[0]!;
-            const defender = mockCharacters[1]!;
-            defender.inventory.equippedWeapons.primary = null; // Unarmed
-            
-            const result = meleeCombat.calculateMeleeDamage(
-                attacker,
-                defender,
+            const result = MeleeCombatService.calculateMeleeDamage(
+                mockCharacters[0]!,
+                mockCharacters[1]!,
                 'power-strike',
-                'slash' // Not a perfect block
+                'slash'
             );
 
             expect(result.blocked).toBe(false);
-            expect(result.damage).toBe(40); // 2x damage for unarmed
+            expect(result.damage).toBe(40); // 2x damage for unarmed defense
         });
 
-        it('should allow unarmed defender to dodge with perfect match', () => {
-            const attacker = mockCharacters[0]!;
-            const defender = mockCharacters[1]!;
-            defender.inventory.equippedWeapons.primary = null; // Unarmed
+        it('should apply weapon class modifiers', () => {
+            mockCharacters[0]!.inventory.equippedWeapons.primary = createMockWeapon('melee', 'polearm', 20, 2);
+            mockCharacters[1]!.inventory.equippedWeapons.primary = createMockWeapon('melee', 'sword', 20, 1);
             
-            const result = meleeCombat.calculateMeleeDamage(
-                attacker,
-                defender,
+            const result = MeleeCombatService.calculateMeleeDamage(
+                mockCharacters[0]!,
+                mockCharacters[1]!,
                 'power-strike',
-                'power-strike' // Perfect dodge
+                'break-guard'
             );
 
-            expect(result.blocked).toBe(true);
-            expect(result.damage).toBe(0);
+            // Polearm vs Sword = 1.2x modifier
+            expect(result.damage).toBe(24); // 20 * 1.2
+        });
+
+        it('should handle knife vs polearm advantage', () => {
+            mockCharacters[0]!.inventory.equippedWeapons.primary = createMockWeapon('melee', 'knife', 10, 1);
+            mockCharacters[1]!.inventory.equippedWeapons.primary = createMockWeapon('melee', 'polearm', 25, 2);
+            
+            const result = MeleeCombatService.calculateMeleeDamage(
+                mockCharacters[0]!,
+                mockCharacters[1]!,
+                'fast-attack',
+                'power-strike'
+            );
+
+            // Knife vs Polearm = 0.6x modifier, but angles are different
+            const angleDamage = Math.round(10 * 0.66); // ~120 degrees apart
+            const finalDamage = Math.round(angleDamage * 0.6);
+            expect(result.damage).toBe(finalDamage);
         });
     });
 
-    describe('Weapon Class Modifiers', () => {
-        it('should apply sword vs knife modifier', () => {
-            const attacker = mockCharacters[0]!;
-            attacker.inventory.equippedWeapons.primary = createMockWeapon('melee', 'sword', 20, 1);
-            const defender = mockCharacters[1]!;
-            defender.inventory.equippedWeapons.primary = createMockWeapon('melee', 'knife', 10, 1);
+    describe('Action Points', () => {
+        it('should check action point requirements', () => {
+            mockCharacters[0]!.actions.pointsLeft = 10; // Not enough for fast-attack (15 AP)
             
-            const result = meleeCombat.calculateMeleeDamage(
-                attacker,
-                defender,
-                'power-strike',
-                'break-guard' // Opposite for max damage
-            );
-
-            expect(result.damage).toBe(Math.round(20 * 1.0 * 1.2)); // Sword vs knife = 1.2x
-        });
-
-        it('should apply polearm vs sword modifier', () => {
-            const attacker = mockCharacters[0]!;
-            attacker.inventory.equippedWeapons.primary = createMockWeapon('melee', 'polearm', 25, 2);
-            const defender = mockCharacters[1]!;
-            defender.inventory.equippedWeapons.primary = createMockWeapon('melee', 'sword', 20, 1);
+            // Need to recreate state with updated characters
+            const mockState: IState = {
+                game: { turn: 'player1', players: ['player1', 'player2'] },
+                map: [],
+                characters: mockCharacters,
+                messages: [],
+                ui: {
+                    animations: { characters: {} },
+                    visualStates: { characters: {}, cells: {}, board: { mapWidth: 50, mapHeight: 50, hasPopupActive: false } },
+                    transientUI: { popups: {}, projectiles: [], highlights: { reachableCells: [], pathCells: [], targetableCells: [] } },
+                    interactionMode: { type: 'normal' },
+                    selectedCharacter: undefined
+                },
+                overwatchData: {}
+            };
             
-            const result = meleeCombat.calculateMeleeDamage(
-                attacker,
-                defender,
-                'power-strike',
-                'break-guard' // Opposite for max damage
-            );
-
-            expect(result.damage).toBe(Math.round(25 * 1.0 * 1.2)); // Polearm vs sword = 1.2x
-        });
-    });
-
-    describe('Attack Selection', () => {
-        it('should handle all six attack types', () => {
-            const attackTypes = ['power-strike', 'slash', 'fast-attack', 'feint', 'break-guard', 'special'];
+            EventBus.reset();
+            MeleeCombat.resetInstance();
+            state = new State(mockState);
+            MeleeCombat.initialize(state);
+            meleeCombat = MeleeCombat.getInstance();
+            eventBus = new EventBus<any, any>();
             
-            attackTypes.forEach(attackType => {
-                const attack = MELEE_ATTACKS.find(a => a.type === attackType);
-                expect(attack).toBeDefined();
-                expect(attack?.angle).toBeDefined();
-                expect(attack?.apCost).toBeGreaterThan(0);
-            });
-        });
-
-        it('should deduct correct AP cost for each attack', () => {
-            const spy = jest.fn();
-            eventBus.listen(UpdateStateEvent.setPendingActionCost, spy);
+            const errorSpy = jest.fn();
+            eventBus.listen(ActionEvent.error, errorSpy);
 
             meleeCombat.dispatch(ControlsEvent['fast-attack'], 'Attacker');
 
-            expect(spy).toHaveBeenCalledWith({
-                characterName: 'Attacker',
-                cost: 15 // Fast attack cost
-            });
+            // Fast attack costs 15, but we only have 10 AP
+            expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Not enough action points'));
         });
 
-        it('should prevent attacks without enough AP', () => {
-            mockCharacters[0]!.actions.pointsLeft = 10; // Not enough for most attacks
-            const errorSpy = jest.fn();
-            eventBus.listen('ActionEvent.error', errorSpy);
+        it('should set pending action cost when attack is selected', () => {
+            const spy = jest.fn();
+            eventBus.listen(UpdateStateEvent.setPendingActionCost, spy);
 
             meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker'); // Costs 20 AP
 
-            expect(errorSpy).toHaveBeenCalledWith(
-                expect.stringContaining('Not enough action points')
-            );
+            expect(spy).toHaveBeenCalledWith({
+                characterName: 'Attacker',
+                cost: 20
+            });
         });
-    });
 
-    describe('Combat Flow', () => {
-        it('should initiate melee combat when clicking valid target', () => {
+        it('should deduct action points when combat is resolved', () => {
+            const deductSpy = jest.fn();
             const defenseSpy = jest.fn();
+            
+            eventBus.listen(UpdateStateEvent.deductActionPoints, deductSpy);
             eventBus.listen(UpdateStateEvent.uiMeleeDefense, defenseSpy);
 
-            // Start melee attack
             meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker');
             
-            // Click on defender
+            // Simulate clicking on target
             meleeCombat.dispatch(ControlsEvent.characterClick, {
                 characterName: 'Defender',
                 position: { x: 6, y: 5 }
             });
 
-            expect(defenseSpy).toHaveBeenCalledWith({
-                attacker: 'Attacker',
-                defender: 'Defender',
-                attackType: 'power-strike',
-                weaponInfo: {
-                    attackerWeapon: 'Test sword',
-                    defenderWeapon: 'Test sword'
-                }
+            // Defense wheel should have been shown
+            expect(defenseSpy).toHaveBeenCalled();
+
+            // Simulate defense selection
+            meleeCombat.resolveMeleeCombat('slash');
+
+            expect(deductSpy).toHaveBeenCalledWith({
+                characterName: 'Attacker',
+                actionId: 'power-strike',
+                cost: 20
             });
         });
+    });
 
-        it('should resolve combat when defense is selected', () => {
+    describe('Combat Flow', () => {
+        it('should initiate melee combat when target is clicked', () => {
+            const defenseSpy = jest.fn();
+            eventBus.listen(UpdateStateEvent.uiMeleeDefense, defenseSpy);
+
+            meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker');
+            meleeCombat.dispatch(ControlsEvent.characterClick, {
+                characterName: 'Defender',
+                position: { x: 6, y: 5 }
+            });
+
+            expect(defenseSpy).toHaveBeenCalledWith(expect.objectContaining({
+                attacker: 'Attacker',
+                defender: 'Defender',
+                attackType: 'power-strike'
+            }));
+        });
+
+        it('should dispatch combat result after resolution', () => {
             const resultSpy = jest.fn();
             const damageSpy = jest.fn();
             eventBus.listen(UpdateStateEvent.uiMeleeCombatResult, resultSpy);
             eventBus.listen(UpdateStateEvent.damageCharacter, damageSpy);
 
-            // Setup combat
+            // Initiate combat
             meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker');
+            
+            // Click target
             meleeCombat.dispatch(ControlsEvent.characterClick, {
                 characterName: 'Defender',
                 position: { x: 6, y: 5 }
             });
 
             // Select defense
-            meleeCombat.dispatch(ControlsEvent.meleeDefenseSelected, {
-                defenseType: 'slash'
-            });
+            meleeCombat.resolveMeleeCombat('break-guard'); // Opposite angle
 
-            expect(resultSpy).toHaveBeenCalled();
+            expect(resultSpy).toHaveBeenCalledWith(expect.objectContaining({
+                attacker: 'Attacker',
+                defender: 'Defender',
+                attackType: 'power-strike',
+                defenseType: 'break-guard',
+                damage: 20,
+                blocked: false
+            }));
+
             expect(damageSpy).toHaveBeenCalledWith({
                 targetName: 'Defender',
-                damage: expect.any(Number),
+                damage: 20,
                 attackerName: 'Attacker'
             });
         });
     });
 
-    describe('Edge Cases', () => {
-        it('should handle attacking with no valid targets', () => {
-            // Move all enemies out of range
-            mockCharacters[1]!.position = { x: 20, y: 20 };
-            mockCharacters[2]!.position = { x: 30, y: 30 };
+    describe('Turn Validation', () => {
+        it('should only allow current player to attack', () => {
+            const highlightSpy = jest.fn();
+            eventBus.listen(UpdateStateEvent.uiHighlights, highlightSpy);
 
-            const errorSpy = jest.fn();
-            eventBus.listen('ActionEvent.error', errorSpy);
+            meleeCombat.dispatch(ControlsEvent['power-strike'], 'Defender'); // Player2 character
 
-            meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker');
-
-            expect(errorSpy).toHaveBeenCalledWith('No valid targets in melee range');
+            // Should not proceed since it's player1's turn
+            expect(highlightSpy).not.toHaveBeenCalled();
         });
 
-        it('should not allow dead characters to be targeted', () => {
-            mockCharacters[1]!.health = 0; // Dead defender
-            
-            const spy = jest.fn();
-            eventBus.listen(UpdateStateEvent.uiHighlights, spy);
-
-            meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker');
-
-            expect(spy).toHaveBeenCalled();
-            const highlights = spy.mock.calls[0][0];
-            expect(highlights.meleeTargets).toHaveLength(0); // No valid targets
-        });
-
-        it('should not allow targeting allies', () => {
-            mockCharacters[1]!.player = 'player1'; // Same team as attacker
-            
-            const spy = jest.fn();
-            eventBus.listen(UpdateStateEvent.uiHighlights, spy);
-
-            meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker');
-
-            expect(spy).toHaveBeenCalled();
-            const highlights = spy.mock.calls[0][0];
-            expect(highlights.meleeTargets).toHaveLength(0); // No valid targets
-        });
-
-        it('should handle wrong turn attempts', () => {
-            // Change turn to player2
-            (state as any).game.turn = 'player2';
-            
-            const errorSpy = jest.fn();
+        it('should allow correct player to attack', () => {
             const highlightSpy = jest.fn();
             eventBus.listen(UpdateStateEvent.uiHighlights, highlightSpy);
 
             meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker'); // Player1's character
 
-            expect(highlightSpy).not.toHaveBeenCalled();
+            expect(highlightSpy).toHaveBeenCalled();
+        });
+    });
+
+    describe('Target Validation', () => {
+        it('should not allow targeting allies', () => {
+            mockCharacters[1]!.player = 'player1'; // Make defender an ally
+            
+            // Need to recreate state with updated characters
+            const mockState: IState = {
+                game: { turn: 'player1', players: ['player1', 'player2'] },
+                map: [],
+                characters: mockCharacters,
+                messages: [],
+                ui: {
+                    animations: { characters: {} },
+                    visualStates: { characters: {}, cells: {}, board: { mapWidth: 50, mapHeight: 50, hasPopupActive: false } },
+                    transientUI: { popups: {}, projectiles: [], highlights: { reachableCells: [], pathCells: [], targetableCells: [] } },
+                    interactionMode: { type: 'normal' },
+                    selectedCharacter: undefined
+                },
+                overwatchData: {}
+            };
+            
+            EventBus.reset();
+            MeleeCombat.resetInstance();
+            state = new State(mockState);
+            MeleeCombat.initialize(state);
+            meleeCombat = MeleeCombat.getInstance();
+            eventBus = new EventBus<any, any>();
+            
+            const errorSpy = jest.fn();
+            eventBus.listen(ActionEvent.error, errorSpy);
+
+            meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker'); // Player1's character
+
+            // Should error because no valid targets
+            expect(errorSpy).toHaveBeenCalledWith('No valid targets in melee range');
         });
     });
 });

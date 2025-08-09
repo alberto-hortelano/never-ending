@@ -58,6 +58,7 @@ const play = (state?: State) => {
     
     // Initialize singleton services
     CharacterService.initialize(gameState);
+    MeleeCombat.initialize(gameState);
 
     // Create new game services
     gameServices.push(
@@ -65,7 +66,6 @@ const play = (state?: State) => {
         new Talk(gameState),
         new Shoot(gameState),
         new Overwatch(gameState),
-        new MeleeCombat(gameState),
         new Inventory(gameState),
         new Conversation(),
         new Action(gameState),
