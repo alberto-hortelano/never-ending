@@ -311,6 +311,11 @@ export default class Character extends Component {
         // Update weapon
         if (this.isPreview || this.isStandalone) {
             // In preview/standalone mode, handle weapon classes directly
+            // First remove all weapon classes
+            const allWeapons = ['pistol', 'sword', 'knife', 'rifle', 'polearm', 'shotgun', 'smg'];
+            allWeapons.forEach(w => this.characterElement.classList.remove(w));
+            
+            // Then add the current weapon if needed
             const meleeActions = ['powerStrike', 'slash', 'fastAttack', 'feint', 'breakGuard'];
             const showWeapon = weapon && (action === 'shoot' || meleeActions.includes(action || ''));
             if (showWeapon) {
