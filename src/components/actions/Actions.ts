@@ -6,17 +6,15 @@ export class Actions extends Component {
     protected override hasHtml = false;
     private actionsGrid?: HTMLElement;
     private selectedCharacter?: string;
-    private activeCategory = 'general';
+    private meleeOnly = false;
+    private isInShootingMode = false;
 
     override async connectedCallback() {
         const root = await super.connectedCallback();
         if (!root) return root;
 
-        // Get active category from attribute if set
-        const categoryAttr = this.getAttribute('active-category');
-        if (categoryAttr) {
-            this.activeCategory = categoryAttr;
-        }
+        // Check if this is melee-only mode
+        this.meleeOnly = this.hasAttribute('melee-only');
 
         // Create UI structure
         this.createUIStructure(root);
@@ -57,15 +55,29 @@ export class Actions extends Component {
                 this.dispatch(ActionEvent.request, characterName);
             }
         });
+        
+        // Listen for interaction mode changes to track shooting mode
+        this.listen(StateChangeEvent.uiInteractionMode, (mode) => {
+            const wasInShootingMode = this.isInShootingMode;
+            this.isInShootingMode = mode.type === 'shooting';
+            
+            // Re-render if shooting mode changed
+            if (wasInShootingMode !== this.isInShootingMode) {
+                const state = this.getState();
+                if (state?.ui.selectedCharacter) {
+                    this.dispatch(ActionEvent.request, state.ui.selectedCharacter);
+                }
+            }
+        });
     }
 
     static get observedAttributes() {
-        return ['active-category'];
+        return ['melee-only'];
     }
 
     attributeChangedCallback(name: string, _oldValue: string | null, newValue: string | null) {
-        if (name === 'active-category' && newValue) {
-            this.activeCategory = newValue;
+        if (name === 'melee-only') {
+            this.meleeOnly = newValue !== null;
             // Re-render if we have data
             const state = this.getState();
             if (state?.ui.selectedCharacter) {
@@ -91,39 +103,55 @@ export class Actions extends Component {
         // Clear existing content
         this.actionsGrid.innerHTML = '';
 
-        // Map categories to tab names
-        const categoryMap: Record<string, string> = {
-            'general': 'GENERAL',
-            'ranged': 'RANGED COMBAT',
-            'melee': 'CLOSE COMBAT'
-        };
-
-        // Find the category that matches the active tab
-        const targetCategoryName = categoryMap[this.activeCategory];
-        const activeCategory = data.categories.find(cat => 
-            cat.name.toUpperCase() === targetCategoryName
-        );
-
-        if (!activeCategory) {
-            // Show message if no category found
-            const message = document.createElement('div');
-            message.className = 'no-actions-message';
-            message.textContent = 'No actions available for this category';
-            this.actionsGrid.appendChild(message);
-            return;
-        }
-
-        // Create single row for active category only
         const row = document.createElement('div');
         row.className = 'action-row';
 
         const buttonsContainer = document.createElement('div');
         buttonsContainer.className = 'action-buttons';
 
-        activeCategory.actions.forEach(action => {
-            const button = this.createActionButton(action, data);
-            buttonsContainer.appendChild(button);
-        });
+        if (this.meleeOnly) {
+            // Show only melee actions
+            const meleeCategory = data.categories.find(cat => 
+                cat.name.toUpperCase() === 'CLOSE COMBAT'
+            );
+            
+            if (meleeCategory) {
+                meleeCategory.actions.forEach(action => {
+                    // Skip the melee toggle button in melee-only mode
+                    if (action.id !== 'melee') {
+                        const button = this.createActionButton(action, data);
+                        buttonsContainer.appendChild(button);
+                    }
+                });
+            }
+        } else {
+            // Show general and ranged actions, but save melee button for last
+            let meleeButton: HTMLButtonElement | null = null;
+            
+            data.categories.forEach(category => {
+                if (category.name.toUpperCase() !== 'CLOSE COMBAT') {
+                    category.actions.forEach(action => {
+                        if (action.id === 'melee') {
+                            // Create melee button but don't add it yet
+                            meleeButton = this.createMeleeToggleButton(action, data);
+                        } else if (action.id === 'shoot' && this.isInShootingMode) {
+                            // Transform shoot button to aim if in shooting mode
+                            const aimAction = { ...action, id: 'aim', label: 'Aim', icon: '🎯' };
+                            const button = this.createActionButton(aimAction, data);
+                            buttonsContainer.appendChild(button);
+                        } else {
+                            const button = this.createActionButton(action, data);
+                            buttonsContainer.appendChild(button);
+                        }
+                    });
+                }
+            });
+            
+            // Add melee button at the end
+            if (meleeButton) {
+                buttonsContainer.appendChild(meleeButton);
+            }
+        }
 
         row.appendChild(buttonsContainer);
 
@@ -170,6 +198,81 @@ export class Actions extends Component {
 
         // Add click handler
         button.addEventListener('click', () => {
+            // Handle shoot/aim transformation
+            if (action.id === 'shoot') {
+                this.isInShootingMode = true;
+                // Dispatch the shoot action
+                this.dispatch(ActionEvent.selected, {
+                    action: 'shoot',
+                    characterName: data.characterName
+                });
+                // Re-render to show aim button
+                const state = this.getState();
+                if (state?.ui.selectedCharacter) {
+                    this.dispatch(ActionEvent.request, state.ui.selectedCharacter);
+                }
+            } else if (action.id === 'aim') {
+                // Aim uses the showAiming event
+                this.dispatch(ActionEvent.selected, {
+                    action: 'aim',
+                    characterName: data.characterName
+                });
+            } else {
+                // All other actions
+                this.dispatch(ActionEvent.selected, {
+                    action: action.id,
+                    characterName: data.characterName
+                });
+            }
+
+            // Dispatch custom event to notify parent
+            this.dispatchEvent(new CustomEvent('action-selected', {
+                detail: { action: action.id, characterName: data.characterName },
+                bubbles: true
+            }));
+        });
+
+        return button;
+    }
+
+    private createMeleeToggleButton(action: ActionUpdateData['categories'][0]['actions'][0], data: ActionUpdateData): HTMLButtonElement {
+        const button = document.createElement('button');
+        button.className = 'action-button melee-toggle';
+        button.dataset.actionId = action.id;
+
+        const icon = document.createElement('span');
+        icon.className = 'action-icon';
+        icon.textContent = action.icon;
+
+        const label = document.createElement('span');
+        label.className = 'action-label';
+        label.textContent = action.label;
+
+        // Add toggle indicator instead of cost
+        const toggleIndicator = document.createElement('span');
+        toggleIndicator.className = 'toggle-indicator';
+        toggleIndicator.textContent = '▼'; // Down arrow when closed
+        
+        // Check if melee is currently open
+        const bottomBar = document.querySelector('bottom-bar');
+        const meleeContainer = bottomBar?.shadowRoot?.querySelector('.melee-actions-container') as HTMLElement;
+        if (meleeContainer && meleeContainer.style.display === 'flex') {
+            button.classList.add('active');
+            toggleIndicator.textContent = '▲'; // Up arrow when open
+        }
+
+        button.appendChild(icon);
+        button.appendChild(label);
+        button.appendChild(toggleIndicator);
+
+        // Add click handler
+        button.addEventListener('click', () => {
+            // Toggle the active state
+            button.classList.toggle('active');
+            const isActive = button.classList.contains('active');
+            toggleIndicator.textContent = isActive ? '▲' : '▼';
+            
+            // Dispatch the toggle event
             this.dispatch(ActionEvent.selected, {
                 action: action.id,
                 characterName: data.characterName
@@ -189,15 +292,12 @@ export class Actions extends Component {
         const actionCosts: Record<string, number> = {
             // General
             'move': characterActions.general.move,
-            'talk': characterActions.general.talk,
-            'use': characterActions.general.use,
             'inventory': characterActions.general.inventory,
+            'melee': 0, // Melee toggle is free
             // Ranged Combat
             'shoot': characterActions.rangedCombat.shoot,
             'aim': characterActions.rangedCombat.aim,
             'overwatch': characterActions.rangedCombat.overwatch,
-            'cover': characterActions.rangedCombat.cover,
-            'throw': characterActions.rangedCombat.throw,
             // Close Combat
             'power-strike': characterActions.closeCombat.powerStrike,
             'slash': characterActions.closeCombat.slash,

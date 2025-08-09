@@ -29,127 +29,13 @@
     }
 }
 
-// Tab Navigation
-.tab-navigation {
-    display: flex;
-    gap: $spacing-xs;
-    margin-bottom: $spacing-sm;
-    border-bottom: 1px solid $color-border-secondary;
-    padding-bottom: $spacing-xs;
-    
-    @include md-up {
-        gap: $spacing-sm;
-        margin-bottom: $spacing-md;
-    }
-}
-
-.tab-button {
-    display: flex;
-    align-items: center;
-    gap: $spacing-xs;
-    padding: $spacing-xs $spacing-sm;
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid transparent;
-    color: $color-text-muted;
-    cursor: pointer;
-    transition: $transition-all;
-    font-size: $font-size-sm;
-    white-space: nowrap;
-    
-    @include md-up {
-        padding: $spacing-sm $spacing-md;
-        font-size: $font-size-base;
-    }
-    
-    .tab-icon {
-        font-size: $font-size-base;
-        line-height: 1;
-        
-        @include sm-down {
-            font-size: $font-size-lg;
-        }
-    }
-    
-    .tab-label {
-        @include sm-down {
-            display: none;
-        }
-    }
-    
-    &:hover {
-        background: $color-bg-tertiary;
-        color: $color-text-primary;
-    }
-    
-    &.active {
-        color: $color-highlight;
-        border-bottom-color: $color-highlight;
-        
-        .tab-icon {
-            filter: none;
-        }
-    }
-    
-    &.combat-tab {
-        @include sm-down {
-            flex: 1;
-            justify-content: center;
-        }
-    }
-}
-
-.combat-toggle {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: $spacing-xs;
-    padding: $spacing-xs $spacing-sm;
-    background: $gray-600;
-    border: 1px solid $color-border-secondary;
-    border-radius: $border-radius-sm;
-    color: $color-text-secondary;
-    cursor: pointer;
-    transition: $transition-all;
-    font-size: $font-size-sm;
-    
-    @include md-up {
-        padding: $spacing-sm $spacing-md;
-    }
-    
-    .combat-icon {
-        font-size: $font-size-base;
-        line-height: 1;
-    }
-    
-    .combat-label {
-        @include sm-down {
-            display: none;
-        }
-    }
-    
-    &:hover {
-        background: $color-bg-hover;
-        border-color: $color-highlight;
-    }
-    
-    &.active {
-        background: $color-danger;
-        border-color: $color-danger;
-        color: white;
-        
-        &:hover {
-            background: color.adjust($color-danger, $lightness: -10%);
-        }
-    }
-}
+// Actions section with flex wrap for responsive layout
 
 .actions-section {
-    @include lg-up {
-        display: flex;
-        align-items: center;
-        gap: $spacing-md;
-    }
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    width: 100%;
 }
 
 .actions-container {
@@ -158,6 +44,7 @@
     gap: $spacing-xs;
     align-items: center;
     min-height: 2.5rem;
+    width: 100%;
     
     @include md-up {
         gap: $spacing-sm;
@@ -175,23 +62,27 @@
     }
 }
 
-.quick-actions {
-    position: absolute;
-    top: $spacing-sm;
-    right: $spacing-sm;
-    display: flex;
+// Melee actions container (hidden by default)
+.melee-actions-container {
+    display: none;
+    width: 100%;
+    flex-wrap: wrap;
     gap: $spacing-xs;
+    align-items: center;
+    padding-top: $spacing-xs;
+    border-top: 1px solid $color-border-secondary;
     
     @include md-up {
-        top: $spacing-md;
-        right: $spacing-md;
         gap: $spacing-sm;
+        padding-top: $spacing-sm;
     }
     
-    @include sm-down {
-        display: none; // Hide on mobile to save space
+    &[style*="display: flex"] {
+        display: flex !important;
+        width: 100%;
     }
 }
+
 
 ::slotted([slot="actions"]) {
     padding: $spacing-xs $spacing-md;

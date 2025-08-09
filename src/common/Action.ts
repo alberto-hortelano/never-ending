@@ -16,19 +16,15 @@ export class Action extends EventBus<
             name: "General",
             actions: [
                 { id: "move", label: "Move", icon: "🚶", event: ControlsEvent.showMovement },
-                { id: "talk", label: "Talk", icon: "💬", event: ControlsEvent.talk },
-                { id: "use", label: "Use", icon: "✋", event: ControlsEvent.use },
-                { id: "inventory", label: "Inventory", icon: "🎒", event: ControlsEvent.showInventory }
+                { id: "inventory", label: "Inventory", icon: "🎒", event: ControlsEvent.showInventory },
+                { id: "melee", label: "Melee", icon: "⚔️", event: ControlsEvent.toggleMelee }
             ]
         },
         {
             name: "Ranged Combat",
             actions: [
                 { id: "shoot", label: "Shoot", icon: "🔫", event: ControlsEvent.showShooting },
-                { id: "aim", label: "Aim", icon: "🎯", event: ControlsEvent.showAiming },
-                { id: "overwatch", label: "Overwatch", icon: "💥", event: ControlsEvent.showOverwatch },
-                { id: "cover", label: "Cover", icon: "🛡️", event: ControlsEvent.showMovement },
-                { id: "throw", label: "Throw", icon: "🤾", event: ControlsEvent.showMovement }
+                { id: "overwatch", label: "Overwatch", icon: "💥", event: ControlsEvent.showOverwatch }
             ]
         },
         {
@@ -117,15 +113,12 @@ export class Action extends EventBus<
         const actionCosts: Record<string, number> = {
             // General
             'move': characterActions.general.move,
-            'talk': characterActions.general.talk,
-            'use': characterActions.general.use,
             'inventory': characterActions.general.inventory,
+            'melee': 0, // Melee toggle is free
             // Ranged Combat
             'shoot': characterActions.rangedCombat.shoot,
             'aim': characterActions.rangedCombat.aim,
             'overwatch': characterActions.rangedCombat.overwatch,
-            'cover': characterActions.rangedCombat.cover,
-            'throw': characterActions.rangedCombat.throw,
             // Close Combat
             'power-strike': characterActions.closeCombat.powerStrike,
             'slash': characterActions.closeCombat.slash,
@@ -154,6 +147,13 @@ export class Action extends EventBus<
             return;
         }
 
+        // Special handling for aim action (which is dynamically created)
+        if (actionId === 'aim') {
+            // Aim uses the showAiming event
+            this.dispatch(ControlsEvent.showAiming, characterName);
+            return;
+        }
+
         // Find the action item
         const action = this.findActionById(actionId);
         if (!action) {
@@ -162,7 +162,7 @@ export class Action extends EventBus<
         }
 
         // For actions that don't have their own handlers yet, deduct points here
-        if (cost > 0 && ['use', 'inventory', 'cover', 'throw'].includes(actionId)) {
+        if (cost > 0 && ['inventory'].includes(actionId)) {
             this.dispatch(UpdateStateEvent.deductActionPoints, {
                 characterName: characterName,
                 actionId: actionId,

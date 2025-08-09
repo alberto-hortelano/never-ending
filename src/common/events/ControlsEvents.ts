@@ -31,6 +31,7 @@ export enum ControlsEvent {
     'break-guard' = 'ControlsEvent.break-guard',
     'special' = 'ControlsEvent.special',
     meleeDefenseSelected = 'ControlsEvent.meleeDefenseSelected',
+    toggleMelee = 'ControlsEvent.toggleMelee',
 }
 
 export interface ControlsEventsMap {
@@ -94,4 +95,5 @@ export interface ControlsEventsMap {
     [ControlsEvent.meleeDefenseSelected]: {
         defenseType: MeleeAttackType;
     };
+    [ControlsEvent.toggleMelee]: ICharacter['name'];
 }
