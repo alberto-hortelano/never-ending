@@ -3,7 +3,6 @@ import type { ICharacter } from "../../common/interfaces";
 import { Component } from "../Component";
 import type Character from "../character/Character";
 import { CharacterService } from "../../common/services/CharacterService";
-import { createPreviewState } from "../../common/helpers/previewState";
 
 export interface SelectCharacterOptions {
     characters: DeepReadonly<ICharacter[]>;
@@ -71,10 +70,10 @@ export class SelectCharacter extends Component {
                 const characterIcon = document.createElement('character-component') as Character;
                 characterIcon.classList.add('character-icon');
                 characterIcon.id = `icon-${character.name}`;
+                characterIcon.setAttribute('data-preview', 'true');
                 
-                // Create a preview state with the character data
-                const previewState = createPreviewState(character);
-                characterIcon.setInstanceState(previewState);
+                // Use lightweight preview data instead of creating a State
+                characterIcon.setPreviewData(character);
                 
                 iconWrapper.appendChild(characterIcon);
                 
@@ -121,6 +120,17 @@ export class SelectCharacter extends Component {
             },
             bubbles: true
         }));
+    }
+
+    disconnectedCallback() {
+        // Clean up all character preview components when this is removed
+        const characterIcons = this.shadowRoot?.querySelectorAll('character-component');
+        characterIcons?.forEach(icon => {
+            // The Character component's disconnectedCallback will handle its own cleanup
+            icon.remove();
+        });
+        // Remove this component's listeners
+        this.eventBus.remove(this);
     }
 
     // Custom element setup

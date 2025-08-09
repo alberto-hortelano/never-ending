@@ -4,7 +4,8 @@ import type Movable from "../movable/Movable";
 import "../movable/Movable";
 import { CharacterService } from "../../common/services/CharacterService";
 import { NetworkService } from "../../common/services/NetworkService";
-import type { ICharacterVisualState, Direction } from "../../common/interfaces";
+import type { ICharacterVisualState, Direction, ICharacter } from "../../common/interfaces";
+import type { DeepReadonly } from "../../common/helpers/types";
 
 export default class Character extends Component {
     protected override hasCss = true;
@@ -20,6 +21,7 @@ export default class Character extends Component {
     private weaponElement?: HTMLElement;
     private currentVisualState: ICharacterVisualState | null = null;
     private _currentDirection: Direction = 'down'; // Store direction for standalone mode
+    private previewData: DeepReadonly<ICharacter> | null = null; // Lightweight preview data
     
     // Getter for current direction (useful for standalone mode)
     public get currentDirection(): Direction {
@@ -28,8 +30,8 @@ export default class Character extends Component {
     
     // Check if this is a preview component
     private get isPreview(): boolean {
-        // Check if marked as preview or has instance state instead of global state
-        return this.hasAttribute('data-preview') || this.getState() !== Component.gameState;
+        // Check if marked as preview or has preview data or instance state
+        return this.hasAttribute('data-preview') || this.previewData !== null || this.getState() !== Component.gameState;
     }
     
     // Check if this is a standalone preview (no state at all)
@@ -39,6 +41,25 @@ export default class Character extends Component {
 
     constructor() {
         super();
+    }
+
+    disconnectedCallback() {
+        // Clean up when component is removed
+        if (this.isPreview) {
+            // Clear preview data to allow garbage collection
+            this.previewData = null;
+            
+            // If we still have an instance state (legacy), clear it
+            if (this.getState() !== Component.gameState) {
+                const state = this.getState();
+                if (state) {
+                    state.remove(state); // Remove the state's own listeners
+                }
+                this.setInstanceState(null);
+            }
+        }
+        // Remove this component's listeners from EventBus
+        this.eventBus.remove(this);
     }
 
     override async connectedCallback() {
@@ -58,6 +79,12 @@ export default class Character extends Component {
 
         // If standalone, just setup basic display and wait for updateAppearance calls
         if (this.isStandalone) {
+            return root;
+        }
+        
+        // If we have preview data, use it instead of looking up in state
+        if (this.previewData) {
+            this.applyPreviewData();
             return root;
         }
 
@@ -266,7 +293,11 @@ export default class Character extends Component {
         this.characterElement.classList.add(directionClass);
 
         // Apply action class
-        if (action) {
+        if (action && this.characterElement) {
+            // Remove all possible action classes first
+            const allActions = ['idle', 'walk', 'shoot', 'powerStrike', 'slash', 'fastAttack', 'feint', 'breakGuard', 'defeated'];
+            allActions.forEach(a => this.characterElement!.classList.remove(a));
+            // Add the current action
             this.characterElement.classList.add(action);
         }
 
@@ -280,7 +311,9 @@ export default class Character extends Component {
         // Update weapon
         if (this.isPreview || this.isStandalone) {
             // In preview/standalone mode, handle weapon classes directly
-            if (weapon && action === 'shoot') {
+            const meleeActions = ['powerStrike', 'slash', 'fastAttack', 'feint', 'breakGuard'];
+            const showWeapon = weapon && (action === 'shoot' || meleeActions.includes(action || ''));
+            if (showWeapon) {
                 this.characterElement.classList.add(weapon);
             }
         } else {
@@ -479,6 +512,50 @@ export default class Character extends Component {
             this.currentVisualState.isDefeated = true;
             // Update classes immediately
             this.updateCharacterClasses();
+        }
+    }
+
+    /**
+     * Set preview data for lightweight character display
+     * This is more efficient than creating a full State instance
+     */
+    public setPreviewData(character: DeepReadonly<ICharacter>) {
+        this.previewData = character;
+        
+        // If shadow root exists, update the display immediately
+        if (this.root && this.characterElement) {
+            this.applyPreviewData();
+        }
+    }
+
+    private applyPreviewData() {
+        if (!this.previewData || !this.characterElement) return;
+
+        const character = this.previewData;
+        
+        // Apply basic appearance
+        this.characterElement.className = 'character';
+        this.characterElement.classList.add(character.race || 'human');
+        this.characterElement.classList.add(character.action || 'idle');
+        
+        // Apply palette if available
+        if (character.palette) {
+            this.style.setProperty('--skin', character.palette.skin);
+            this.style.setProperty('--helmet', character.palette.helmet);
+            this.style.setProperty('--suit', character.palette.suit);
+        }
+        
+        // Apply health bar
+        const healthPercentage = Math.max(0, ((character.health ?? 100) / (character.maxHealth ?? 100)) * 100);
+        this.updateHealthBar(healthPercentage, healthPercentage > 25 ? 'green' : 'red');
+        
+        // Apply direction
+        this._currentDirection = character.direction || 'down';
+        this.characterElement.dataset.direction = this._currentDirection;
+        
+        // Apply defeated state if needed
+        if ((character.health ?? 100) <= 0) {
+            this.characterElement.classList.add('defeated');
         }
     }
 
