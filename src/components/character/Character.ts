@@ -155,7 +155,18 @@ export default class Character extends Component {
                     position: stateCharacter.position
                 });
             } else if (this.canControlThisCharacter()) {
+                // If clicking on own character, show actions
                 this.dispatch(ControlsEvent.showActions, this.id);
+            } else {
+                // If clicking on another character (NPC or enemy), trigger talk
+                const currentPlayer = this.getState()?.game.turn;
+                if (currentPlayer && stateCharacter.player !== currentPlayer) {
+                    // Get the current selected character to perform the talk action
+                    const selectedCharacter = this.getState()?.ui.selectedCharacter;
+                    if (selectedCharacter) {
+                        this.dispatch(ControlsEvent.talk, selectedCharacter);
+                    }
+                }
             }
         });
 
@@ -361,22 +372,32 @@ export default class Character extends Component {
         const race = stateCharacter?.race || 'human';
         classes.push(race);
 
+        // Check if character is defeated
+        const isDefeated = this.currentVisualState?.isDefeated;
+
         // Add visual state classes if available
         if (this.currentVisualState) {
             // Add direction class
             const directionClass = CharacterService.getDirectionClass(this.currentVisualState.direction);
             classes.push(directionClass);
 
-            // Add persistent classes from visual state
-            classes.push(...this.currentVisualState.classList);
+            // Add persistent classes from visual state (but filter out action classes if defeated)
+            if (!isDefeated) {
+                classes.push(...this.currentVisualState.classList);
+            } else {
+                // If defeated, filter out action classes
+                const actionClasses = ['walk', 'shoot', 'idle', 'powerStrike', 'slash', 'fastAttack', 'feint', 'breakGuard'];
+                const filteredClasses = this.currentVisualState.classList.filter(cls => !actionClasses.includes(cls));
+                classes.push(...filteredClasses);
+            }
 
-            // Add temporary classes (like 'shoot')
-            if (this.currentVisualState.temporaryClasses) {
+            // Add temporary classes (like 'shoot') only if not defeated
+            if (!isDefeated && this.currentVisualState.temporaryClasses) {
                 classes.push(...this.currentVisualState.temporaryClasses);
             }
 
-            // Add weapon class if equipped
-            if (this.currentVisualState.weaponClass) {
+            // Add weapon class if equipped (but not if defeated)
+            if (!isDefeated && this.currentVisualState.weaponClass) {
                 classes.push(this.currentVisualState.weaponClass);
             }
 
@@ -390,7 +411,7 @@ export default class Character extends Component {
             if (this.currentVisualState.isOpponentCharacter) {
                 classes.push('opponent-character');
             }
-            if (this.currentVisualState.isDefeated) {
+            if (isDefeated) {
                 classes.push('defeated');
             }
         }
@@ -515,8 +536,16 @@ export default class Character extends Component {
         // However, let's ensure our local visual state is updated immediately
         if (this.currentVisualState) {
             this.currentVisualState.isDefeated = true;
+            // Clear any action-related temporary classes
+            this.currentVisualState.temporaryClasses = [];
             // Update classes immediately
             this.updateCharacterClasses();
+        }
+        
+        // Also ensure the character element removes action classes immediately
+        if (this.characterElement) {
+            const actionClasses = ['walk', 'shoot', 'idle', 'powerStrike', 'slash', 'fastAttack', 'feint', 'breakGuard'];
+            actionClasses.forEach(cls => this.characterElement!.classList.remove(cls));
         }
     }
 

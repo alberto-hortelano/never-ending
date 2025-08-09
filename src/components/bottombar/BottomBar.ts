@@ -6,17 +6,13 @@ export default class BottomBar extends Component {
     protected override hasCss = true;
     protected override hasHtml = true;
     
-    private activeTab = 'general';
-    private touchStartX = 0;
-    private touchEndX = 0;
+    private meleeActionsVisible = false;
     
     override async connectedCallback() {
         const root = await super.connectedCallback();
         if (!root) return root;
         
         this.setupEventListeners(root);
-        this.setupTabNavigation(root);
-        this.setupSwipeGestures(root);
         
         return root;
     }
@@ -25,6 +21,11 @@ export default class BottomBar extends Component {
         // Listen for show actions event
         this.listen(ControlsEvent.showActions, (characterName: string) => {
             this.showCharacterActions(characterName, root);
+        });
+        
+        // Listen for melee toggle
+        this.listen(ControlsEvent.toggleMelee, (_characterName: string) => {
+            this.toggleMeleeActions(root);
         });
     }
     
@@ -41,9 +42,8 @@ export default class BottomBar extends Component {
         // Clear existing content
         actionsContainer.innerHTML = '';
         
-        // Create and append actions component with active tab filter
+        // Create and append actions component (no category filter)
         const actionsComponent = document.createElement('actions-component') as Actions;
-        actionsComponent.setAttribute('active-category', this.activeTab);
         actionsContainer.appendChild(actionsComponent);
         
         // Update state
@@ -66,84 +66,29 @@ export default class BottomBar extends Component {
         });
     }
     
-    private setupTabNavigation(root: ShadowRoot) {
-        const tabButtons = root.querySelectorAll('.tab-button');
+    private toggleMeleeActions(root: ShadowRoot) {
+        const meleeContainer = root.querySelector('.melee-actions-container') as HTMLElement;
+        if (!meleeContainer) return;
         
-        tabButtons.forEach(button => {
-            button.addEventListener('click', (e) => {
-                const target = e.currentTarget as HTMLButtonElement;
-                const tabName = target.dataset.tab;
-                if (!tabName) return;
-                
-                // Update active tab
-                this.activeTab = tabName;
-                
-                // Update UI
-                tabButtons.forEach(btn => btn.classList.remove('active'));
-                target.classList.add('active');
-                
-                // Update actions component if it exists
-                const actionsContainer = root.querySelector('.actions-container');
-                const existingActions = actionsContainer?.querySelector('actions-component') as Actions;
-                if (existingActions) {
-                    existingActions.setAttribute('active-category', tabName);
-                }
-                
-                // Refresh actions display
-                const state = this.getState();
-                if (state?.ui?.selectedCharacter) {
-                    this.showCharacterActions(state.ui.selectedCharacter, root);
-                }
-            });
-        });
-    }
-
-
-    private setupSwipeGestures(root: ShadowRoot) {
-        const barContent = root.querySelector('.bar-content') as HTMLElement;
-        if (!barContent) return;
+        this.meleeActionsVisible = !this.meleeActionsVisible;
         
-        // Touch event handlers for swipe detection
-        barContent.addEventListener('touchstart', (e) => {
-            const touch = e.changedTouches[0];
-            if (touch) {
-                this.touchStartX = touch.screenX;
-            }
-        }, { passive: true });
-        
-        barContent.addEventListener('touchend', (e) => {
-            const touch = e.changedTouches[0];
-            if (touch) {
-                this.touchEndX = touch.screenX;
-                this.handleSwipe(root);
-            }
-        }, { passive: true });
-    }
-
-    private handleSwipe(root: ShadowRoot) {
-        const swipeThreshold = 50;
-        const diff = this.touchStartX - this.touchEndX;
-        
-        if (Math.abs(diff) < swipeThreshold) return;
-        
-        const tabs = this.getAvailableTabs();
-        const currentIndex = tabs.indexOf(this.activeTab);
-        
-        if (diff > 0 && currentIndex < tabs.length - 1) {
-            // Swipe left - next tab
-            const nextTab = tabs[currentIndex + 1];
-            const button = root.querySelector(`[data-tab="${nextTab}"]`) as HTMLButtonElement;
-            if (button) button.click();
-        } else if (diff < 0 && currentIndex > 0) {
-            // Swipe right - previous tab
-            const prevTab = tabs[currentIndex - 1];
-            const button = root.querySelector(`[data-tab="${prevTab}"]`) as HTMLButtonElement;
-            if (button) button.click();
+        if (this.meleeActionsVisible) {
+            meleeContainer.style.display = 'flex';
+            // Create melee actions component
+            meleeContainer.innerHTML = '';
+            const meleeActions = document.createElement('actions-component') as Actions;
+            meleeActions.setAttribute('melee-only', 'true');
+            meleeContainer.appendChild(meleeActions);
+        } else {
+            meleeContainer.style.display = 'none';
+            meleeContainer.innerHTML = '';
         }
-    }
-
-    private getAvailableTabs(): string[] {
-        return ['general', 'ranged', 'melee'];
+        
+        // Update the main actions to reflect the toggle state
+        const state = this.getState();
+        if (state?.ui?.selectedCharacter) {
+            this.showCharacterActions(state.ui.selectedCharacter, root);
+        }
     }
 }
 

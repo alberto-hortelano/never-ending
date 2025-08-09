@@ -362,14 +362,16 @@ export class Shoot extends EventBus<
         const weapon = this.getEquippedRangedWeapon(character);
         const weaponClass = weapon?.class || 'unarmed';
 
-        // Add shoot and weapon class when entering shooting mode
-        this.dispatch(UpdateStateEvent.uiCharacterVisual, {
-            characterId: character.name,
-            visualState: {
-                temporaryClasses: ['shoot'],
-                weaponClass: weaponClass
-            }
-        });
+        // Add shoot and weapon class when entering shooting mode (unless defeated)
+        if (character.health > 0) {
+            this.dispatch(UpdateStateEvent.uiCharacterVisual, {
+                characterId: character.name,
+                visualState: {
+                    temporaryClasses: ['shoot'],
+                    weaponClass: weaponClass
+                }
+            });
+        }
 
         // Update targetable cells in highlights for shooting mode - do this before mode change
         this.dispatch(UpdateStateEvent.uiHighlights, {

@@ -3,11 +3,12 @@
 
 .actions-grid {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: $spacing-xs;
+    width: 100%;
     
     @include md-up {
-        gap: $spacing-md;
+        gap: $spacing-sm;
     }
 }
 
@@ -19,14 +20,12 @@
 
 .action-buttons {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: $spacing-xs;
-    overflow-x: auto;
+    width: 100%;
     
     @include md-up {
-        flex-wrap: wrap;
         gap: $spacing-sm;
-        overflow-x: visible;
     }
 }
 
@@ -54,6 +53,7 @@
         gap: $spacing-sm;
         padding: $spacing-sm $spacing-md;
         justify-content: flex-start;
+        min-width: auto;
     }
 
     .action-icon {
@@ -147,4 +147,45 @@
     font-size: $font-size-sm;
     padding: $spacing-md;
     text-align: center;
+}
+
+// Melee toggle button styling
+.action-button.melee-toggle {
+    margin-left: auto; // Push to the end of the row
+    background: $gray-550;
+    border: 2px solid $color-border-secondary;
+    
+    .toggle-indicator {
+        font-size: $font-size-sm;
+        color: $color-text-secondary;
+        padding: $spacing-xs;
+        min-width: 1.5em;
+        text-align: center;
+        transition: transform 0.2s ease;
+        
+        @include md-up {
+            font-size: $font-size-base;
+        }
+    }
+    
+    &.active {
+        background: $color-highlight;
+        border-color: $color-highlight;
+        
+        .action-icon {
+            filter: none;
+        }
+        
+        .toggle-indicator {
+            color: white;
+        }
+    }
+    
+    &:hover:not(.disabled) {
+        border-color: $color-highlight;
+        
+        .toggle-indicator {
+            color: $color-highlight;
+        }
+    }
 }

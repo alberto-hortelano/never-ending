@@ -127,13 +127,16 @@ export class Movement extends EventBus<
                 paidCells: 0  // Track how many cells we've already paid for
             });
 
-            // Add walk class at the start
-            this.dispatch(UpdateStateEvent.uiCharacterVisual, {
-                characterId: character.name,
-                visualState: {
-                    temporaryClasses: ['walk']  // Use temporaryClasses instead of classList
-                }
-            });
+            // Add walk class at the start (unless character is defeated)
+            const stateCharacter = this.state.findCharacter(character.name);
+            if (stateCharacter && stateCharacter.health > 0) {
+                this.dispatch(UpdateStateEvent.uiCharacterVisual, {
+                    characterId: character.name,
+                    visualState: {
+                        temporaryClasses: ['walk']  // Use temporaryClasses instead of classList
+                    }
+                });
+            }
 
             // Create movement animation for the entire path
             // Prepend the current position to the path since calculatePath doesn't include it

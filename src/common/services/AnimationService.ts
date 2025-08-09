@@ -48,6 +48,7 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
 
         // Add 'walk' class for walk animations
         // Note: This is a temporary class that should be managed separately
+        // Add walk class for walk animations
         if (animation.type === 'walk') {
             this.dispatch(UpdateStateEvent.uiCharacterVisual, {
                 characterId,
