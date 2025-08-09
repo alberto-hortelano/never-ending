@@ -10,11 +10,11 @@ import {
 } from "./events";
 import { InteractionModeManager } from "./InteractionModeManager";
 import { DirectionsService } from "./services/DirectionsService";
-import { 
-    MeleeCombatService, 
+import {
+    MeleeCombatService,
     MELEE_ATTACKS,
     type MeleeAttackType,
-    type VisibleMeleeTarget 
+    type VisibleMeleeTarget
 } from "./services/MeleeCombatService";
 
 export interface MeleeCombatData {
@@ -71,9 +71,9 @@ export class MeleeCombat extends EventBus<
 
     private setupEventListeners() {
         MELEE_ATTACKS.forEach(attack => {
-            const eventKey = `ControlsEvent.${attack.type}` as ControlsEvent;
-            
-            this.listen(eventKey, (data: any) => {
+            const eventKey = ControlsEvent[attack.type];
+
+            this.listen(eventKey, (data) => {
                 if (typeof data === 'string') {
                     this.onMeleeAttackSelected(data, attack.type);
                 }
@@ -81,9 +81,9 @@ export class MeleeCombat extends EventBus<
         });
 
         this.listen(ControlsEvent.characterClick, data => this.onCharacterClick(data));
-        
+
         this.listen(ControlsEvent.meleeDefenseSelected, data => {
-            this.resolveMeleeCombat(data.defenseType as MeleeAttackType);
+            this.resolveMeleeCombat(data.defenseType);
         });
 
         this.listen(ControlsEvent.mousePositionUpdate, data => this.onMousePositionUpdate(data));
@@ -204,7 +204,7 @@ export class MeleeCombat extends EventBus<
         if (this.modeManager.getCurrentMode()?.type !== 'melee') {
             return;
         }
-        
+
         if (!this.attackingCharacter || !this.selectedAttackType) {
             return;
         }
@@ -231,7 +231,7 @@ export class MeleeCombat extends EventBus<
 
         const weapon = MeleeCombatService.getMeleeWeapon(attacker);
         const weaponClass = weapon?.class || 'unarmed';
-        
+
         this.dispatch(UpdateStateEvent.uiCharacterVisual, {
             characterId: attacker.name,
             visualState: {
@@ -263,16 +263,16 @@ export class MeleeCombat extends EventBus<
         this.cleanupMeleeMode();
     }
 
-    public resolveMeleeCombat(defenseType: MeleeAttackType) {
+    private resolveMeleeCombat(defenseType: MeleeAttackType) {
         if (!this.pendingCombat) {
             return;
         }
 
         const { attacker, defender, attackType } = this.pendingCombat;
         const { damage, blocked } = MeleeCombatService.calculateMeleeDamage(
-            attacker, 
-            defender, 
-            attackType, 
+            attacker,
+            defender,
+            attackType,
             defenseType
         );
 

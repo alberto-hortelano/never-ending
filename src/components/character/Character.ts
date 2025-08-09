@@ -63,7 +63,9 @@ export default class Character extends Component {
 
         // Get character data from state
         const state = this.getState();
-        const stateCharacter = state?.findCharacter(this.id);
+        // For preview characters with IDs like "icon-data", extract the actual character name
+        const characterName = this.id.startsWith('icon-') ? this.id.substring(5) : this.id;
+        const stateCharacter = state?.findCharacter(characterName);
         
         if (!stateCharacter) {
             console.error(`Character ${this.id} not found in state`);
@@ -315,7 +317,9 @@ export default class Character extends Component {
 
         // Add race class from state
         const state = this.getState();
-        const stateCharacter = state?.findCharacter(this.id);
+        // For preview characters with IDs like "icon-data", extract the actual character name
+        const characterName = this.id.startsWith('icon-') ? this.id.substring(5) : this.id;
+        const stateCharacter = state?.findCharacter(characterName);
         const race = stateCharacter?.race || 'human';
         classes.push(race);
 
@@ -362,7 +366,9 @@ export default class Character extends Component {
 
         // Get current character state from state instead of dataset
         const state = this.getState();
-        const stateCharacter = state?.findCharacter(this.id);
+        // For preview characters with IDs like "icon-data", extract the actual character name
+        const characterName = this.id.startsWith('icon-') ? this.id.substring(5) : this.id;
+        const stateCharacter = state?.findCharacter(characterName);
         if (!stateCharacter) return;
         
         const race = stateCharacter.race;

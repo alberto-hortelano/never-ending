@@ -4,6 +4,7 @@ import type { DeepReadonly } from './types';
 
 /**
  * Creates a minimal state instance for preview components
+ * This state is isolated and won't dispatch events to the main game
  * @param character The character data to include in the state (can be DeepReadonly)
  * @returns A State instance suitable for preview components
  */
@@ -83,5 +84,5 @@ export function createPreviewState(character: Partial<ICharacter> | DeepReadonly
         overwatchData: {}
     };
     
-    return new State(stateData);
+    return new State(stateData, true); // true = isPreview
 }

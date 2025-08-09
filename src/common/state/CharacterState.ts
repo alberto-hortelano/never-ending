@@ -10,22 +10,27 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
     #characters: IState['characters'] = [];
     private getCurrentTurn: () => string;
     private onSave?: () => void;
+    private skipEvents = false;
 
-    constructor(getCurrentTurn: () => string, onSave?: () => void) {
+    constructor(getCurrentTurn: () => string, onSave?: () => void, skipEvents = false) {
         super();
         this.getCurrentTurn = getCurrentTurn;
         this.onSave = onSave;
+        this.skipEvents = skipEvents;
         
-        this.listen(UpdateStateEvent.characterPosition, (ch) => this.onCharacterPosition(ch));
-        this.listen(UpdateStateEvent.characterPath, (ch) => this.onCharacterPath(ch));
-        this.listen(UpdateStateEvent.characterDirection, (data) => this.onCharacterDirection(data));
-        this.listen(UpdateStateEvent.updateInventory, (data) => this.onUpdateInventory(data));
-        this.listen(UpdateStateEvent.equipWeapon, (data) => this.onEquipWeapon(data));
-        this.listen(UpdateStateEvent.unequipWeapon, (data) => this.onUnequipWeapon(data));
-        this.listen(UpdateStateEvent.deductActionPoints, (data) => this.onDeductActionPoints(data));
-        this.listen(UpdateStateEvent.setPendingActionCost, (data) => this.onSetPendingActionCost(data));
-        this.listen(UpdateStateEvent.resetActionPoints, (data) => this.onResetActionPoints(data));
-        this.listen(UpdateStateEvent.damageCharacter, (data) => this.onDamageCharacter(data));
+        // Don't listen to events if this is a preview state
+        if (!skipEvents) {
+            this.listen(UpdateStateEvent.characterPosition, (ch) => this.onCharacterPosition(ch));
+            this.listen(UpdateStateEvent.characterPath, (ch) => this.onCharacterPath(ch));
+            this.listen(UpdateStateEvent.characterDirection, (data) => this.onCharacterDirection(data));
+            this.listen(UpdateStateEvent.updateInventory, (data) => this.onUpdateInventory(data));
+            this.listen(UpdateStateEvent.equipWeapon, (data) => this.onEquipWeapon(data));
+            this.listen(UpdateStateEvent.unequipWeapon, (data) => this.onUnequipWeapon(data));
+            this.listen(UpdateStateEvent.deductActionPoints, (data) => this.onDeductActionPoints(data));
+            this.listen(UpdateStateEvent.setPendingActionCost, (data) => this.onSetPendingActionCost(data));
+            this.listen(UpdateStateEvent.resetActionPoints, (data) => this.onResetActionPoints(data));
+            this.listen(UpdateStateEvent.damageCharacter, (data) => this.onDamageCharacter(data));
+        }
     }
 
     private isValidTurn(characterName: string, fromNetwork?: boolean): boolean {
@@ -224,7 +229,9 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
 
     set characters(characters: IState['characters']) {
         this.#characters = characters;
-        this.dispatch(StateChangeEvent.characters, structuredClone(this.#characters));
+        if (!this.skipEvents) {
+            this.dispatch(StateChangeEvent.characters, structuredClone(this.#characters));
+        }
         this.onSave?.();
     }
 

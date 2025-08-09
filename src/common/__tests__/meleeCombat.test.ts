@@ -95,7 +95,7 @@ describe('MeleeCombat', () => {
             const spy = jest.fn();
             eventBus.listen(UpdateStateEvent.uiHighlights, spy);
 
-            meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker');
+            meleeCombat.dispatch(ControlsEvent['power-strike'] as any, 'Attacker');
 
             expect(spy).toHaveBeenCalled();
             // Check if we got any calls
@@ -112,7 +112,7 @@ describe('MeleeCombat', () => {
             const spy = jest.fn();
             eventBus.listen(UpdateStateEvent.uiHighlights, spy);
 
-            meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker');
+            meleeCombat.dispatch(ControlsEvent['power-strike'] as any, 'Attacker');
 
             const highlights = spy.mock.calls[0][0];
             // FarEnemy is at (10, 10), too far for melee
@@ -149,7 +149,7 @@ describe('MeleeCombat', () => {
             const spy = jest.fn();
             eventBus.listen(UpdateStateEvent.uiHighlights, spy);
 
-            meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker');
+            meleeCombat.dispatch(ControlsEvent['power-strike'] as any, 'Attacker');
 
             expect(spy).toHaveBeenCalled();
             const highlights = spy.mock.calls[0][0];
@@ -188,7 +188,7 @@ describe('MeleeCombat', () => {
             const spy = jest.fn();
             eventBus.listen(UpdateStateEvent.uiHighlights, spy);
 
-            meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker');
+            meleeCombat.dispatch(ControlsEvent['power-strike'] as any, 'Attacker');
 
             expect(spy).toHaveBeenCalled();
             const highlights = spy.mock.calls[0][0];
@@ -310,7 +310,7 @@ describe('MeleeCombat', () => {
             const errorSpy = jest.fn();
             eventBus.listen(ActionEvent.error, errorSpy);
 
-            meleeCombat.dispatch(ControlsEvent['fast-attack'], 'Attacker');
+            meleeCombat.dispatch(ControlsEvent['fast-attack'] as any, 'Attacker');
 
             // Fast attack costs 15, but we only have 10 AP
             expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Not enough action points'));
@@ -320,7 +320,7 @@ describe('MeleeCombat', () => {
             const spy = jest.fn();
             eventBus.listen(UpdateStateEvent.setPendingActionCost, spy);
 
-            meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker'); // Costs 20 AP
+            meleeCombat.dispatch(ControlsEvent['power-strike'] as any, 'Attacker'); // Costs 20 AP
 
             expect(spy).toHaveBeenCalledWith({
                 characterName: 'Attacker',
@@ -335,7 +335,7 @@ describe('MeleeCombat', () => {
             eventBus.listen(UpdateStateEvent.deductActionPoints, deductSpy);
             eventBus.listen(UpdateStateEvent.uiMeleeDefense, defenseSpy);
 
-            meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker');
+            meleeCombat.dispatch(ControlsEvent['power-strike'] as any, 'Attacker');
             
             // Simulate clicking on target
             meleeCombat.dispatch(ControlsEvent.characterClick, {
@@ -347,6 +347,7 @@ describe('MeleeCombat', () => {
             expect(defenseSpy).toHaveBeenCalled();
 
             // Simulate defense selection
+            // @ts-ignore - Testing private method
             meleeCombat.resolveMeleeCombat('slash');
 
             expect(deductSpy).toHaveBeenCalledWith({
@@ -362,7 +363,7 @@ describe('MeleeCombat', () => {
             const defenseSpy = jest.fn();
             eventBus.listen(UpdateStateEvent.uiMeleeDefense, defenseSpy);
 
-            meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker');
+            meleeCombat.dispatch(ControlsEvent['power-strike'] as any, 'Attacker');
             meleeCombat.dispatch(ControlsEvent.characterClick, {
                 characterName: 'Defender',
                 position: { x: 6, y: 5 }
@@ -382,7 +383,7 @@ describe('MeleeCombat', () => {
             eventBus.listen(UpdateStateEvent.damageCharacter, damageSpy);
 
             // Initiate combat
-            meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker');
+            meleeCombat.dispatch(ControlsEvent['power-strike'] as any, 'Attacker');
             
             // Click target
             meleeCombat.dispatch(ControlsEvent.characterClick, {
@@ -391,6 +392,7 @@ describe('MeleeCombat', () => {
             });
 
             // Select defense
+            // @ts-ignore - Testing private method
             meleeCombat.resolveMeleeCombat('break-guard'); // Opposite angle
 
             expect(resultSpy).toHaveBeenCalledWith(expect.objectContaining({
@@ -415,7 +417,7 @@ describe('MeleeCombat', () => {
             const highlightSpy = jest.fn();
             eventBus.listen(UpdateStateEvent.uiHighlights, highlightSpy);
 
-            meleeCombat.dispatch(ControlsEvent['power-strike'], 'Defender'); // Player2 character
+            meleeCombat.dispatch(ControlsEvent['power-strike'] as any, 'Defender'); // Player2 character
 
             // Should not proceed since it's player1's turn
             expect(highlightSpy).not.toHaveBeenCalled();
@@ -425,7 +427,7 @@ describe('MeleeCombat', () => {
             const highlightSpy = jest.fn();
             eventBus.listen(UpdateStateEvent.uiHighlights, highlightSpy);
 
-            meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker'); // Player1's character
+            meleeCombat.dispatch(ControlsEvent['power-strike'] as any, 'Attacker'); // Player1's character
 
             expect(highlightSpy).toHaveBeenCalled();
         });
@@ -461,7 +463,7 @@ describe('MeleeCombat', () => {
             const errorSpy = jest.fn();
             eventBus.listen(ActionEvent.error, errorSpy);
 
-            meleeCombat.dispatch(ControlsEvent['power-strike'], 'Attacker'); // Player1's character
+            meleeCombat.dispatch(ControlsEvent['power-strike'] as any, 'Attacker'); // Player1's character
 
             // Should error because no valid targets
             expect(errorSpy).toHaveBeenCalledWith('No valid targets in melee range');

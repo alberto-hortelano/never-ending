@@ -6,17 +6,23 @@ export class MapState extends EventBus<UpdateStateEventsMap, StateChangeEventsMa
     #map: IState['map'] = [];
     private cellMap = new Map<ICoord, ICell>();
     private onSave?: () => void;
+    private skipEvents = false;
 
-    constructor(onSave?: () => void) {
+    constructor(onSave?: () => void, skipEvents = false) {
         super();
         this.onSave = onSave;
+        this.skipEvents = skipEvents;
     }
 
     set map(map: IState['map']) {
         this.#map = map;
         this.cellMap.clear();
         this.#map.forEach(row => row.forEach(cell => this.cellMap.set(cell.position, cell)));
-        this.dispatch(StateChangeEvent.map, structuredClone(this.#map));
+        
+        // Only dispatch events if not skipping (for preview states)
+        if (!this.skipEvents) {
+            this.dispatch(StateChangeEvent.map, structuredClone(this.#map));
+        }
         this.onSave?.();
     }
 

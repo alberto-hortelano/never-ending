@@ -1,5 +1,6 @@
 import type { ICoord, ICharacter, IWeapon, IItem, Direction } from "../interfaces";
 import type { DeepReadonly } from "../helpers/types";
+import type { MeleeAttackType } from "../services/MeleeCombatService";
 
 /** Controls Events */
 export enum ControlsEvent {
@@ -91,6 +92,6 @@ export interface ControlsEventsMap {
     'ControlsEvent.break-guard': ICharacter['name'];
     'ControlsEvent.special': ICharacter['name'];
     [ControlsEvent.meleeDefenseSelected]: {
-        defenseType: string;
+        defenseType: MeleeAttackType;
     };
 }
