@@ -71,11 +71,11 @@ export class MeleeCombat extends EventBus<
 
     private setupEventListeners() {
         // Listen for melee toggle
-        this.listen(ControlsEvent.toggleMelee, (_characterName: string) => {
+        this.listen(ControlsEvent.toggleMelee, (/*characterName: string*/) => {
             // Toggle melee is handled by the BottomBar, just dispatch the event
             // The bottom bar will show/hide melee actions
         });
-        
+
         MELEE_ATTACKS.forEach(attack => {
             const eventKey = ControlsEvent[attack.type];
 
