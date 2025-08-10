@@ -1,13 +1,14 @@
 import type { Express } from 'express';
+import type { Server } from 'http';
+import type { IMessage } from '../common/interfaces';
 
 import express from 'express';
 import { dirname, resolve, extname, join } from 'path';
 import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
-import { IMessage } from '../common/interfaces';
 import { initialSetup } from '../prompts/shortPrompts';
-import { Server } from 'http';
 import { WebSocketServer } from './WebSocketServer';
+import { sendMessage } from '../models/claude';
 
 export class Api {
     private dirname = dirname(fileURLToPath(import.meta.url));
@@ -78,13 +79,13 @@ export class Api {
 
             try {
                 await new Promise(r => setTimeout(r, 1000))
-                // const response = await sendMessage(messages);
-                const response = JSON.stringify({
-                    "type": "speech",
-                    "source": "Data",
-                    "content": "Capitán, mis sensores detectan múltiples señales de comunicación interceptadas desde que abandonamos la base. Creo que nos están rastreando activamente. Debemos tomar medidas evasivas inmediatas.",
-                    "answers": ["¿Qué tipo de señales?", "¿Cuánto tiempo tenemos?", "Prepara un salto de emergencia", "Déjalo por ahora"]
-                });
+                const response = await sendMessage(messages);
+                // const response = JSON.stringify({
+                //     "type": "speech",
+                //     "source": "Data",
+                //     "content": "Capitán, mis sensores detectan múltiples señales de comunicación interceptadas desde que abandonamos la base. Creo que nos están rastreando activamente. Debemos tomar medidas evasivas inmediatas.",
+                //     "answers": ["¿Qué tipo de señales?", "¿Cuánto tiempo tenemos?", "Prepara un salto de emergencia", "Déjalo por ahora"]
+                // });
 
                 const message: IMessage = {
                     role: 'assistant',
