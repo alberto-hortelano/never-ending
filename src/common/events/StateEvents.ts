@@ -28,6 +28,10 @@ export enum UpdateStateEvent {
     resetActionPoints = 'UpdateStateEvent.resetActionPoints',
     /** Apply damage to a character */
     damageCharacter = 'UpdateStateEvent.damageCharacter',
+    /** Add new character to game */
+    addCharacter = 'UpdateStateEvent.addCharacter',
+    /** Remove character from game */
+    removeCharacter = 'UpdateStateEvent.removeCharacter',
     
     // UI State Events
     /** Update character animation state */
@@ -94,6 +98,13 @@ export interface UpdateStateEventsMap {
         targetName: string;
         damage: number;
         attackerName?: string;
+    };
+    [UpdateStateEvent.addCharacter]: Partial<ICharacter> & {
+        name: string;
+        position: { x: number; y: number };
+    };
+    [UpdateStateEvent.removeCharacter]: {
+        characterName: string;
     };
     
     // UI State Events
@@ -176,6 +187,8 @@ export enum StateChangeEvent {
     characterActions = 'StateChangeEvent.characterActions',
     characterHealth = 'StateChangeEvent.characterHealth',
     characterDefeated = 'StateChangeEvent.characterDefeated',
+    characterAdded = 'StateChangeEvent.characterAdded',
+    characterRemoved = 'StateChangeEvent.characterRemoved',
     
     // UI State Change Events
     /** UI animations state changed */
@@ -204,6 +217,8 @@ export interface StateChangeEventsMap {
     [StateChangeEvent.characterActions]: DeepReadonly<ICharacter>;
     [StateChangeEvent.characterHealth]: DeepReadonly<ICharacter>;
     [StateChangeEvent.characterDefeated]: DeepReadonly<ICharacter>;
+    [StateChangeEvent.characterAdded]: DeepReadonly<ICharacter>;
+    [StateChangeEvent.characterRemoved]: DeepReadonly<ICharacter>;
     
     // UI State Change Events
     [StateChangeEvent.uiAnimations]: DeepReadonly<IState['ui']['animations']>;

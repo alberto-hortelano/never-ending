@@ -1,4 +1,4 @@
-import type { IState, ICharacter, IInventory, IWeapon } from "../interfaces";
+import type { IState, ICharacter, IInventory, IWeapon, Race, Direction, Action } from "../interfaces";
 import { EventBus, UpdateStateEventsMap, StateChangeEventsMap, UpdateStateEvent, StateChangeEvent } from "../events";
 import { DeepReadonly } from "../helpers/types";
 
@@ -30,6 +30,8 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
             this.listen(UpdateStateEvent.setPendingActionCost, (data) => this.onSetPendingActionCost(data));
             this.listen(UpdateStateEvent.resetActionPoints, (data) => this.onResetActionPoints(data));
             this.listen(UpdateStateEvent.damageCharacter, (data) => this.onDamageCharacter(data));
+            this.listen(UpdateStateEvent.addCharacter, (data) => this.onAddCharacter(data));
+            this.listen(UpdateStateEvent.removeCharacter, (data) => this.onRemoveCharacter(data));
         }
     }
 
@@ -225,6 +227,68 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
                 this.dispatch(StateChangeEvent.characterActions, structuredClone(character));
             }
         });
+    }
+
+    private onAddCharacter(data: UpdateStateEventsMap[UpdateStateEvent.addCharacter]) {
+        // Check if character already exists
+        if (this.#characters.find(c => c.name === data.name)) {
+            console.warn(`Character ${data.name} already exists`);
+            return;
+        }
+
+        // Create full character object with defaults
+        const newCharacter: ICharacter = {
+            name: data.name,
+            race: (data.race || 'human') as Race,
+            description: data.description || '',
+            position: data.position,
+            location: '',  // Required by IPositionable
+            blocker: true,  // Characters are blockers
+            direction: (data.direction || 'bottom') as Direction,
+            player: data.player || this.getCurrentTurn(),
+            action: (data.action || 'idle') as Action,
+            path: [],
+            health: data.health || 100,
+            maxHealth: data.maxHealth || 100,
+            palette: data.palette || {
+                skin: '#d7a55f',
+                helmet: '#808080',
+                suit: '#404040'
+            },
+            inventory: data.inventory || {
+                maxWeight: 20,
+                items: [],
+                equippedWeapons: {
+                    primary: null,
+                    secondary: null
+                }
+            },
+            actions: data.actions || {
+                pointsLeft: 100,
+                general: { move: 5, talk: 10, use: 10, inventory: 5 },
+                rangedCombat: { shoot: 20, aim: 10, overwatch: 30, cover: 10, throw: 15 },
+                closeCombat: { powerStrike: 25, slash: 20, fastAttack: 15, feint: 10, breakGuard: 20 }
+            }
+        };
+
+        this.#characters.push(newCharacter);
+        this.dispatch(StateChangeEvent.characters, structuredClone(this.#characters));
+        this.dispatch(StateChangeEvent.characterAdded, structuredClone(newCharacter));
+        this.onSave?.();
+    }
+
+    private onRemoveCharacter(data: UpdateStateEventsMap[UpdateStateEvent.removeCharacter]) {
+        const index = this.#characters.findIndex(c => c.name === data.characterName);
+        if (index === -1) {
+            console.warn(`Character ${data.characterName} not found`);
+            return;
+        }
+
+        const removedCharacter = this.#characters[index];
+        this.#characters.splice(index, 1);
+        this.dispatch(StateChangeEvent.characters, structuredClone(this.#characters));
+        this.dispatch(StateChangeEvent.characterRemoved, structuredClone(removedCharacter!));
+        this.onSave?.();
     }
 
     set characters(characters: IState['characters']) {
