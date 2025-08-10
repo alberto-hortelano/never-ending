@@ -52,6 +52,9 @@ export default class Cell extends Component {
             }
         });
 
+        // Add touch event listener for mobile
+        this.addEventListener('touchstart', this.onTouchStart.bind(this), { passive: false });
+
         return root;
     }
     attributeChangedCallback(name: string, oldVal: string | null, newVal: string | null) {
@@ -75,6 +78,21 @@ export default class Cell extends Component {
     }
     private onMouseLeave() {
         this.dispatch(ControlsEvent.cellMouseLeave, this.coords);
+    }
+    private onTouchStart(e: TouchEvent) {
+        // Prevent default to avoid scrolling
+        e.preventDefault();
+        
+        // Dispatch touch enter event (reuse mouse enter for simplicity)
+        // The Board component will handle this differently on mobile
+        this.dispatch(ControlsEvent.cellMouseEnter, this.coords);
+        
+        // Also dispatch click for immediate activation on mobile
+        // This allows tap-to-set-direction behavior
+        const state = this.getState();
+        if (state?.ui?.interactionMode?.type === 'overwatch') {
+            this.dispatch(ControlsEvent.cellClick, this.coords);
+        }
     }
     private applyVisualState(visualState: ICellVisualState) {
         // Use requestAnimationFrame to batch DOM updates

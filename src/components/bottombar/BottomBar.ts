@@ -1,5 +1,5 @@
 import { Component } from "../Component";
-import { ControlsEvent, UpdateStateEvent } from "../../common/events";
+import { ControlsEvent, UpdateStateEvent, StateChangeEvent } from "../../common/events";
 import type { Actions } from "../actions/Actions";
 
 export default class BottomBar extends Component {
@@ -27,6 +27,27 @@ export default class BottomBar extends Component {
         this.listen(ControlsEvent.toggleMelee, (_characterName: string) => {
             this.toggleMeleeActions(root);
         });
+        
+        // Listen for interaction mode changes to show/hide mobile hints
+        this.listen(StateChangeEvent.uiInteractionMode, (mode) => {
+            this.updateMobileHint(mode, root);
+        });
+    }
+    
+    private updateMobileHint(mode: any, root: ShadowRoot) {
+        const hint = root.querySelector('.overwatch-mobile-hint') as HTMLElement;
+        if (!hint) return;
+        
+        // Only show hint on mobile when in overwatch mode
+        if (this.isMobile() && mode?.type === 'overwatch') {
+            hint.style.display = 'block';
+        } else {
+            hint.style.display = 'none';
+        }
+    }
+    
+    private isMobile(): boolean {
+        return window.innerWidth <= 768;
     }
     
     private showCharacterActions(characterName: string, root: ShadowRoot) {
