@@ -52,6 +52,9 @@ export default class Cell extends Component {
             }
         });
 
+        // Add touch event listener for mobile
+        this.addEventListener('touchstart', this.onTouchStart.bind(this), { passive: false });
+
         return root;
     }
     attributeChangedCallback(name: string, oldVal: string | null, newVal: string | null) {
@@ -75,6 +78,18 @@ export default class Cell extends Component {
     }
     private onMouseLeave() {
         this.dispatch(ControlsEvent.cellMouseLeave, this.coords);
+    }
+    private onTouchStart(e: TouchEvent) {
+        // Prevent default to avoid scrolling
+        e.preventDefault();
+        
+        // Dispatch touch enter event for path preview
+        this.dispatch(ControlsEvent.cellMouseEnter, this.coords);
+        
+        // Dispatch click for all interaction modes on mobile
+        // This enables: movement (tap to preview, tap to confirm), 
+        // overwatch (tap to set direction, tap to activate)
+        this.dispatch(ControlsEvent.cellClick, this.coords);
     }
     private applyVisualState(visualState: ICellVisualState) {
         // Use requestAnimationFrame to batch DOM updates

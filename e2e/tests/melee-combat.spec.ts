@@ -67,9 +67,9 @@ async function clickFirstCharacter(page: Page, maxRetries = 3): Promise<boolean>
     return false;
 }
 
-// Helper to wait for melee tab to be ready and click it
-async function clickMeleeTab(page: Page): Promise<boolean> {
-    // Wait for the bottom bar to exist and have the melee tab
+// Helper to wait for melee toggle button to be ready and click it
+async function clickMeleeToggle(page: Page, maxRetries = 3): Promise<boolean> {
+    // First wait for the actions component to exist
     await page.waitForFunction(() => {
         const container = document.querySelector('container-component');
         if (!container || !(container as any).getTestingShadowRoot) return false;
@@ -81,34 +81,72 @@ async function clickMeleeTab(page: Page): Promise<boolean> {
         if (!bottomBar || !(bottomBar as any).getTestingShadowRoot) return false;
         
         const bottomBarShadow = (bottomBar as any).getTestingShadowRoot();
-        const meleeTab = bottomBarShadow?.querySelector('.tab-button[data-tab="melee"]');
-        return meleeTab !== null;
-    }, { timeout: 5000 });
-    
-    // Click the melee tab
-    return await page.evaluate(() => {
-        const container = document.querySelector('container-component');
-        if (!container || !(container as any).getTestingShadowRoot) return false;
+        const actionsComponent = bottomBarShadow?.querySelector('actions-component');
+        if (!actionsComponent || !(actionsComponent as any).getTestingShadowRoot) return false;
         
-        const containerShadow = (container as any).getTestingShadowRoot();
-        if (!containerShadow) return false;
-        
-        const bottomBar = containerShadow.querySelector('bottom-bar');
-        if (bottomBar && typeof (bottomBar as any).getTestingShadowRoot === 'function') {
-            const shadowRoot = (bottomBar as any).getTestingShadowRoot();
-            const meleeTab = shadowRoot?.querySelector('.tab-button[data-tab="melee"]') as HTMLElement;
-            if (meleeTab) {
-                meleeTab.click();
-                return true;
-            }
-        }
+        const actionsShadow = (actionsComponent as any).getTestingShadowRoot();
+        const meleeToggle = actionsShadow?.querySelector('.action-button.melee-toggle');
+        return meleeToggle !== null;
+    }, { timeout: 5000 }).catch(() => {
+        console.log('Failed to find melee toggle button');
         return false;
     });
+    
+    // Try to click the melee toggle with retry logic
+    for (let i = 0; i < maxRetries; i++) {
+        const clicked = await page.evaluate(() => {
+            const container = document.querySelector('container-component');
+            if (!container || !(container as any).getTestingShadowRoot) {
+                console.log('No container or getTestingShadowRoot');
+                return false;
+            }
+            
+            const containerShadow = (container as any).getTestingShadowRoot();
+            if (!containerShadow) {
+                console.log('No container shadow');
+                return false;
+            }
+            
+            const bottomBar = containerShadow.querySelector('bottom-bar');
+            if (!bottomBar || !(bottomBar as any).getTestingShadowRoot) {
+                console.log('No bottom bar or getTestingShadowRoot');
+                return false;
+            }
+            
+            const bottomBarShadow = (bottomBar as any).getTestingShadowRoot();
+            const actionsComponent = bottomBarShadow?.querySelector('actions-component');
+            if (!actionsComponent || !(actionsComponent as any).getTestingShadowRoot) {
+                console.log('No actions component or getTestingShadowRoot');
+                return false;
+            }
+            
+            const actionsShadow = (actionsComponent as any).getTestingShadowRoot();
+            const meleeToggle = actionsShadow?.querySelector('.action-button.melee-toggle') as HTMLElement;
+            if (meleeToggle) {
+                console.log('Found melee toggle, clicking...');
+                meleeToggle.click();
+                return true;
+            }
+            console.log('Melee toggle not found');
+            return false;
+        });
+        
+        if (clicked) {
+            console.log('Successfully clicked melee toggle');
+            return true;
+        }
+        
+        // Wait a bit before retrying
+        await page.waitForTimeout(100);
+    }
+    
+    console.log('Failed to click melee toggle after retries');
+    return false;
 }
 
 // Helper to select a melee attack with retry logic
 async function selectMeleeAttack(page: Page, attackName: string): Promise<boolean> {
-    // Wait for actions component to be ready
+    // Wait for melee actions to be ready in the melee-actions-container
     await page.waitForFunction(() => {
         const container = document.querySelector('container-component');
         if (!container || !(container as any).getTestingShadowRoot) return false;
@@ -120,7 +158,10 @@ async function selectMeleeAttack(page: Page, attackName: string): Promise<boolea
         if (!bottomBar || !(bottomBar as any).getTestingShadowRoot) return false;
         
         const bottomBarShadow = (bottomBar as any).getTestingShadowRoot();
-        const actions = bottomBarShadow?.querySelector('actions-component');
+        const meleeContainer = bottomBarShadow?.querySelector('.melee-actions-container');
+        if (!meleeContainer) return false;
+        
+        const actions = meleeContainer.querySelector('actions-component');
         if (!actions || !(actions as any).getTestingShadowRoot) return false;
         
         const actionsShadow = (actions as any).getTestingShadowRoot();
@@ -140,7 +181,10 @@ async function selectMeleeAttack(page: Page, attackName: string): Promise<boolea
         if (!bottomBar || !(bottomBar as any).getTestingShadowRoot) return false;
         
         const bottomBarShadow = (bottomBar as any).getTestingShadowRoot();
-        const actions = bottomBarShadow?.querySelector('actions-component');
+        const meleeContainer = bottomBarShadow?.querySelector('.melee-actions-container');
+        if (!meleeContainer) return false;
+        
+        const actions = meleeContainer.querySelector('actions-component');
         if (!actions || !(actions as any).getTestingShadowRoot) return false;
         
         const actionsShadow = (actions as any).getTestingShadowRoot();
@@ -245,11 +289,11 @@ test.describe('Melee Combat System', () => {
         // Wait for bottom bar to be ready
         await waitForShadowRoot(page, 'bottom-bar');
         
-        // Click on Melee tab
-        const tabClicked = await clickMeleeTab(page);
-        expect(tabClicked).toBe(true);
+        // Click on Melee toggle
+        const toggleClicked = await clickMeleeToggle(page);
+        expect(toggleClicked).toBe(true);
         
-        // Wait for actions to be visible
+        // Wait for melee actions to be visible in the melee-actions-container
         await page.waitForFunction(() => {
             const container = document.querySelector('container-component');
             if (!container || !(container as any).getTestingShadowRoot) return false;
@@ -259,10 +303,14 @@ test.describe('Melee Combat System', () => {
             if (!bottomBar || !(bottomBar as any).getTestingShadowRoot) return false;
             
             const bottomBarShadow = (bottomBar as any).getTestingShadowRoot();
-            const actions = bottomBarShadow?.querySelector('actions-component');
-            if (!actions || !(actions as any).getTestingShadowRoot) return false;
+            // After toggle, melee actions should be in the melee-actions-container
+            const meleeContainer = bottomBarShadow?.querySelector('.melee-actions-container');
+            if (!meleeContainer) return false;
             
-            const actionsShadow = (actions as any).getTestingShadowRoot();
+            const meleeActions = meleeContainer.querySelector('actions-component');
+            if (!meleeActions || !(meleeActions as any).getTestingShadowRoot) return false;
+            
+            const actionsShadow = (meleeActions as any).getTestingShadowRoot();
             const buttons = actionsShadow?.querySelectorAll('.action-button');
             return buttons && buttons.length >= 6;
         }, { timeout: 5000 });
@@ -278,7 +326,9 @@ test.describe('Melee Combat System', () => {
             const bottomBar = containerShadow.querySelector('bottom-bar');
             if (bottomBar && typeof (bottomBar as any).getTestingShadowRoot === 'function') {
                 const shadowRoot = (bottomBar as any).getTestingShadowRoot();
-                const actions = shadowRoot?.querySelector('actions-component');
+                // Look for actions in the melee-actions-container
+                const meleeContainer = shadowRoot?.querySelector('.melee-actions-container');
+                const actions = meleeContainer?.querySelector('actions-component');
                 if (actions && typeof (actions as any).getTestingShadowRoot === 'function') {
                     const actionsShadow = (actions as any).getTestingShadowRoot();
                     const meleeAttacks = [
@@ -322,9 +372,9 @@ test.describe('Melee Combat System', () => {
         const characterClicked = await clickFirstCharacter(page);
         expect(characterClicked).toBe(true);
         
-        // Click on Melee tab
-        const tabClicked = await clickMeleeTab(page);
-        expect(tabClicked).toBe(true);
+        // Click on Melee toggle
+        const toggleClicked = await clickMeleeToggle(page);
+        expect(toggleClicked).toBe(true);
         
         // Select slash attack
         const attackSelected = await selectMeleeAttack(page, 'Slash');
@@ -344,9 +394,9 @@ test.describe('Melee Combat System', () => {
         const characterClicked = await clickFirstCharacter(page);
         expect(characterClicked).toBe(true);
         
-        // Click on Melee tab
-        const tabClicked = await clickMeleeTab(page);
-        expect(tabClicked).toBe(true);
+        // Click on Melee toggle
+        const toggleClicked = await clickMeleeToggle(page);
+        expect(toggleClicked).toBe(true);
         
         // Select slash attack
         const attackSelected = await selectMeleeAttack(page, 'Slash');
@@ -386,9 +436,9 @@ test.describe('Melee Combat System', () => {
         const characterClicked = await clickFirstCharacter(page);
         expect(characterClicked).toBe(true);
         
-        // Click on Melee tab
-        const tabClicked = await clickMeleeTab(page);
-        expect(tabClicked).toBe(true);
+        // Click on Melee toggle
+        const toggleClicked = await clickMeleeToggle(page);
+        expect(toggleClicked).toBe(true);
         
         // Select power-strike attack (0 degree angle)
         const attackSelected = await selectMeleeAttack(page, 'Power Strike');
@@ -477,9 +527,9 @@ test.describe('Melee Combat System', () => {
         const characterClicked = await clickFirstCharacter(page);
         expect(characterClicked).toBe(true);
         
-        // Click on Melee tab
-        const tabClicked = await clickMeleeTab(page);
-        expect(tabClicked).toBe(true);
+        // Click on Melee toggle
+        const toggleClicked = await clickMeleeToggle(page);
+        expect(toggleClicked).toBe(true);
         
         // Select slash attack (costs 20 AP)
         const attackSelected = await selectMeleeAttack(page, 'Slash');
@@ -545,9 +595,9 @@ test.describe('Melee Combat System', () => {
         const characterClicked = await clickFirstCharacter(page);
         expect(characterClicked).toBe(true);
         
-        // Click on Melee tab
-        const tabClicked = await clickMeleeTab(page);
-        expect(tabClicked).toBe(true);
+        // Click on Melee toggle
+        const toggleClicked = await clickMeleeToggle(page);
+        expect(toggleClicked).toBe(true);
         
         // Select slash attack
         const attackSelected = await selectMeleeAttack(page, 'Slash');

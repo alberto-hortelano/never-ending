@@ -211,6 +211,16 @@ export default class Board extends Component {
     const activeCharacterName = this.shootingCharacterName || this.overwatchCharacterName;
     if (!activeCharacterName) return;
     
+    // On mobile, only update direction for overwatch (not shooting)
+    // Touch events on cells will handle the click directly
+    const isMobileDevice = this.isMobile();
+    const isOverwatchMode = this.overwatchCharacterName !== null;
+    
+    // Skip mouse position updates on mobile for non-overwatch modes
+    if (isMobileDevice && !isOverwatchMode) {
+      return;
+    }
+    
     // Dispatch the coordinate update to appropriate service
     this.dispatch(ControlsEvent.mousePositionUpdate, {
       characterName: activeCharacterName,

@@ -1,5 +1,5 @@
 import { Component } from "../Component";
-import { ControlsEvent, UpdateStateEvent } from "../../common/events";
+import { ControlsEvent, UpdateStateEvent, StateChangeEvent } from "../../common/events";
 import type { Actions } from "../actions/Actions";
 
 export default class BottomBar extends Component {
@@ -27,6 +27,43 @@ export default class BottomBar extends Component {
         this.listen(ControlsEvent.toggleMelee, (_characterName: string) => {
             this.toggleMeleeActions(root);
         });
+        
+        // Listen for interaction mode changes to show/hide mobile hints
+        this.listen(StateChangeEvent.uiInteractionMode, (mode) => {
+            this.updateMobileHint(mode, root);
+        });
+    }
+    
+    private updateMobileHint(mode: any, root: ShadowRoot) {
+        // Hide all hints first
+        const allHints = root.querySelectorAll('.mobile-hint') as NodeListOf<HTMLElement>;
+        allHints.forEach(hint => hint.style.display = 'none');
+        
+        // Only show hints on mobile
+        if (!this.isMobile()) return;
+        
+        // Show appropriate hint based on mode
+        let hintToShow: HTMLElement | null = null;
+        
+        switch (mode?.type) {
+            case 'overwatch':
+                hintToShow = root.querySelector('.overwatch-mobile-hint');
+                break;
+            case 'moving':
+                hintToShow = root.querySelector('.movement-mobile-hint');
+                break;
+            case 'shooting':
+                hintToShow = root.querySelector('.shooting-mobile-hint');
+                break;
+        }
+        
+        if (hintToShow) {
+            hintToShow.style.display = 'block';
+        }
+    }
+    
+    private isMobile(): boolean {
+        return window.innerWidth <= 768;
     }
     
     private showCharacterActions(characterName: string, root: ShadowRoot) {

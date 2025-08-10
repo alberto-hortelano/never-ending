@@ -147,7 +147,9 @@ export default class Character extends Component {
 
         // Remove the transitionend listener - walk class removal is handled by AnimationService
         // when the full movement animation completes, not when individual transitions end
-        this.addEventListener('click', () => {
+        
+        // Click handler for desktop
+        const handleInteraction = () => {
             if (this.isShootingMode || this.isMeleeMode) {
                 // In shooting or melee mode, dispatch character click event
                 this.dispatch(ControlsEvent.characterClick, {
@@ -168,6 +170,13 @@ export default class Character extends Component {
                     }
                 }
             }
+        };
+        
+        // Add both click and touch listeners
+        this.addEventListener('click', handleInteraction);
+        this.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevent default touch behavior
+            handleInteraction();
         });
 
         // Get initial turn from state

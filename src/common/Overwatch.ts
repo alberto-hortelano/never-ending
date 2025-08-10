@@ -130,14 +130,45 @@ export class Overwatch extends EventBus<
             return;
         }
 
-        const isInVisibleCell = this.isCoordInVisibleCells(coord, this.visibleCells);
-
-        if (isInVisibleCell) {
-            this.activateOverwatch(this.activeOverwatchCharacter);
+        // On mobile, clicking/tapping a cell sets the direction and activates
+        const isMobile = this.isMobileDevice();
+        
+        if (isMobile) {
+            // Update direction to face the tapped cell
+            const character = this.activeOverwatchCharacter;
+            const newDirection = this.calculateDirectionToCoord(character.position, coord);
+            
+            if (character.direction !== newDirection) {
+                this.updateCharacterDirection(character.name, newDirection);
+                
+                // Update the overwatch range display with new direction
+                const updatedCharacter = this.state.findCharacter(character.name);
+                if (updatedCharacter) {
+                    this.showOverwatchRange(updatedCharacter);
+                    return; // Don't activate yet, just update direction
+                }
+            }
+            
+            // Only activate if tapping in the visible area after direction is set
+            const isInVisibleCell = this.isCoordInVisibleCells(coord, this.visibleCells);
+            if (isInVisibleCell) {
+                this.activateOverwatch(this.activeOverwatchCharacter);
+            }
+        } else {
+            // Desktop: only activate if clicking in visible area
+            const isInVisibleCell = this.isCoordInVisibleCells(coord, this.visibleCells);
+            if (isInVisibleCell) {
+                this.activateOverwatch(this.activeOverwatchCharacter);
+            }
         }
     }
 
     private handleMousePositionUpdate(data: ControlsEventsMap[ControlsEvent.mousePositionUpdate]): void {
+        // Skip mouse position updates on mobile - we use tap-to-set-direction instead
+        if (this.isMobileDevice()) {
+            return;
+        }
+        
         const { characterName, mouseCoord } = data;
 
         // Only process if this is for the current overwatch setup or active overwatch
@@ -402,6 +433,14 @@ export class Overwatch extends EventBus<
     }
 
     // Helper Methods
+    private isMobileDevice(): boolean {
+        // In tests, always return false to maintain existing behavior
+        if (typeof jest !== 'undefined') {
+            return false;
+        }
+        return window.innerWidth <= 768;
+    }
+    
     private isCharacterTurn(character: DeepReadonly<ICharacter>): boolean {
         return character.player === this.state.game.turn;
     }

@@ -62,6 +62,49 @@
     }
 }
 
+// Mobile hints for various interaction modes
+.mobile-hint {
+    background: rgba($color-highlight, 0.15);
+    border: 1px solid $color-highlight;
+    border-radius: $border-radius-md;
+    padding: $spacing-sm $spacing-md;
+    margin-bottom: $spacing-sm;
+    text-align: center;
+    animation: pulse 2s infinite;
+    
+    .hint-text {
+        color: $color-text-primary;
+        font-size: $font-size-sm;
+        font-weight: $font-weight-medium;
+        
+        @include md-up {
+            font-size: $font-size-base;
+        }
+    }
+    
+    @keyframes pulse {
+        0%, 100% {
+            opacity: 0.9;
+            transform: scale(1);
+        }
+        50% {
+            opacity: 1;
+            transform: scale(1.02);
+        }
+    }
+    
+    // Specific colors for different modes
+    &.movement-mobile-hint {
+        background: rgba($color-path, 0.15);
+        border-color: $color-path;
+    }
+    
+    &.shooting-mobile-hint {
+        background: rgba($color-danger, 0.15);
+        border-color: $color-danger;
+    }
+}
+
 // Melee actions container (hidden by default)
 .melee-actions-container {
     display: none;
