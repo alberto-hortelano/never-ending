@@ -55,20 +55,47 @@ export class AIController extends EventBus<
     }
 
     public setGameState(state: State): void {
+        // Clean up previous listeners before setting new state
+        this.cleanup();
+        
         this.state = state;
         this.contextBuilder = new AIContextBuilder(state);
         this.initialize();
     }
+    
+    private cleanup(): void {
+        // Remove all listeners for this instance
+        this.remove(this);
+        this.isInitialized = false;
+    }
+    
+    private isInitialized = false;
 
     private initialize(): void {
-        if (!this.state) return;
+        if (!this.state) {
+            console.log('[AI] Initialize called but no state available');
+            return;
+        }
+        
+        if (this.isInitialized) {
+            console.log('[AI] Already initialized, skipping');
+            return;
+        }
+        
+        console.log('[AI] Initializing AIController with state');
+        this.isInitialized = true;
 
         // Listen for turn changes to check if AI player should act
         this.listen(GameEvent.changeTurn, (data: GameEventsMap[GameEvent.changeTurn]) => {
+            console.log('[AI] Turn changed to:', data.turn, 'from:', data.previousTurn);
             const currentPlayer = data.turn;
             
             // Check if this is an AI-controlled player
-            if (this.isAIPlayer(currentPlayer)) {
+            const isAI = this.isAIPlayer(currentPlayer);
+            console.log('[AI] Is player', currentPlayer, 'an AI?', isAI);
+            
+            if (isAI) {
+                console.log('[AI] AI player turn detected, processing in 500ms...');
                 // Give a small delay for UI to update
                 setTimeout(() => this.processAIPlayerTurn(currentPlayer), 500);
             }
@@ -80,11 +107,17 @@ export class AIController extends EventBus<
     }
 
     private isAIPlayer(playerId: string): boolean {
-        if (!this.state) return false;
+        if (!this.state) {
+            console.log('[AI] isAIPlayer - No state available');
+            return false;
+        }
         // Check if this player is marked as AI in the game state
         const game = this.state.game as ExtendedGame;
+        console.log('[AI] isAIPlayer - Checking player:', playerId, 'playerInfo:', game.playerInfo);
         const playerInfo = game.playerInfo?.[playerId];
-        return playerInfo?.isAI === true;
+        const result = playerInfo?.isAI === true;
+        console.log('[AI] isAIPlayer - Player', playerId, 'info:', playerInfo, 'isAI:', result);
+        return result;
     }
 
     // Removed isAIControlled - not used
@@ -105,27 +138,40 @@ export class AIController extends EventBus<
     }
 
     private async processAICharacterTurn(character: DeepReadonly<ICharacter>): Promise<void> {
-        if (this.isProcessingTurn || !this.aiEnabled || !this.state || !this.contextBuilder) return;
+        if (this.isProcessingTurn || !this.aiEnabled || !this.state || !this.contextBuilder) {
+            console.log('[AI] Cannot process turn:', {
+                isProcessingTurn: this.isProcessingTurn,
+                aiEnabled: this.aiEnabled,
+                hasState: !!this.state,
+                hasContextBuilder: !!this.contextBuilder
+            });
+            return;
+        }
         this.isProcessingTurn = true;
+        console.log('[AI] Starting turn for character:', character.name);
 
         try {
             // Build context for AI
             const context = this.contextBuilder.buildTurnContext(character, this.state);
+            console.log('[AI] Built context for character:', character.name);
             
             // Get AI decision from game engine
+            console.log('[AI] Requesting AI action from game engine...');
             const response = await this.gameEngineService.requestAIAction(context);
+            console.log('[AI] Received command type:', response.command?.type || 'none');
             
             // Parse and execute AI commands
             if (response.command) {
                 const validatedCommand = this.commandParser.validate(response.command);
                 if (validatedCommand) {
+                    console.log('[AI] Command validated successfully, executing type:', validatedCommand.type);
                     await this.executeAICommand(validatedCommand, character);
                 } else {
-                    console.error('Invalid AI command received:', response.command);
+                    console.error('[AI] Invalid AI command received:', response.command);
                     this.endAITurn();
                 }
             } else {
-                console.warn('No AI command received, ending turn');
+                console.warn('[AI] No AI command received, ending turn');
                 this.endAITurn();
             }
         } catch (error) {
@@ -138,48 +184,105 @@ export class AIController extends EventBus<
     }
 
     private async executeAICommand(command: AICommand, character: DeepReadonly<ICharacter>): Promise<void> {
+        console.log('[AI] ExecuteAICommand called with:', { type: command.type, character: character.name });
         const validatedCommand = this.commandParser.validate(command);
         if (!validatedCommand) {
-            console.error('Invalid AI command:', command);
+            console.error('[AI] Invalid AI command:', command);
             this.endAITurn();
             return;
         }
 
+        console.log('[AI] Executing command type:', validatedCommand.type);
         switch (validatedCommand.type) {
             case 'movement':
+                console.log('[AI] Executing movement command...');
                 await this.executeMovement(validatedCommand, character);
                 break;
             case 'attack':
+                console.log('[AI] Executing attack command...');
                 await this.executeAttack(validatedCommand, character);
                 break;
             case 'speech':
+                console.log('[AI] Executing speech command...');
                 await this.executeSpeech(validatedCommand, character);
                 break;
             case 'character':
+                console.log('[AI] Executing character spawn command...');
                 await this.spawnCharacters(validatedCommand);
                 break;
             default:
-                console.warn('Unhandled AI command type:', validatedCommand.type);
+                console.warn('[AI] Unhandled AI command type:', validatedCommand.type);
                 this.endAITurn();
         }
     }
 
     private async executeMovement(command: AICommand, character: DeepReadonly<ICharacter>): Promise<void> {
-        // Find target location
-        const targetLocation = this.resolveLocation(command.characters[0].location);
+        console.log('[AI] ExecuteMovement - Processing movement for:', character.name);
         
-        if (targetLocation) {
-            // Enter movement mode first
-            this.dispatch(ControlsEvent.showMovement, character.name);
-            
-            // After a short delay, click on the target location
-            setTimeout(() => {
-                this.dispatch(ControlsEvent.cellClick, targetLocation);
-            }, 100);
-        } else {
-            // If no valid target, end turn
+        // Find target location
+        const targetLocationString = command.characters[0].location;
+        console.log('[AI] ExecuteMovement - Resolving location:', targetLocationString);
+        const targetLocation = this.resolveLocation(targetLocationString);
+        
+        if (!targetLocation) {
+            console.log('[AI] ExecuteMovement - Could not resolve target location, ending turn');
             this.endAITurn();
+            return;
         }
+        
+        console.log('[AI] ExecuteMovement - Target location resolved to:', targetLocation);
+        
+        // Enter movement mode first to get reachable cells
+        console.log('[AI] ExecuteMovement - Dispatching showMovement for:', character.name);
+        this.dispatch(ControlsEvent.showMovement, character.name);
+        
+        // Wait for Movement system to set up, then find best reachable position
+        setTimeout(() => {
+            // Get reachable cells from highlights in UI state
+            const highlights = this.state?.ui?.transientUI?.highlights;
+            const reachableCells = highlights?.reachableCells || [];
+            
+            console.log('[AI] ExecuteMovement - Found', reachableCells.length, 'reachable cells');
+            
+            if (reachableCells.length === 0) {
+                console.log('[AI] ExecuteMovement - No reachable cells, ending turn');
+                this.endAITurn();
+                return;
+            }
+            
+            // Find the reachable cell closest to the target
+            let bestCell = reachableCells[0];
+            if (!bestCell) {
+                console.log('[AI] ExecuteMovement - No valid best cell found, ending turn');
+                this.endAITurn();
+                return;
+            }
+            
+            let bestDistance = this.getDistance(bestCell, targetLocation);
+            
+            for (const cell of reachableCells) {
+                const dist = this.getDistance(cell, targetLocation);
+                if (dist < bestDistance) {
+                    bestDistance = dist;
+                    bestCell = cell;
+                }
+            }
+            
+            console.log('[AI] ExecuteMovement - Best reachable cell towards target:', bestCell);
+            console.log('[AI] ExecuteMovement - Dispatching cellClick to:', bestCell);
+            
+            this.dispatch(ControlsEvent.cellClick, { x: bestCell.x, y: bestCell.y });
+            console.log('[AI] ExecuteMovement - Movement command dispatched');
+            
+            // After another delay, if movement didn't happen, end turn
+            setTimeout(() => {
+                // Check if we're still in AI turn (movement might have changed it)
+                if (this.state && this.state.game.turn === character.player) {
+                    console.log('[AI] ExecuteMovement - Movement might have failed, ending turn');
+                    this.endAITurn();
+                }
+            }, 1000);
+        }, 750); // Slightly longer delay to ensure Movement system is ready
     }
 
     private async executeAttack(command: AICommand, character: DeepReadonly<ICharacter>): Promise<void> {
@@ -268,84 +371,85 @@ export class AIController extends EventBus<
         );
     }
 
+
     private async executeSpeech(command: AICommand, _character: DeepReadonly<ICharacter>): Promise<void> {
         if (!this.state || !this.contextBuilder) {
             return;
         }
         
-        // Create popup data for speech
-        const popupData = {
-            type: 'dialogue',
-            speaker: command.source,
-            content: command.content,
-            answers: command.answers || [],
-            action: command.action
-        };
+        console.log('[AI] ExecuteSpeech - Processing speech for:', command.source);
+        console.log('[AI] ExecuteSpeech - Content:', command.content);
+        console.log('[AI] ExecuteSpeech - Answers:', command.answers);
         
-        // Show popup with dialogue (using correct interface)
-        this.dispatch(UpdateStateEvent.uiPopup, {
-            popupId: 'ai-dialogue',
-            popupState: {
-                type: 'conversation' as const,
-                visible: true,
-                data: popupData
+        // The conversation system expects messages in a specific format
+        // For now, we'll display the dialogue in a simpler way
+        // In the future, this could integrate with the Talk system
+        
+        // Check if we should use the Talk system for nearby conversation
+        const speaker = this.state.characters.find((c: DeepReadonly<ICharacter>) => 
+            c.name.toLowerCase() === (command.source || '').toLowerCase()
+        );
+        const player = this.state.characters.find((c: DeepReadonly<ICharacter>) => 
+            c.name.toLowerCase() === 'player'
+        );
+        
+        if (speaker && player) {
+            // Check if they're close enough to talk (within 3 cells)
+            const distance = this.getDistance(speaker.position, player.position);
+            console.log('[AI] ExecuteSpeech - Distance between speaker and player:', distance);
+            
+            if (distance <= 3) {
+                // They're close enough - dispatch a talk event
+                console.log('[AI] ExecuteSpeech - Characters are close, initiating talk');
+                
+                // Show the talk popup with the AI's message
+                this.dispatch(ControlsEvent.showTalk, {
+                    talkingCharacter: speaker,
+                    availableCharacters: [player]
+                });
+                
+                // Then after a delay, select the player to talk to
+                setTimeout(() => {
+                    console.log('[AI] ExecuteSpeech - Simulating conversation with player');
+                    console.log(`[AI] ${command.source} says:`, command.content);
+                    
+                    // The actual conversation UI would need to be enhanced to support AI dialogue
+                    // For now, we'll just log the message and end the turn
+                    
+                    // End turn after talking
+                    setTimeout(() => {
+                        this.endAITurn();
+                    }, 1000);
+                }, 500);
+                
+                // Record dialogue event
+                this.contextBuilder.recordEvent({
+                    type: 'dialogue',
+                    actor: command.source,
+                    description: `${command.source}: ${command.content}`,
+                    turn: this.state.game.turn
+                });
+                
+                return;
             }
-        });
+        }
         
-        // Record dialogue event
+        // If not close enough or can't find characters, just log and end turn
+        console.log('[AI] ExecuteSpeech - Cannot talk, characters too far or not found');
+        console.log(`[AI] ${command.source} wants to say:`, command.content);
+        
+        // Record the attempt
         this.contextBuilder.recordEvent({
             type: 'dialogue',
             actor: command.source,
-            description: `${command.source}: ${command.content}`,
+            description: `${command.source} (too far): ${command.content}`,
             turn: this.state.game.turn
         });
         
-        // If there are no answer options, close popup after delay
-        if (!command.answers || command.answers.length === 0) {
-            setTimeout(() => {
-                this.dispatch(UpdateStateEvent.uiPopup, {
-                    popupId: 'ai-dialogue',
-                    popupState: {
-                        type: 'conversation' as const,
-                        visible: false,
-                        data: {} // Empty data object for conversation popup
-                    }
-                });
-                // Continue with next action if specified
-                if (command.action) {
-                    this.processFollowUpAction(command.action);
-                }
-            }, 3000);
-        }
+        // End turn
+        this.endAITurn();
     }
 
-    private processFollowUpAction(action: string): void {
-        // Process follow-up actions after dialogue
-        switch (action) {
-            case 'storyline':
-                // Continue with storyline progression
-                console.log('Processing storyline continuation');
-                break;
-            case 'character':
-                // Spawn new characters
-                console.log('Processing character spawn');
-                break;
-            case 'movement':
-                // Trigger movement
-                console.log('Processing movement');
-                break;
-            case 'attack':
-                // Trigger combat
-                console.log('Processing attack');
-                break;
-            case 'map':
-                // Generate new map
-                console.log('Processing map generation');
-                break;
-            default:
-                console.log('Unknown follow-up action:', action);
-        }
-    }
 
     private async spawnCharacters(command: AICommand): Promise<void> {
         if (!this.state || !this.contextBuilder) return;
@@ -415,19 +519,31 @@ export class AIController extends EventBus<
     }
 
     private resolveLocation(location: string): ICoord | null {
-        if (!this.state) return null;
+        if (!this.state) {
+            console.log('[AI] ResolveLocation - No state available');
+            return null;
+        }
+        
+        console.log('[AI] ResolveLocation - Attempting to resolve location:', location);
+        console.log('[AI] ResolveLocation - Available characters:', this.state.characters.map(c => c.name));
         
         // Parse location string to find actual map position
         // Could be: "building/room", "near character name", coordinates, etc.
         
-        // Try to find character by name
-        const targetChar = this.state.characters.find((c: DeepReadonly<ICharacter>) => c.name === location);
+        // Try to find character by name (case-insensitive)
+        const targetChar = this.state.characters.find((c: DeepReadonly<ICharacter>) => 
+            c.name.toLowerCase() === location.toLowerCase()
+        );
         if (targetChar) {
+            console.log('[AI] ResolveLocation - Found character:', targetChar.name, 'at position:', targetChar.position);
             return { x: targetChar.position.x, y: targetChar.position.y };
         }
+        console.log('[AI] ResolveLocation - No character found with name:', location);
+        console.log('[AI] ResolveLocation - Tried to match (lowercase):', location.toLowerCase());
 
         // Try to parse as building/room
         if (location.includes('/')) {
+            console.log('[AI] ResolveLocation - Location contains "/", treating as building/room (not yet implemented)');
             // const [building, room] = location.split('/');
             // Would need to look up building and room positions from map data
             // For now, return null
@@ -443,11 +559,14 @@ export class AIController extends EventBus<
                 const x = parseInt(xStr, 10);
                 const y = parseInt(yStr, 10);
                 if (!isNaN(x) && !isNaN(y)) {
+                    console.log('[AI] ResolveLocation - Parsed as coordinates:', { x, y });
                     return { x, y };
                 }
             }
         }
+        console.log('[AI] ResolveLocation - No valid coordinate match found');
 
+        console.log('[AI] ResolveLocation - Could not resolve location:', location);
         return null;
     }
 
@@ -472,8 +591,12 @@ export class AIController extends EventBus<
     }
 
     private endAITurn(): void {
-        if (!this.state) return;
+        if (!this.state) {
+            console.log('[AI] EndAITurn - No state available');
+            return;
+        }
         
+        console.log('[AI] EndAITurn - Ending AI turn');
         // Signal end of turn by changing to next turn
         const currentTurn = this.state.game.turn;
         const players = this.state.game.players;
@@ -481,6 +604,7 @@ export class AIController extends EventBus<
         const nextIndex = (currentIndex + 1) % players.length;
         const nextTurn = players[nextIndex] || currentTurn;
         
+        console.log('[AI] EndAITurn - Changing turn from', currentTurn, 'to', nextTurn);
         this.dispatch(GameEvent.changeTurn, {
             turn: nextTurn,
             previousTurn: currentTurn

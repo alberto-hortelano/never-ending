@@ -70,6 +70,7 @@ Consider the tactical situation and make intelligent decisions.`;
         context: any,
         systemPrompt?: string
     ): Promise<AIGameEngineResponse> {
+        console.log('[AI GameEngine] RequestAIAction called');
         const messages: IMessage[] = [];
 
         // Add system context as first message
@@ -81,21 +82,25 @@ Consider the tactical situation and make intelligent decisions.`;
         }
 
         // Add the current context
+        const contextPrompt = this.buildContextPrompt(context);
         messages.push({
             role: 'user',
-            content: this.buildContextPrompt(context)
+            content: contextPrompt
         });
 
         try {
+            console.log('[AI GameEngine] Calling game engine with messages...');
             const response = await this.callGameEngine(messages);
+            console.log('[AI GameEngine] Received response from engine (last message only):', response.content.substring(0, 200) + '...');
             const command = this.parseAIResponse(response.content);
+            console.log('[AI GameEngine] Parsed command:', JSON.stringify(command, null, 2));
 
             return {
                 messages: response.messages,
                 command: command
             };
         } catch (error) {
-            console.error('Failed to get AI action:', error);
+            console.error('[AI GameEngine] Failed to get AI action:', error);
             return {
                 messages: messages,
                 command: null
@@ -128,6 +133,7 @@ Consider:
         retry = 0
     ): Promise<{ messages: IMessage[], content: string }> {
         try {
+            console.log('[AI GameEngine] Sending request to /gameEngine...');
             const response = await fetch('/gameEngine', {
                 method: 'POST',
                 headers: {
@@ -138,22 +144,48 @@ Consider:
 
             if (!response.ok) {
                 const errorData = await response.json();
+                console.error('[AI GameEngine] Server error:', errorData);
                 throw new Error(errorData.error || `API request failed: ${response.statusText}`);
             }
 
-            const updatedMessages: IMessage[] = await response.json();
-
+            // The server might return either:
+            // 1. A direct JSON command object
+            // 2. An array of messages with the command in the last message
+            const responseData = await response.json();
+            // Only log a summary of the response
+            const responsePreview = JSON.stringify(responseData).substring(0, 100);
+            console.log('[AI GameEngine] Raw response from server (preview):', responsePreview + '...');
+            
+            // Check if it's a direct command response
+            if (responseData.type) {
+                console.log('[AI GameEngine] Detected direct command response');
+                return {
+                    messages: messages,
+                    content: JSON.stringify(responseData)
+                };
+            }
+            
+            // Otherwise treat as message array
+            const updatedMessages: IMessage[] = responseData;
             const lastMessage = updatedMessages[updatedMessages.length - 1];
             if (!lastMessage || lastMessage.role !== 'assistant') {
-                throw new Error('Invalid response from server');
+                // If not messages format, assume it's a direct response
+                console.log('[AI GameEngine] Not a message array, using direct response');
+                return {
+                    messages: messages,
+                    content: JSON.stringify(responseData)
+                };
             }
 
+            console.log('[AI GameEngine] Extracted content from last message');
             return {
                 messages: updatedMessages,
                 content: lastMessage.content
             };
         } catch (error) {
+            console.error('[AI GameEngine] Error in callGameEngine:', error);
             if (retry < this.maxRetries) {
+                console.log(`[AI GameEngine] Retrying... (attempt ${retry + 1}/${this.maxRetries})`);
                 await new Promise(resolve => setTimeout(resolve, this.retryDelay));
                 return this.callGameEngine(messages, retry + 1);
             }
@@ -175,8 +207,8 @@ Consider:
             const parsed = JSON.parse(response);
             return parsed as AICommand;
         } catch (error) {
-            console.error('Failed to parse AI response:', error);
-            console.error('Response was:', response);
+            console.error('[AI GameEngine] Failed to parse AI response:', error);
+            console.error('[AI GameEngine] Response was:', response);
             return null;
         }
     }
