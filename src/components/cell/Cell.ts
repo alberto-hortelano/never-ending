@@ -83,16 +83,13 @@ export default class Cell extends Component {
         // Prevent default to avoid scrolling
         e.preventDefault();
         
-        // Dispatch touch enter event (reuse mouse enter for simplicity)
-        // The Board component will handle this differently on mobile
+        // Dispatch touch enter event for path preview
         this.dispatch(ControlsEvent.cellMouseEnter, this.coords);
         
-        // Also dispatch click for immediate activation on mobile
-        // This allows tap-to-set-direction behavior
-        const state = this.getState();
-        if (state?.ui?.interactionMode?.type === 'overwatch') {
-            this.dispatch(ControlsEvent.cellClick, this.coords);
-        }
+        // Dispatch click for all interaction modes on mobile
+        // This enables: movement (tap to preview, tap to confirm), 
+        // overwatch (tap to set direction, tap to activate)
+        this.dispatch(ControlsEvent.cellClick, this.coords);
     }
     private applyVisualState(visualState: ICellVisualState) {
         // Use requestAnimationFrame to batch DOM updates

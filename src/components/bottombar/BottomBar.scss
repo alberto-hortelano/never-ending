@@ -62,8 +62,8 @@
     }
 }
 
-// Mobile overwatch hint
-.overwatch-mobile-hint {
+// Mobile hints for various interaction modes
+.mobile-hint {
     background: rgba($color-highlight, 0.15);
     border: 1px solid $color-highlight;
     border-radius: $border-radius-md;
@@ -91,6 +91,17 @@
             opacity: 1;
             transform: scale(1.02);
         }
+    }
+    
+    // Specific colors for different modes
+    &.movement-mobile-hint {
+        background: rgba($color-path, 0.15);
+        border-color: $color-path;
+    }
+    
+    &.shooting-mobile-hint {
+        background: rgba($color-danger, 0.15);
+        border-color: $color-danger;
     }
 }
 

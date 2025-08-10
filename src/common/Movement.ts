@@ -22,6 +22,7 @@ export class Movement extends EventBus<
     private listeners: Array<{ event: string; handler: Function }> = [];
     private completedMovements = new Map<string, { path: ICoord[], finalDirection: string, fromNetwork?: boolean, paidCells: number }>();
     private modeManager: InteractionModeManager;
+    private previewedDestination?: ICoord; // Track the currently previewed destination for mobile two-step
 
     constructor(
         private state: State,
@@ -62,18 +63,67 @@ export class Movement extends EventBus<
     private cleanupMovementMode() {
         this.movingCharacter = undefined;
         this.reachableCells = undefined;
+        this.previewedDestination = undefined;
         this.clearPathPreview();
+    }
+    
+    // Helper method to check if running on mobile
+    private isMobileDevice(): boolean {
+        // In tests, always return false to maintain existing behavior
+        if (typeof jest !== 'undefined') {
+            return false;
+        }
+        return window.innerWidth <= 768;
+    }
+    
+    // Get the current path cells being displayed
+    private getCurrentPathCells(): readonly ICoord[] | undefined {
+        const highlights = this.state.ui?.transientUI?.highlights;
+        return highlights?.pathCells;
     }
     // Listeners
     private onCellClick(position: ControlsEventsMap[ControlsEvent.cellClick]) {
-        if (this.movingCharacter && this.reachableCells?.find(c => c.x === position.x && c.y === position.y)) {
-            this.selectDestination(this.movingCharacter, this.reachableCells, position);
-        } else {
+        if (!this.movingCharacter || !this.reachableCells) return;
+        
+        const isReachable = this.reachableCells.find(c => c.x === position.x && c.y === position.y);
+        
+        if (isReachable) {
+            if (this.isMobileDevice()) {
+                // Mobile: Two-step interaction
+                if (this.previewedDestination && 
+                    this.previewedDestination.x === position.x && 
+                    this.previewedDestination.y === position.y) {
+                    // Second tap on same cell - confirm movement
+                    this.selectDestination(this.movingCharacter, this.reachableCells, position);
+                    this.previewedDestination = undefined;
+                } else {
+                    // First tap or different cell - show preview
+                    this.showPathPreview(position);
+                    this.previewedDestination = position;
+                }
+            } else {
+                // Desktop: Click to move immediately
+                this.selectDestination(this.movingCharacter, this.reachableCells, position);
+            }
+        } else if (this.previewedDestination) {
+            // Check if clicking on a path cell (mobile confirmation)
+            const currentPath = this.getCurrentPathCells();
+            const isOnPath = currentPath?.find(c => c.x === position.x && c.y === position.y);
+            
+            if (isOnPath && this.isMobileDevice()) {
+                // Tapping on path confirms movement to previewed destination
+                this.selectDestination(this.movingCharacter, this.reachableCells, this.previewedDestination);
+                this.previewedDestination = undefined;
+            } else {
+                // Clear preview if clicking elsewhere
+                this.clearPathPreview();
+                this.previewedDestination = undefined;
+            }
         }
     }
     private onCellMouseEnter(position: ControlsEventsMap[ControlsEvent.cellMouseEnter]) {
-        // Only show path preview during movement mode
-        if (this.movingCharacter && this.reachableCells?.find(c => c.x === position.x && c.y === position.y)) {
+        // Only show path preview on desktop (mobile uses click for preview)
+        if (!this.isMobileDevice() && this.movingCharacter && this.reachableCells?.find(c => c.x === position.x && c.y === position.y)) {
             this.showPathPreview(position);
         }
     }

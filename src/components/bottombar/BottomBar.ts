@@ -35,14 +35,30 @@ export default class BottomBar extends Component {
     }
     
     private updateMobileHint(mode: any, root: ShadowRoot) {
-        const hint = root.querySelector('.overwatch-mobile-hint') as HTMLElement;
-        if (!hint) return;
+        // Hide all hints first
+        const allHints = root.querySelectorAll('.mobile-hint') as NodeListOf<HTMLElement>;
+        allHints.forEach(hint => hint.style.display = 'none');
         
-        // Only show hint on mobile when in overwatch mode
-        if (this.isMobile() && mode?.type === 'overwatch') {
-            hint.style.display = 'block';
-        } else {
-            hint.style.display = 'none';
+        // Only show hints on mobile
+        if (!this.isMobile()) return;
+        
+        // Show appropriate hint based on mode
+        let hintToShow: HTMLElement | null = null;
+        
+        switch (mode?.type) {
+            case 'overwatch':
+                hintToShow = root.querySelector('.overwatch-mobile-hint');
+                break;
+            case 'moving':
+                hintToShow = root.querySelector('.movement-mobile-hint');
+                break;
+            case 'shooting':
+                hintToShow = root.querySelector('.shooting-mobile-hint');
+                break;
+        }
+        
+        if (hintToShow) {
+            hintToShow.style.display = 'block';
         }
     }
     
