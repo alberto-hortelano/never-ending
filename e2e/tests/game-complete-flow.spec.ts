@@ -71,8 +71,25 @@ test.describe('Complete Game Flow - Happy Path', () => {
     expect(menuInteracted).toBe(true);
 
     // ========================================
-    // 3. GAME STARTS DIRECTLY
+    // 3. CHARACTER SELECTION (if available)
     // ========================================
+    // Check if character selection popup appears
+    const hasCharacterSelection = await waitForElement(page, 'select-character', 3000);
+    if (hasCharacterSelection) {
+      await page.waitForTimeout(1000);
+      await saveScreenshot(page, '02-character-selection.png');
+      
+      // Select first character
+      await page.evaluate(() => {
+        const selectChar = document.querySelector('select-character');
+        if (selectChar && (selectChar as any).getTestingShadowRoot) {
+          const shadowRoot = (selectChar as any).getTestingShadowRoot();
+          const firstChar = shadowRoot?.querySelector('.character-option') as HTMLElement;
+          if (firstChar) firstChar.click();
+        }
+      });
+      await page.waitForTimeout(1000);
+    }
 
     // ========================================
     // 4. GAME BOARD & INITIAL STATE
@@ -88,7 +105,14 @@ test.describe('Complete Game Flow - Happy Path', () => {
       // 5. ACTION POINTS DISPLAY
       // ========================================
       if (await waitForElement(page, 'action-summary', 3000)) {
-        await saveElementScreenshot(page, 'action-summary', '06-action-points.png');
+        await saveElementScreenshot(page, 'action-summary', '04-action-points.png');
+      } else {
+        // Try to capture from top bar if action-summary not available
+        const topBar = await page.locator('top-bar');
+        if (await topBar.isVisible()) {
+          await topBar.screenshot({ path: 'tutorial/images/04-action-points.png' });
+          console.log('✓ Captured 04-action-points.png from top bar');
+        }
       }
 
       // ========================================
@@ -117,14 +141,28 @@ test.describe('Complete Game Flow - Happy Path', () => {
 
       if (cellClicked) {
         await page.waitForTimeout(1500);
-        await saveScreenshot(page, '04-movement-basics.png');
+        
+        // Check for movement highlights
+        const hasHighlights = await page.evaluate(() => {
+          const board = document.querySelector('board-component');
+          if (board && (board as any).getTestingShadowRoot) {
+            const shadowRoot = (board as any).getTestingShadowRoot();
+            const highlights = shadowRoot?.querySelectorAll('.highlight, .path, .movement-highlight');
+            return highlights && highlights.length > 0;
+          }
+          return false;
+        });
+        
+        if (hasHighlights) {
+          await saveScreenshot(page, '05-movement-highlight.png');
+        }
         
         // Try to show movement path
         await page.evaluate(() => {
           const board = document.querySelector('board-component');
           if (board && (board as any).getTestingShadowRoot) {
             const shadowRoot = (board as any).getTestingShadowRoot();
-            const highlightedCell = shadowRoot?.querySelector('cell-component.highlight') as HTMLElement;
+            const highlightedCell = shadowRoot?.querySelector('cell-component.highlight, .path') as HTMLElement;
             if (highlightedCell) {
               highlightedCell.click();
             }
@@ -132,7 +170,7 @@ test.describe('Complete Game Flow - Happy Path', () => {
         });
         
         await page.waitForTimeout(1000);
-        await saveScreenshot(page, '05-movement-path.png');
+        await saveScreenshot(page, '04-movement-basics.png');
       }
 
       // ========================================
@@ -154,7 +192,7 @@ test.describe('Complete Game Flow - Happy Path', () => {
 
       if (actionsOpened) {
         await page.waitForTimeout(1000);
-        await saveScreenshot(page, '12-actions-menu.png');
+        await saveScreenshot(page, '06-actions-menu.png');
 
         // Try to select shoot action
         const shootSelected = await page.evaluate(() => {
@@ -172,7 +210,7 @@ test.describe('Complete Game Flow - Happy Path', () => {
 
         if (shootSelected) {
           await page.waitForTimeout(1500);
-          await saveScreenshot(page, '07-shooting-setup.png');
+          await saveScreenshot(page, '08-shooting-mode.png');
           
           // Show line of sight visualization
           await page.evaluate(() => {
@@ -190,7 +228,7 @@ test.describe('Complete Game Flow - Happy Path', () => {
           });
           
           await page.waitForTimeout(1000);
-          await saveScreenshot(page, '08-line-of-sight.png');
+          await saveScreenshot(page, '07-shooting-setup.png');
         }
 
         // Close actions menu
@@ -260,7 +298,7 @@ test.describe('Complete Game Flow - Happy Path', () => {
         await page.waitForTimeout(1000);
         const inventoryPopup = await page.locator('popup-component');
         if (await inventoryPopup.isVisible()) {
-          await saveElementScreenshot(page, 'popup-component', '13-inventory.png');
+          await saveElementScreenshot(page, 'popup-component', '07-inventory.png');
         }
         await page.keyboard.press('Escape');
         await page.waitForTimeout(500);
@@ -302,10 +340,10 @@ test.describe('Complete Game Flow - Happy Path', () => {
 
         if (endTurnRect) {
           await page.screenshot({ 
-            path: 'tutorial/images/14-end-turn.png',
+            path: 'tutorial/images/09-end-turn.png',
             clip: endTurnRect
           });
-          console.log('✓ Captured 14-end-turn.png');
+          console.log('✓ Captured 09-end-turn.png');
         }
       }
 
