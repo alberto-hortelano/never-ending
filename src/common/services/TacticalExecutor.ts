@@ -290,6 +290,20 @@ export class TacticalExecutor {
                 },
                 reasoning: `Attacking ${primaryThreat.character.name} at distance ${distance.toFixed(1)}`
             });
+        } else if (distance <= 15) {
+            // Close enough but no line of sight - prioritize movement
+            actions.push({
+                type: 'movement',
+                priority: 85,
+                command: {
+                    type: 'movement',
+                    characters: [{
+                        name: character.name,
+                        location: primaryThreat.character.name
+                    }]
+                },
+                reasoning: `Moving to get clear shot at ${primaryThreat.character.name}`
+            });
         }
 
         // Always provide movement option
@@ -359,10 +373,24 @@ export class TacticalExecutor {
                     },
                     reasoning: `Defending against ${primaryThreat.character.name} at distance ${primaryThreat.distance.toFixed(1)}`
                 });
+            } else {
+                // No line of sight - need to move to get a clear shot
+                actions.push({
+                    type: 'movement',
+                    priority: 75,
+                    command: {
+                        type: 'movement',
+                        characters: [{
+                            name: character.name,
+                            location: primaryThreat.character.name
+                        }]
+                    },
+                    reasoning: `Moving to get line of sight on ${primaryThreat.character.name}`
+                });
             }
             
             // Move closer if too far to attack effectively
-            if (primaryThreat.distance > 10) {
+            if (primaryThreat.distance > 10 && !primaryThreat.hasLineOfSight) {
                 actions.push({
                     type: 'movement',
                     priority: 60,
@@ -618,10 +646,52 @@ export class TacticalExecutor {
         );
     }
 
-    private checkLineOfSight(from: ICoord, to: ICoord, _state: State): boolean {
-        // Simplified LOS check - should integrate with actual map obstacles
-        // For now, assume LOS if within reasonable distance
-        return this.getDistance(from, to) <= 15;
+    private checkLineOfSight(from: ICoord, to: ICoord, state: State): boolean {
+        // Use Bresenham's line algorithm to check for obstacles
+        const map = state.map;
+        const dx = Math.abs(to.x - from.x);
+        const dy = Math.abs(to.y - from.y);
+        const sx = from.x < to.x ? 1 : -1;
+        const sy = from.y < to.y ? 1 : -1;
+        let err = dx - dy;
+        let x = Math.round(from.x);
+        let y = Math.round(from.y);
+        const targetX = Math.round(to.x);
+        const targetY = Math.round(to.y);
+
+        while (x !== targetX || y !== targetY) {
+            // Skip the starting position
+            if (x !== Math.round(from.x) || y !== Math.round(from.y)) {
+                const cell = map[y]?.[x];
+                if (cell?.content?.blocker) {
+                    return false; // Obstacle blocks line of sight
+                }
+
+                // Check if a character is blocking line of sight (except at the target position)
+                if (!(x === targetX && y === targetY)) {
+                    const blockingChar = state.characters.find(c => 
+                        Math.round(c.position.x) === x && 
+                        Math.round(c.position.y) === y &&
+                        c.health > 0
+                    );
+                    if (blockingChar) {
+                        return false; // Character blocks line of sight
+                    }
+                }
+            }
+
+            const e2 = 2 * err;
+            if (e2 > -dy) {
+                err -= dy;
+                x += sx;
+            }
+            if (e2 < dx) {
+                err += dx;
+                y += sy;
+            }
+        }
+
+        return true;
     }
 
     private characterHasRangedWeapon(character: DeepReadonly<ICharacter>): boolean {

@@ -571,6 +571,23 @@ export class AIController extends EventBus<
                 
             case 'kill':
             case 'ranged':
+                // First check if we have line of sight to the target
+                // If not, we should move closer instead
+                const hasLineOfSight = this.checkLineOfSight(character.position, targetChar.position);
+                
+                if (!hasLineOfSight) {
+                    console.log(`[AI] No line of sight to ${targetChar.name}, moving closer instead`);
+                    // Move closer to target instead of shooting
+                    await this.executeMovement({
+                        type: 'movement',
+                        characters: [{
+                            name: character.name,
+                            location: targetChar.name
+                        }]
+                    }, character);
+                    break;
+                }
+                
                 // First, rotate to face the target
                 const angle = Math.atan2(
                     targetChar.position.y - character.position.y,
@@ -642,6 +659,56 @@ export class AIController extends EventBus<
             Math.pow(pos2.x - pos1.x, 2) +
             Math.pow(pos2.y - pos1.y, 2)
         );
+    }
+    
+    private checkLineOfSight(from: ICoord, to: ICoord): boolean {
+        if (!this.state) return false;
+        
+        // Use Bresenham's line algorithm to check for obstacles
+        const map = this.state.map;
+        const dx = Math.abs(to.x - from.x);
+        const dy = Math.abs(to.y - from.y);
+        const sx = from.x < to.x ? 1 : -1;
+        const sy = from.y < to.y ? 1 : -1;
+        let err = dx - dy;
+        let x = Math.round(from.x);
+        let y = Math.round(from.y);
+        const targetX = Math.round(to.x);
+        const targetY = Math.round(to.y);
+
+        while (x !== targetX || y !== targetY) {
+            // Skip the starting position
+            if (x !== Math.round(from.x) || y !== Math.round(from.y)) {
+                const cell = map[y]?.[x];
+                if (cell?.content?.blocker) {
+                    return false; // Obstacle blocks line of sight
+                }
+
+                // Check if a character is blocking line of sight (except at the target position)
+                if (!(x === targetX && y === targetY)) {
+                    const blockingChar = this.state.characters.find(c => 
+                        Math.round(c.position.x) === x && 
+                        Math.round(c.position.y) === y &&
+                        c.health > 0
+                    );
+                    if (blockingChar) {
+                        return false; // Character blocks line of sight
+                    }
+                }
+            }
+
+            const e2 = 2 * err;
+            if (e2 > -dy) {
+                err -= dy;
+                x += sx;
+            }
+            if (e2 < dx) {
+                err += dx;
+                y += sy;
+            }
+        }
+
+        return true;
     }
     
     private angleToDirection(angle: number): Direction {
