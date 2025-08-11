@@ -70,7 +70,6 @@ Consider the tactical situation and make intelligent decisions.`;
         context: any,
         systemPrompt?: string
     ): Promise<AIGameEngineResponse> {
-        console.log('[AI GameEngine] RequestAIAction called');
         const messages: IMessage[] = [];
 
         // Add system context as first message
@@ -89,11 +88,8 @@ Consider the tactical situation and make intelligent decisions.`;
         });
 
         try {
-            console.log('[AI GameEngine] Calling game engine with messages...');
             const response = await this.callGameEngine(messages);
-            console.log('[AI GameEngine] Received response from engine (last message only):', response.content.substring(0, 200) + '...');
             const command = this.parseAIResponse(response.content);
-            console.log('[AI GameEngine] Parsed command:', JSON.stringify(command, null, 2));
 
             return {
                 messages: response.messages,
@@ -109,23 +105,39 @@ Consider the tactical situation and make intelligent decisions.`;
     }
 
     private buildContextPrompt(context: any): string {
+        // Find if there are adjacent characters
+        const adjacentChars = context.visibleCharacters?.filter((c: any) => c.isAdjacent) || [];
+        const hasAdjacentPlayer = adjacentChars.some((c: any) => c.isPlayer);
+        
+        // Get characters in conversation range
+        const conversableChars = context.charactersInConversationRange || [];
+        const conversableNames = conversableChars.map((c: any) => `${c.name} (${Math.round(c.distanceFromCurrent)}m)`).join(', ');
+        
         return `Current game state:
 ${JSON.stringify(context, null, 2)}
 
 It's ${context.currentCharacter.name}'s turn. Based on their personality and the current situation, what should they do?
 
+IMPORTANT INTERACTION RULES:
+- Characters within conversation range (3 cells): ${conversableNames || 'none'}
+- You can DIRECTLY SPEAK to any character in conversation range without moving
+- Characters marked as "canConverse: true" are close enough to talk to
+- Characters marked as "isAdjacent: true" are already next to you - DO NOT move towards them
+${hasAdjacentPlayer ? '- YOU ARE ALREADY NEXT TO THE PLAYER - Talk instead of moving!' : ''}
+${conversableChars.length > 0 ? `- You can talk to: ${conversableNames} RIGHT NOW without moving!` : '- No characters in conversation range - move closer to talk'}
+
 Respond with ONE JSON message following the format specifications. Choose the most appropriate action:
-- movement: Move to a strategic position
-- attack: Engage in combat
-- speech: Say something (if appropriate)
+- speech: Say something to characters within conversation range (${conversableChars.length} available)
+- movement: Move to a strategic position (ONLY if target is not in conversation range)
+- attack: Engage in combat (if enemy is in range)
 - character: Spawn new characters (only if narratively appropriate)
 
 Consider:
 - The character's faction: ${context.currentCharacter.faction || 'unknown'}
 - Their personality: ${context.currentCharacter.personality || 'unknown'}
 - Current health: ${context.currentCharacter.health.current}/${context.currentCharacter.health.max}
-- Visible enemies and allies
-- Tactical positioning`;
+- Characters in conversation range: ${conversableChars.length} (can talk without moving)
+- Tactical positioning: Don't move if already in conversation range of target`;
     }
 
     private async callGameEngine(
@@ -133,7 +145,6 @@ Consider:
         retry = 0
     ): Promise<{ messages: IMessage[], content: string }> {
         try {
-            console.log('[AI GameEngine] Sending request to /gameEngine...');
             const response = await fetch('/gameEngine', {
                 method: 'POST',
                 headers: {
@@ -152,13 +163,8 @@ Consider:
             // 1. A direct JSON command object
             // 2. An array of messages with the command in the last message
             const responseData = await response.json();
-            // Only log a summary of the response
-            const responsePreview = JSON.stringify(responseData).substring(0, 100);
-            console.log('[AI GameEngine] Raw response from server (preview):', responsePreview + '...');
-            
             // Check if it's a direct command response
             if (responseData.type) {
-                console.log('[AI GameEngine] Detected direct command response');
                 return {
                     messages: messages,
                     content: JSON.stringify(responseData)
@@ -170,14 +176,12 @@ Consider:
             const lastMessage = updatedMessages[updatedMessages.length - 1];
             if (!lastMessage || lastMessage.role !== 'assistant') {
                 // If not messages format, assume it's a direct response
-                console.log('[AI GameEngine] Not a message array, using direct response');
                 return {
                     messages: messages,
                     content: JSON.stringify(responseData)
                 };
             }
 
-            console.log('[AI GameEngine] Extracted content from last message');
             return {
                 messages: updatedMessages,
                 content: lastMessage.content

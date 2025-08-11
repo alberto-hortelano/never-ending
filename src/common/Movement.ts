@@ -83,21 +83,11 @@ export class Movement extends EventBus<
     }
     // Listeners
     private onCellClick(position: ControlsEventsMap[ControlsEvent.cellClick]) {
-        console.log('[Movement] onCellClick called at position:', position);
         if (!this.movingCharacter || !this.reachableCells) {
-            console.log('[Movement] No moving character or reachable cells:', { 
-                movingCharacter: this.movingCharacter?.name, 
-                hasReachableCells: !!this.reachableCells,
-                reachableCellsCount: this.reachableCells?.length 
-            });
             return;
         }
         
-        console.log('[Movement] Checking if position is reachable for:', this.movingCharacter.name);
-        console.log('[Movement] Target position:', position);
-        console.log('[Movement] Sample reachable cells:', this.reachableCells.slice(0, 5));
         const isReachable = this.reachableCells.find(c => c.x === position.x && c.y === position.y);
-        console.log('[Movement] Is position reachable?', !!isReachable);
         
         if (isReachable) {
             if (this.isMobileDevice()) {
@@ -258,28 +248,22 @@ export class Movement extends EventBus<
     }
     
     private onShowMovement(characterName: ControlsEventsMap[ControlsEvent.showMovement]) {
-        console.log('[Movement] onShowMovement called for:', characterName);
         const character = this.state.findCharacter(characterName);
         if (!character) {
-            console.log('[Movement] Character not found:', characterName);
             return;
         }
         
         // Check if character is defeated
         if (character.health <= 0) {
-            console.log('[Movement] Character is defeated:', characterName);
             return;
         }
 
         // Check if the character belongs to the current turn
         const currentTurn = this.state.game.turn;
-        console.log('[Movement] Current turn:', currentTurn, 'Character player:', character.player);
         if (character.player !== currentTurn) {
-            console.log('[Movement] Character does not belong to current turn');
             return;
         }
 
-        console.log('[Movement] Calling showMovement for:', character.name);
         this.showMovement(character);
     }
     private onAnimationsChange(animations: StateChangeEventsMap[StateChangeEvent.uiAnimations]) {
@@ -312,7 +296,6 @@ export class Movement extends EventBus<
     }
     // Helpers
     private selectDestination(character: DeepReadonly<ICharacter>, _reachableCells: ICoord[], destination: ICoord) {
-        console.log('[Movement] selectDestination called for:', character.name, 'to:', destination);
         const path = calculatePath(
             character.position, 
             destination, 
@@ -320,7 +303,6 @@ export class Movement extends EventBus<
             this.state.characters,
             character.name
         );
-        console.log('[Movement] Calculated path length:', path.length);
 
         // Clear pending cost
         this.dispatch(UpdateStateEvent.setPendingActionCost, {
@@ -341,7 +323,6 @@ export class Movement extends EventBus<
         delete this.reachableCells;
         delete this.movingCharacter;
 
-        console.log('[Movement] Dispatching character path for animation');
         // Set the character path which will trigger animation
         this.dispatch(UpdateStateEvent.characterPath, { ...character, path });
     }
@@ -366,11 +347,9 @@ export class Movement extends EventBus<
     }
     
     private showMovement(character: DeepReadonly<ICharacter>) {
-        console.log('[Movement] showMovement called for:', character.name);
         // Always get fresh character data from state to ensure we have the latest position
         const freshCharacter = this.state.findCharacter(character.name);
         if (!freshCharacter) {
-            console.log('[Movement] Fresh character not found');
             return;
         }
 
@@ -378,7 +357,6 @@ export class Movement extends EventBus<
         const moveCost = freshCharacter.actions.general.move;
         const pointsLeft = freshCharacter.actions.pointsLeft;
         const maxDistance = Math.floor(pointsLeft / moveCost);
-        console.log('[Movement] Movement calculation:', { moveCost, pointsLeft, maxDistance });
 
         const reachableCells = getReachableCells(
             freshCharacter.position, 
@@ -387,13 +365,11 @@ export class Movement extends EventBus<
             this.state.characters,
             freshCharacter.name
         );
-        console.log('[Movement] Reachable cells count:', reachableCells.length);
         this.movingCharacter = freshCharacter;
         this.reachableCells = reachableCells;
 
         // Use mode manager to request mode change first
         // This will clear highlights, but overwatch will be preserved by UIState
-        console.log('[Movement] Requesting mode change to moving');
         this.modeManager.requestModeChange({
             type: 'moving',
             data: { characterId: character.name }
@@ -401,7 +377,6 @@ export class Movement extends EventBus<
 
         // Then update UI state with highlighted cells
         // This will merge with any preserved overwatch cells
-        console.log('[Movement] Dispatching highlights for reachable cells');
         this.dispatch(UpdateStateEvent.uiHighlights, {
             reachableCells: reachableCells
         });

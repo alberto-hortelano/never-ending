@@ -1,10 +1,12 @@
 import { State } from '../State';
 import { ICharacter, IGame } from '../interfaces';
 import { DeepReadonly } from '../helpers/types';
+import { TeamService } from './TeamService';
 
 export interface GameContext {
     currentCharacter: CharacterContext;
     visibleCharacters: CharacterContext[];
+    charactersInConversationRange: CharacterContext[];  // Characters within 3 cells that can be talked to
     mapInfo: MapContext;
     recentEvents: EventContext[];
     gameState: {
@@ -28,6 +30,10 @@ export interface CharacterContext {
     isPlayer: boolean;
     isAlly: boolean;
     lastAction?: string;
+    distanceFromCurrent?: number;
+    isAdjacent?: boolean;
+    canReachThisTurn?: boolean;
+    canConverse?: boolean;  // True if within conversation range (3 cells)
 }
 
 export interface MapContext {
@@ -76,12 +82,14 @@ export class AIContextBuilder {
         this.state = state;
         const currentChar = this.buildCharacterContext(character, true);
         const visibleChars = this.getVisibleCharacters(character);
+        const charactersInConversationRange = this.getCharactersInConversationRange(character, visibleChars);
         const mapInfo = this.buildMapContext(character);
         const gameState = this.buildGameState();
 
         return {
             currentCharacter: currentChar,
             visibleCharacters: visibleChars,
+            charactersInConversationRange: charactersInConversationRange,
             mapInfo: mapInfo,
             recentEvents: this.recentEvents.slice(-5), // Last 5 events
             gameState: gameState
@@ -104,8 +112,11 @@ export class AIContextBuilder {
     }
 
     private buildCharacterContext(character: DeepReadonly<ICharacter>, includeFull: boolean): CharacterContext {
-        const isPlayer = character.name === 'Player';
-        const isAlly = character.name === 'Data' || this.isAllyOf('Player', character.name);
+        const isPlayer = character.player === 'human';
+        
+        // Find the current character to determine allies
+        const currentChar = this.state.characters.find(c => c.player === this.state.game.turn);
+        const isAlly = currentChar ? TeamService.areAllied(currentChar, character, this.state.game.teams) : false;
 
         const context: CharacterContext = {
             name: character.name,
@@ -135,10 +146,24 @@ export class AIContextBuilder {
         return context;
     }
 
+    private getCharactersInConversationRange(_character: DeepReadonly<ICharacter>, visibleChars: CharacterContext[]): CharacterContext[] {
+        // Filter visible characters to only those within conversation range (3 cells)
+        const conversationRange = 3;
+        return visibleChars.filter(char => {
+            const distance = char.distanceFromCurrent || 999;
+            return distance <= conversationRange;
+        });
+    }
+
     private getVisibleCharacters(character: DeepReadonly<ICharacter>): CharacterContext[] {
         const state = this.state;
         const visibleChars: CharacterContext[] = [];
         const viewDistance = 15; // Tiles visible in each direction
+        
+        // Calculate movement range for the current character
+        const moveCost = character.actions?.general?.move || 20;
+        const pointsLeft = character.actions?.pointsLeft || 100;
+        const maxMovementDistance = Math.floor(pointsLeft / moveCost);
 
         for (const otherChar of state.characters) {
             if (otherChar.name === character.name) continue;
@@ -151,7 +176,13 @@ export class AIContextBuilder {
             if (distance <= viewDistance) {
                 // Check line of sight (simplified - doesn't account for walls yet)
                 if (this.hasLineOfSight(character, otherChar)) {
-                    visibleChars.push(this.buildCharacterContext(otherChar, false));
+                    const charContext = this.buildCharacterContext(otherChar, false);
+                    // Add distance information
+                    charContext.distanceFromCurrent = distance;
+                    charContext.isAdjacent = distance <= 1.5;
+                    charContext.canReachThisTurn = distance <= maxMovementDistance;
+                    charContext.canConverse = distance <= 3; // Can talk within 3 cells
+                    visibleChars.push(charContext);
                 }
             }
         }
@@ -281,53 +312,19 @@ export class AIContextBuilder {
         return false;
     }
 
-    private isAllyOf(character1: string, character2: string): boolean {
-        // Determine if two characters are allies
-        if (character1 === 'Player' && character2 === 'Data') return true;
-        if (character1 === 'Data' && character2 === 'Player') return true;
-        
-        // Check faction alignment
-        const faction1 = this.getCharacterFactionByName(character1);
-        const faction2 = this.getCharacterFactionByName(character2);
-        
-        return faction1 === faction2 && faction1 !== 'neutral';
-    }
-
     private isHostileTo(character1: string, character2: string): boolean {
-        // Determine if two characters are hostile
-        if (this.isAllyOf(character1, character2)) return false;
+        // Determine if two characters are hostile using TeamService
+        const char1 = this.state.characters.find(c => c.name === character1);
+        const char2 = this.state.characters.find(c => c.name === character2);
         
-        // For now, NPCs are hostile to player unless explicitly allied
-        if ((character1 === 'Player' || character1 === 'Data') && 
-            (character2 !== 'Player' && character2 !== 'Data')) {
-            return true;
-        }
+        if (!char1 || !char2) return false;
         
-        return false;
+        return TeamService.areHostile(char1, char2, this.state.game.teams);
     }
 
     private getCharacterFaction(character: DeepReadonly<ICharacter>): string {
-        // Determine character's faction based on name or properties
-        // faction not in ICharacter interface, check by name
-        
-        if (character.name === 'Player' || character.name === 'Data') {
-            return 'player';
-        }
-        
-        // Parse faction from name or description
-        const name = character.name.toLowerCase();
-        if (name.includes('syndicate')) return 'syndicate';
-        if (name.includes('rebel')) return 'rebels';
-        if (name.includes('technomancer')) return 'technomancers';
-        if (name.includes('military')) return 'military';
-        
-        return 'neutral';
-    }
-
-    private getCharacterFactionByName(name: string): string {
-        const state = this.state;
-        const character = state.characters.find((c: DeepReadonly<ICharacter>) => c.name === name);
-        return character ? this.getCharacterFaction(character) : 'neutral';
+        // Use the team field if available, otherwise fallback to neutral
+        return character.team || 'neutral';
     }
 
     private getCharacterPersonality(character: DeepReadonly<ICharacter>): string {

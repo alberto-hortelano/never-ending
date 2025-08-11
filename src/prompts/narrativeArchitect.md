@@ -118,6 +118,7 @@ Introduces new characters during gameplay.
 
 ### 4. Movement Orders
 Directs NPC movement to specific targets.
+**IMPORTANT:** Check `charactersInConversationRange` before moving! If target is already within 3 cells, use speech instead.
 ```json
 {
   "type": "movement",
@@ -143,6 +144,10 @@ Controls NPC combat behavior and tactics.
 
 ### 6. Dialogue & Choices
 Manages conversations and player decision points.
+**CONVERSATION RANGE:** Characters can speak to anyone within 3 cells without moving.
+- Check `charactersInConversationRange` in context for available targets
+- Characters marked with `canConverse: true` can be spoken to immediately
+- NO MOVEMENT NEEDED if target is in conversation range!
 ```json
 {
   "type": "speech",
@@ -183,6 +188,7 @@ Manages conversations and player decision points.
 - **Resource management:** Limited ammunition and supplies
 - **NPC behavior:** Enemies should act intelligently based on their training
 - **Escalation:** Start with tension, build to action
+- **Conversation before combat:** NPCs within 3 cells can talk before fighting
 
 ### Dialogue Writing
 - **Concise options:** Keep player responses short and clear

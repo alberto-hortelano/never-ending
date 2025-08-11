@@ -334,6 +334,13 @@ export class Popup extends Component {
         // Apply visibility
         if (popupState.visible) {
             this.classList.remove('hidden');
+            
+            // If it's a conversation popup and we don't have a conversation component, create one
+            if (popupState.type === 'conversation' && !this.querySelector('conversation-ui')) {
+                this.clearContent();
+                const conversationComponent = document.createElement('conversation-ui') as Conversation;
+                this.appendChild(conversationComponent);
+            }
         } else {
             this.classList.add('hidden');
         }

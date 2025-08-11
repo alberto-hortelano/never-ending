@@ -65,6 +65,14 @@ export class Conversation extends EventBus<
 
             // Parse and dispatch update
             const conversationData = this.parseResponse(response.content);
+            
+            // Only log if content is meaningful
+            if (conversationData.content && conversationData.content !== '...' && conversationData.content !== 'Procesando información...') {
+                console.log('[Conversation] AI response:', conversationData.content);
+            } else {
+                console.warn('[Conversation] Received empty or placeholder response from AI');
+            }
+            
             this.dispatch(ConversationEvent.update, conversationData);
 
             // Update messages state
@@ -96,6 +104,14 @@ export class Conversation extends EventBus<
 
             // Parse and dispatch update
             const conversationData = this.parseResponse(response.content);
+            
+            // Only log if content is meaningful
+            if (conversationData.content && conversationData.content !== '...' && conversationData.content !== 'Procesando información...') {
+                console.log('[Conversation] AI response:', conversationData.content);
+            } else {
+                console.warn('[Conversation] Received empty or placeholder response from AI');
+            }
+            
             this.dispatch(ConversationEvent.update, conversationData);
 
             // Update messages state
@@ -152,17 +168,44 @@ export class Conversation extends EventBus<
             if (jsonMatch) {
                 const parsed = JSON.parse(jsonMatch[0]);
 
-                // Validate required fields
-                if (!parsed.type || !parsed.source || !parsed.content || !parsed.answers) {
-                    throw new Error('Missing required fields in response');
+                // Handle different response types
+                if (parsed.type === 'storyline') {
+                    // Convert storyline to speech format for conversation display
+                    return {
+                        type: 'speech',
+                        source: 'Narrador',  // Narrator in Spanish
+                        content: parsed.content || 'La historia continúa...',
+                        answers: ['Continuar', 'Entendido'],  // Default options for storyline
+                        action: parsed.action
+                    };
+                } else if (parsed.type === 'speech') {
+                    // Validate speech has required fields
+                    if (!parsed.source || !parsed.content) {
+                        throw new Error('Speech missing source or content');
+                    }
+                    
+                    // Ensure content doesn't exceed max length
+                    if (parsed.content.length > this.maxMessageLength) {
+                        parsed.content = parsed.content.substring(0, this.maxMessageLength) + '...';
+                    }
+                    
+                    return {
+                        type: 'speech',
+                        source: parsed.source,
+                        content: parsed.content,
+                        answers: parsed.answers || ['Continuar'],  // Default if no answers
+                        action: parsed.action
+                    };
+                } else {
+                    // Unknown type - try to use what we have
+                    return {
+                        type: 'speech',
+                        source: parsed.source || this.currentTarget || 'Unknown',
+                        content: parsed.content || 'No response available',
+                        answers: parsed.answers || ['Continue'],
+                        action: parsed.action
+                    };
                 }
-
-                // Ensure content doesn't exceed max length
-                if (parsed.content.length > this.maxMessageLength) {
-                    parsed.content = parsed.content.substring(0, this.maxMessageLength) + '...';
-                }
-
-                return parsed;
             }
             throw new Error('No JSON found in response');
         } catch (error) {

@@ -1,6 +1,7 @@
 import { IState, ICharacter, IMessage, IItem, IWeapon, IInventory, IGame } from "../common/interfaces";
 import { MapGenerator } from "../common/helpers/MapGenerator";
 import { positionCharacters } from "../common/helpers/map";
+import { TeamService } from "../common/services/TeamService";
 
 // Example weapons
 export const weapons: IWeapon[] = [
@@ -190,6 +191,7 @@ const data: Partial<ICharacter> = {
     name: 'data',
     race: 'robot',
     player: 'ai',
+    team: 'player', // Data is on the player's team
     location: 'room4',
     position: { x: 25, y: 25 },
     palette: {
@@ -214,6 +216,7 @@ const player: Partial<ICharacter> = {
     name: 'player',
     race: 'human',
     player: 'human',
+    team: 'player', // Player's team
     location: 'room2',
     position: { x: 24, y: 25 },
     palette: {
@@ -239,6 +242,7 @@ const enemy: Partial<ICharacter> = {
     name: 'enemy',
     race: 'robot',
     player: 'ai',
+    team: 'enemy', // Enemy team
     location: 'room3',
     position: { x: 23, y: 25 },
     palette: {
@@ -267,7 +271,8 @@ export const initialState = (x: number, y: number, playerData: Partial<ICharacte
         playerInfo: {
             'human': { name: 'Player', isAI: false },
             'ai': { name: 'AI', isAI: true }
-        }
+        },
+        teams: TeamService.createSinglePlayerTeams()
     }
     const mapGenerator = new MapGenerator(x, y);
     const player = createCharacter(playerData);
