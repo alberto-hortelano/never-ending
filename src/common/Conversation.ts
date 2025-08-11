@@ -207,14 +207,52 @@ export class Conversation extends EventBus<
                     };
                 }
             }
-            throw new Error('No JSON found in response');
+            
+            // No JSON found - treat the response as narrative text
+            // This happens when the AI responds with story text instead of structured JSON
+            if (response && response.trim().length > 0) {
+                console.log('[Conversation] No JSON found, treating as narrative text');
+                
+                // Check if it's a narrative response (contains story elements)
+                const isNarrative = response.includes('alarmas') || response.includes('nave') || 
+                                  response.includes('espacio') || response.includes('soldado');
+                
+                if (isNarrative) {
+                    // It's a narrative response, present it as narrator
+                    return {
+                        type: 'speech',
+                        source: 'Narrador',
+                        content: response.substring(0, this.maxMessageLength),
+                        answers: ['Continuar', 'Explorar', 'Preguntar'],
+                        action: undefined
+                    };
+                } else {
+                    // It's a direct response, attribute it to the current target
+                    return {
+                        type: 'speech',
+                        source: this.currentTarget || 'Data',
+                        content: response.substring(0, this.maxMessageLength),
+                        answers: ['Entendido', 'Dime más', 'Cambiar de tema'],
+                        action: undefined
+                    };
+                }
+            }
+            
+            throw new Error('Empty response received');
         } catch (error) {
             console.error('Error parsing response:', error, 'Original response:', response);
+            
+            // Better fallback based on who we're talking to
+            const fallbackSource = this.currentTarget || 'Data';
+            const fallbackContent = this.currentTarget === 'Data' 
+                ? 'Procesando... mis circuitos necesitan un momento para calibrarse.'
+                : 'Disculpa, necesito un momento para pensar...';
+            
             return {
                 type: 'speech',
-                source: this.currentTarget || 'Unknown',
-                content: 'I... I\'m not sure what to say.',
-                answers: ['Continue', 'Leave']
+                source: fallbackSource,
+                content: fallbackContent,
+                answers: ['Está bien', 'Toma tu tiempo', 'Intentemos de nuevo']
             };
         }
     }

@@ -1,5 +1,5 @@
 export interface AICommand {
-    type: 'storyline' | 'map' | 'character' | 'movement' | 'attack' | 'speech';
+    type: 'storyline' | 'map' | 'character' | 'movement' | 'attack' | 'speech' | 'tactical_directive';
     [key: string]: any;
 }
 
@@ -49,6 +49,20 @@ export interface StorylineCommand extends AICommand {
     type: 'storyline';
     content: string;
     description: string;
+}
+
+export interface TacticalDirectiveCommand extends AICommand {
+    type: 'tactical_directive';
+    objective: 'attack' | 'defend' | 'patrol' | 'pursue' | 'retreat' | 'support';
+    priority_targets?: string[];
+    tactics: {
+        stance: 'aggressive' | 'defensive' | 'flanking' | 'suppressive' | 'retreating';
+        engagement_range: 'close' | 'medium' | 'long';
+        retreat_threshold: number;
+        coordination?: 'individual' | 'flanking' | 'concentrated' | 'dispersed';
+    };
+    position?: { x: number; y: number };
+    duration?: number; // How many turns to maintain this directive
 }
 
 export interface MapCommand extends AICommand {
@@ -109,6 +123,8 @@ export class AICommandParser {
                 return this.validateStoryline(command);
             case 'map':
                 return this.validateMap(command);
+            case 'tactical_directive':
+                return this.validateTacticalDirective(command);
             default:
                 console.error('Invalid command type:', command.type);
                 return null;
@@ -323,5 +339,54 @@ export class AICommandParser {
         }
 
         return commands;
+    }
+
+    private validateTacticalDirective(command: any): TacticalDirectiveCommand | null {
+        if (!command.objective || !command.tactics) {
+            console.error('Tactical directive missing objective or tactics');
+            return null;
+        }
+
+        const validObjectives = ['attack', 'defend', 'patrol', 'pursue', 'retreat', 'support'];
+        if (!validObjectives.includes(command.objective)) {
+            console.error('Invalid tactical objective:', command.objective);
+            return null;
+        }
+
+        const validStances = ['aggressive', 'defensive', 'flanking', 'suppressive', 'retreating'];
+        if (!command.tactics.stance || !validStances.includes(command.tactics.stance)) {
+            console.error('Invalid tactical stance:', command.tactics.stance);
+            return null;
+        }
+
+        const validRanges = ['close', 'medium', 'long'];
+        if (!command.tactics.engagement_range || !validRanges.includes(command.tactics.engagement_range)) {
+            console.error('Invalid engagement range:', command.tactics.engagement_range);
+            return null;
+        }
+
+        if (typeof command.tactics.retreat_threshold !== 'number' || 
+            command.tactics.retreat_threshold < 0 || 
+            command.tactics.retreat_threshold > 1) {
+            console.error('Invalid retreat threshold:', command.tactics.retreat_threshold);
+            return null;
+        }
+
+        if (command.tactics.coordination) {
+            const validCoordination = ['individual', 'flanking', 'concentrated', 'dispersed'];
+            if (!validCoordination.includes(command.tactics.coordination)) {
+                console.error('Invalid coordination type:', command.tactics.coordination);
+                return null;
+            }
+        }
+
+        if (command.position) {
+            if (typeof command.position.x !== 'number' || typeof command.position.y !== 'number') {
+                console.error('Invalid position in tactical directive');
+                return null;
+            }
+        }
+
+        return command as TacticalDirectiveCommand;
     }
 }

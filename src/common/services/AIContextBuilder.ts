@@ -1,5 +1,5 @@
 import { State } from '../State';
-import { ICharacter, IGame } from '../interfaces';
+import { ICharacter, IGame, ICoord } from '../interfaces';
 import { DeepReadonly } from '../helpers/types';
 import { TeamService } from './TeamService';
 
@@ -14,6 +14,31 @@ export interface GameContext {
         phase: string;
         objectives?: string[];
     };
+    tacticalAnalysis?: TacticalAnalysis;  // New tactical assessment
+}
+
+export interface TacticalAnalysis {
+    threats: ThreatAssessment[];
+    opportunities: TacticalOpportunity[];
+    suggestedStance: 'aggressive' | 'defensive' | 'flanking' | 'suppressive' | 'retreating';
+    coverPositions: ICoord[];
+    flankingRoutes: ICoord[][];
+    retreatPaths: ICoord[][];
+}
+
+export interface ThreatAssessment {
+    source: string;  // Character name
+    level: number;  // 0-100
+    type: 'immediate' | 'potential' | 'distant';
+    distance: number;
+    weaponRange: number;
+}
+
+export interface TacticalOpportunity {
+    type: 'flank' | 'ambush' | 'highGround' | 'coverAdvance' | 'crossfire';
+    position: ICoord;
+    value: number;  // 0-100
+    description: string;
 }
 
 export interface CharacterContext {
@@ -29,11 +54,17 @@ export interface CharacterContext {
     personality?: string;
     isPlayer: boolean;
     isAlly: boolean;
+    isEnemy?: boolean;
     lastAction?: string;
     distanceFromCurrent?: number;
     isAdjacent?: boolean;
     canReachThisTurn?: boolean;
     canConverse?: boolean;  // True if within conversation range (3 cells)
+    threatLevel?: number;  // 0-100 assessment of threat
+    hasRangedWeapon?: boolean;
+    hasMeleeWeapon?: boolean;
+    isInCover?: boolean;
+    hasLineOfSight?: boolean;
 }
 
 export interface MapContext {
@@ -85,6 +116,7 @@ export class AIContextBuilder {
         const charactersInConversationRange = this.getCharactersInConversationRange(character, visibleChars);
         const mapInfo = this.buildMapContext(character);
         const gameState = this.buildGameState();
+        const tacticalAnalysis = this.performTacticalAnalysis(character, visibleChars);
 
         return {
             currentCharacter: currentChar,
@@ -92,7 +124,8 @@ export class AIContextBuilder {
             charactersInConversationRange: charactersInConversationRange,
             mapInfo: mapInfo,
             recentEvents: this.recentEvents.slice(-5), // Last 5 events
-            gameState: gameState
+            gameState: gameState,
+            tacticalAnalysis: tacticalAnalysis
         };
     }
 
@@ -111,12 +144,13 @@ export class AIContextBuilder {
         };
     }
 
-    private buildCharacterContext(character: DeepReadonly<ICharacter>, includeFull: boolean): CharacterContext {
+    private buildCharacterContext(character: DeepReadonly<ICharacter>, includeFull: boolean, fromPerspective?: DeepReadonly<ICharacter>): CharacterContext {
         const isPlayer = character.player === 'human';
         
-        // Find the current character to determine allies
-        const currentChar = this.state.characters.find(c => c.player === this.state.game.turn);
-        const isAlly = currentChar ? TeamService.areAllied(currentChar, character, this.state.game.teams) : false;
+        // Use perspective character or current turn character
+        const perspectiveChar = fromPerspective || this.state.characters.find(c => c.player === this.state.game.turn);
+        const isAlly = perspectiveChar ? TeamService.areAllied(perspectiveChar, character, this.state.game.teams) : false;
+        const isEnemy = perspectiveChar ? TeamService.areHostile(perspectiveChar, character, this.state.game.teams) : false;
 
         const context: CharacterContext = {
             name: character.name,
@@ -133,7 +167,10 @@ export class AIContextBuilder {
             orientation: character.direction || 'bottom',
             speed: 'medium', // Speed not in ICharacter, using default
             isPlayer: isPlayer,
-            isAlly: isAlly
+            isAlly: isAlly,
+            isEnemy: isEnemy,
+            hasRangedWeapon: this.checkCharacterHasRangedWeapon(character),
+            hasMeleeWeapon: this.characterHasMeleeWeapon(character)
         };
 
         if (includeFull) {
@@ -175,13 +212,17 @@ export class AIContextBuilder {
 
             if (distance <= viewDistance) {
                 // Check line of sight (simplified - doesn't account for walls yet)
-                if (this.hasLineOfSight(character, otherChar)) {
-                    const charContext = this.buildCharacterContext(otherChar, false);
-                    // Add distance information
+                const hasLOS = this.hasLineOfSight(character, otherChar);
+                if (hasLOS) {
+                    const charContext = this.buildCharacterContext(otherChar, false, character);
+                    // Add distance and tactical information
                     charContext.distanceFromCurrent = distance;
                     charContext.isAdjacent = distance <= 1.5;
                     charContext.canReachThisTurn = distance <= maxMovementDistance;
                     charContext.canConverse = distance <= 3; // Can talk within 3 cells
+                    charContext.hasLineOfSight = hasLOS;
+                    charContext.isInCover = this.isCharacterInCover(otherChar);
+                    charContext.threatLevel = this.assessThreatLevel(character, otherChar, distance);
                     visibleChars.push(charContext);
                 }
             }
@@ -251,14 +292,6 @@ export class AIContextBuilder {
         return obstacles;
     }
 
-    private findCoverPositions(_character: DeepReadonly<ICharacter>): Array<{ x: number; y: number }> {
-        // Find positions that provide cover from enemies
-        const coverPositions: Array<{ x: number; y: number }> = [];
-        
-        // TODO: Implement actual cover detection based on walls and obstacles
-        // For now, return some dummy positions
-        return coverPositions;
-    }
 
     private buildGameState(): any {
         const state = this.state;
@@ -400,5 +433,306 @@ export class AIContextBuilder {
 
     public clearEvents(): void {
         this.recentEvents = [];
+    }
+
+    /**
+     * Perform tactical analysis of the battlefield
+     */
+    private performTacticalAnalysis(
+        character: DeepReadonly<ICharacter>,
+        visibleChars: CharacterContext[]
+    ): TacticalAnalysis {
+        const threats = this.assessThreats(character, visibleChars);
+        const opportunities = this.findTacticalOpportunities(character, visibleChars);
+        const suggestedStance = this.suggestStance(character, threats, opportunities);
+        const coverPositions = this.findCoverPositions(character);
+        const flankingRoutes = this.calculateFlankingRoutes(character, visibleChars);
+        const retreatPaths = this.calculateRetreatPaths(character, threats);
+
+        return {
+            threats,
+            opportunities,
+            suggestedStance,
+            coverPositions,
+            flankingRoutes,
+            retreatPaths
+        };
+    }
+
+    private assessThreats(
+        _character: DeepReadonly<ICharacter>,
+        visibleChars: CharacterContext[]
+    ): ThreatAssessment[] {
+        const threats: ThreatAssessment[] = [];
+        
+        for (const other of visibleChars) {
+            if (!other.isEnemy || !other.distanceFromCurrent) continue;
+            
+            const distance = other.distanceFromCurrent;
+            const weaponRange = other.hasRangedWeapon ? 15 : 1.5;
+            
+            let type: 'immediate' | 'potential' | 'distant' = 'distant';
+            if (distance <= weaponRange) type = 'immediate';
+            else if (distance <= weaponRange * 2) type = 'potential';
+            
+            threats.push({
+                source: other.name,
+                level: other.threatLevel || 50,
+                type,
+                distance,
+                weaponRange
+            });
+        }
+        
+        return threats.sort((a, b) => b.level - a.level);
+    }
+
+    private findTacticalOpportunities(
+        character: DeepReadonly<ICharacter>,
+        visibleChars: CharacterContext[]
+    ): TacticalOpportunity[] {
+        const opportunities: TacticalOpportunity[] = [];
+        
+        // Check for flanking opportunities
+        const enemies = visibleChars.filter(c => c.isEnemy);
+        for (const enemy of enemies) {
+            if (!enemy.position) continue;
+            
+            // Simple flanking position calculation
+            const flankPos = this.calculateFlankPosition(character.position, enemy.position);
+            if (flankPos) {
+                opportunities.push({
+                    type: 'flank',
+                    position: flankPos,
+                    value: 70,
+                    description: `Flank ${enemy.name}`
+                });
+            }
+        }
+        
+        // Check for crossfire opportunities with allies
+        const allies = visibleChars.filter(c => c.isAlly);
+        if (allies.length > 0 && enemies.length > 0) {
+            for (const enemy of enemies) {
+                if (!enemy.position) continue;
+                
+                for (const ally of allies) {
+                    if (!ally.position) continue;
+                    
+                    // Check if enemy is between character and ally
+                    if (this.isInCrossfire(character.position, ally.position, enemy.position)) {
+                        opportunities.push({
+                            type: 'crossfire',
+                            position: enemy.position,
+                            value: 80,
+                            description: `Crossfire on ${enemy.name} with ${ally.name}`
+                        });
+                    }
+                }
+            }
+        }
+        
+        return opportunities;
+    }
+
+    private suggestStance(
+        _character: DeepReadonly<ICharacter>,
+        threats: ThreatAssessment[],
+        opportunities: TacticalOpportunity[]
+    ): 'aggressive' | 'defensive' | 'flanking' | 'suppressive' | 'retreating' {
+        const healthPercent = _character.health / _character.maxHealth;
+        const immediateThreats = threats.filter(t => t.type === 'immediate').length;
+        
+        // Critical health - retreat
+        if (healthPercent < 0.3) return 'retreating';
+        
+        // Multiple immediate threats - defensive
+        if (immediateThreats > 1) return 'defensive';
+        
+        // Good flanking opportunity - flanking
+        if (opportunities.some(o => o.type === 'flank' && o.value > 60)) return 'flanking';
+        
+        // Single threat and good health - aggressive
+        if (immediateThreats === 1 && healthPercent > 0.6) return 'aggressive';
+        
+        // Default to defensive
+        return 'defensive';
+    }
+
+    private findCoverPositions(character: DeepReadonly<ICharacter>): ICoord[] {
+        const positions: ICoord[] = [];
+        const searchRadius = 10;
+        
+        // Simple grid search for cover positions
+        for (let dx = -searchRadius; dx <= searchRadius; dx++) {
+            for (let dy = -searchRadius; dy <= searchRadius; dy++) {
+                if (dx === 0 && dy === 0) continue;
+                
+                const pos: ICoord = {
+                    x: character.position.x + dx,
+                    y: character.position.y + dy
+                };
+                
+                // Check if position would provide cover (simplified)
+                if (this.positionProvidesCover(pos)) {
+                    positions.push(pos);
+                }
+            }
+        }
+        
+        return positions;
+    }
+
+    private calculateFlankingRoutes(
+        character: DeepReadonly<ICharacter>,
+        visibleChars: CharacterContext[]
+    ): ICoord[][] {
+        const routes: ICoord[][] = [];
+        const enemies = visibleChars.filter(c => c.isEnemy);
+        
+        for (const enemy of enemies) {
+            if (!enemy.position) continue;
+            
+            // Calculate simple flanking route
+            const route = this.calculateFlankRoute(character.position, enemy.position);
+            if (route) {
+                routes.push(route);
+            }
+        }
+        
+        return routes;
+    }
+
+    private calculateRetreatPaths(
+        character: DeepReadonly<ICharacter>,
+        threats: ThreatAssessment[]
+    ): ICoord[][] {
+        const paths: ICoord[][] = [];
+        
+        if (threats.length === 0) return paths;
+        
+        // Calculate average threat direction
+        let avgX = 0, avgY = 0;
+        for (const threat of threats) {
+            // Find threat character position
+            const threatChar = this.state.characters.find(c => c.name === threat.source);
+            if (threatChar) {
+                avgX += threatChar.position.x;
+                avgY += threatChar.position.y;
+            }
+        }
+        avgX /= threats.length;
+        avgY /= threats.length;
+        
+        // Create retreat path away from average threat
+        const retreatDirection = Math.atan2(
+            character.position.y - avgY,
+            character.position.x - avgX
+        );
+        
+        const path: ICoord[] = [];
+        for (let i = 1; i <= 5; i++) {
+            path.push({
+                x: character.position.x + Math.cos(retreatDirection) * i * 2,
+                y: character.position.y + Math.sin(retreatDirection) * i * 2
+            });
+        }
+        
+        paths.push(path);
+        return paths;
+    }
+
+
+    private checkCharacterHasRangedWeapon(character: DeepReadonly<ICharacter>): boolean {
+        const primary = character.inventory?.equippedWeapons?.primary;
+        const secondary = character.inventory?.equippedWeapons?.secondary;
+        return (primary?.category === 'ranged') || (secondary?.category === 'ranged');
+    }
+    
+    private characterHasMeleeWeapon(character: DeepReadonly<ICharacter>): boolean {
+        const primary = character.inventory?.equippedWeapons?.primary;
+        const secondary = character.inventory?.equippedWeapons?.secondary;
+        return (primary?.category === 'melee') || (secondary?.category === 'melee');
+    }
+
+    private isCharacterInCover(_character: DeepReadonly<ICharacter>): boolean {
+        // Simplified cover check - would need actual map analysis
+        return false;
+    }
+
+    private assessThreatLevel(
+        _fromChar: DeepReadonly<ICharacter>,
+        targetChar: DeepReadonly<ICharacter>,
+        distance: number
+    ): number {
+        if (!TeamService.areHostile(_fromChar, targetChar, this.state.game.teams)) {
+            return 0;
+        }
+        
+        let threat = 50; // Base threat
+        
+        // Health factor
+        const healthRatio = targetChar.health / targetChar.maxHealth;
+        threat += healthRatio * 20;
+        
+        // Distance factor
+        if (distance <= 2) threat += 30;
+        else if (distance <= 5) threat += 20;
+        else if (distance <= 10) threat += 10;
+        
+        // Weapon factor
+        if (this.checkCharacterHasRangedWeapon(targetChar)) threat += 20;
+        
+        return Math.min(100, Math.max(0, threat));
+    }
+
+    private calculateFlankPosition(myPos: ICoord, enemyPos: ICoord): ICoord | null {
+        const angle = Math.atan2(enemyPos.y - myPos.y, enemyPos.x - myPos.x);
+        const flankAngle = angle + Math.PI / 2; // 90 degrees to the side
+        const flankDistance = 5;
+        
+        return {
+            x: enemyPos.x + Math.cos(flankAngle) * flankDistance,
+            y: enemyPos.y + Math.sin(flankAngle) * flankDistance
+        };
+    }
+
+    private isInCrossfire(pos1: ICoord, pos2: ICoord, target: ICoord): boolean {
+        // Check if target is roughly between two positions
+        const angle1 = Math.atan2(target.y - pos1.y, target.x - pos1.x);
+        const angle2 = Math.atan2(target.y - pos2.y, target.x - pos2.x);
+        const angleDiff = Math.abs(angle1 - angle2);
+        
+        // If angles are roughly opposite (around 180 degrees), it's crossfire
+        return angleDiff > Math.PI * 0.75;
+    }
+
+    private positionProvidesCover(_pos: ICoord): boolean {
+        // Simplified - would need actual map analysis
+        // Check if position has adjacent walls or obstacles
+        return false;
+    }
+
+    private calculateFlankRoute(from: ICoord, to: ICoord): ICoord[] | null {
+        // Simple arc route for flanking
+        const route: ICoord[] = [];
+        const directAngle = Math.atan2(to.y - from.y, to.x - from.x);
+        const flankAngle = directAngle + Math.PI / 3; // 60 degrees offset
+        
+        // Create arc path
+        for (let i = 1; i <= 3; i++) {
+            const progress = i / 3;
+            const currentAngle = flankAngle + (directAngle - flankAngle) * progress;
+            const distance = Math.sqrt(
+                Math.pow(to.x - from.x, 2) + Math.pow(to.y - from.y, 2)
+            ) * progress;
+            
+            route.push({
+                x: from.x + Math.cos(currentAngle) * distance,
+                y: from.y + Math.sin(currentAngle) * distance
+            });
+        }
+        
+        return route;
     }
 }

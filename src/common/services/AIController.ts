@@ -14,8 +14,11 @@ import { State } from '../State';
 import { AIContextBuilder } from './AIContextBuilder';
 import { AICommandParser, AICommand } from './AICommandParser';
 import { AIGameEngineService } from './AIGameEngineService';
+import { TacticalExecutor, TacticalDirective } from './TacticalExecutor';
+import { CombatStances } from './CombatStances';
 import { ICharacter, ICoord, Direction } from '../interfaces';
 import { DeepReadonly } from '../helpers/types';
+import { TeamService } from './TeamService';
 
 interface DialogueData {
     speaker?: string;
@@ -45,11 +48,15 @@ export class AIController extends EventBus<
     private pendingSpeechCommand?: AICommand;
     private isProcessingMultipleCharacters: boolean = false;
     private movementTimeouts: NodeJS.Timeout[] = [];
+    private tacticalExecutor: TacticalExecutor;
+    private useTacticalSystem: boolean = true; // Flag to enable/disable tactical system
 
     private constructor() {
         super();
         this.gameEngineService = AIGameEngineService.getInstance();
         this.commandParser = new AICommandParser();
+        this.tacticalExecutor = TacticalExecutor.getInstance();
+        CombatStances.initialize();
     }
 
     public static getInstance(): AIController {
@@ -146,6 +153,9 @@ export class AIController extends EventBus<
         // Clear any pending timeouts from previous actions
         this.clearMovementTimeouts();
         
+        // Clear tactical executor's turn tracking for new turn
+        this.tacticalExecutor.clearTurnActions();
+        
         // Process all AI characters in sequence
         // In single player, this includes both Data and enemy characters
         for (const character of aiCharacters) {
@@ -187,34 +197,150 @@ export class AIController extends EventBus<
         this.isProcessingTurn = true;
 
         try {
-            // Build context for AI
-            const context = this.contextBuilder.buildTurnContext(character, this.state);
+            // Keep taking actions until we run out of action points
+            let actionsPerformed = 0;
+            const maxActions = 5; // Safety limit to prevent infinite loops
             
-            // Get AI decision from game engine
-            const response = await this.gameEngineService.requestAIAction(context);
-            
-            // Parse and execute AI commands
-            if (response.command) {
-                const validatedCommand = this.commandParser.validate(response.command);
-                if (validatedCommand) {
-                    // Log the AI decision with more context
-                    if (validatedCommand.type === 'attack') {
-                        const attackType = validatedCommand.characters?.[0]?.attack || 'unknown';
-                        const target = validatedCommand.characters?.[0]?.target || 'unknown';
-                        console.log(`[AI] ${character.name}: ${validatedCommand.type} (${attackType} vs ${target})`);
-                    } else {
-                        console.log(`[AI] ${character.name}: ${validatedCommand.type}`);
-                    }
-                    await this.executeAICommand(validatedCommand, character);
-                } else {
-                    console.error('[AI] Invalid command:', response.command);
+            while (actionsPerformed < maxActions) {
+                // Wait a moment to ensure state is updated
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // Get current character state (it may have changed after actions)
+                const currentChar = this.state.characters.find(c => c.name === character.name);
+                if (!currentChar) {
+                    console.log(`[AI] Character ${character.name} not found in state`);
+                    break;
                 }
+                
+                // Check if character has enough action points to continue
+                const pointsLeft = currentChar.actions?.pointsLeft || 0;
+                console.log(`[AI] ${currentChar.name} has ${pointsLeft} action points remaining (loop ${actionsPerformed + 1})`);
+                
+                if (pointsLeft < 20) {
+                    // Not enough points for most actions
+                    console.log(`[AI] ${currentChar.name} insufficient action points, ending character turn`);
+                    break;
+                }
+                
+                // Check if we should use tactical system for combat characters
+                const isInCombat = this.isCharacterInCombat(currentChar);
+                
+                if (this.useTacticalSystem && isInCombat) {
+                    // Use tactical executor for combat decisions
+                    await this.processTacticalCharacterTurn(currentChar);
+                } else {
+                    // Use traditional AI system for non-combat or narrative actions
+                    await this.processNarrativeCharacterTurn(currentChar);
+                }
+                
+                actionsPerformed++;
+                
+                // Small delay between actions for visibility
+                await new Promise(resolve => setTimeout(resolve, 500));
             }
         } catch (error) {
             console.error('[AI] Error:', error);
         } finally {
             this.isProcessingTurn = false;
         }
+    }
+
+    private async processTacticalCharacterTurn(character: DeepReadonly<ICharacter>): Promise<void> {
+        if (!this.state || !this.contextBuilder) return;
+        
+        // Build context
+        const context = this.contextBuilder.buildTurnContext(character, this.state);
+        
+        
+        // Get visible characters
+        const visibleCharacters = context.visibleCharacters
+            .map(vc => this.state!.characters.find(c => c.name === vc.name))
+            .filter(c => c !== undefined) as DeepReadonly<ICharacter>[];
+        
+        // Use tactical executor to decide action
+        const tacticalAction = this.tacticalExecutor.evaluateSituation(
+            character,
+            this.state,
+            visibleCharacters
+        );
+        
+        // Execute the tactical action
+        const validatedCommand = this.commandParser.validate(tacticalAction.command);
+        if (validatedCommand) {
+            console.log(`[AI-Tactical] ${character.name}: ${tacticalAction.type} - ${tacticalAction.reasoning}`);
+            await this.executeAICommand(validatedCommand, character);
+        } else {
+            console.error(`[AI-Tactical] ${character.name}: Invalid command from tactical executor`);
+            // End turn if no valid command
+            if (!this.isProcessingMultipleCharacters) {
+                this.endAITurn();
+            }
+        }
+    }
+
+    private async processNarrativeCharacterTurn(character: DeepReadonly<ICharacter>): Promise<void> {
+        if (!this.state || !this.contextBuilder) return;
+        
+        // Build context for AI
+        const context = this.contextBuilder.buildTurnContext(character, this.state);
+        
+        // Get AI decision from game engine
+        const response = await this.gameEngineService.requestAIAction(context);
+        
+        // Check if response contains tactical directive
+        if (response.command?.type === 'tactical_directive') {
+            const directive = response.command as TacticalDirective;
+            this.tacticalExecutor.setDirective(directive);
+            console.log('[AI] Received tactical directive:', directive.objective);
+            
+            // After setting directive, process turn with tactical system
+            if (this.useTacticalSystem) {
+                await this.processTacticalCharacterTurn(character);
+            }
+            return;
+        }
+        
+        // Parse and execute AI commands normally
+        if (response.command) {
+            const validatedCommand = this.commandParser.validate(response.command);
+            if (validatedCommand) {
+                // Log the AI decision with more context
+                if (validatedCommand.type === 'attack') {
+                    const attackType = validatedCommand.characters?.[0]?.attack || 'unknown';
+                    const target = validatedCommand.characters?.[0]?.target || 'unknown';
+                    console.log(`[AI] ${character.name}: ${validatedCommand.type} (${attackType} vs ${target})`);
+                } else {
+                    console.log(`[AI] ${character.name}: ${validatedCommand.type}`);
+                }
+                await this.executeAICommand(validatedCommand, character);
+            } else {
+                console.error('[AI] Invalid command:', response.command);
+            }
+        }
+    }
+
+    private isCharacterInCombat(character: DeepReadonly<ICharacter>): boolean {
+        if (!this.state) return false;
+        
+        // Check if any hostile characters are nearby
+        const nearbyDistance = 20;
+        
+        for (const other of this.state.characters) {
+            if (other.name === character.name || other.health <= 0) continue;
+            
+            if (TeamService.areHostile(character, other, this.state.game.teams)) {
+                const distance = Math.sqrt(
+                    Math.pow(other.position.x - character.position.x, 2) +
+                    Math.pow(other.position.y - character.position.y, 2)
+                );
+                
+                if (distance <= nearbyDistance) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
     }
 
     private async executeAICommand(command: AICommand, character: DeepReadonly<ICharacter>): Promise<void> {
@@ -249,12 +375,22 @@ export class AIController extends EventBus<
         const targetLocation = this.resolveLocation(targetLocationString);
         
         if (!targetLocation) {
-            this.endAITurn();
+            console.log('[AI] ExecuteMovement - Could not resolve location:', targetLocationString);
+            if (!this.isProcessingMultipleCharacters) {
+                this.endAITurn();
+            }
             return;
         }
         
-        // Check if we're already close enough to the target
+        // Check if we're already at the target location (distance 0)
         const currentDistance = this.getDistance(character.position, targetLocation);
+        if (currentDistance === 0) {
+            console.log('[AI] ExecuteMovement - Already at target location');
+            if (!this.isProcessingMultipleCharacters) {
+                this.endAITurn();
+            }
+            return;
+        }
         
         // Log the movement decision
         const targetChar = this.state?.characters.find((c: DeepReadonly<ICharacter>) => 
@@ -301,7 +437,8 @@ export class AIController extends EventBus<
         this.dispatch(ControlsEvent.showMovement, character.name);
         
         // Wait for Movement system to set up, then find best reachable position
-        setTimeout(() => {
+        await new Promise<void>(resolve => {
+            setTimeout(() => {
             // Get reachable cells from highlights in UI state
             const highlights = this.state?.ui?.transientUI?.highlights;
             const reachableCells = highlights?.reachableCells || [];
@@ -355,7 +492,11 @@ export class AIController extends EventBus<
             
             // Store timeout so we can cancel it if needed
             this.movementTimeouts.push(timeoutId);
+            
+            // Resolve the promise after setting up the timeout
+            resolve();
         }, 750); // Slightly longer delay to ensure Movement system is ready
+        });
     }
 
     private async executeAttack(command: AICommand, character: DeepReadonly<ICharacter>): Promise<void> {
@@ -365,12 +506,35 @@ export class AIController extends EventBus<
         }
 
         const attackData = command.characters[0];
+        
+        // Handle 'area' target for overwatch
+        if (attackData.target === 'area' && attackData.attack === 'hold') {
+            // Set overwatch without specific target
+            this.dispatch(ControlsEvent.showOverwatch, character.name);
+            await new Promise<void>(resolve => {
+                setTimeout(() => {
+                    const frontPosition = this.getPositionInFront(character);
+                    this.dispatch(ControlsEvent.cellClick, frontPosition);
+                    // Don't end turn if processing multiple characters
+                    if (!this.isProcessingMultipleCharacters) {
+                        this.endAITurn();
+                    }
+                    resolve();
+                }, 100);
+            });
+            return;
+        }
+        
         const targetChar = this.state.characters.find((c: DeepReadonly<ICharacter>) => 
             c.name.toLowerCase() === attackData.target.toLowerCase()
         );
         
         if (!targetChar) {
             console.error('[AI] ExecuteAttack - Target not found:', attackData.target);
+            // End turn if no valid target
+            if (!this.isProcessingMultipleCharacters) {
+                this.endAITurn();
+            }
             return;
         }
         
@@ -384,12 +548,15 @@ export class AIController extends EventBus<
                     // Dispatch melee attack
                     this.dispatch(ControlsEvent.toggleMelee, character.name);
                     // After a delay, click on target character
-                    setTimeout(() => {
-                        this.dispatch(ControlsEvent.characterClick, {
-                            characterName: targetChar.name,
-                            position: targetChar.position
-                        });
-                    }, 100);
+                    await new Promise<void>(resolve => {
+                        setTimeout(() => {
+                            this.dispatch(ControlsEvent.characterClick, {
+                                characterName: targetChar.name,
+                                position: targetChar.position
+                            });
+                            resolve();
+                        }, 500);
+                    });
                 } else {
                     // Move closer to target first
                     await this.executeMovement({
@@ -404,26 +571,51 @@ export class AIController extends EventBus<
                 
             case 'kill':
             case 'ranged':
+                // First, rotate to face the target
+                const angle = Math.atan2(
+                    targetChar.position.y - character.position.y,
+                    targetChar.position.x - character.position.x
+                );
+                const direction = this.angleToDirection(angle);
+                
+                // Update character direction
+                this.dispatch(UpdateStateEvent.characterDirection, {
+                    characterName: character.name,
+                    direction: direction
+                });
+                
+                // Small delay for rotation to complete
+                await new Promise(resolve => setTimeout(resolve, 200));
+                
                 // Enter shooting mode
                 this.dispatch(ControlsEvent.showShooting, character.name);
                 // After a delay, click on target character (not just the cell)
-                setTimeout(() => {
-                    this.dispatch(ControlsEvent.characterClick, {
-                        characterName: targetChar.name,
-                        position: targetChar.position
-                    });
-                }, 100);
+                await new Promise<void>(resolve => {
+                    setTimeout(() => {
+                        this.dispatch(ControlsEvent.characterClick, {
+                            characterName: targetChar.name,
+                            position: targetChar.position
+                        });
+                        resolve();
+                    }, 500); // Slightly longer delay for shooting action
+                });
+                
+                // Wait longer to ensure action completes and points are deducted
+                await new Promise(resolve => setTimeout(resolve, 2000));
                 break;
                 
             case 'hold':
                 // Hold position - set overwatch
                 this.dispatch(ControlsEvent.showOverwatch, character.name);
                 // After a delay, click in front of character to activate overwatch
-                setTimeout(() => {
-                    // Calculate a position in front of the character
-                    const frontPosition = this.getPositionInFront(character);
-                    this.dispatch(ControlsEvent.cellClick, frontPosition);
-                }, 100);
+                await new Promise<void>(resolve => {
+                    setTimeout(() => {
+                        // Calculate a position in front of the character
+                        const frontPosition = this.getPositionInFront(character);
+                        this.dispatch(ControlsEvent.cellClick, frontPosition);
+                        resolve();
+                    }, 500);
+                });
                 break;
                 
             case 'retreat':
@@ -450,6 +642,21 @@ export class AIController extends EventBus<
             Math.pow(pos2.x - pos1.x, 2) +
             Math.pow(pos2.y - pos1.y, 2)
         );
+    }
+    
+    private angleToDirection(angle: number): Direction {
+        // Normalize angle to 0-360 degrees
+        const degrees = ((angle * 180 / Math.PI) + 360) % 360;
+        
+        // Map angle to 8 directions
+        if (degrees >= 337.5 || degrees < 22.5) return 'right';
+        if (degrees >= 22.5 && degrees < 67.5) return 'down-right';
+        if (degrees >= 67.5 && degrees < 112.5) return 'down';
+        if (degrees >= 112.5 && degrees < 157.5) return 'down-left';
+        if (degrees >= 157.5 && degrees < 202.5) return 'left';
+        if (degrees >= 202.5 && degrees < 247.5) return 'up-left';
+        if (degrees >= 247.5 && degrees < 292.5) return 'up';
+        return 'up-right'; // 292.5 to 337.5
     }
 
     private getPositionInFront(character: DeepReadonly<ICharacter>): ICoord {
@@ -752,5 +959,15 @@ export class AIController extends EventBus<
 
     public isAIEnabled(): boolean {
         return this.aiEnabled;
+    }
+    
+    public enableTacticalSystem(): void {
+        this.useTacticalSystem = true;
+        console.log('[AI] Tactical system enabled');
+    }
+    
+    public disableTacticalSystem(): void {
+        this.useTacticalSystem = false;
+        console.log('[AI] Tactical system disabled');
     }
 }
