@@ -1,7 +1,8 @@
 import type { ConversationUpdateData } from "../../common/events/ConversationEvents";
 
 import { Component } from "../Component";
-import { ConversationEvent, ConversationEventsMap } from "../../common/events";
+import { ConversationEvent, ConversationEventsMap, StateChangeEvent } from "../../common/events";
+import { i18n } from "../../common/i18n/i18n";
 
 export class Conversation extends Component {
     protected override hasCss = true;
@@ -12,6 +13,14 @@ export class Conversation extends Component {
     private loadingElement?: HTMLElement;
     private freeTextInput?: HTMLInputElement;
     private freeTextSubmit?: HTMLButtonElement;
+    
+    constructor() {
+        super();
+        // Listen for language changes
+        this.listen(StateChangeEvent.language, () => {
+            this.updateTranslations();
+        });
+    }
 
     override async connectedCallback() {
         const root = await super.connectedCallback();
@@ -27,6 +36,9 @@ export class Conversation extends Component {
         // Listen for conversation updates
         this.setupEventListeners();
         this.setupFreeTextHandlers();
+        
+        // Update translations
+        this.updateTranslations();
 
         return root;
     }
@@ -202,6 +214,31 @@ export class Conversation extends Component {
 
         // Show loading state
         this.showLoading();
+    }
+    
+    private updateTranslations() {
+        const root = this.shadowRoot;
+        if (!root) return;
+        
+        // Update loading text
+        const loadingText = root.querySelector('.conversation-loading');
+        if (loadingText) loadingText.textContent = i18n.t('conversation.loading');
+        
+        // Update placeholder text
+        if (this.freeTextInput) {
+            this.freeTextInput.placeholder = i18n.t('conversation.typeResponse');
+        }
+        
+        // Update submit button
+        if (this.freeTextSubmit) {
+            this.freeTextSubmit.textContent = i18n.t('conversation.send');
+        }
+        
+        // Update ended message if present
+        const endedMessage = root.querySelector('.conversation-ended');
+        if (endedMessage) {
+            endedMessage.textContent = i18n.t('conversation.ended');
+        }
     }
 
     // Custom element setup

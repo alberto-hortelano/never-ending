@@ -1,0 +1,58 @@
+@use '../variables' as *;
+
+:host {
+    display: block;
+}
+
+.language-switcher {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-md;
+    background: $color-bg-secondary;
+    border-radius: $border-radius-md;
+    
+    label {
+        font-size: $font-size-base;
+        color: $color-text-primary;
+        font-weight: $font-weight-medium;
+    }
+    
+    .language-select {
+        padding: $spacing-xs $spacing-sm;
+        background: $color-bg-primary;
+        color: $color-text-primary;
+        border: 1px solid $color-border-primary;
+        border-radius: $border-radius-sm;
+        font-size: $font-size-base;
+        cursor: pointer;
+        transition: $transition-all;
+        
+        &:hover {
+            border-color: $color-highlight;
+        }
+        
+        &:focus {
+            outline: none;
+            border-color: $color-highlight;
+            box-shadow: 0 0 0 2px rgba($color-highlight, 0.2);
+        }
+        
+        option {
+            background: $color-bg-primary;
+            color: $color-text-primary;
+        }
+    }
+}
+
+// Mobile responsive
+@include sm-down {
+    .language-switcher {
+        flex-direction: column;
+        align-items: stretch;
+        
+        .language-select {
+            width: 100%;
+        }
+    }
+}

@@ -67,6 +67,8 @@ export enum UpdateStateEvent {
     uiMeleeCombatResult = 'UpdateStateEvent.uiMeleeCombatResult',
     /** Update story state */
     storyState = 'UpdateStateEvent.storyState',
+    /** Update language */
+    language = 'UpdateStateEvent.language',
 }
 
 export interface UpdateStateEventsMap {
@@ -177,6 +179,7 @@ export interface UpdateStateEventsMap {
         blocked: boolean;
     };
     [UpdateStateEvent.storyState]: Partial<IStoryState>;
+    [UpdateStateEvent.language]: 'en' | 'es';
 }
 
 /** Events when the state has changed. All can listen. Only State can dispatch */
@@ -212,6 +215,8 @@ export enum StateChangeEvent {
     uiSelectedCharacter = 'StateChangeEvent.uiSelectedCharacter',
     /** Story state changed */
     storyState = 'StateChangeEvent.storyState',
+    /** Language changed */
+    language = 'StateChangeEvent.language',
 }
 
 export interface StateChangeEventsMap {
@@ -245,4 +250,5 @@ export interface StateChangeEventsMap {
     }>>;
     [StateChangeEvent.uiSelectedCharacter]: string | undefined;
     [StateChangeEvent.storyState]: DeepReadonly<IStoryState>;
+    [StateChangeEvent.language]: 'en' | 'es';
 }

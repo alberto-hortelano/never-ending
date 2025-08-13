@@ -8,6 +8,7 @@ export interface IState {
     ui: IUIState;
     overwatchData: Record<string, IOverwatchData>;
     story?: IStoryState;
+    language?: 'en' | 'es';
 }
 
 export interface IOverwatchData {

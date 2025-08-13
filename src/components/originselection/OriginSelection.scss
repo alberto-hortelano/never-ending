@@ -1,4 +1,5 @@
 @use '../variables' as *;
+@use 'sass:color';
 
 :host {
     display: block;
@@ -102,7 +103,7 @@
         transform: translateY(-4px) scale(1.02);
         box-shadow: 0 10px 30px rgba($color-highlight, 0.3);
         border-color: $color-highlight;
-        background: lighten($color-bg-secondary, 5%);
+        background: color.adjust($color-bg-secondary, $lightness: 5%);
 
         &::before {
             transform: translateX(0);

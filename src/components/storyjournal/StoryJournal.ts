@@ -1,6 +1,7 @@
 import { Component } from '../Component';
 import { StateChangeEvent } from '../../common/events';
 import type { IJournalEntry } from '../../common/interfaces/IStory';
+import { i18n } from '../../common/i18n/i18n';
 
 export class StoryJournal extends Component {
     protected override hasHtml = true;
@@ -8,6 +9,14 @@ export class StoryJournal extends Component {
     
     private entries: IJournalEntry[] = [];
     private selectedEntry: IJournalEntry | null = null;
+    
+    constructor() {
+        super();
+        // Listen for language changes
+        this.listen(StateChangeEvent.language, () => {
+            this.renderJournal(this.shadowRoot!);
+        });
+    }
 
     override async connectedCallback() {
         const root = await super.connectedCallback();
@@ -40,10 +49,10 @@ export class StoryJournal extends Component {
         const personalEntries = this.entries.filter(e => e.type === 'personal');
         
         entriesList.innerHTML = `
-            ${this.renderSection('Misión Principal', mainEntries)}
-            ${this.renderSection('Misiones Secundarias', sideEntries)}
-            ${this.renderSection('Facciones', factionEntries)}
-            ${this.renderSection('Personal', personalEntries)}
+            ${this.renderSection(i18n.t('journal.mainMission'), mainEntries)}
+            ${this.renderSection(i18n.t('journal.sideMissions'), sideEntries)}
+            ${this.renderSection(i18n.t('journal.characters'), factionEntries)}
+            ${this.renderSection(i18n.t('journal.notes'), personalEntries)}
         `;
         
         // Show selected entry or placeholder
@@ -57,7 +66,7 @@ export class StoryJournal extends Component {
             } else {
                 entryContent.innerHTML = `
                     <div class="placeholder">
-                        <p>Selecciona una entrada del diario para leer</p>
+                        <p>${i18n.t('journal.empty')}</p>
                     </div>
                 `;
             }

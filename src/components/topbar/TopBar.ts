@@ -3,6 +3,7 @@ import { StateChangeEvent, GameEvent, ControlsEvent, ActionEvent } from "../../c
 import type { DeepReadonly } from "../../common/helpers/types";
 import type { IGame, ICharacter } from "../../common/interfaces";
 import { NetworkService } from "../../common/services/NetworkService";
+import { i18n } from "../../common/i18n/i18n";
 
 export default class TopBar extends Component {
     protected override hasCss = true;
@@ -12,6 +13,14 @@ export default class TopBar extends Component {
     private currentTurn = '';
     private selectedCharacter = '';
     private networkService: NetworkService = NetworkService.getInstance();
+    
+    constructor() {
+        super();
+        // Listen for language changes
+        this.listen(StateChangeEvent.language, () => {
+            this.updateTranslations();
+        });
+    }
     
     override async connectedCallback() {
         const root = await super.connectedCallback();
@@ -41,6 +50,7 @@ export default class TopBar extends Component {
         }
         
         this.setupEventListeners(root);
+        this.updateTranslations();
         return root;
     }
     
@@ -193,6 +203,40 @@ export default class TopBar extends Component {
                 }
             }
         });
+    }
+    
+    private updateTranslations() {
+        const root = this.shadowRoot;
+        if (!root) return;
+        
+        // Update campaign button
+        const campaignBtn = root.querySelector('#campaign-button');
+        if (campaignBtn) campaignBtn.textContent = i18n.t('topbar.campaign');
+        
+        // Update map button
+        const mapBtn = root.querySelector('#map-button');
+        if (mapBtn) mapBtn.textContent = i18n.t('topbar.map');
+        
+        // Update end turn button
+        const endTurnBtn = root.querySelector('#end-turn-button');
+        if (endTurnBtn) endTurnBtn.textContent = i18n.t('topbar.endTurn');
+        
+        // Update action points text
+        const pointsText = root.querySelector('#points-text');
+        if (pointsText && pointsText.textContent) {
+            const match = pointsText.textContent.match(/\d+/);
+            if (match) {
+                pointsText.textContent = i18n.t('topbar.actionPoints') + ' ' + match[0];
+            }
+        }
+        
+        // Update current turn label
+        const turnLabel = root.querySelector('.turn-label');
+        if (turnLabel) turnLabel.textContent = i18n.t('topbar.currentTurn');
+        
+        // Update loading text if present
+        const loadingText = root.querySelector('.loading-text');
+        if (loadingText) loadingText.textContent = i18n.t('topbar.loading');
     }
 }
 

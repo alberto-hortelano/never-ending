@@ -3,13 +3,16 @@ import { MultiplayerLobby } from '../multiplayerlobby/MultiplayerLobby';
 import { MultiplayerManager } from '../../common/services/MultiplayerManager';
 import CharacterCreator from '../charactercreator/CharacterCreator';
 import { OriginSelection } from '../originselection/OriginSelection';
-import { ControlsEvent } from '../../common/events/index';
+import { Settings } from '../settings/Settings';
+import { ControlsEvent, StateChangeEvent } from '../../common/events/index';
+import { i18n } from '../../common/i18n/i18n';
 
 export class MainMenu extends Component {
     private multiplayerManager: MultiplayerManager;
     private multiplayerLobby: MultiplayerLobby | null = null;
     private characterCreator: CharacterCreator | null = null;
     private originSelection: OriginSelection | null = null;
+    private settings: Settings | null = null;
 
     constructor() {
         super();
@@ -34,6 +37,11 @@ export class MainMenu extends Component {
             this.dispatch('startSinglePlayer', {});
             this.style.display = 'none';
         });
+        
+        // Listen for language changes
+        this.listen(StateChangeEvent.language, () => {
+            this.updateTranslations();
+        });
     }
 
     override async connectedCallback() {
@@ -44,6 +52,7 @@ export class MainMenu extends Component {
         }
 
         this.setupEventListeners(root);
+        this.updateTranslations();
         return root;
     }
 
@@ -82,7 +91,7 @@ export class MainMenu extends Component {
         const settingsBtn = root.getElementById('settingsBtn');
         if (settingsBtn) {
             settingsBtn.addEventListener('click', () => {
-                alert('Settings not implemented yet');
+                this.showSettings();
             });
         } else {
             console.error('Settings button not found');
@@ -127,12 +136,42 @@ export class MainMenu extends Component {
         this.style.display = 'none';
     }
 
+    private showSettings() {
+        if (!this.settings) {
+            this.settings = document.createElement('settings-component') as Settings;
+            document.body.appendChild(this.settings);
+            
+            // Listen for settings close event
+            this.settings.addEventListener('settingsClosed', () => {
+                this.show();
+            });
+        }
+        
+        this.settings.show();
+        this.style.display = 'none';
+    }
+    
     show() {
         this.style.display = 'flex';
     }
 
     hide() {
         this.style.display = 'none';
+    }
+    
+    private updateTranslations() {
+        const root = this.shadowRoot;
+        if (!root) return;
+        
+        const singlePlayerBtn = root.getElementById('singlePlayerBtn');
+        const multiplayerBtn = root.getElementById('multiplayerBtn');
+        const characterCreatorBtn = root.getElementById('characterCreatorBtn');
+        const settingsBtn = root.getElementById('settingsBtn');
+        
+        if (singlePlayerBtn) singlePlayerBtn.textContent = i18n.t('menu.singlePlayer');
+        if (multiplayerBtn) multiplayerBtn.textContent = i18n.t('menu.multiplayer');
+        if (characterCreatorBtn) characterCreatorBtn.textContent = i18n.t('menu.createCharacter');
+        if (settingsBtn) settingsBtn.textContent = i18n.t('menu.settings');
     }
 }
 

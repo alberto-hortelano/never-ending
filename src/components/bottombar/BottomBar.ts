@@ -1,6 +1,7 @@
 import { Component } from "../Component";
 import { ControlsEvent, UpdateStateEvent, StateChangeEvent } from "../../common/events";
 import type { Actions } from "../actions/Actions";
+import { i18n } from "../../common/i18n/i18n";
 
 export default class BottomBar extends Component {
     protected override hasCss = true;
@@ -8,11 +9,20 @@ export default class BottomBar extends Component {
     
     private meleeActionsVisible = false;
     
+    constructor() {
+        super();
+        // Listen for language changes
+        this.listen(StateChangeEvent.language, () => {
+            this.updateTranslations();
+        });
+    }
+    
     override async connectedCallback() {
         const root = await super.connectedCallback();
         if (!root) return root;
         
         this.setupEventListeners(root);
+        this.updateTranslations();
         
         return root;
     }
@@ -126,6 +136,20 @@ export default class BottomBar extends Component {
         if (state?.ui?.selectedCharacter) {
             this.showCharacterActions(state.ui.selectedCharacter, root);
         }
+    }
+    
+    private updateTranslations() {
+        const root = this.shadowRoot;
+        if (!root) return;
+        
+        // Update mobile hints
+        const movementHint = root.querySelector('.movement-mobile-hint');
+        const shootingHint = root.querySelector('.shooting-mobile-hint');
+        const overwatchHint = root.querySelector('.overwatch-mobile-hint');
+        
+        if (movementHint) movementHint.textContent = i18n.t('bottombar.tapToMove');
+        if (shootingHint) shootingHint.textContent = i18n.t('bottombar.holdToRotate');
+        if (overwatchHint) overwatchHint.textContent = i18n.t('bottombar.pinchToZoom');
     }
 }
 

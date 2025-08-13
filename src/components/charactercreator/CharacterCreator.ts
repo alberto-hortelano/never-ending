@@ -1,10 +1,11 @@
 import { Component } from '../Component.js';
-import { ControlsEvent } from '../../common/events/index.js';
+import { ControlsEvent, StateChangeEvent } from '../../common/events/index.js';
 import { CharacterCreationService } from '../../common/services/CharacterCreationService.js';
 import Character from '../character/Character.js';
 import type { Direction, ICreatorData } from '../../common/interfaces.js';
 import { weapons } from '../../data/state.js';
 import { DirectionsService } from '../../common/services/DirectionsService.js';
+import { i18n } from '../../common/i18n/i18n.js';
 
 export default class CharacterCreator extends Component {
   protected override hasCss = true;
@@ -16,6 +17,14 @@ export default class CharacterCreator extends Component {
 
   // Local state management
   private characterData: ICreatorData = CharacterCreationService.createDefaultCharacterData();
+  
+  constructor() {
+    super();
+    // Listen for language changes
+    this.listen(StateChangeEvent.language, () => {
+      this.updateTranslations();
+    });
+  }
 
   override async connectedCallback() {
     const root = await super.connectedCallback();
@@ -29,6 +38,9 @@ export default class CharacterCreator extends Component {
 
     // Create character preview immediately
     this.createCharacterPreview(root);
+    
+    // Update translations
+    this.updateTranslations();
 
     return root;
   }
@@ -506,6 +518,94 @@ export default class CharacterCreator extends Component {
   private close() {
     this.dispatch(ControlsEvent.closeCharacterCreator, null);
     this.remove();
+  }
+  
+  private updateTranslations() {
+    const root = this.shadowRoot;
+    if (!root) return;
+    
+    // Update title
+    const title = root.querySelector('h2');
+    if (title) title.textContent = i18n.t('character.create');
+    
+    // Update section headers
+    const sectionHeaders = root.querySelectorAll('h3');
+    sectionHeaders.forEach(header => {
+      const text = header.textContent?.toLowerCase();
+      if (text?.includes('name')) header.textContent = i18n.t('character.name');
+      else if (text?.includes('race')) header.textContent = i18n.t('character.race');
+      else if (text?.includes('action')) header.textContent = i18n.t('character.actions');
+      else if (text?.includes('color')) header.textContent = i18n.t('character.colors');
+      else if (text?.includes('equipment')) header.textContent = i18n.t('character.equipment');
+      else if (text?.includes('abilit')) header.textContent = i18n.t('character.abilities');
+      else if (text?.includes('description')) header.textContent = i18n.t('character.description');
+    });
+    
+    // Update labels
+    const labels = root.querySelectorAll('label');
+    labels.forEach(label => {
+      const text = label.textContent?.toLowerCase();
+      if (text?.includes('skin') && label.childNodes[0]) label.childNodes[0].textContent = i18n.t('character.skin') + ' ';
+      else if (text?.includes('helmet') && label.childNodes[0]) label.childNodes[0].textContent = i18n.t('character.helmet') + ' ';
+      else if (text?.includes('suit') && label.childNodes[0]) label.childNodes[0].textContent = i18n.t('character.suit') + ' ';
+      else if (text?.includes('primary') && label.childNodes[0]) label.childNodes[0].textContent = i18n.t('character.primary') + ' ';
+      else if (text?.includes('secondary') && label.childNodes[0]) label.childNodes[0].textContent = i18n.t('character.secondary') + ' ';
+    });
+    
+    // Update action buttons
+    const actionButtons = root.querySelectorAll('.action-btn');
+    actionButtons.forEach(button => {
+      const text = button.textContent?.toLowerCase();
+      if (text?.includes('idle')) button.textContent = i18n.t('character.idle');
+      else if (text?.includes('walk')) button.textContent = i18n.t('character.walk');
+      else if (text?.includes('shoot')) button.textContent = i18n.t('character.shoot');
+      else if (text?.includes('slash')) button.textContent = i18n.t('character.slash');
+      else if (text?.includes('death')) button.textContent = i18n.t('character.death');
+    });
+    
+    // Update equipment headers
+    const weightSpan = root.querySelector('.weight-display');
+    if (weightSpan && weightSpan.textContent) {
+      const match = weightSpan.textContent.match(/\d+\/\d+/);
+      if (match) {
+        weightSpan.textContent = i18n.t('character.weight') + ' ' + match[0];
+      }
+    }
+    
+    const budgetSpan = root.querySelector('.budget-display');
+    if (budgetSpan && budgetSpan.textContent) {
+      const match = budgetSpan.textContent.match(/\d+\/\d+/);
+      if (match) {
+        budgetSpan.textContent = i18n.t('character.budget') + ' ' + match[0] + ' ' + i18n.t('character.points');
+      }
+    }
+    
+    // Update equipment tabs
+    const weaponsTab = root.querySelector('.tab-btn[data-tab="weapons"]');
+    const itemsTab = root.querySelector('.tab-btn[data-tab="items"]');
+    if (weaponsTab) weaponsTab.textContent = i18n.t('character.weapons');
+    if (itemsTab) itemsTab.textContent = i18n.t('character.items');
+    
+    // Update ability labels
+    const abilityLabels = root.querySelectorAll('.ability-item label');
+    abilityLabels.forEach(label => {
+      const text = label.textContent?.toLowerCase();
+      if (text?.includes('move')) label.textContent = i18n.t('character.moveCost');
+      else if (text?.includes('fire')) label.textContent = i18n.t('character.fireCost');
+      else if (text?.includes('melee')) label.textContent = i18n.t('character.meleeCost');
+      else if (text?.includes('vision')) label.textContent = i18n.t('character.visionRange');
+      else if (text?.includes('action points')) label.textContent = i18n.t('character.actionPoints');
+      else if (text?.includes('base damage')) label.textContent = i18n.t('character.baseDamage');
+      else if (text?.includes('shooting')) label.textContent = i18n.t('character.shootingAccuracy');
+      else if (text?.includes('melee accuracy')) label.textContent = i18n.t('character.meleeAccuracy');
+      else if (text?.includes('armor')) label.textContent = i18n.t('character.armor');
+    });
+    
+    // Update buttons
+    const cancelBtn = root.querySelector('#cancelBtn');
+    const createBtn = root.querySelector('#createBtn');
+    if (cancelBtn) cancelBtn.textContent = i18n.t('character.cancel');
+    if (createBtn) createBtn.textContent = i18n.t('character.confirm');
   }
 }
 

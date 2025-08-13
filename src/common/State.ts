@@ -11,6 +11,7 @@ import { MessageState } from './state/MessageState';
 import { UIState } from './state/UIState';
 import { OverwatchState } from './state/OverwatchState';
 import { StoryState } from './state/StoryState';
+import { LanguageState } from './state/LanguageState';
 import { UIStateService } from './services/UIStateService';
 
 export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateChangeEventsMap & ControlsEventsMap> {
@@ -25,6 +26,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
     private uiStateService: UIStateService;
     private overwatchState: OverwatchState;
     private storyState: StoryState;
+    private languageState: LanguageState;
 
     constructor(initialState?: IState, isPreview = false) {
         super();
@@ -57,6 +59,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         }
         this.overwatchState = new OverwatchState(() => this.save());
         this.storyState = new StoryState(isPreview ? undefined : () => this.save(), isPreview);
+        this.languageState = new LanguageState(isPreview ? undefined : () => this.save(), isPreview);
         
         // Load initial state
         this.load(initialState);
@@ -108,6 +111,10 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
     get story(): DeepReadonly<IState['story']> {
         return this.storyState.story as DeepReadonly<IState['story']>;
     }
+    
+    get language(): DeepReadonly<IState['language']> {
+        return this.languageState.language;
+    }
 
     // Public helper methods
     findCharacter(name: ICharacter['name']): DeepReadonly<ICharacter> | undefined {
@@ -154,6 +161,11 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         // Initialize overwatch data if present
         if (state.overwatchData) {
             this.overwatchState.overwatchData = state.overwatchData;
+        }
+        
+        // Initialize language if present
+        if (state.language) {
+            this.languageState.deserialize(state.language);
         }
         
         // No need to complete initialization anymore since we handle events differently

@@ -6,6 +6,7 @@ import { Component } from "../Component";
 import { ControlsEvent, ControlsEventsMap, ConversationEvent, ConversationEventsMap, UpdateStateEvent, StateChangeEvent } from "../../common/events";
 import { Draggable } from "../../common/helpers/Draggable";
 import type { IPopupState } from "../../common/interfaces";
+import { i18n } from "../../common/i18n/i18n";
 
 export class Popup extends Component {
     protected override hasCss = true;
@@ -17,6 +18,14 @@ export class Popup extends Component {
     private pinButton?: HTMLElement;
     private closeButton?: HTMLElement;
     private popupId = 'main-popup';  // Single main popup for now
+    
+    constructor() {
+        super();
+        // Listen for language changes
+        this.listen(StateChangeEvent.language, () => {
+            this.updateTranslations();
+        });
+    }
 
     override async connectedCallback() {
         const root = await super.connectedCallback();
@@ -34,6 +43,7 @@ export class Popup extends Component {
 
         this.classList.add('hidden');
         this.setupEventListeners();
+        this.updateTranslations();
 
         // Listen for popup state changes
         this.listen(StateChangeEvent.uiTransient, (transientUI) => {
@@ -398,6 +408,25 @@ export class Popup extends Component {
             data: { title: this.titleElement?.textContent || '' },
             isPinned: this.isPinned
         };
+    }
+    
+    private updateTranslations() {
+        const root = this.shadowRoot;
+        if (!root) return;
+        
+        // Update button tooltips
+        if (this.pinButton) {
+            this.pinButton.title = this.isPinned ? i18n.t('popup.close') : i18n.t('popup.pin');
+        }
+        
+        if (this.closeButton) {
+            this.closeButton.title = i18n.t('popup.close');
+        }
+        
+        // Update title if it's "Actions"
+        if (this.titleElement && this.titleElement.textContent === 'Actions') {
+            this.titleElement.textContent = i18n.t('popup.actions');
+        }
     }
 
     // Custom element setup
