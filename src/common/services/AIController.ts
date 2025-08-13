@@ -47,7 +47,7 @@ export class AIController extends EventBus<
     private isProcessingTurn: boolean = false;
     private aiEnabled: boolean = true;
     private state?: State;
-    private pendingSpeechCommand?: AICommand;
+    private pendingSpeechCommands: Map<string, AICommand> = new Map(); // Store per character
     private isProcessingMultipleCharacters: boolean = false;
     private movementTimeouts: NodeJS.Timeout[] = [];
     private tacticalExecutor: TacticalExecutor;
@@ -295,26 +295,34 @@ export class AIController extends EventBus<
                 }
                 
                 // Check if there's a pending speech command from previous movement
-                if (this.pendingSpeechCommand) {
+                const pendingSpeech = this.pendingSpeechCommands.get(currentChar.name);
+                if (pendingSpeech) {
                     // Check if we're now close enough to execute the pending speech
                     const speaker = currentChar;
-                    const player = this.state.characters.find(c => c.name === 'player');
-                    if (player) {
-                        const distance = this.getDistance(speaker.position, player.position);
+                    const humanCharacters = this.state.characters.filter(c => c.player === 'human' && c.health > 0);
+                    
+                    // Check if speaker can talk to any human character
+                    let canTalkToAnyHuman = false;
+                    for (const humanChar of humanCharacters) {
+                        const distance = this.getDistance(speaker.position, humanChar.position);
                         const viewDistance = 15; // Standard view distance
-                        const hasLineOfSight = this.checkLineOfSight(speaker.position, player.position);
+                        // For conversations, ignore characters blocking - only walls should block speech
+                        const hasLineOfSight = this.checkLineOfSight(speaker.position, humanChar.position, true);
                         
-                        // Check if within speaking range, view range, and has line of sight
                         if (distance <= 8 && distance <= viewDistance && hasLineOfSight) {
-                            // Close enough and visible - execute the pending speech
-                            const speechCommand = this.pendingSpeechCommand;
-                            this.pendingSpeechCommand = undefined;
-                            console.log('[AI] Executing pending speech after movement');
-                            await this.executeSpeech(speechCommand, currentChar);
-                            actionsPerformed++;
-                            await new Promise(resolve => setTimeout(resolve, 500));
-                            continue;
+                            canTalkToAnyHuman = true;
+                            break;
                         }
+                    }
+                    
+                    if (canTalkToAnyHuman) {
+                        // Close enough and visible to at least one human - execute the pending speech
+                        this.pendingSpeechCommands.delete(currentChar.name);
+                        console.log('[AI] Executing pending speech after movement');
+                        await this.executeSpeech(pendingSpeech, currentChar);
+                        actionsPerformed++;
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        continue;
                     }
                 }
                 
@@ -352,6 +360,48 @@ export class AIController extends EventBus<
                 
                 // Small delay between actions for visibility
                 await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            // Final check for pending speech after all actions/movement is done
+            // This handles the case where character used all action points moving closer
+            const finalPendingSpeech = this.pendingSpeechCommands.get(character.name);
+            if (finalPendingSpeech && this.state) {
+                const currentChar = this.state.characters.find(c => c.name === character.name);
+                if (currentChar && currentChar.health > 0) {
+                    const speaker = currentChar;
+                    const humanCharacters = this.state.characters.filter(c => c.player === 'human' && c.health > 0);
+                    
+                    // Check if speaker can talk to any human character
+                    let canTalkToAnyHuman = false;
+                    let closestHuman: DeepReadonly<ICharacter> | undefined;
+                    let closestDistance = Infinity;
+                    
+                    for (const humanChar of humanCharacters) {
+                        const distance = this.getDistance(speaker.position, humanChar.position);
+                        const viewDistance = 15; // Standard view distance
+                        const hasLineOfSight = this.checkLineOfSight(speaker.position, humanChar.position, true);
+                        
+                        console.log(`[AI] Final speech check from ${speaker.name} to ${humanChar.name}: distance=${distance.toFixed(2)}, hasLOS=${hasLineOfSight}`);
+                        
+                        if (distance <= 8 && distance <= viewDistance && hasLineOfSight) {
+                            canTalkToAnyHuman = true;
+                            if (distance < closestDistance) {
+                                closestDistance = distance;
+                                closestHuman = humanChar;
+                            }
+                        }
+                    }
+                    
+                    if (canTalkToAnyHuman) {
+                        // Close enough - execute the pending speech even with no action points
+                        this.pendingSpeechCommands.delete(character.name);
+                        console.log(`[AI] Executing pending speech after all movement completed (closest to ${closestHuman?.name})`);
+                        await this.executeSpeech(finalPendingSpeech, currentChar);
+                    } else {
+                        console.log('[AI] Still too far to speak after all movement');
+                        this.pendingSpeechCommands.delete(character.name); // Clear it
+                    }
+                }
             }
         } catch (error) {
             console.error('[AI] Error:', error);
@@ -548,10 +598,10 @@ export class AIController extends EventBus<
         // If we're already adjacent (within 1.5 cells), switch to appropriate action
         if (currentDistance <= 1.5) {
             // Check if we have a pending speech command
-            if (this.pendingSpeechCommand) {
-                const speechCommand = this.pendingSpeechCommand;
-                this.pendingSpeechCommand = undefined; // Clear the pending command
-                await this.executeSpeech(speechCommand, character);
+            const pendingSpeech = this.pendingSpeechCommands.get(character.name);
+            if (pendingSpeech) {
+                this.pendingSpeechCommands.delete(character.name); // Clear the pending command
+                await this.executeSpeech(pendingSpeech, character);
                 return;
             }
             
@@ -671,16 +721,16 @@ export class AIController extends EventBus<
                 // Check if we're still in AI turn (movement might have changed it)
                 if (this.state && this.state.game.turn === character.player) {
                     // Check if we have a pending speech command and are now close enough
-                    if (this.pendingSpeechCommand) {
+                    const pendingSpeech = this.pendingSpeechCommands.get(character.name);
+                    if (pendingSpeech) {
                         const newDistance = this.getDistance(character.position, targetLocation);
                         const viewDistance = 15; // Standard view distance
                         const hasLineOfSight = this.checkLineOfSight(character.position, targetLocation);
                         
                         // Check if within speaking range, view range, and has line of sight
                         if (newDistance <= 8 && newDistance <= viewDistance && hasLineOfSight) {
-                            const speechCommand = this.pendingSpeechCommand;
-                            this.pendingSpeechCommand = undefined;
-                            await this.executeSpeech(speechCommand, character);
+                            this.pendingSpeechCommands.delete(character.name);
+                            await this.executeSpeech(pendingSpeech, character);
                             return;
                         }
                     }
@@ -966,7 +1016,7 @@ export class AIController extends EventBus<
         return { type: 'none' };
     }
     
-    private checkLineOfSight(from: ICoord, to: ICoord): boolean {
+    private checkLineOfSight(from: ICoord, to: ICoord, ignoreCharacters: boolean = false): boolean {
         if (!this.state) return false;
         
         // Use Bresenham's line algorithm to check for obstacles
@@ -986,11 +1036,12 @@ export class AIController extends EventBus<
             if (x !== Math.round(from.x) || y !== Math.round(from.y)) {
                 const cell = map[y]?.[x];
                 if (cell?.content?.blocker) {
-                    return false; // Obstacle blocks line of sight
+                    return false; // Wall blocks line of sight
                 }
 
-                // Check if a character is blocking line of sight (except at the target position)
-                if (!(x === targetX && y === targetY)) {
+                // Only check for blocking characters if not ignoring them
+                // For conversations, we should ignore characters (only walls block)
+                if (!ignoreCharacters && !(x === targetX && y === targetY)) {
                     const blockingChar = this.state.characters.find(c => 
                         Math.round(c.position.x) === x && 
                         Math.round(c.position.y) === y &&
@@ -1066,21 +1117,51 @@ export class AIController extends EventBus<
         const speaker = this.state.characters.find((c: DeepReadonly<ICharacter>) => 
             c.name.toLowerCase() === (command.source || '').toLowerCase()
         );
-        const player = this.state.characters.find((c: DeepReadonly<ICharacter>) => 
-            c.name.toLowerCase() === 'player'
+        
+        // Find any human-controlled character that's in conversation range
+        const humanCharacters = this.state.characters.filter((c: DeepReadonly<ICharacter>) => 
+            c.player === 'human' && c.health > 0
         );
         
-        if (speaker && player) {
-            // Check if they're close enough to talk (within 8 cells and in view range)
-            const distance = this.getDistance(speaker.position, player.position);
-            const viewDistance = 15; // Standard view distance
-            const hasLineOfSight = this.checkLineOfSight(speaker.position, player.position);
-            
-            // Check if within speaking range, view range, and has line of sight
-            if (distance > 8 || distance > viewDistance || !hasLineOfSight) {
-                // Too far or can't see target - automatically move closer first
-                const reason = !hasLineOfSight ? 'no line of sight' : 
-                              distance > viewDistance ? 'out of view range' : 
+        // Check if speaker can talk to any human character
+        let canTalkToAnyHuman = false;
+        
+        if (speaker) {
+            for (const humanChar of humanCharacters) {
+                const distance = this.getDistance(speaker.position, humanChar.position);
+                const viewDistance = 15; // Standard view distance
+                // For conversations, ignore characters blocking - only walls should block speech
+                const hasLineOfSight = this.checkLineOfSight(speaker.position, humanChar.position, true);
+                
+                // Debug logging
+                console.log(`[AI] Line of sight check from ${speaker.name} to ${humanChar.name}:`, {
+                    distance: distance.toFixed(2),
+                    hasLineOfSight,
+                    speakerPos: speaker.position,
+                    humanPos: humanChar.position
+                });
+                
+                if (distance <= 8 && distance <= viewDistance && hasLineOfSight) {
+                    canTalkToAnyHuman = true;
+                    break;
+                }
+            }
+        }
+        
+        if (speaker && humanCharacters.length > 0) {
+            if (!canTalkToAnyHuman) {
+                // Too far from all human characters - move closer to the nearest one
+                const nearestHuman = humanCharacters.reduce((nearest, human) => {
+                    const distToNearest = this.getDistance(speaker.position, nearest.position);
+                    const distToHuman = this.getDistance(speaker.position, human.position);
+                    return distToHuman < distToNearest ? human : nearest;
+                });
+                
+                const distance = this.getDistance(speaker.position, nearestHuman.position);
+                // For conversations, ignore characters blocking - only walls should block speech
+                const hasLineOfSight = this.checkLineOfSight(speaker.position, nearestHuman.position, true);
+                const reason = !hasLineOfSight ? 'no line of sight (wall blocking)' : 
+                              distance > 15 ? 'out of view range' : 
                               'too far to speak';
                 console.log(`[AI]   → Cannot speak (${reason}), moving closer`);
                 
@@ -1089,12 +1170,12 @@ export class AIController extends EventBus<
                     type: 'movement',
                     characters: [{
                         name: character.name,
-                        location: 'player'
+                        location: nearestHuman.name  // Move toward the nearest human character
                     }]
                 };
                 
                 // Store the speech command to execute after movement
-                this.pendingSpeechCommand = command;
+                this.pendingSpeechCommands.set(character.name, command);
                 
                 // Execute movement - it will check for proximity and execute speech if close enough
                 await this.executeMovement(moveCommand, character);

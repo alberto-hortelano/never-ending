@@ -128,6 +128,14 @@ export class Popup extends Component {
         this.addEventListener('conversation-updated', () => {
             // Keep popup open during conversations
         });
+        
+        // Listen for conversation end event
+        this.addEventListener('conversation-ended', () => {
+            // Close popup when conversation ends
+            setTimeout(() => {
+                this.hide();
+            }, 500);
+        });
     }
 
     private isMobile(): boolean {

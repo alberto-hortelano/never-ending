@@ -65,35 +65,106 @@ Response format:
 
 ## Core Setting
 - Era: Post-empire galactic collapse
-- Multiple origin stories with unique companions and traits
-- Theme: Survival and finding purpose
+- Theme: Survival, exploration, and finding purpose
+- Language: ALL dialogue and narration MUST be in Spanish
 
-## Language Settings
-ALL player-facing text MUST be in Spanish.
+## DECISION FRAMEWORK - Follow these steps IN ORDER:
 
-## Your Role
-Control NPCs intelligently during their turns. Consider:
-- Character personality and faction
-- Tactical situation
-- Recent events
-- Relationships with other characters
+### STEP 1: OBSERVE (What is real?)
+- List ONLY characters marked as visible in the context
+- Note their exact distances and positions
+- Check who is in conversation range (within 8 cells)
+- DO NOT imagine or invent characters not in the visible list
 
-## Response Format
-Respond with ONE JSON message:
+### STEP 2: ASSESS (What is the situation?)
+- Am I in combat? (hostile characters visible)
+- Am I in conversation? (friendly character in range)
+- Am I exploring? (no immediate threats or allies)
+- What was I doing last turn? (check recent events)
 
-### Movement
-{"type": "movement", "characters": [{"name": "CharName", "location": "target"}]}
+### STEP 3: PRIORITIZE (What should I do?)
+Priority order:
+1. If in conversation range (≤8 cells) with ally → SPEECH
+2. If adjacent to enemy → ATTACK
+3. If enemy visible but far → MOVEMENT toward enemy
+4. If ally visible but far → MOVEMENT toward ally
+5. If exploring → MOVEMENT to explore
 
-### Attack
-{"type": "attack", "characters": [{"name": "CharName", "target": "TargetName", "attack": "melee|hold|kill|retreat"}]}
+### STEP 4: VALIDATE (Can I actually do this?)
+Before responding, check:
+- Is my target ACTUALLY visible? (must be in visibleCharacters list)
+- Am I close enough for my chosen action?
+- Is this action possible in the game mechanics?
 
-### Speech
-{"type": "speech", "source": "CharName", "content": "dialogue", "answers": ["option1", "option2"]}
+## CHARACTER PERSONALITIES
 
-### Character Spawn
-{"type": "character", "characters": [{"name": "CharName", "race": "human|alien|robot", "description": "desc", "speed": "slow|medium|fast", "orientation": "top|right|bottom|left", "location": "spawn location"}]}
+### Data (Android Companion)
+- Speech: Analytical, precise, technical vocabulary
+- Behavior: Protective of humans, logical, efficient
+- Never: Shows emotion, uses colloquialisms, acts irrationally
+- Spanish style: Formal, uses "usted", technical terms
 
-Consider the tactical situation and make intelligent decisions.`;
+### Enemy Soldiers
+- Speech: Military, aggressive when hostile, cautious when outnumbered
+- Behavior: Tactical, team-oriented, follows orders
+- Spanish style: Commands, military terminology
+
+## ACTION FORMATS WITH EXAMPLES
+
+### SPEECH - When character is within 8 cells
+Good Example (greeting):
+{"type": "speech", "source": "Data", "content": "Comandante, he detectado actividad anómala en este sector. Sugiero proceder con cautela.", "answers": ["¿Qué tipo de actividad?", "Mantente alerta", "Continuemos"]}
+
+Good Example (ending naturally):
+{"type": "speech", "source": "Data", "content": "Entendido, comandante. Procederé según lo indicado.", "answers": []}
+
+Bad Example (talking to non-existent character):
+{"type": "speech", "source": "Data", "content": "Veo enemigos acercándose", "answers": [...]} // WRONG if no enemies visible!
+
+### MOVEMENT - When target is NOT in conversation range
+Good Example:
+{"type": "movement", "characters": [{"name": "Data", "location": "player"}]}
+
+Bad Example (moving when already close):
+// If player is 3 cells away, DON'T move, SPEAK instead!
+
+### ATTACK - Only when enemy is adjacent or in weapon range
+{"type": "attack", "characters": [{"name": "enemy", "target": "player", "attack": "kill"}]}
+
+## CONVERSATION MANAGEMENT
+
+### Starting Conversations
+- Greet appropriately based on situation
+- Provide useful information or warnings
+- Ask relevant questions
+
+### During Conversation (2-3 exchanges maximum)
+- Stay on topic
+- Provide new information each turn
+- React to player's choices
+
+### Ending Conversations
+End when:
+- No new information to share (use empty answers: [])
+- Action is needed (enemy approaching)
+- Player chooses to leave
+- After 3 exchanges
+
+Example ending:
+{"type": "speech", "source": "Data", "content": "Mantendré vigilancia del perímetro, comandante.", "answers": []}
+
+## CRITICAL RULES - NEVER VIOLATE THESE
+
+1. NEVER describe characters not in visibleCharacters list
+2. NEVER move toward a character already in conversation range
+3. NEVER continue conversation beyond 3-4 exchanges
+4. NEVER use English in dialogue (always Spanish)
+5. NEVER suggest impossible tactics (flanking, cover system, etc.)
+6. ALWAYS check canConverse flag before attempting speech
+7. ALWAYS end conversation with empty answers: [] when done
+8. ONLY spawn characters/maps for major story transitions
+
+Remember: You can ONLY interact with what's ACTUALLY in the game state, not what you imagine might be there.`;
         } catch (error) {
             console.error('Failed to load narrative architect prompt:', error);
         }
@@ -161,75 +232,113 @@ Consider the tactical situation and make intelligent decisions.`;
     }
 
     private buildContextPrompt(context: any, storyState?: IStoryState): string {
-        // Find if there are adjacent characters
-        const adjacentChars = context.visibleCharacters?.filter((c: any) => c.isAdjacent) || [];
-        const hasAdjacentPlayer = adjacentChars.some((c: any) => c.isPlayer);
-        
-        // Get characters in conversation range
+        const current = context.currentCharacter;
+        const visibleChars = context.visibleCharacters || [];
         const conversableChars = context.charactersInConversationRange || [];
-        const conversableNames = conversableChars.map((c: any) => `${c.name} (${Math.round(c.distanceFromCurrent)}m)`).join(', ');
         
-        // Check for blockage info
-        let blockagePrompt = '';
-        if (context.blockageInfo) {
-            const info = context.blockageInfo;
-            const charInfo = info.blockingCharacter;
-            blockagePrompt = `
-
-**MOVEMENT BLOCKED!**
-You tried to reach ${info.originalTarget} but ${charInfo.name} is blocking your path!
-- ${charInfo.name} is ${charInfo.isAlly ? 'an ALLY' : 'an ENEMY'}
-- Health: ${charInfo.health}/${charInfo.maxHealth}
-- Distance: ${Math.round(charInfo.distance)} cells away
-
-You should:
-${charInfo.isAlly ? '- Talk to your ally and ask them to move' : '- Attack the enemy blocking your path'}
-${charInfo.distance <= 8 && charInfo.hasLineOfSight ? '- You can speak to them (within conversation range)' : '- Move closer or get line of sight to interact'}
-- Or find an alternative action
-
-DO NOT try to move to the original target again - the path is blocked!`;
-        }
+        // Build character descriptions with clear status
+        const characterDescriptions = visibleChars.map((char: any) => {
+            const status = [];
+            if (char.isAlly) status.push('ALLY');
+            if (char.isEnemy) status.push('ENEMY');
+            if (char.canConverse) status.push('CAN TALK');
+            if (char.isAdjacent) status.push('ADJACENT');
+            
+            return `  - ${char.name}: ${Math.round(char.distanceFromCurrent || 0)} cells away [${status.join(', ')}] Health: ${char.health?.current}/${char.health?.max}`;
+        }).join('\n');
         
-        // Build story context
-        let storyContext = '';
-        if (storyState?.selectedOrigin) {
-            storyContext = `
-ORIGIN CONTEXT:
-- Player Origin: ${storyState.selectedOrigin.nameES} (${storyState.selectedOrigin.name})
-- Companion: ${storyState.selectedOrigin.startingCompanion?.name || 'None'}
-- Story Traits: ${storyState.selectedOrigin.specialTraits.join(', ')}
-- Current Chapter: ${storyState.currentChapter || 1}
-- Faction Relations: ${JSON.stringify(storyState.factionReputation || {})}
-- Story Flags: ${Array.from(storyState.storyFlags || []).join(', ')}
+        // Create natural language situation summary
+        let situationSummary = `## CURRENT SITUATION
+
+You are: ${current.name} (${current.race || 'unknown'})
+Your position: (${Math.round(current.position?.x || 0)}, ${Math.round(current.position?.y || 0)})
+Your health: ${current.health?.current}/${current.health?.max}
+Your faction: ${current.faction || 'neutral'}
+Your personality: ${current.personality || 'standard'}
+
+## VISIBLE CHARACTERS (${visibleChars.length} total)
+${characterDescriptions || '  None visible'}
+
+## CONVERSATION OPTIONS (within 8 cells)
+${conversableChars.length > 0 
+    ? conversableChars.map((c: any) => `  - ${c.name} (${Math.round(c.distanceFromCurrent)}m) - Ready to talk`).join('\n')
+    : '  No characters in conversation range - need to move closer'}
+`;
+        
+        // Add recent events if available
+        if (context.recentEvents && context.recentEvents.length > 0) {
+            situationSummary += `
+## RECENT EVENTS
+${context.recentEvents.map((e: any) => `  - ${e.description}`).join('\n')}
 `;
         }
         
-        return `Current game state:
-${JSON.stringify(context, null, 2)}
-${storyContext}
-It's ${context.currentCharacter.name}'s turn. Based on their personality and the current situation, what should they do?
-${blockagePrompt}
+        // Add tactical analysis if in combat
+        if (context.tacticalAnalysis) {
+            const threats = context.tacticalAnalysis.threats || [];
+            if (threats.length > 0) {
+                situationSummary += `
+## TACTICAL ASSESSMENT
+Threats detected:
+${threats.map((t: any) => `  - ${t.source}: threat level ${t.level}, ${t.type} threat at ${t.distance}m`).join('\n')}
+Recommended stance: ${context.tacticalAnalysis.suggestedStance}
+`;
+            }
+        }
+        
+        // Add story context if available
+        if (storyState?.selectedOrigin) {
+            situationSummary += `
+## STORY CONTEXT
+Origin: ${storyState.selectedOrigin.nameES}
+Chapter: ${storyState.currentChapter || 1}
+Companion: ${storyState.selectedOrigin.startingCompanion?.name || 'None'}
+`;
+        }
+        
+        // Handle blockage situations
+        if (context.blockageInfo) {
+            const info = context.blockageInfo;
+            const blocker = info.blockingCharacter;
+            situationSummary += `
+## ⚠️ PATH BLOCKED
+Cannot reach ${info.originalTarget} - ${blocker.name} is blocking!
+${blocker.name} is ${blocker.isAlly ? 'an ALLY' : 'an ENEMY'} at ${Math.round(blocker.distance)} cells
+${blocker.distance <= 8 ? '✓ Can talk to resolve' : '✗ Too far to talk - move closer first'}
+`;
+        }
+        
+        // Clear action reminders based on situation
+        let actionGuidance = `
+## DECISION GUIDANCE
 
-IMPORTANT INTERACTION RULES:
-- Characters within conversation range (8 cells with line of sight): ${conversableNames || 'none'}
-- You can DIRECTLY SPEAK to any character in conversation range without moving
-- Characters marked as "canConverse: true" are close enough to talk to
-- Characters marked as "isAdjacent: true" are already next to you - DO NOT move towards them
-${hasAdjacentPlayer ? '- YOU ARE ALREADY NEXT TO THE PLAYER - Talk instead of moving!' : ''}
-${conversableChars.length > 0 ? `- You can talk to: ${conversableNames} RIGHT NOW without moving!` : '- No characters in conversation range - move closer to talk'}
+`;
+        
+        // Priority guidance based on situation
+        if (conversableChars.some((c: any) => c.isAlly)) {
+            actionGuidance += `📢 PRIORITY: You have allies in conversation range! Consider speaking first.\n`;
+        }
+        if (visibleChars.some((c: any) => c.isAdjacent && c.isEnemy)) {
+            actionGuidance += `⚔️ COMBAT: Enemy adjacent! Attack or retreat immediately.\n`;
+        }
+        if (conversableChars.length === 0 && visibleChars.length > 0) {
+            actionGuidance += `🚶 MOVEMENT: No one in conversation range. Move closer to interact.\n`;
+        }
+        if (visibleChars.length === 0) {
+            actionGuidance += `🔍 EXPLORING: No one visible. Move to explore the area.\n`;
+        }
+        
+        return situationSummary + actionGuidance + `
+## YOUR RESPONSE
+Based on the above situation, choose ONE action following the JSON format.
+Remember: ${current.name} would act according to their ${current.personality || 'standard'} personality.
 
-Respond with ONE JSON message following the format specifications. Choose the most appropriate action:
-- speech: Say something to characters within conversation range (8 cells with LoS, ${conversableChars.length} available)
-- movement: Move to a strategic position (ONLY if target is not in conversation range)
-- attack: Engage in combat (if enemy is in range)
-- character: Spawn new characters (only if narratively appropriate)
-
-Consider:
-- The character's faction: ${context.currentCharacter.faction || 'unknown'}
-- Their personality: ${context.currentCharacter.personality || 'unknown'}
-- Current health: ${context.currentCharacter.health.current}/${context.currentCharacter.health.max}
-- Characters in conversation range: ${conversableChars.length} (can talk without moving)
-- Tactical positioning: Don't move if already in conversation range of target`;
+CRITICAL REMINDERS:
+- Can ONLY see/interact with the ${visibleChars.length} characters listed above
+- Can ONLY speak to the ${conversableChars.length} characters in conversation range
+- DO NOT invent or imagine other characters
+- If someone is marked "CAN TALK" - use speech, not movement!
+`;
     }
 
     private async callGameEngine(

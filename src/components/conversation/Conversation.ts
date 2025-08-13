@@ -73,7 +73,7 @@ export class Conversation extends Component {
 
         this.contentElement.appendChild(bubble);
 
-        // Add answer buttons
+        // Add answer buttons or end conversation
         if (data.answers && data.answers.length > 0 && this.answersElement) {
             const answersElement = this.answersElement; // Create local reference for TypeScript
             data.answers.forEach(answer => {
@@ -83,14 +83,29 @@ export class Conversation extends Component {
                 button.addEventListener('click', () => this.handleAnswerClick(answer));
                 answersElement.appendChild(button);
             });
-        }
-
-        // Re-enable free text input for new conversation
-        if (this.freeTextInput) {
-            this.freeTextInput.disabled = false;
-        }
-        if (this.freeTextSubmit) {
-            this.freeTextSubmit.disabled = false;
+            
+            // Re-enable free text input for new conversation
+            if (this.freeTextInput) {
+                this.freeTextInput.disabled = false;
+            }
+            if (this.freeTextSubmit) {
+                this.freeTextSubmit.disabled = false;
+            }
+        } else {
+            // No answers means conversation has ended
+            if (this.answersElement) {
+                const endMessage = document.createElement('div');
+                endMessage.className = 'conversation-ended';
+                endMessage.textContent = 'Conversación terminada';
+                this.answersElement.appendChild(endMessage);
+            }
+            
+            // Dispatch event to close conversation popup after a delay
+            setTimeout(() => {
+                this.dispatchEvent(new CustomEvent('conversation-ended', {
+                    bubbles: true
+                }));
+            }, 2000);
         }
 
         // Dispatch event to notify parent that conversation has been updated

@@ -14,6 +14,7 @@ export class Conversation extends EventBus<
     private messages: IMessage[] = [];
     private isLoading = false;
     private currentTarget?: string;
+    private conversationTurnCount = 0;
     private readonly maxRetries = 3;
     private readonly retryDelay = 1000;
     private readonly maxMessageLength = 1000;
@@ -42,12 +43,13 @@ export class Conversation extends EventBus<
 
         this.isLoading = true;
         this.currentTarget = targetCharacter.name;
+        this.conversationTurnCount = 1; // Reset turn count for new conversation
 
         try {
-            // Create context message with better prompt
+            // Create context message with turn count for better conversation flow
             const contextMessage: IMessage = {
                 role: 'user',
-                content: characterContext(talkingCharacter.name, targetCharacter.name)
+                content: characterContext(talkingCharacter.name, targetCharacter.name, this.conversationTurnCount)
             };
 
             // Include system prompt in the context message if this is the first conversation
@@ -91,12 +93,18 @@ export class Conversation extends EventBus<
         if (this.isLoading) return;
 
         this.isLoading = true;
+        this.conversationTurnCount++; // Increment turn count
 
         try {
-            // Create player message
+            // Add turn count context to help AI know when to end
+            const turnContext = this.conversationTurnCount >= 3 
+                ? '\n[SYSTEM: This is turn ' + this.conversationTurnCount + '. Consider ending the conversation naturally.]'
+                : '';
+            
+            // Create player message with turn context
             const playerMessage: IMessage = {
                 role: 'user',
-                content: answer
+                content: answer + turnContext
             };
 
             // Call API
@@ -189,15 +197,33 @@ export class Conversation extends EventBus<
                         parsed.content = parsed.content.substring(0, this.maxMessageLength) + '...';
                     }
                     
+                    // Check if conversation should end (no answers or empty answers array)
+                    const shouldEnd = !parsed.answers || parsed.answers.length === 0 || 
+                                    parsed.content.toLowerCase().includes('fin de la conversación');
+                    
                     return {
                         type: 'speech',
                         source: parsed.source,
                         content: parsed.content,
-                        answers: parsed.answers || ['Continuar'],  // Default if no answers
+                        answers: shouldEnd ? [] : (parsed.answers || ['Continuar']),  // Empty array ends conversation
                         action: parsed.action
                     };
+                } else if (parsed.type === 'movement' || parsed.type === 'attack' || 
+                          parsed.type === 'character' || parsed.type === 'map' || 
+                          parsed.type === 'item' || parsed.type === 'tactical_directive') {
+                    // AI is taking a non-conversation action - end the conversation
+                    console.log('[Conversation] AI returned non-speech command:', parsed.type);
+                    console.log('[Conversation] Ending conversation as AI wants to perform action');
+                    return {
+                        type: 'speech',
+                        source: this.currentTarget || 'AI',
+                        content: 'Fin de la conversación.',
+                        answers: [],  // Empty answers will trigger conversation end
+                        action: parsed.type
+                    };
                 } else {
-                    // Unknown type - try to use what we have
+                    // Unknown type - still try to use what we have but log warning
+                    console.warn('[Conversation] Unknown command type:', parsed.type);
                     return {
                         type: 'speech',
                         source: parsed.source || this.currentTarget || 'Unknown',

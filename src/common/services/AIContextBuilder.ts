@@ -116,7 +116,10 @@ export class AIContextBuilder {
         const charactersInConversationRange = this.getCharactersInConversationRange(character, visibleChars);
         const mapInfo = this.buildMapContext(character);
         const gameState = this.buildGameState();
-        const tacticalAnalysis = this.performTacticalAnalysis(character, visibleChars);
+        
+        // Only include tactical analysis if there are actual enemies visible
+        const hasEnemies = visibleChars.some(c => c.isEnemy);
+        const tacticalAnalysis = hasEnemies ? this.performTacticalAnalysis(character, visibleChars) : undefined;
 
         return {
             currentCharacter: currentChar,
@@ -234,10 +237,43 @@ export class AIContextBuilder {
         return visibleChars;
     }
 
-    private hasLineOfSight(_from: DeepReadonly<ICharacter>, _to: DeepReadonly<ICharacter>): boolean {
-        // Simplified line of sight check
-        // TODO: Implement proper raycasting through walls
-        return true;
+    private hasLineOfSight(from: DeepReadonly<ICharacter>, to: DeepReadonly<ICharacter>): boolean {
+        // Check for obstacles between two characters using Bresenham's line algorithm
+        const map = this.state.map;
+        const dx = Math.abs(to.position.x - from.position.x);
+        const dy = Math.abs(to.position.y - from.position.y);
+        const sx = from.position.x < to.position.x ? 1 : -1;
+        const sy = from.position.y < to.position.y ? 1 : -1;
+        let err = dx - dy;
+        let x = Math.round(from.position.x);
+        let y = Math.round(from.position.y);
+        const targetX = Math.round(to.position.x);
+        const targetY = Math.round(to.position.y);
+
+        while (x !== targetX || y !== targetY) {
+            // Skip the starting position
+            if (x !== Math.round(from.position.x) || y !== Math.round(from.position.y)) {
+                const cell = map[y]?.[x];
+                if (cell?.content?.blocker) {
+                    return false; // Wall blocks line of sight
+                }
+
+                // Don't check for blocking characters - they shouldn't block conversation
+                // Only walls should block line of sight for conversation purposes
+            }
+
+            const e2 = 2 * err;
+            if (e2 > -dy) {
+                err -= dy;
+                x += sx;
+            }
+            if (e2 < dx) {
+                err += dx;
+                y += sy;
+            }
+        }
+
+        return true; // No obstacles found
     }
 
     private buildMapContext(character: DeepReadonly<ICharacter>): MapContext {
@@ -440,17 +476,20 @@ export class AIContextBuilder {
 
     /**
      * Perform tactical analysis of the battlefield
+     * Simplified to only include actually achievable tactics
      */
     private performTacticalAnalysis(
         character: DeepReadonly<ICharacter>,
         visibleChars: CharacterContext[]
     ): TacticalAnalysis {
         const threats = this.assessThreats(character, visibleChars);
-        const opportunities = this.findTacticalOpportunities(character, visibleChars);
+        const opportunities = this.findSimpleTacticalOpportunities(character, visibleChars);
         const suggestedStance = this.suggestStance(character, threats, opportunities);
-        const coverPositions = this.findCoverPositions(character);
-        const flankingRoutes = this.calculateFlankingRoutes(character, visibleChars);
-        const retreatPaths = this.calculateRetreatPaths(character, threats);
+        
+        // Simplified - no complex flanking or cover mechanics
+        const coverPositions: ICoord[] = [];
+        const flankingRoutes: ICoord[][] = [];
+        const retreatPaths = threats.length > 0 ? this.calculateSimpleRetreatPaths(character, threats) : [];
 
         return {
             threats,
@@ -490,48 +529,37 @@ export class AIContextBuilder {
         return threats.sort((a, b) => b.level - a.level);
     }
 
-    private findTacticalOpportunities(
+    private findSimpleTacticalOpportunities(
         character: DeepReadonly<ICharacter>,
         visibleChars: CharacterContext[]
     ): TacticalOpportunity[] {
         const opportunities: TacticalOpportunity[] = [];
         
-        // Check for flanking opportunities
+        // Only include simple, achievable opportunities
         const enemies = visibleChars.filter(c => c.isEnemy);
+        
+        // Direct engagement opportunities
         for (const enemy of enemies) {
-            if (!enemy.position) continue;
+            if (!enemy.position || !enemy.distanceFromCurrent) continue;
             
-            // Simple flanking position calculation
-            const flankPos = this.calculateFlankPosition(character.position, enemy.position);
-            if (flankPos) {
+            // Can we reach them this turn for melee?
+            if (enemy.canReachThisTurn && this.characterHasMeleeWeapon(character)) {
                 opportunities.push({
-                    type: 'flank',
-                    position: flankPos,
-                    value: 70,
-                    description: `Flank ${enemy.name}`
+                    type: 'ambush',
+                    position: enemy.position,
+                    value: 60,
+                    description: `Engage ${enemy.name} in melee combat`
                 });
             }
-        }
-        
-        // Check for crossfire opportunities with allies
-        const allies = visibleChars.filter(c => c.isAlly);
-        if (allies.length > 0 && enemies.length > 0) {
-            for (const enemy of enemies) {
-                if (!enemy.position) continue;
-                
-                for (const ally of allies) {
-                    if (!ally.position) continue;
-                    
-                    // Check if enemy is between character and ally
-                    if (this.isInCrossfire(character.position, ally.position, enemy.position)) {
-                        opportunities.push({
-                            type: 'crossfire',
-                            position: enemy.position,
-                            value: 80,
-                            description: `Crossfire on ${enemy.name} with ${ally.name}`
-                        });
-                    }
-                }
+            
+            // Do we have range advantage?
+            if (this.checkCharacterHasRangedWeapon(character) && !enemy.hasRangedWeapon) {
+                opportunities.push({
+                    type: 'highGround', // Using as "range advantage"
+                    position: character.position,
+                    value: 70,
+                    description: `Maintain distance and use ranged attacks on ${enemy.name}`
+                });
             }
         }
         
@@ -541,7 +569,7 @@ export class AIContextBuilder {
     private suggestStance(
         _character: DeepReadonly<ICharacter>,
         threats: ThreatAssessment[],
-        opportunities: TacticalOpportunity[]
+        _opportunities: TacticalOpportunity[]
     ): 'aggressive' | 'defensive' | 'flanking' | 'suppressive' | 'retreating' {
         const healthPercent = _character.health / _character.maxHealth;
         const immediateThreats = threats.filter(t => t.type === 'immediate').length;
@@ -552,11 +580,13 @@ export class AIContextBuilder {
         // Multiple immediate threats - defensive
         if (immediateThreats > 1) return 'defensive';
         
-        // Good flanking opportunity - flanking
-        if (opportunities.some(o => o.type === 'flank' && o.value > 60)) return 'flanking';
-        
         // Single threat and good health - aggressive
         if (immediateThreats === 1 && healthPercent > 0.6) return 'aggressive';
+        
+        // Has ranged weapon and enemies are distant - suppressive
+        if (this.checkCharacterHasRangedWeapon(_character) && threats.every(t => t.type === 'distant')) {
+            return 'suppressive';
+        }
         
         // Default to defensive
         return 'defensive';
@@ -586,27 +616,8 @@ export class AIContextBuilder {
         return positions;
     }
 
-    private calculateFlankingRoutes(
-        character: DeepReadonly<ICharacter>,
-        visibleChars: CharacterContext[]
-    ): ICoord[][] {
-        const routes: ICoord[][] = [];
-        const enemies = visibleChars.filter(c => c.isEnemy);
-        
-        for (const enemy of enemies) {
-            if (!enemy.position) continue;
-            
-            // Calculate simple flanking route
-            const route = this.calculateFlankRoute(character.position, enemy.position);
-            if (route) {
-                routes.push(route);
-            }
-        }
-        
-        return routes;
-    }
 
-    private calculateRetreatPaths(
+    private calculateSimpleRetreatPaths(
         character: DeepReadonly<ICharacter>,
         threats: ThreatAssessment[]
     ): ICoord[][] {
@@ -614,34 +625,31 @@ export class AIContextBuilder {
         
         if (threats.length === 0) return paths;
         
-        // Calculate average threat direction
-        let avgX = 0, avgY = 0;
-        for (const threat of threats) {
-            // Find threat character position
-            const threatChar = this.state.characters.find(c => c.name === threat.source);
-            if (threatChar) {
-                avgX += threatChar.position.x;
-                avgY += threatChar.position.y;
+        // Just suggest moving away from the nearest threat
+        const nearestThreat = threats[0]; // Already sorted by threat level
+        if (!nearestThreat) return paths;
+        
+        const threatChar = this.state.characters.find(c => c.name === nearestThreat.source);
+        
+        if (threatChar) {
+            // Simple retreat: move directly away
+            const retreatDirection = Math.atan2(
+                character.position.y - threatChar.position.y,
+                character.position.x - threatChar.position.x
+            );
+            
+            const path: ICoord[] = [];
+            // Just 3 steps back
+            for (let i = 1; i <= 3; i++) {
+                path.push({
+                    x: Math.round(character.position.x + Math.cos(retreatDirection) * i * 2),
+                    y: Math.round(character.position.y + Math.sin(retreatDirection) * i * 2)
+                });
             }
-        }
-        avgX /= threats.length;
-        avgY /= threats.length;
-        
-        // Create retreat path away from average threat
-        const retreatDirection = Math.atan2(
-            character.position.y - avgY,
-            character.position.x - avgX
-        );
-        
-        const path: ICoord[] = [];
-        for (let i = 1; i <= 5; i++) {
-            path.push({
-                x: character.position.x + Math.cos(retreatDirection) * i * 2,
-                y: character.position.y + Math.sin(retreatDirection) * i * 2
-            });
+            
+            paths.push(path);
         }
         
-        paths.push(path);
         return paths;
     }
 
@@ -689,26 +697,6 @@ export class AIContextBuilder {
         return Math.min(100, Math.max(0, threat));
     }
 
-    private calculateFlankPosition(myPos: ICoord, enemyPos: ICoord): ICoord | null {
-        const angle = Math.atan2(enemyPos.y - myPos.y, enemyPos.x - myPos.x);
-        const flankAngle = angle + Math.PI / 2; // 90 degrees to the side
-        const flankDistance = 5;
-        
-        return {
-            x: enemyPos.x + Math.cos(flankAngle) * flankDistance,
-            y: enemyPos.y + Math.sin(flankAngle) * flankDistance
-        };
-    }
-
-    private isInCrossfire(pos1: ICoord, pos2: ICoord, target: ICoord): boolean {
-        // Check if target is roughly between two positions
-        const angle1 = Math.atan2(target.y - pos1.y, target.x - pos1.x);
-        const angle2 = Math.atan2(target.y - pos2.y, target.x - pos2.x);
-        const angleDiff = Math.abs(angle1 - angle2);
-        
-        // If angles are roughly opposite (around 180 degrees), it's crossfire
-        return angleDiff > Math.PI * 0.75;
-    }
 
     private positionProvidesCover(_pos: ICoord): boolean {
         // Simplified - would need actual map analysis
@@ -716,26 +704,4 @@ export class AIContextBuilder {
         return false;
     }
 
-    private calculateFlankRoute(from: ICoord, to: ICoord): ICoord[] | null {
-        // Simple arc route for flanking
-        const route: ICoord[] = [];
-        const directAngle = Math.atan2(to.y - from.y, to.x - from.x);
-        const flankAngle = directAngle + Math.PI / 3; // 60 degrees offset
-        
-        // Create arc path
-        for (let i = 1; i <= 3; i++) {
-            const progress = i / 3;
-            const currentAngle = flankAngle + (directAngle - flankAngle) * progress;
-            const distance = Math.sqrt(
-                Math.pow(to.x - from.x, 2) + Math.pow(to.y - from.y, 2)
-            ) * progress;
-            
-            route.push({
-                x: from.x + Math.cos(currentAngle) * distance,
-                y: from.y + Math.sin(currentAngle) * distance
-            });
-        }
-        
-        return route;
-    }
 }

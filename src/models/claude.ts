@@ -42,7 +42,7 @@ export const sendMessage: SendMessage = async (messages: IMessage[]) => {
     const narrativeArchitect = await getPrompt('narrativeArchitect');
 
     const msg: Anthropic.Messages.Message = await anthropic.messages.create({
-        model: "claude-sonnet-4-0",
+        model: "claude-opus-4-1",
         max_tokens: 8192,
         system: narrativeArchitect,
         messages: messages,

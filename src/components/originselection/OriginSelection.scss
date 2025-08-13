@@ -46,28 +46,34 @@
         font-size: $font-size-lg;
         color: $color-text-secondary;
         font-style: italic;
+        margin-bottom: $spacing-sm;
+    }
+
+    .instruction {
+        font-size: $font-size-base;
+        color: $color-highlight;
+        animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% {
+            opacity: 0.8;
+        }
+        50% {
+            opacity: 1;
+        }
     }
 }
 
-.main-content {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: $spacing-xl;
-    flex: 1;
-    max-width: 1400px;
-    margin: 0 auto;
-    width: 100%;
-
-    @include md-down {
-        grid-template-columns: 1fr;
-    }
-}
 
 .origins-container {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     gap: $spacing-lg;
     align-content: start;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
 }
 
 .origin-card {
@@ -93,12 +99,17 @@
     }
 
     &:hover {
-        transform: translateY(-2px);
-        box-shadow: $shadow-lg;
+        transform: translateY(-4px) scale(1.02);
+        box-shadow: 0 10px 30px rgba($color-highlight, 0.3);
         border-color: $color-highlight;
+        background: lighten($color-bg-secondary, 5%);
 
         &::before {
             transform: translateX(0);
+        }
+
+        .origin-title {
+            color: $color-highlight;
         }
     }
 
@@ -205,92 +216,3 @@
     }
 }
 
-.origin-details {
-    background: $color-bg-secondary;
-    border: 1px solid $color-border-primary;
-    border-radius: $border-radius-lg;
-    padding: $spacing-xl;
-    position: sticky;
-    top: $spacing-xl;
-    max-height: calc(100vh - #{$spacing-2xl});
-    overflow-y: auto;
-
-    .details-placeholder {
-        text-align: center;
-        color: $color-text-muted;
-        padding: $spacing-2xl;
-    }
-
-    h2 {
-        color: $color-highlight;
-        font-size: 1.5rem; // 24px
-        margin-bottom: $spacing-lg;
-        padding-bottom: $spacing-sm;
-        border-bottom: 2px solid $color-border-primary;
-    }
-
-    .detail-section {
-        margin-bottom: $spacing-lg;
-
-        h3 {
-            color: $color-text-primary;
-            font-size: $font-size-lg;
-            margin-bottom: $spacing-sm;
-        }
-
-        p {
-            color: $color-text-secondary;
-            line-height: 1.6;
-        }
-
-        .inventory-list,
-        .hooks-list {
-            list-style: none;
-            padding: 0;
-
-            li {
-                color: $color-text-secondary;
-                padding: $spacing-sm 0;
-                padding-left: $spacing-lg;
-                position: relative;
-
-                &::before {
-                    content: '▸';
-                    position: absolute;
-                    left: 0;
-                    color: $color-highlight;
-                }
-            }
-        }
-    }
-}
-
-.selection-footer {
-    text-align: center;
-    padding: $spacing-xl 0;
-
-    .start-button {
-        background: linear-gradient(135deg, $color-highlight 0%, darken($color-highlight, 10%) 100%);
-        color: $gray-900;
-        border: none;
-        padding: $spacing-md $spacing-2xl;
-        font-size: $font-size-lg;
-        font-weight: $font-weight-medium;
-        border-radius: $border-radius-md;
-        cursor: pointer;
-        transition: $transition-all;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-
-        &:not(:disabled):hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba($color-highlight, 0.4);
-        }
-
-        &:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            background: $gray-600;
-        }
-    }
-}

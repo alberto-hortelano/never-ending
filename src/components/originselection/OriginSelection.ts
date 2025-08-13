@@ -58,66 +58,18 @@ export class OriginSelection extends Component {
             card.addEventListener('click', (e) => {
                 const target = e.currentTarget as HTMLElement;
                 const originId = target.dataset.originId;
-                this.selectOrigin(originId || '', root);
+                if (originId) {
+                    const origin = originStories.find(o => o.id === originId);
+                    if (origin) {
+                        this.selectedOrigin = origin;
+                        this.startGame();
+                    }
+                }
             });
         });
-
-        const startButton = root.querySelector('.start-button');
-        startButton?.addEventListener('click', () => {
-            if (this.selectedOrigin) {
-                this.startGame();
-            }
-        });
     }
 
-    private selectOrigin(originId: string, root: ShadowRoot) {
-        // Update visual selection
-        const cards = root.querySelectorAll('.origin-card');
-        cards.forEach(card => {
-            card.classList.toggle('selected', card.getAttribute('data-origin-id') === originId);
-        });
 
-        // Store selected origin
-        this.selectedOrigin = originStories.find(o => o.id === originId) || null;
-
-        // Enable start button
-        const startButton = root.querySelector('.start-button') as HTMLButtonElement;
-        if (startButton) {
-            startButton.disabled = !this.selectedOrigin;
-        }
-
-        // Show origin details
-        this.showOriginDetails(root);
-    }
-
-    private showOriginDetails(root: ShadowRoot) {
-        const detailsPanel = root.querySelector('.origin-details');
-        if (!detailsPanel || !this.selectedOrigin) return;
-
-        detailsPanel.innerHTML = `
-            <h2>${this.selectedOrigin.nameES}</h2>
-            <div class="detail-section">
-                <h3>Historia:</h3>
-                <p>${this.selectedOrigin.descriptionES}</p>
-            </div>
-            <div class="detail-section">
-                <h3>Inventario Inicial:</h3>
-                <ul class="inventory-list">
-                    ${this.selectedOrigin.initialInventory.map(item => 
-                        `<li>${this.getItemName(item)}</li>`
-                    ).join('')}
-                </ul>
-            </div>
-            <div class="detail-section">
-                <h3>Ganchos Narrativos:</h3>
-                <ul class="hooks-list">
-                    ${this.selectedOrigin.narrativeHooks.map(hook => 
-                        `<li>${hook}</li>`
-                    ).join('')}
-                </ul>
-            </div>
-        `;
-    }
 
     private startGame() {
         if (!this.selectedOrigin) return;
@@ -158,26 +110,6 @@ export class OriginSelection extends Component {
         return factionNames[factionId] || factionId;
     }
 
-    private getItemName(itemId: string): string {
-        const itemNames: Record<string, string> = {
-            'military_rifle': 'Rifle Militar',
-            'combat_armor': 'Armadura de Combate',
-            'encrypted_datapad': 'Datapad Encriptado',
-            'plasma_cutter': 'Cortador de Plasma',
-            'scanner_array': 'Matriz de Escaneo',
-            'ancient_artifact': 'Artefacto Antiguo',
-            'concealed_pistol': 'Pistola Oculta',
-            'evidence_scanner': 'Escáner de Evidencia',
-            'syndicate_dossier': 'Expediente del Sindicato',
-            'explosives': 'Explosivos',
-            'rebel_uniform': 'Uniforme Rebelde',
-            'resistance_codes': 'Códigos de Resistencia',
-            'survival_kit': 'Kit de Supervivencia',
-            'colony_records': 'Registros Coloniales',
-            'family_heirloom': 'Reliquia Familiar'
-        };
-        return itemNames[itemId] || itemId.replace(/_/g, ' ');
-    }
 }
 
 customElements.define('origin-selection', OriginSelection);
