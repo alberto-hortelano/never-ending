@@ -59,7 +59,7 @@ export interface CharacterContext {
     distanceFromCurrent?: number;
     isAdjacent?: boolean;
     canReachThisTurn?: boolean;
-    canConverse?: boolean;  // True if within conversation range (3 cells)
+    canConverse?: boolean;  // True if within conversation range (8 cells) and has line of sight
     threatLevel?: number;  // 0-100 assessment of threat
     hasRangedWeapon?: boolean;
     hasMeleeWeapon?: boolean;
@@ -184,8 +184,8 @@ export class AIContextBuilder {
     }
 
     private getCharactersInConversationRange(_character: DeepReadonly<ICharacter>, visibleChars: CharacterContext[]): CharacterContext[] {
-        // Filter visible characters to only those within conversation range (3 cells)
-        const conversationRange = 3;
+        // Filter visible characters to only those within conversation range (8 cells with line of sight)
+        const conversationRange = 8;
         return visibleChars.filter(char => {
             const distance = char.distanceFromCurrent || 999;
             return distance <= conversationRange;
@@ -204,6 +204,9 @@ export class AIContextBuilder {
 
         for (const otherChar of state.characters) {
             if (otherChar.name === character.name) continue;
+            
+            // Skip dead characters - they shouldn't be considered visible/interactable
+            if (otherChar.health <= 0) continue;
 
             const distance = Math.sqrt(
                 Math.pow(otherChar.position.x - character.position.x, 2) +
@@ -219,7 +222,7 @@ export class AIContextBuilder {
                     charContext.distanceFromCurrent = distance;
                     charContext.isAdjacent = distance <= 1.5;
                     charContext.canReachThisTurn = distance <= maxMovementDistance;
-                    charContext.canConverse = distance <= 3; // Can talk within 3 cells
+                    charContext.canConverse = distance <= 8 && hasLOS; // Can talk within 8 cells with line of sight
                     charContext.hasLineOfSight = hasLOS;
                     charContext.isInCover = this.isCharacterInCover(otherChar);
                     charContext.threatLevel = this.assessThreatLevel(character, otherChar, distance);

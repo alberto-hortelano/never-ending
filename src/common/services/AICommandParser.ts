@@ -1,5 +1,5 @@
 export interface AICommand {
-    type: 'storyline' | 'map' | 'character' | 'movement' | 'attack' | 'speech' | 'tactical_directive';
+    type: 'storyline' | 'map' | 'character' | 'movement' | 'attack' | 'speech' | 'tactical_directive' | 'item';
     [key: string]: any;
 }
 
@@ -125,6 +125,8 @@ export class AICommandParser {
                 return this.validateMap(command);
             case 'tactical_directive':
                 return this.validateTacticalDirective(command);
+            case 'item':
+                return this.validateItem(command);
             default:
                 console.error('Invalid command type:', command.type);
                 return null;
@@ -388,5 +390,27 @@ export class AICommandParser {
         }
 
         return command as TacticalDirectiveCommand;
+    }
+    
+    private validateItem(command: any): AICommand | null {
+        if (!Array.isArray(command.items) || command.items.length === 0) {
+            console.error('Item command missing items array');
+            return null;
+        }
+        
+        const validTypes = ['weapon', 'consumable', 'key', 'artifact'];
+        for (const item of command.items) {
+            if (!item.name || !item.type || !item.location) {
+                console.error('Item missing required fields');
+                return null;
+            }
+            
+            if (!validTypes.includes(item.type)) {
+                console.error('Invalid item type:', item.type);
+                return null;
+            }
+        }
+        
+        return command;
     }
 }

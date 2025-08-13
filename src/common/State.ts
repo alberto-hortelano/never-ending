@@ -10,6 +10,7 @@ import { CharacterState } from './state/CharacterState';
 import { MessageState } from './state/MessageState';
 import { UIState } from './state/UIState';
 import { OverwatchState } from './state/OverwatchState';
+import { StoryState } from './state/StoryState';
 import { UIStateService } from './services/UIStateService';
 
 export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateChangeEventsMap & ControlsEventsMap> {
@@ -23,6 +24,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
     private uiState: UIState;
     private uiStateService: UIStateService;
     private overwatchState: OverwatchState;
+    private storyState: StoryState;
 
     constructor(initialState?: IState, isPreview = false) {
         super();
@@ -54,6 +56,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
             this.uiStateService = {} as UIStateService;
         }
         this.overwatchState = new OverwatchState(() => this.save());
+        this.storyState = new StoryState(isPreview ? undefined : () => this.save(), isPreview);
         
         // Load initial state
         this.load(initialState);
@@ -100,6 +103,10 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
 
     get overwatchData(): DeepReadonly<IState['overwatchData']> {
         return this.overwatchState.overwatchData;
+    }
+    
+    get story(): DeepReadonly<IState['story']> {
+        return this.storyState.story as DeepReadonly<IState['story']>;
     }
 
     // Public helper methods

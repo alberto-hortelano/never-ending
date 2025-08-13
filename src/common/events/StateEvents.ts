@@ -3,6 +3,7 @@ import type {
     ICharacterAnimation, ICharacterVisualState, ICellVisualState,
     IPopupState, IProjectileState, IHighlightStates, IInteractionMode
 } from '../interfaces';
+import type { IStoryState } from '../interfaces/IStory';
 import type { DeepReadonly } from "../helpers/types";
 
 /** Events to update state. Only State can listen. All can dispatch */
@@ -32,6 +33,8 @@ export enum UpdateStateEvent {
     addCharacter = 'UpdateStateEvent.addCharacter',
     /** Remove character from game */
     removeCharacter = 'UpdateStateEvent.removeCharacter',
+    /** Update the game map */
+    map = 'UpdateStateEvent.map',
     
     // UI State Events
     /** Update character animation state */
@@ -62,6 +65,8 @@ export enum UpdateStateEvent {
     uiMeleeDefense = 'UpdateStateEvent.uiMeleeDefense',
     /** Show melee combat result */
     uiMeleeCombatResult = 'UpdateStateEvent.uiMeleeCombatResult',
+    /** Update story state */
+    storyState = 'UpdateStateEvent.storyState',
 }
 
 export interface UpdateStateEventsMap {
@@ -106,6 +111,7 @@ export interface UpdateStateEventsMap {
     [UpdateStateEvent.removeCharacter]: {
         characterName: string;
     };
+    [UpdateStateEvent.map]: DeepReadonly<IState['map']>;
     
     // UI State Events
     [UpdateStateEvent.uiCharacterAnimation]: {
@@ -170,6 +176,7 @@ export interface UpdateStateEventsMap {
         damage: number;
         blocked: boolean;
     };
+    [UpdateStateEvent.storyState]: Partial<IStoryState>;
 }
 
 /** Events when the state has changed. All can listen. Only State can dispatch */
@@ -203,6 +210,8 @@ export enum StateChangeEvent {
     overwatchData = 'StateChangeEvent.overwatchData',
     /** Selected character changed */
     uiSelectedCharacter = 'StateChangeEvent.uiSelectedCharacter',
+    /** Story state changed */
+    storyState = 'StateChangeEvent.storyState',
 }
 
 export interface StateChangeEventsMap {
@@ -235,4 +244,5 @@ export interface StateChangeEventsMap {
         shotCells?: string[];
     }>>;
     [StateChangeEvent.uiSelectedCharacter]: string | undefined;
+    [StateChangeEvent.storyState]: DeepReadonly<IStoryState>;
 }

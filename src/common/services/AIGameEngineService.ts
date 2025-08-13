@@ -1,4 +1,5 @@
 import type { IMessage } from '../interfaces';
+import type { IStoryState } from '../interfaces/IStory';
 import { AICommand } from './AICommandParser';
 
 export interface AIGameEngineResponse {
@@ -23,6 +24,39 @@ export class AIGameEngineService {
         return AIGameEngineService.instance;
     }
 
+    public async requestMapGeneration(
+        missionType: string,
+        narrativeContext: string,
+        storyState?: IStoryState
+    ): Promise<any> {
+        const messages: IMessage[] = [];
+        
+        // Build map generation prompt
+        const originContext = storyState?.selectedOrigin ? 
+            `Origin: ${storyState.selectedOrigin.name}\nLocation Type: ${storyState.selectedOrigin.startingLocation}` : '';
+        
+        messages.push({
+            role: 'user',
+            content: `Generate a map for:
+Mission Type: ${missionType}
+Narrative Context: ${narrativeContext}
+${originContext}
+
+Generate a tactical map with buildings, rooms, and initial character positions.
+
+Response format:
+{"type": "map", "palette": {...}, "buildings": [...], "characters": [...]}`
+        });
+        
+        try {
+            const response = await this.callGameEngine(messages);
+            return this.parseAIResponse(response.content);
+        } catch (error) {
+            console.error('Failed to generate map:', error);
+            return null;
+        }
+    }
+    
     private async loadNarrativeArchitectPrompt(): Promise<void> {
         try {
             // In production, this would be loaded from the server
@@ -31,8 +65,7 @@ export class AIGameEngineService {
 
 ## Core Setting
 - Era: Post-empire galactic collapse
-- Protagonist: "Player" - An ex-soldier fleeing
-- Companion: "Data" - A loyal service droid
+- Multiple origin stories with unique companions and traits
 - Theme: Survival and finding purpose
 
 ## Language Settings
@@ -68,9 +101,17 @@ Consider the tactical situation and make intelligent decisions.`;
 
     public async requestAIAction(
         context: any,
-        systemPrompt?: string
+        systemPrompt?: string,
+        storyState?: IStoryState
     ): Promise<AIGameEngineResponse> {
         const messages: IMessage[] = [];
+        const startTime = Date.now();
+        
+        // Log the request
+        console.log('[AI GameEngine] === REQUEST START ===');
+        console.log('[AI GameEngine] Character:', context.currentCharacter?.name);
+        console.log('[AI GameEngine] Visible characters:', context.visibleCharacters?.map((c: any) => `${c.name} (health: ${c.health?.current})`).join(', '));
+        console.log('[AI GameEngine] Characters in conversation range:', context.charactersInConversationRange?.map((c: any) => c.name).join(', '));
 
         // Add system context as first message
         if (systemPrompt || this.narrativeArchitectPrompt) {
@@ -80,8 +121,8 @@ Consider the tactical situation and make intelligent decisions.`;
             });
         }
 
-        // Add the current context
-        const contextPrompt = this.buildContextPrompt(context);
+        // Add the current context with story state
+        const contextPrompt = this.buildContextPrompt(context, storyState);
         messages.push({
             role: 'user',
             content: contextPrompt
@@ -90,13 +131,28 @@ Consider the tactical situation and make intelligent decisions.`;
         try {
             const response = await this.callGameEngine(messages);
             const command = this.parseAIResponse(response.content);
+            
+            const duration = Date.now() - startTime;
+            console.log('[AI GameEngine] === REQUEST SUCCESS ===');
+            console.log('[AI GameEngine] Duration:', duration, 'ms');
+            console.log('[AI GameEngine] Command type:', command?.type || 'none');
+            if (command?.type === 'speech') {
+                console.log('[AI GameEngine] Speech preview:', command.content?.substring(0, 50) + '...');
+            } else if (command?.type === 'attack') {
+                console.log('[AI GameEngine] Attack target:', command.characters?.[0]?.target);
+            } else if (command?.type === 'movement') {
+                console.log('[AI GameEngine] Movement location:', command.characters?.[0]?.location);
+            }
 
             return {
                 messages: response.messages,
                 command: command
             };
         } catch (error) {
-            console.error('[AI GameEngine] Failed to get AI action:', error);
+            const duration = Date.now() - startTime;
+            console.error('[AI GameEngine] === REQUEST FAILED ===');
+            console.error('[AI GameEngine] Duration:', duration, 'ms');
+            console.error('[AI GameEngine] Error:', error);
             return {
                 messages: messages,
                 command: null
@@ -104,7 +160,7 @@ Consider the tactical situation and make intelligent decisions.`;
         }
     }
 
-    private buildContextPrompt(context: any): string {
+    private buildContextPrompt(context: any, storyState?: IStoryState): string {
         // Find if there are adjacent characters
         const adjacentChars = context.visibleCharacters?.filter((c: any) => c.isAdjacent) || [];
         const hasAdjacentPlayer = adjacentChars.some((c: any) => c.isPlayer);
@@ -113,13 +169,49 @@ Consider the tactical situation and make intelligent decisions.`;
         const conversableChars = context.charactersInConversationRange || [];
         const conversableNames = conversableChars.map((c: any) => `${c.name} (${Math.round(c.distanceFromCurrent)}m)`).join(', ');
         
+        // Check for blockage info
+        let blockagePrompt = '';
+        if (context.blockageInfo) {
+            const info = context.blockageInfo;
+            const charInfo = info.blockingCharacter;
+            blockagePrompt = `
+
+**MOVEMENT BLOCKED!**
+You tried to reach ${info.originalTarget} but ${charInfo.name} is blocking your path!
+- ${charInfo.name} is ${charInfo.isAlly ? 'an ALLY' : 'an ENEMY'}
+- Health: ${charInfo.health}/${charInfo.maxHealth}
+- Distance: ${Math.round(charInfo.distance)} cells away
+
+You should:
+${charInfo.isAlly ? '- Talk to your ally and ask them to move' : '- Attack the enemy blocking your path'}
+${charInfo.distance <= 8 && charInfo.hasLineOfSight ? '- You can speak to them (within conversation range)' : '- Move closer or get line of sight to interact'}
+- Or find an alternative action
+
+DO NOT try to move to the original target again - the path is blocked!`;
+        }
+        
+        // Build story context
+        let storyContext = '';
+        if (storyState?.selectedOrigin) {
+            storyContext = `
+ORIGIN CONTEXT:
+- Player Origin: ${storyState.selectedOrigin.nameES} (${storyState.selectedOrigin.name})
+- Companion: ${storyState.selectedOrigin.startingCompanion?.name || 'None'}
+- Story Traits: ${storyState.selectedOrigin.specialTraits.join(', ')}
+- Current Chapter: ${storyState.currentChapter || 1}
+- Faction Relations: ${JSON.stringify(storyState.factionReputation || {})}
+- Story Flags: ${Array.from(storyState.storyFlags || []).join(', ')}
+`;
+        }
+        
         return `Current game state:
 ${JSON.stringify(context, null, 2)}
-
+${storyContext}
 It's ${context.currentCharacter.name}'s turn. Based on their personality and the current situation, what should they do?
+${blockagePrompt}
 
 IMPORTANT INTERACTION RULES:
-- Characters within conversation range (3 cells): ${conversableNames || 'none'}
+- Characters within conversation range (8 cells with line of sight): ${conversableNames || 'none'}
 - You can DIRECTLY SPEAK to any character in conversation range without moving
 - Characters marked as "canConverse: true" are close enough to talk to
 - Characters marked as "isAdjacent: true" are already next to you - DO NOT move towards them
@@ -127,7 +219,7 @@ ${hasAdjacentPlayer ? '- YOU ARE ALREADY NEXT TO THE PLAYER - Talk instead of mo
 ${conversableChars.length > 0 ? `- You can talk to: ${conversableNames} RIGHT NOW without moving!` : '- No characters in conversation range - move closer to talk'}
 
 Respond with ONE JSON message following the format specifications. Choose the most appropriate action:
-- speech: Say something to characters within conversation range (${conversableChars.length} available)
+- speech: Say something to characters within conversation range (8 cells with LoS, ${conversableChars.length} available)
 - movement: Move to a strategic position (ONLY if target is not in conversation range)
 - attack: Engage in combat (if enemy is in range)
 - character: Spawn new characters (only if narratively appropriate)
@@ -221,15 +313,29 @@ Consider:
         speaker: string,
         listener: string,
         playerChoice: string,
-        context?: any
+        context?: any,
+        storyState?: IStoryState
     ): Promise<AIGameEngineResponse> {
         const messages: IMessage[] = [];
 
         // Add context
+        // Build story context for dialogue
+        let storyContext = '';
+        if (storyState?.selectedOrigin) {
+            const faction = context?.npcFaction || 'unknown';
+            const reputation = storyState.factionReputation?.[faction] || 0;
+            storyContext = `
+Story Context:
+- Player Origin: ${storyState.selectedOrigin.nameES}
+- Faction Reputation with ${faction}: ${reputation}
+- Story Flags: ${Array.from(storyState.storyFlags || []).join(', ')}
+`;
+        }
+        
         messages.push({
             role: 'user',
             content: `${speaker} is talking to ${listener}. The player (${speaker}) said: "${playerChoice}"
-
+${storyContext}
 Respond as ${listener} with a speech message in Spanish.
 
 Context:

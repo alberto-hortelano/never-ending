@@ -85,8 +85,11 @@ export class TacticalExecutor {
             this.currentDirective = this.getDefaultDirective();
         }
 
+        // Double-check to filter out any dead characters that might have slipped through
+        const aliveVisibleCharacters = visibleCharacters.filter(c => c.health > 0);
+
         // Assess threats
-        const threats = this.assessThreats(character, visibleCharacters, state);
+        const threats = this.assessThreats(character, aliveVisibleCharacters, state);
         
         // Evaluate current position
         const currentPositionValue = this.evaluatePosition(character.position, character, threats, state);
@@ -863,8 +866,8 @@ export class TacticalExecutor {
         
         const retreatDistance = 8;
         const retreatPos: ICoord = {
-            x: character.position.x + Math.cos(retreatAngle) * retreatDistance,
-            y: character.position.y + Math.sin(retreatAngle) * retreatDistance
+            x: Math.round(character.position.x + Math.cos(retreatAngle) * retreatDistance),
+            y: Math.round(character.position.y + Math.sin(retreatAngle) * retreatDistance)
         };
         
         // Clamp to map bounds

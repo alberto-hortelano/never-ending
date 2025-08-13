@@ -1,5 +1,5 @@
 import type { IState, ICell, ICoord } from "../interfaces";
-import { EventBus, UpdateStateEventsMap, StateChangeEventsMap, StateChangeEvent } from "../events";
+import { EventBus, UpdateStateEventsMap, StateChangeEventsMap, StateChangeEvent, UpdateStateEvent } from "../events";
 import { DeepReadonly } from "../helpers/types";
 
 export class MapState extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> {
@@ -12,6 +12,13 @@ export class MapState extends EventBus<UpdateStateEventsMap, StateChangeEventsMa
         super();
         this.onSave = onSave;
         this.skipEvents = skipEvents;
+        
+        // Listen for map updates
+        if (!skipEvents) {
+            this.listen(UpdateStateEvent.map as any, (newMap: IState['map']) => {
+                this.map = newMap;
+            });
+        }
     }
 
     set map(map: IState['map']) {

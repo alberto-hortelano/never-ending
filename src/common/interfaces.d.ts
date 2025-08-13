@@ -1,3 +1,5 @@
+import type { IStoryState } from './interfaces/IStory';
+
 export interface IState {
     game: IGame;
     map: ICell[][];
@@ -5,6 +7,7 @@ export interface IState {
     messages: IMessage[];
     ui: IUIState;
     overwatchData: Record<string, IOverwatchData>;
+    story?: IStoryState;
 }
 
 export interface IOverwatchData {

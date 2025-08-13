@@ -2,12 +2,14 @@ import { Component } from '../Component';
 import { MultiplayerLobby } from '../multiplayerlobby/MultiplayerLobby';
 import { MultiplayerManager } from '../../common/services/MultiplayerManager';
 import CharacterCreator from '../charactercreator/CharacterCreator';
+import { OriginSelection } from '../originselection/OriginSelection';
 import { ControlsEvent } from '../../common/events/index';
 
 export class MainMenu extends Component {
     private multiplayerManager: MultiplayerManager;
     private multiplayerLobby: MultiplayerLobby | null = null;
     private characterCreator: CharacterCreator | null = null;
+    private originSelection: OriginSelection | null = null;
 
     constructor() {
         super();
@@ -23,6 +25,14 @@ export class MainMenu extends Component {
         this.listen(ControlsEvent.createCharacter, (_characterData) => {
             // Here you would typically save the character or start the game with it
             this.show();
+        });
+        
+        // Listen for origin selection
+        this.listen(ControlsEvent.selectOrigin, (_origin) => {
+            // Origin selected, start the game
+            this.multiplayerManager.switchToSinglePlayer();
+            this.dispatch('startSinglePlayer', {});
+            this.style.display = 'none';
         });
     }
 
@@ -80,8 +90,11 @@ export class MainMenu extends Component {
     }
 
     private startSinglePlayer() {
-        this.multiplayerManager.switchToSinglePlayer();
-        this.dispatch('startSinglePlayer', {});
+        // Show origin selection screen
+        if (!this.originSelection) {
+            this.originSelection = document.createElement('origin-selection') as OriginSelection;
+            document.body.appendChild(this.originSelection);
+        }
         this.style.display = 'none';
     }
 

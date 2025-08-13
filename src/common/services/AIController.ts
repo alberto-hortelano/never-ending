@@ -16,8 +16,10 @@ import { AICommandParser, AICommand } from './AICommandParser';
 import { AIGameEngineService } from './AIGameEngineService';
 import { TacticalExecutor, TacticalDirective } from './TacticalExecutor';
 import { CombatStances } from './CombatStances';
+import { StoryCommandExecutor } from './StoryCommandExecutor';
 import { ICharacter, ICoord, Direction } from '../interfaces';
 import { DeepReadonly } from '../helpers/types';
+import { calculatePath } from '../helpers/map';
 import { TeamService } from './TeamService';
 
 interface DialogueData {
@@ -49,13 +51,16 @@ export class AIController extends EventBus<
     private isProcessingMultipleCharacters: boolean = false;
     private movementTimeouts: NodeJS.Timeout[] = [];
     private tacticalExecutor: TacticalExecutor;
-    private useTacticalSystem: boolean = true; // Flag to enable/disable tactical system
+    private storyExecutor: StoryCommandExecutor;
+    private useTacticalSystem: boolean = false; // Flag to enable/disable tactical system - disabled by default to use AI endpoint
+    private ongoingMovement?: { characterName: string; targetLocation: ICoord; targetName?: string }; // Track ongoing multi-cell movement
 
     private constructor() {
         super();
         this.gameEngineService = AIGameEngineService.getInstance();
         this.commandParser = new AICommandParser();
         this.tacticalExecutor = TacticalExecutor.getInstance();
+        this.storyExecutor = StoryCommandExecutor.getInstance();
         CombatStances.initialize();
     }
 
@@ -159,13 +164,24 @@ export class AIController extends EventBus<
         // Process all AI characters in sequence
         // In single player, this includes both Data and enemy characters
         for (const character of aiCharacters) {
+            // Skip dead characters
+            if (character.health <= 0) {
+                console.log(`[AI] Skipping ${character.name} - defeated`);
+                continue;
+            }
+            
             // Check if we should stop processing (e.g., if conversation started)
             if (this.state && this.state.game.turn !== playerId) {
                 console.log('[AI] Turn changed during processing, stopping');
                 break;
             }
             
-            await this.processAICharacterTurn(character);
+            try {
+                await this.processAICharacterTurn(character);
+            } catch (error) {
+                console.error(`[AI] Error processing ${character.name}'s turn:`, error);
+                // Continue with next character
+            }
             
             // Add a small delay between character actions for better visibility
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -179,8 +195,10 @@ export class AIController extends EventBus<
         
         // Only end turn if it's still the AI's turn (conversation might have ended it already)
         if (this.state && this.state.game.turn === playerId) {
-            // All AI characters processed, ending AI turn
+            console.log('[AI] All AI characters processed, ending AI turn');
             this.endAITurn();
+        } else {
+            console.log('[AI] Turn already changed, not ending turn');
         }
     }
 
@@ -212,25 +230,122 @@ export class AIController extends EventBus<
                     break;
                 }
                 
+                // Check if character is defeated
+                if (currentChar.health <= 0) {
+                    console.log(`[AI] ${currentChar.name} was defeated, ending turn`);
+                    break;
+                }
+                
+                // Check if turn changed (e.g., due to conversation)
+                if (this.state.game.turn !== currentChar.player) {
+                    console.log(`[AI] Turn changed to ${this.state.game.turn}, stopping ${currentChar.name}'s actions`);
+                    break;
+                }
+                
                 // Check if character has enough action points to continue
                 const pointsLeft = currentChar.actions?.pointsLeft || 0;
                 console.log(`[AI] ${currentChar.name} has ${pointsLeft} action points remaining (loop ${actionsPerformed + 1})`);
                 
-                if (pointsLeft < 20) {
-                    // Not enough points for most actions
-                    console.log(`[AI] ${currentChar.name} insufficient action points, ending character turn`);
+                if (pointsLeft <= 0) {
+                    // No points left at all
+                    console.log(`[AI] ${currentChar.name} no action points remaining, ending character turn`);
                     break;
                 }
                 
-                // Check if we should use tactical system for combat characters
-                const isInCombat = this.isCharacterInCombat(currentChar);
+                // If we have very few points and have already performed actions, stop
+                if (pointsLeft < 20 && actionsPerformed > 0) {
+                    console.log(`[AI] ${currentChar.name} insufficient action points for further actions, ending character turn`);
+                    // Clear any ongoing movement
+                    if (this.ongoingMovement?.characterName === currentChar.name) {
+                        this.ongoingMovement = undefined;
+                    }
+                    break;
+                }
                 
-                if (this.useTacticalSystem && isInCombat) {
-                    // Use tactical executor for combat decisions
-                    await this.processTacticalCharacterTurn(currentChar);
+                // Check if we have an ongoing movement to continue
+                if (this.ongoingMovement && this.ongoingMovement.characterName === currentChar.name) {
+                    const target = this.ongoingMovement.targetLocation;
+                    const distance = this.getDistance(currentChar.position, target);
+                    
+                    // Check if we've reached the target or are close enough
+                    if (distance <= 3) {
+                        console.log(`[AI] ${currentChar.name} reached target, clearing ongoing movement`);
+                        this.ongoingMovement = undefined;
+                        // Continue to get new AI decision
+                    } else if (pointsLeft >= 20) {
+                        // Continue moving toward the target
+                        console.log(`[AI] ${currentChar.name} continuing movement to ${this.ongoingMovement.targetName || 'target'} (${distance.toFixed(1)} cells away)`);
+                        // Create a movement command to continue toward the target
+                        const moveCommand: AICommand = {
+                            type: 'movement',
+                            characters: [{
+                                name: currentChar.name,
+                                location: this.ongoingMovement.targetName || `${target.x},${target.y}`
+                            }]
+                        };
+                        await this.executeMovement(moveCommand, currentChar);
+                        actionsPerformed++;
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        continue; // Skip AI request and continue movement
+                    } else {
+                        // Not enough points to continue
+                        console.log(`[AI] ${currentChar.name} cannot continue movement - insufficient action points`);
+                        this.ongoingMovement = undefined;
+                    }
+                }
+                
+                // Check if there's a pending speech command from previous movement
+                if (this.pendingSpeechCommand) {
+                    // Check if we're now close enough to execute the pending speech
+                    const speaker = currentChar;
+                    const player = this.state.characters.find(c => c.name === 'player');
+                    if (player) {
+                        const distance = this.getDistance(speaker.position, player.position);
+                        const viewDistance = 15; // Standard view distance
+                        const hasLineOfSight = this.checkLineOfSight(speaker.position, player.position);
+                        
+                        // Check if within speaking range, view range, and has line of sight
+                        if (distance <= 8 && distance <= viewDistance && hasLineOfSight) {
+                            // Close enough and visible - execute the pending speech
+                            const speechCommand = this.pendingSpeechCommand;
+                            this.pendingSpeechCommand = undefined;
+                            console.log('[AI] Executing pending speech after movement');
+                            await this.executeSpeech(speechCommand, currentChar);
+                            actionsPerformed++;
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                            continue;
+                        }
+                    }
+                }
+                
+                // Check if there are any living enemies to interact with
+                const hasLivingEnemies = this.state.characters.some(c => 
+                    c.health > 0 && 
+                    c.player !== currentChar.player &&
+                    c.name !== currentChar.name
+                );
+                
+                // Always try narrative AI first if there are enemies
+                // This allows the AI to decide whether to attack, talk, move, etc.
+                if (hasLivingEnemies) {
+                    // On first action, always use narrative AI to get strategic decision
+                    // On subsequent actions, can use tactical if enabled
+                    if (actionsPerformed === 0 || !this.useTacticalSystem) {
+                        // Call AI endpoint for decision
+                        console.log(`[AI] ${currentChar.name}: Requesting AI decision (action ${actionsPerformed + 1})`);
+                        await this.processNarrativeCharacterTurn(currentChar);
+                    } else if (this.useTacticalSystem && this.isCharacterInCombat(currentChar)) {
+                        // Use tactical executor for follow-up combat decisions
+                        console.log(`[AI] ${currentChar.name}: Using tactical system for follow-up action`);
+                        await this.processTacticalCharacterTurn(currentChar);
+                    } else {
+                        // Default to narrative AI
+                        await this.processNarrativeCharacterTurn(currentChar);
+                    }
                 } else {
-                    // Use traditional AI system for non-combat or narrative actions
-                    await this.processNarrativeCharacterTurn(currentChar);
+                    // No enemies left - skip expensive API call
+                    console.log(`[AI] ${currentChar.name}: No living enemies, skipping AI actions`);
+                    // Could do non-combat actions here like exploring, but for now just skip
                 }
                 
                 actionsPerformed++;
@@ -252,10 +367,10 @@ export class AIController extends EventBus<
         const context = this.contextBuilder.buildTurnContext(character, this.state);
         
         
-        // Get visible characters
+        // Get visible characters (excluding dead ones)
         const visibleCharacters = context.visibleCharacters
             .map(vc => this.state!.characters.find(c => c.name === vc.name))
-            .filter(c => c !== undefined) as DeepReadonly<ICharacter>[];
+            .filter(c => c !== undefined && c.health > 0) as DeepReadonly<ICharacter>[];
         
         // Use tactical executor to decide action
         const tacticalAction = this.tacticalExecutor.evaluateSituation(
@@ -281,8 +396,12 @@ export class AIController extends EventBus<
     private async processNarrativeCharacterTurn(character: DeepReadonly<ICharacter>): Promise<void> {
         if (!this.state || !this.contextBuilder) return;
         
+        console.log(`[AI-Narrative] Building context for ${character.name} to call AI endpoint`);
+        
         // Build context for AI
         const context = this.contextBuilder.buildTurnContext(character, this.state);
+        
+        console.log(`[AI-Narrative] Calling AI endpoint for ${character.name}'s decision...`);
         
         // Get AI decision from game engine
         const response = await this.gameEngineService.requestAIAction(context);
@@ -350,6 +469,9 @@ export class AIController extends EventBus<
             return;
         }
 
+        // Get current story state if available
+        const storyState = this.state?.story;
+
         switch (validatedCommand.type) {
             case 'movement':
                 await this.executeMovement(validatedCommand, character);
@@ -363,6 +485,15 @@ export class AIController extends EventBus<
             case 'character':
                 await this.spawnCharacters(validatedCommand);
                 break;
+            case 'map':
+                await this.storyExecutor.executeMapCommand(validatedCommand as any, storyState as any);
+                break;
+            case 'storyline':
+                await this.storyExecutor.executeStorylineCommand(validatedCommand as any, storyState as any);
+                break;
+            case 'item':
+                await this.storyExecutor.executeItemSpawnCommand(validatedCommand as any);
+                break;
             default:
                 console.warn('[AI] Unknown command type:', validatedCommand.type);
                 this.endAITurn();
@@ -374,8 +505,10 @@ export class AIController extends EventBus<
         const targetLocationString = command.characters[0].location;
         const targetLocation = this.resolveLocation(targetLocationString);
         
-        if (!targetLocation) {
-            console.log('[AI] ExecuteMovement - Could not resolve location:', targetLocationString);
+        if (!targetLocation || !isFinite(targetLocation.x) || !isFinite(targetLocation.y) || 
+            targetLocation.x < -1000 || targetLocation.x > 1000 || 
+            targetLocation.y < -1000 || targetLocation.y > 1000) {
+            console.log('[AI] ExecuteMovement - Invalid location:', targetLocationString, targetLocation);
             if (!this.isProcessingMultipleCharacters) {
                 this.endAITurn();
             }
@@ -400,6 +533,16 @@ export class AIController extends EventBus<
             console.log(`[AI]   → Moving toward ${targetChar.name} (distance: ${currentDistance.toFixed(1)})`);
         } else {
             console.log(`[AI]   → Moving to (${targetLocation.x}, ${targetLocation.y})`);
+        }
+        
+        // Set ongoing movement tracker if we're moving more than 1 cell away
+        if (currentDistance > 3) {
+            this.ongoingMovement = {
+                characterName: character.name,
+                targetLocation: targetLocation,
+                targetName: targetChar?.name
+            };
+            console.log(`[AI] Setting ongoing movement for ${character.name} to ${targetChar?.name || 'location'}`);
         }
         
         // If we're already adjacent (within 1.5 cells), switch to appropriate action
@@ -438,7 +581,7 @@ export class AIController extends EventBus<
         
         // Wait for Movement system to set up, then find best reachable position
         await new Promise<void>(resolve => {
-            setTimeout(() => {
+            setTimeout(async () => {
             // Get reachable cells from highlights in UI state
             const highlights = this.state?.ui?.transientUI?.highlights;
             const reachableCells = highlights?.reachableCells || [];
@@ -448,24 +591,75 @@ export class AIController extends EventBus<
                 return;
             }
             
-            // Find the reachable cell closest to the target
-            let bestCell = reachableCells[0];
+            // Use smart pathfinding to find the best cell
+            // Convert readonly array to regular array for the function
+            const mutableReachableCells = [...reachableCells];
+            const bestCell = this.findBestMovementCell(mutableReachableCells, targetLocation, character);
+            
             if (!bestCell) {
-                console.log('[AI] ExecuteMovement - No valid best cell found, ending turn');
-                this.endAITurn();
+                console.log('[AI] No path to target found from any reachable cell');
+                
+                // Detect what's blocking the path
+                const blockage = this.detectBlockingEntity(character.position, targetLocation);
+                
+                if (blockage.type === 'character' && blockage.character && this.state) {
+                    const isAlly = TeamService.areAllied(character, blockage.character, this.state.game.teams);
+                    console.log(`[AI] Path blocked by ${isAlly ? 'ally' : 'enemy'}: ${blockage.character.name} (health: ${blockage.character.health})`);
+                    
+                    // Request new AI instructions with context about the blockage
+                    const blockageContext = {
+                        blocked: true,
+                        blockingCharacter: {
+                            name: blockage.character.name,
+                            isAlly: isAlly,
+                            health: blockage.character.health,
+                            maxHealth: blockage.character.maxHealth,
+                            position: blockage.character.position,
+                            distance: this.getDistance(character.position, blockage.character.position)
+                        },
+                        originalTarget: targetChar?.name || 'location',
+                        message: `Cannot reach ${targetChar?.name || 'target location'} - ${blockage.character.name} is blocking the path.`
+                    };
+                    
+                    // Build special context and request new action from AI
+                    if (!this.contextBuilder) {
+                        console.log('[AI] No context builder available');
+                        if (!this.isProcessingMultipleCharacters) {
+                            this.endAITurn();
+                        }
+                        resolve();
+                        return;
+                    }
+                    
+                    const context = this.contextBuilder.buildTurnContext(character, this.state);
+                    (context as any).blockageInfo = blockageContext;
+                    
+                    console.log('[AI] Requesting new instructions due to blocked path');
+                    const response = await this.gameEngineService.requestAIAction(context);
+                    
+                    if (response.command) {
+                        const validatedCommand = this.commandParser.validate(response.command);
+                        if (validatedCommand) {
+                            console.log(`[AI] New action after blockage: ${validatedCommand.type}`);
+                            await this.executeAICommand(validatedCommand, character);
+                            resolve();
+                            return;
+                        }
+                    }
+                } else if (blockage.type === 'wall') {
+                    console.log('[AI] Path blocked by wall/obstacle');
+                    // Could request alternative strategy here
+                }
+                
+                // If no alternative found, end turn
+                if (!this.isProcessingMultipleCharacters) {
+                    this.endAITurn();
+                }
+                resolve();
                 return;
             }
             
-            let bestDistance = this.getDistance(bestCell, targetLocation);
-            
-            for (const cell of reachableCells) {
-                const dist = this.getDistance(cell, targetLocation);
-                if (dist < bestDistance) {
-                    bestDistance = dist;
-                    bestCell = cell;
-                }
-            }
-            
+            console.log(`[AI] Moving to optimal cell using pathfinding`);
             this.dispatch(ControlsEvent.cellClick, { x: bestCell.x, y: bestCell.y });
             
             // After another delay, check if we need to execute pending speech
@@ -479,7 +673,11 @@ export class AIController extends EventBus<
                     // Check if we have a pending speech command and are now close enough
                     if (this.pendingSpeechCommand) {
                         const newDistance = this.getDistance(character.position, targetLocation);
-                        if (newDistance <= 3) {
+                        const viewDistance = 15; // Standard view distance
+                        const hasLineOfSight = this.checkLineOfSight(character.position, targetLocation);
+                        
+                        // Check if within speaking range, view range, and has line of sight
+                        if (newDistance <= 8 && newDistance <= viewDistance && hasLineOfSight) {
                             const speechCommand = this.pendingSpeechCommand;
                             this.pendingSpeechCommand = undefined;
                             await this.executeSpeech(speechCommand, character);
@@ -661,6 +859,113 @@ export class AIController extends EventBus<
         );
     }
     
+    /**
+     * Find the best reachable cell to move to using actual pathfinding
+     * Returns null if no path to target exists from any reachable cell
+     */
+    private findBestMovementCell(
+        reachableCells: ICoord[], 
+        targetLocation: ICoord, 
+        character: DeepReadonly<ICharacter>
+    ): ICoord | null {
+        if (!this.state || reachableCells.length === 0) return null;
+        
+        let bestCell: ICoord | null = null;
+        let shortestTotalPath = Infinity;
+        
+        for (const cell of reachableCells) {
+            // Calculate path from this reachable cell to the target
+            const pathToTarget = calculatePath(
+                cell,
+                targetLocation,
+                this.state.map,
+                this.state.characters,
+                character.name
+            );
+            
+            // If there's a path from this cell to the target
+            if (pathToTarget.length > 0) {
+                // Total path length is: current->cell + cell->target
+                const pathToCell = calculatePath(
+                    character.position,
+                    cell,
+                    this.state.map,
+                    this.state.characters,
+                    character.name
+                );
+                
+                const totalPathLength = pathToCell.length + pathToTarget.length;
+                
+                if (totalPathLength < shortestTotalPath) {
+                    shortestTotalPath = totalPathLength;
+                    bestCell = cell;
+                }
+            }
+        }
+        
+        return bestCell;
+    }
+    
+    /**
+     * Detect what's blocking the path between two positions
+     * Returns information about the blocking entity
+     */
+    private detectBlockingEntity(
+        from: ICoord, 
+        to: ICoord
+    ): { type: 'none' | 'wall' | 'character', character?: DeepReadonly<ICharacter> } {
+        if (!this.state) return { type: 'none' };
+        
+        // Use the line of sight algorithm to find what's blocking
+        const map = this.state.map;
+        const dx = Math.abs(to.x - from.x);
+        const dy = Math.abs(to.y - from.y);
+        const sx = from.x < to.x ? 1 : -1;
+        const sy = from.y < to.y ? 1 : -1;
+        let err = dx - dy;
+        let x = Math.round(from.x);
+        let y = Math.round(from.y);
+        const targetX = Math.round(to.x);
+        const targetY = Math.round(to.y);
+
+        while (x !== targetX || y !== targetY) {
+            const e2 = 2 * err;
+            if (e2 > -dy) {
+                err -= dy;
+                x += sx;
+            }
+            if (e2 < dx) {
+                err += dx;
+                y += sy;
+            }
+            
+            // Skip checking the starting position
+            if (x === Math.round(from.x) && y === Math.round(from.y)) {
+                continue;
+            }
+            
+            // Check for wall
+            const cell = map[y]?.[x];
+            if (cell?.content?.blocker) {
+                return { type: 'wall' };
+            }
+            
+            // Check for character (except at target position)
+            if (!(x === targetX && y === targetY)) {
+                const blockingChar = this.state.characters.find(c => 
+                    Math.round(c.position.x) === x && 
+                    Math.round(c.position.y) === y &&
+                    c.health > 0
+                );
+                if (blockingChar) {
+                    return { type: 'character', character: blockingChar };
+                }
+            }
+        }
+        
+        return { type: 'none' };
+    }
+    
     private checkLineOfSight(from: ICoord, to: ICoord): boolean {
         if (!this.state) return false;
         
@@ -766,12 +1071,18 @@ export class AIController extends EventBus<
         );
         
         if (speaker && player) {
-            // Check if they're close enough to talk (within 3 cells)
+            // Check if they're close enough to talk (within 8 cells and in view range)
             const distance = this.getDistance(speaker.position, player.position);
+            const viewDistance = 15; // Standard view distance
+            const hasLineOfSight = this.checkLineOfSight(speaker.position, player.position);
             
-            if (distance > 3) {
-                // Too far - automatically move closer first
-                console.log(`[AI]   → Too far to speak, moving closer`);
+            // Check if within speaking range, view range, and has line of sight
+            if (distance > 8 || distance > viewDistance || !hasLineOfSight) {
+                // Too far or can't see target - automatically move closer first
+                const reason = !hasLineOfSight ? 'no line of sight' : 
+                              distance > viewDistance ? 'out of view range' : 
+                              'too far to speak';
+                console.log(`[AI]   → Cannot speak (${reason}), moving closer`);
                 
                 // Execute a movement command to get closer
                 const moveCommand: AICommand = {
@@ -821,6 +1132,10 @@ export class AIController extends EventBus<
                 // This prevents other AI characters from continuing to act
                 console.log('[AI] ExecuteSpeech - Conversation started, force ending AI turn');
                 this.endAITurn(true); // Force end to stop other AI characters
+                
+                // Also set the processing flags to false to stop any loops
+                this.isProcessingTurn = false;
+                this.isProcessingMultipleCharacters = false;
             }, 200); // Increased delay to ensure conversation component is ready
             
             // Record dialogue event
@@ -989,6 +1304,9 @@ export class AIController extends EventBus<
             return;
         }
         
+        // Clear any ongoing movement
+        this.ongoingMovement = undefined;
+        
         // If forcing end, clear the processing flag and timeouts
         if (forceEnd) {
             this.isProcessingMultipleCharacters = false;
@@ -1030,11 +1348,11 @@ export class AIController extends EventBus<
     
     public enableTacticalSystem(): void {
         this.useTacticalSystem = true;
-        console.log('[AI] Tactical system enabled');
+        console.log('[AI] Tactical system ENABLED - will use local tactical executor for follow-up combat actions');
     }
     
     public disableTacticalSystem(): void {
         this.useTacticalSystem = false;
-        console.log('[AI] Tactical system disabled');
+        console.log('[AI] Tactical system DISABLED - will always use AI endpoint for all decisions');
     }
 }
