@@ -12,6 +12,7 @@ import {
 import { ShootingService, SHOOT_CONSTANTS, VisibleCell } from "./services/ShootingService";
 import { DirectionsService } from "./services/DirectionsService";
 import { InteractionModeManager } from "./InteractionModeManager";
+import { TeamService } from "./services/TeamService";
 
 // Type aliases for better readability
 type CharacterName = string;
@@ -497,7 +498,12 @@ export class Overwatch extends EventBus<
         }
 
         const overwatcher = this.state.findCharacter(overwatcherName);
-        if (!overwatcher || overwatcher.player === target.player) {
+        if (!overwatcher) {
+            return false;
+        }
+
+        // Check if characters are hostile using team logic
+        if (!TeamService.areHostile(overwatcher, target, this.state.game.teams)) {
             return false;
         }
 

@@ -128,6 +128,14 @@ export class Popup extends Component {
         this.addEventListener('conversation-updated', () => {
             // Keep popup open during conversations
         });
+        
+        // Listen for conversation end event
+        this.addEventListener('conversation-ended', () => {
+            // Close popup when conversation ends
+            setTimeout(() => {
+                this.hide();
+            }, 500);
+        });
     }
 
     private isMobile(): boolean {
@@ -334,6 +342,13 @@ export class Popup extends Component {
         // Apply visibility
         if (popupState.visible) {
             this.classList.remove('hidden');
+            
+            // If it's a conversation popup and we don't have a conversation component, create one
+            if (popupState.type === 'conversation' && !this.querySelector('conversation-ui')) {
+                this.clearContent();
+                const conversationComponent = document.createElement('conversation-ui') as Conversation;
+                this.appendChild(conversationComponent);
+            }
         } else {
             this.classList.add('hidden');
         }

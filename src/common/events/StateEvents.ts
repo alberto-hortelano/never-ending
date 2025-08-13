@@ -3,6 +3,7 @@ import type {
     ICharacterAnimation, ICharacterVisualState, ICellVisualState,
     IPopupState, IProjectileState, IHighlightStates, IInteractionMode
 } from '../interfaces';
+import type { IStoryState } from '../interfaces/IStory';
 import type { DeepReadonly } from "../helpers/types";
 
 /** Events to update state. Only State can listen. All can dispatch */
@@ -28,6 +29,12 @@ export enum UpdateStateEvent {
     resetActionPoints = 'UpdateStateEvent.resetActionPoints',
     /** Apply damage to a character */
     damageCharacter = 'UpdateStateEvent.damageCharacter',
+    /** Add new character to game */
+    addCharacter = 'UpdateStateEvent.addCharacter',
+    /** Remove character from game */
+    removeCharacter = 'UpdateStateEvent.removeCharacter',
+    /** Update the game map */
+    map = 'UpdateStateEvent.map',
     
     // UI State Events
     /** Update character animation state */
@@ -58,6 +65,8 @@ export enum UpdateStateEvent {
     uiMeleeDefense = 'UpdateStateEvent.uiMeleeDefense',
     /** Show melee combat result */
     uiMeleeCombatResult = 'UpdateStateEvent.uiMeleeCombatResult',
+    /** Update story state */
+    storyState = 'UpdateStateEvent.storyState',
 }
 
 export interface UpdateStateEventsMap {
@@ -95,6 +104,14 @@ export interface UpdateStateEventsMap {
         damage: number;
         attackerName?: string;
     };
+    [UpdateStateEvent.addCharacter]: Partial<ICharacter> & {
+        name: string;
+        position: { x: number; y: number };
+    };
+    [UpdateStateEvent.removeCharacter]: {
+        characterName: string;
+    };
+    [UpdateStateEvent.map]: DeepReadonly<IState['map']>;
     
     // UI State Events
     [UpdateStateEvent.uiCharacterAnimation]: {
@@ -159,6 +176,7 @@ export interface UpdateStateEventsMap {
         damage: number;
         blocked: boolean;
     };
+    [UpdateStateEvent.storyState]: Partial<IStoryState>;
 }
 
 /** Events when the state has changed. All can listen. Only State can dispatch */
@@ -176,6 +194,8 @@ export enum StateChangeEvent {
     characterActions = 'StateChangeEvent.characterActions',
     characterHealth = 'StateChangeEvent.characterHealth',
     characterDefeated = 'StateChangeEvent.characterDefeated',
+    characterAdded = 'StateChangeEvent.characterAdded',
+    characterRemoved = 'StateChangeEvent.characterRemoved',
     
     // UI State Change Events
     /** UI animations state changed */
@@ -190,6 +210,8 @@ export enum StateChangeEvent {
     overwatchData = 'StateChangeEvent.overwatchData',
     /** Selected character changed */
     uiSelectedCharacter = 'StateChangeEvent.uiSelectedCharacter',
+    /** Story state changed */
+    storyState = 'StateChangeEvent.storyState',
 }
 
 export interface StateChangeEventsMap {
@@ -204,6 +226,8 @@ export interface StateChangeEventsMap {
     [StateChangeEvent.characterActions]: DeepReadonly<ICharacter>;
     [StateChangeEvent.characterHealth]: DeepReadonly<ICharacter>;
     [StateChangeEvent.characterDefeated]: DeepReadonly<ICharacter>;
+    [StateChangeEvent.characterAdded]: DeepReadonly<ICharacter>;
+    [StateChangeEvent.characterRemoved]: DeepReadonly<ICharacter>;
     
     // UI State Change Events
     [StateChangeEvent.uiAnimations]: DeepReadonly<IState['ui']['animations']>;
@@ -220,4 +244,5 @@ export interface StateChangeEventsMap {
         shotCells?: string[];
     }>>;
     [StateChangeEvent.uiSelectedCharacter]: string | undefined;
+    [StateChangeEvent.storyState]: DeepReadonly<IStoryState>;
 }

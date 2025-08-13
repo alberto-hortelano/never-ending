@@ -1,3 +1,5 @@
+import type { IStoryState } from './interfaces/IStory';
+
 export interface IState {
     game: IGame;
     map: ICell[][];
@@ -5,6 +7,7 @@ export interface IState {
     messages: IMessage[];
     ui: IUIState;
     overwatchData: Record<string, IOverwatchData>;
+    story?: IStoryState;
 }
 
 export interface IOverwatchData {
@@ -20,6 +23,15 @@ export interface IGame {
     turn: string;
     players: string[];
     playerInfo?: Record<string, { name: string; isAI?: boolean }>;
+    teams?: ITeamConfiguration;
+}
+
+export interface ITeamConfiguration {
+    [teamId: string]: {
+        name: string;
+        hostile: string[]; // Teams that are hostile to this one
+        allied?: string[]; // Teams that are allied with this one (optional, defaults to empty)
+    };
 }
 export interface ICoord {
     x: number;
@@ -112,7 +124,8 @@ export interface ICharacter extends IMovable {
     race: Race;
     description: string;
     action: Action;
-    player: string;
+    player: string; // Who controls this character (human, ai, player1, player2, etc)
+    team?: string; // Which team/faction this character belongs to (player, enemy, neutral, etc)
     palette: {
         skin: string;
         helmet: string;

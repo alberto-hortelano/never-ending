@@ -16,3 +16,5 @@ export { default as CharacterCreator } from './charactercreator/CharacterCreator
 export { default as TopBar } from './topbar/TopBar';
 export { default as BottomBar } from './bottombar/BottomBar';
 export * from './defensewheel/DefenseWheel';
+export * from './originselection/OriginSelection';
+export * from './storyjournal/StoryJournal';

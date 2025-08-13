@@ -13,6 +13,7 @@ import { Inventory } from "./common/services/Inventory";
 import { CharacterService } from "./common/services/CharacterService";
 import { AutoSelectCharacter } from "./common/services/AutoSelectCharacter";
 import { MultiplayerManager } from "./common/services/MultiplayerManager";
+import { AIController } from "./common/services/AIController";
 import { GameEvent, EventBus } from "./common/events";
 import { initialState } from './data/state';
 import { initializeCSSVariables } from './common/initializeCSSVariables';
@@ -59,6 +60,11 @@ const play = (state?: State) => {
     // Initialize singleton services
     CharacterService.initialize(gameState);
     MeleeCombat.initialize(gameState);
+    
+    // Initialize AI Controller for NPC control
+    const aiController = AIController.getInstance();
+    aiController.setGameState(gameState);
+    aiController.enableAI(); // Enable AI by default
 
     // Create new game services
     gameServices.push(
@@ -69,7 +75,8 @@ const play = (state?: State) => {
         new Inventory(gameState),
         new Conversation(),
         new Action(gameState),
-        new AutoSelectCharacter(gameState)
+        new AutoSelectCharacter(gameState),
+        aiController as any // Add AI controller to services for cleanup
     );
 
     // Show game UI

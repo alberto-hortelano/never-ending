@@ -177,7 +177,7 @@ export default class Character extends Component {
         this.addEventListener('touchstart', (e) => {
             e.preventDefault(); // Prevent default touch behavior
             handleInteraction();
-        });
+        }, { passive: false }); // Mark as non-passive since we call preventDefault
 
         // Get initial turn from state
         const gameState = this.getState();

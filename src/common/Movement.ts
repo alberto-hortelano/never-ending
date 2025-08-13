@@ -83,7 +83,9 @@ export class Movement extends EventBus<
     }
     // Listeners
     private onCellClick(position: ControlsEventsMap[ControlsEvent.cellClick]) {
-        if (!this.movingCharacter || !this.reachableCells) return;
+        if (!this.movingCharacter || !this.reachableCells) {
+            return;
+        }
         
         const isReachable = this.reachableCells.find(c => c.x === position.x && c.y === position.y);
         
@@ -247,7 +249,9 @@ export class Movement extends EventBus<
     
     private onShowMovement(characterName: ControlsEventsMap[ControlsEvent.showMovement]) {
         const character = this.state.findCharacter(characterName);
-        if (!character) return;
+        if (!character) {
+            return;
+        }
         
         // Check if character is defeated
         if (character.health <= 0) {
