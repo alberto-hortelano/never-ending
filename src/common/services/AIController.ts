@@ -1184,6 +1184,23 @@ export class AIController extends EventBus<
             
             // They're close enough - show conversation directly
             
+            // Record the conversation event with full dialogue content
+            const firstHuman = humanCharacters[0];
+            if (firstHuman) {
+                this.contextBuilder.recordEvent({
+                    type: 'dialogue',
+                    actor: speaker.name,
+                    target: firstHuman.name,
+                    description: `${speaker.name} says: "${command.content}"`,
+                    turn: this.state.game.turn,
+                    dialogue: {
+                        speaker: speaker.name,
+                        content: command.content || '',
+                        answers: command.answers
+                    }
+                });
+            }
+            
             // Show the popup first to ensure UI is ready
             this.dispatch(UpdateStateEvent.uiPopup, {
                 popupId: 'main-popup',  // Must match the popupId in Popup.ts
@@ -1295,6 +1312,20 @@ export class AIController extends EventBus<
 
     public async processAIDialogue(dialogue: DialogueData): Promise<void> {
         if (!this.state || !this.contextBuilder || !dialogue.targetNPC || !dialogue.playerChoice) return;
+        
+        // Record the player's dialogue choice
+        this.contextBuilder.recordEvent({
+            type: 'dialogue',
+            actor: dialogue.speaker || 'Player',
+            target: dialogue.targetNPC,
+            description: `${dialogue.speaker || 'Player'} says: "${dialogue.playerChoice}"`,
+            turn: this.state.game.turn,
+            dialogue: {
+                speaker: dialogue.speaker || 'Player',
+                content: dialogue.playerChoice,
+                answers: []
+            }
+        });
         
         const context = this.contextBuilder.buildDialogueContext(dialogue, this.state);
         

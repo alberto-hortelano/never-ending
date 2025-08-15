@@ -68,15 +68,25 @@ Response format:
 - Theme: Survival, exploration, and finding purpose
 - Language: ALL dialogue and narration MUST be in Spanish
 
+## CONVERSATION CONTINUITY - CRITICAL
+When engaging in dialogue:
+1. ALWAYS check "RECENT CONVERSATION HISTORY" section first
+2. Reference what was previously said - don't repeat yourself
+3. Build on the conversation naturally - acknowledge previous statements
+4. If someone mentioned desertion, combat, or specific topics, continue that thread
+5. Remember emotional tone from previous exchanges (hostile, friendly, suspicious)
+
 ## DECISION FRAMEWORK - Follow these steps IN ORDER:
 
 ### STEP 1: OBSERVE (What is real?)
 - List ONLY characters marked as visible in the context
 - Note their exact distances and positions
 - Check who is in conversation range (within 8 cells)
+- Review RECENT CONVERSATION HISTORY if available
 - DO NOT imagine or invent characters not in the visible list
 
 ### STEP 2: ASSESS (What is the situation?)
+- Am I in an ongoing conversation? (check conversation history)
 - Am I in combat? (hostile characters visible)
 - Am I in conversation? (friendly character in range)
 - Am I exploring? (no immediate threats or allies)
@@ -84,17 +94,19 @@ Response format:
 
 ### STEP 3: PRIORITIZE (What should I do?)
 Priority order:
-1. If in conversation range (≤8 cells) with ally → SPEECH
-2. If adjacent to enemy → ATTACK
-3. If enemy visible but far → MOVEMENT toward enemy
-4. If ally visible but far → MOVEMENT toward ally
-5. If exploring → MOVEMENT to explore
+1. If in ongoing conversation → Continue the conversation thread
+2. If in conversation range (≤8 cells) with ally → SPEECH
+3. If adjacent to enemy → ATTACK
+4. If enemy visible but far → MOVEMENT toward enemy
+5. If ally visible but far → MOVEMENT toward ally
+6. If exploring → MOVEMENT to explore
 
 ### STEP 4: VALIDATE (Can I actually do this?)
 Before responding, check:
 - Is my target ACTUALLY visible? (must be in visibleCharacters list)
 - Am I close enough for my chosen action?
 - Is this action possible in the game mechanics?
+- Does my response make sense given conversation history?
 
 ## CHARACTER PERSONALITIES
 
@@ -133,25 +145,52 @@ Bad Example (moving when already close):
 
 ## CONVERSATION MANAGEMENT
 
+### CRITICAL: Check Conversation History First!
+- ALWAYS read "RECENT CONVERSATION HISTORY" section
+- If you previously mentioned desertion, threats, or specific topics, continue that thread
+- Don't restart conversations - pick up where you left off
+- Remember the emotional tone (hostile, friendly, suspicious, urgent)
+
 ### Starting Conversations
 - Greet appropriately based on situation
 - Provide useful information or warnings
 - Ask relevant questions
+- BUT if conversation already started, DON'T greet again!
 
 ### During Conversation (2-3 exchanges maximum)
-- Stay on topic
-- Provide new information each turn
-- React to player's choices
+- Stay on topic - don't suddenly change subjects
+- Provide new information each turn - don't repeat
+- React to player's choices - acknowledge what they said
+- Build tension or resolve it based on context
 
 ### Ending Conversations
 End when:
 - No new information to share (use empty answers: [])
 - Action is needed (enemy approaching)
 - Player chooses to leave
-- After 3 exchanges
+- After 3-4 exchanges
+- Natural conclusion reached (agreement, disagreement, threat executed)
 
 Example ending:
 {"type": "speech", "source": "Data", "content": "Mantendré vigilancia del perímetro, comandante.", "answers": []}
+
+## CONVERSATION CONTINUITY EXAMPLES
+
+### GOOD - References previous exchange:
+History: Player: "¿Eres un desertor?"
+Response: {"type": "speech", "source": "enemy", "content": "¿Desertor? Yo soy quien caza desertores como tú. El comando paga bien por traidores.", "answers": ["No soy un traidor", "¿Cuánto pagan?", "Prepárate para pelear"]}
+
+### BAD - Ignores previous exchange:
+History: Player: "¿Eres un desertor?"
+Response: {"type": "speech", "source": "enemy", "content": "¡Alto! ¿Quién eres?", "answers": [...]} // WRONG - already talking!
+
+### GOOD - Escalates based on context:
+History: Enemy threatened combat
+Response: {"type": "speech", "source": "enemy", "content": "¡Se acabó el tiempo! ¡Abran fuego!", "answers": []}
+
+### BAD - Resets emotional tone:
+History: Hostile confrontation about desertion
+Response: {"type": "speech", "source": "enemy", "content": "Hola, ¿necesitas ayuda?", "answers": [...]} // WRONG - tone reset!
 
 ## CRITICAL RULES - NEVER VIOLATE THESE
 
@@ -162,7 +201,9 @@ Example ending:
 5. NEVER suggest impossible tactics (flanking, cover system, etc.)
 6. ALWAYS check canConverse flag before attempting speech
 7. ALWAYS end conversation with empty answers: [] when done
-8. ONLY spawn characters/maps for major story transitions
+8. ALWAYS check conversation history before speaking
+9. NEVER repeat the same greeting or introduction twice
+10. ONLY spawn characters/maps for major story transitions
 
 Remember: You can ONLY interact with what's ACTUALLY in the game state, not what you imagine might be there.`;
         } catch (error) {
@@ -271,6 +312,33 @@ ${conversableChars.length > 0
 ## RECENT EVENTS
 ${context.recentEvents.map((e: any) => `  - ${e.description}`).join('\n')}
 `;
+        }
+        
+        // Add conversation history if available
+        if (context.conversationHistory && context.conversationHistory.length > 0) {
+            situationSummary += `
+## RECENT CONVERSATION HISTORY
+${context.conversationHistory.map((exchange: any) => 
+    `  - ${exchange.speaker}: "${exchange.content}"`
+).join('\n')}
+`;
+        }
+        
+        // Add active conversations if any
+        if (context.activeConversations && context.activeConversations.size > 0) {
+            const activeConvos: string[] = [];
+            context.activeConversations.forEach((exchanges: any[], key: string) => {
+                if (exchanges.length > 0) {
+                    const lastExchange = exchanges[exchanges.length - 1];
+                    activeConvos.push(`  - With ${key}: Last said "${lastExchange.content}" by ${lastExchange.speaker}`);
+                }
+            });
+            if (activeConvos.length > 0) {
+                situationSummary += `
+## ACTIVE CONVERSATIONS
+${activeConvos.join('\n')}
+`;
+            }
         }
         
         // Add tactical analysis if in combat
@@ -441,11 +509,21 @@ Story Context:
 `;
         }
         
+        // Build conversation history context
+        let conversationContext = '';
+        if (context?.recentConversation && context.recentConversation.length > 0) {
+            conversationContext = `
+Previous conversation exchanges:
+${context.recentConversation.join('\n')}
+`;
+        }
+        
         messages.push({
             role: 'user',
             content: `${speaker} is talking to ${listener}. The player (${speaker}) said: "${playerChoice}"
 ${storyContext}
-Respond as ${listener} with a speech message in Spanish.
+${conversationContext}
+Respond as ${listener} with a speech message in Spanish. Remember the conversation context and maintain continuity.
 
 Context:
 ${context ? JSON.stringify(context, null, 2) : 'No additional context'}

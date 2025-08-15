@@ -9,6 +9,8 @@ export interface GameContext {
     charactersInConversationRange: CharacterContext[];  // Characters within 3 cells that can be talked to
     mapInfo: MapContext;
     recentEvents: EventContext[];
+    conversationHistory: ConversationExchange[];  // Recent conversation exchanges
+    activeConversations: Map<string, ConversationExchange[]>;  // Track conversations by character pairs
     gameState: {
         turn: number | string;
         phase: string;
@@ -84,6 +86,19 @@ export interface EventContext {
     target?: string;
     description: string;
     turn: number | string;
+    // For conversation events, include the actual dialogue
+    dialogue?: {
+        speaker: string;
+        content: string;
+        answers?: string[];
+    };
+}
+
+export interface ConversationExchange {
+    speaker: string;
+    content: string;
+    turn: number | string;
+    timestamp?: number;
 }
 
 interface ExtendedGame extends IGame {
@@ -105,6 +120,9 @@ interface ExtendedMap {
 export class AIContextBuilder {
     private recentEvents: EventContext[] = [];
     private maxRecentEvents = 10;
+    private conversationHistory: ConversationExchange[] = [];
+    private maxConversationHistory = 10;
+    private activeConversations: Map<string, ConversationExchange[]> = new Map();
 
     constructor(private state: State) {
     }
@@ -127,6 +145,8 @@ export class AIContextBuilder {
             charactersInConversationRange: charactersInConversationRange,
             mapInfo: mapInfo,
             recentEvents: this.recentEvents.slice(-5), // Last 5 events
+            conversationHistory: this.conversationHistory.slice(-5), // Last 5 conversation exchanges
+            activeConversations: this.activeConversations,
             gameState: gameState,
             tacticalAnalysis: tacticalAnalysis
         };
@@ -468,10 +488,67 @@ export class AIContextBuilder {
         if (this.recentEvents.length > this.maxRecentEvents) {
             this.recentEvents.shift();
         }
+
+        // If this is a conversation event, also record it in conversation history
+        if (event.type === 'dialogue' && event.dialogue) {
+            this.recordConversation({
+                speaker: event.dialogue.speaker,
+                content: event.dialogue.content,
+                turn: event.turn
+            });
+        }
+    }
+
+    public recordConversation(exchange: ConversationExchange): void {
+        // Add to general conversation history
+        this.conversationHistory.push(exchange);
+        
+        if (this.conversationHistory.length > this.maxConversationHistory) {
+            this.conversationHistory.shift();
+        }
+
+        // Track active conversations between specific character pairs
+        // This helps maintain context for ongoing dialogues
+        const participants = this.identifyConversationParticipants(exchange);
+        if (participants) {
+            const key = this.getConversationKey(participants);
+            if (!this.activeConversations.has(key)) {
+                this.activeConversations.set(key, []);
+            }
+            const conversation = this.activeConversations.get(key)!;
+            conversation.push(exchange);
+            
+            // Keep only recent exchanges per conversation
+            if (conversation.length > 5) {
+                conversation.shift();
+            }
+        }
+    }
+
+    private identifyConversationParticipants(exchange: ConversationExchange): string[] | null {
+        // Try to identify who's involved in the conversation
+        // This is simplified - in practice would need better tracking
+        if (exchange.speaker) {
+            // Assume conversation is with player if not specified otherwise
+            const otherParticipant = this.state?.characters.find(c => 
+                c.player === 'human' && c.name !== exchange.speaker
+            )?.name || 'Player';
+            return [exchange.speaker, otherParticipant].sort();
+        }
+        return null;
+    }
+
+    private getConversationKey(participants: string[]): string {
+        return participants.join('-');
     }
 
     public clearEvents(): void {
         this.recentEvents = [];
+    }
+
+    public clearConversationHistory(): void {
+        this.conversationHistory = [];
+        this.activeConversations.clear();
     }
 
     /**
