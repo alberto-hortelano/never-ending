@@ -1,5 +1,5 @@
-import type { ICell, ICharacter, IState, IUIState } from "./interfaces";
-import { EventBus, UpdateStateEventsMap, StateChangeEventsMap, StateChangeEvent, ControlsEventsMap, GameEvent, GameEventsMap } from "./events";
+import type { ICell, ICharacter, IState, IDoor } from "./interfaces";
+import { EventBus, UpdateStateEventsMap, StateChangeEventsMap, StateChangeEvent, ControlsEventsMap, GameEvent, GameEventsMap, UpdateStateEvent } from "./events";
 import { DeepReadonly } from "./helpers/types";
 import { getBaseState } from '../data/state';
 
@@ -14,7 +14,7 @@ import { StoryState } from './state/StoryState';
 import { LanguageState } from './state/LanguageState';
 import { UIStateService } from './services/UIStateService';
 
-export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateChangeEventsMap & ControlsEventsMap> {
+export class State extends EventBus<UpdateStateEventsMap & GameEventsMap & StateChangeEventsMap, StateChangeEventsMap & ControlsEventsMap> {
     private readonly storageName = 'state';
     
     // Sub-state modules
@@ -27,6 +27,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
     private overwatchState: OverwatchState;
     private storyState: StoryState;
     private languageState: LanguageState;
+    #doors: Record<string, IDoor> = {};
 
     constructor(initialState?: IState, isPreview = false) {
         super();
@@ -42,20 +43,35 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         // Preview states shouldn't process or dispatch UI events
         if (!isPreview) {
             this.uiStateService = new UIStateService(
-                () => ({
-                    game: this.game,
-                    map: this.map,
-                    characters: this.characters,
-                    messages: this.messages,
-                    ui: this.ui,
-                    overwatchData: this.overwatchData
-                } as IState),
-                () => this.uiState.ui as IUIState,
+                () => this.getInternalState(),
+                () => this.uiState.getInternalUI(),
                 (ui) => { this.uiState.ui = ui; }
             );
         } else {
-            // Create a dummy service that doesn't listen or dispatch
-            this.uiStateService = {} as UIStateService;
+            // Create a no-op service for preview mode that doesn't listen or dispatch
+            // This creates a minimal stub that satisfies the interface
+            const noOpState: IState = {
+                game: { turn: '', players: [] },
+                map: [],
+                characters: [],
+                messages: [],
+                ui: { 
+                    animations: { characters: {} }, 
+                    visualStates: { characters: {}, cells: {}, board: { mapWidth: 0, mapHeight: 0, hasPopupActive: false } }, 
+                    transientUI: { 
+                        highlights: { reachableCells: [], pathCells: [], targetableCells: [] }, 
+                        popups: {}, 
+                        projectiles: [] 
+                    }, 
+                    interactionMode: { type: 'normal' } 
+                },
+                overwatchData: {}
+            };
+            this.uiStateService = new UIStateService(
+                () => noOpState,
+                () => noOpState.ui,
+                () => {}
+            );
         }
         this.overwatchState = new OverwatchState(() => this.save());
         this.storyState = new StoryState(isPreview ? undefined : () => this.save(), isPreview);
@@ -78,8 +94,15 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         
         // Handle character defeat - coordinate between character and UI state
         // Since all EventBus instances share listeners, we can listen on 'this'
-        this.listen(StateChangeEvent.characterDefeated as any, (character: any) => {
+        this.listen(StateChangeEvent.characterDefeated, (character) => {
             this.uiStateService.updateCharacterDefeated(character.name);
+        });
+        
+        // Listen for door updates
+        this.listen(UpdateStateEvent.doors, (newDoors) => {
+            this.#doors = newDoors;
+            this.dispatch(StateChangeEvent.doors, structuredClone(this.#doors));
+            this.save();
         });
     }
 
@@ -109,11 +132,30 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
     }
     
     get story(): DeepReadonly<IState['story']> {
-        return this.storyState.story as DeepReadonly<IState['story']>;
+        return this.storyState.story;
     }
     
     get language(): DeepReadonly<IState['language']> {
         return this.languageState.language;
+    }
+
+    get doors(): DeepReadonly<Record<string, IDoor>> {
+        return this.#doors;
+    }
+
+    // Method to get mutable state for internal use by trusted services
+    getInternalState(): IState {
+        return {
+            game: this.gameState.getInternalGame(),
+            map: this.mapState.getInternalMap(),
+            characters: this.characterState.getInternalCharacters(),
+            messages: this.messageState.getInternalMessages(),
+            ui: this.uiState.getInternalUI(),
+            overwatchData: this.overwatchState.getInternalOverwatchData(),
+            story: this.storyState.getInternalStory(),
+            language: this.languageState.getInternalLanguage(),
+            doors: this.#doors
+        };
     }
 
     // Public helper methods
@@ -161,6 +203,13 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap, StateC
         // Initialize overwatch data if present
         if (state.overwatchData) {
             this.overwatchState.overwatchData = state.overwatchData;
+        }
+        
+        // Initialize doors if present
+        if (state.doors) {
+            this.#doors = state.doors;
+            // Dispatch initial doors state so components can render them
+            this.dispatch(StateChangeEvent.doors, structuredClone(this.#doors));
         }
         
         // Initialize language if present

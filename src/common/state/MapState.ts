@@ -15,7 +15,7 @@ export class MapState extends EventBus<UpdateStateEventsMap, StateChangeEventsMa
         
         // Listen for map updates
         if (!skipEvents) {
-            this.listen(UpdateStateEvent.map as any, (newMap: IState['map']) => {
+            this.listen(UpdateStateEvent.map, (newMap) => {
                 this.map = newMap;
             });
         }
@@ -34,6 +34,11 @@ export class MapState extends EventBus<UpdateStateEventsMap, StateChangeEventsMa
     }
 
     get map(): DeepReadonly<IState['map']> {
+        return this.#map;
+    }
+
+    // Internal getter for mutable access
+    getInternalMap(): IState['map'] {
         return this.#map;
     }
 

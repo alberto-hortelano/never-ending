@@ -1,10 +1,14 @@
-import type { IState, ICharacter, IInventory, IWeapon, Race, Direction, Action } from "../interfaces";
+import type { IState, ICharacter } from "../interfaces";
 import { EventBus, UpdateStateEventsMap, StateChangeEventsMap, UpdateStateEvent, StateChangeEvent } from "../events";
 import { DeepReadonly } from "../helpers/types";
-
-interface NetworkEventData {
-    fromNetwork?: boolean;
-}
+import { 
+    isInventory, 
+    isWeapon, 
+    toRace, 
+    toDirection, 
+    toAction,
+    hasProperty
+} from "../helpers/typeGuards";
 
 export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> {
     #characters: IState['characters'] = [];
@@ -50,7 +54,7 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
             throw new Error(`No character "${characterData.name}" found`);
         }
 
-        const fromNetwork = (characterData as NetworkEventData).fromNetwork;
+        const fromNetwork = hasProperty(characterData, 'fromNetwork') ? characterData.fromNetwork as boolean : undefined;
         if (!this.isValidTurn(characterData.name, fromNetwork)) {
             console.warn(`Invalid turn: ${character.player} tried to move during ${this.getCurrentTurn()}'s turn`);
             return;
@@ -70,7 +74,7 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
             throw new Error(`No character "${characterData.name}" found`);
         }
 
-        const fromNetwork = (characterData as NetworkEventData).fromNetwork;
+        const fromNetwork = hasProperty(characterData, 'fromNetwork') ? characterData.fromNetwork as boolean : undefined;
         if (!this.isValidTurn(characterData.name, fromNetwork)) {
             console.warn(`Invalid turn: ${character.player} tried to set path during ${this.getCurrentTurn()}'s turn`);
             return;
@@ -87,7 +91,7 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
             throw new Error(`No character "${data.characterName}" found`);
         }
 
-        const fromNetwork = (data as NetworkEventData).fromNetwork;
+        const fromNetwork = hasProperty(data, 'fromNetwork') ? data.fromNetwork as boolean : undefined;
         if (!this.isValidTurn(data.characterName, fromNetwork)) {
             console.warn(`Invalid turn: ${character.player} tried to rotate during ${this.getCurrentTurn()}'s turn`);
             return;
@@ -104,13 +108,17 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
             throw new Error(`No character "${data.characterName}" found`);
         }
 
-        const fromNetwork = (data as NetworkEventData).fromNetwork;
+        const fromNetwork = hasProperty(data, 'fromNetwork') ? data.fromNetwork as boolean : undefined;
         if (!this.isValidTurn(data.characterName, fromNetwork)) {
             console.warn(`Invalid turn: ${character.player} tried to update inventory during ${this.getCurrentTurn()}'s turn`);
             return;
         }
 
-        character.inventory = structuredClone(data.inventory) as IInventory;
+        const clonedInventory = structuredClone(data.inventory);
+        if (!isInventory(clonedInventory)) {
+            throw new Error(`Invalid inventory structure for character ${data.characterName}`);
+        }
+        character.inventory = clonedInventory;
         this.dispatch(StateChangeEvent.characterInventory, structuredClone(character));
         this.onSave?.();
     }
@@ -127,14 +135,16 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
         if (data.weaponId === null) {
             equippedWeapons[data.slot] = null;
         } else {
-            const weapon = inventory.items.find(item =>
+            const weaponItem = inventory.items.find(item =>
                 item.id === data.weaponId && item.type === 'weapon'
-            ) as IWeapon | undefined;
-
-            if (!weapon) {
-                console.error(`Weapon with id ${data.weaponId} not found in inventory`);
+            );
+            
+            if (!weaponItem || !isWeapon(weaponItem)) {
+                console.error(`Weapon with id ${data.weaponId} not found in inventory or invalid`);
                 return;
             }
+            const weapon = weaponItem;
+
 
             if (weapon.weaponType === 'twoHanded') {
                 equippedWeapons.primary = weapon;
@@ -169,7 +179,7 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
             throw new Error(`No character "${data.characterName}" found`);
         }
 
-        const fromNetwork = (data as NetworkEventData).fromNetwork;
+        const fromNetwork = hasProperty(data, 'fromNetwork') ? data.fromNetwork as boolean : undefined;
         if (!this.isValidTurn(data.characterName, fromNetwork)) {
             console.warn(`Invalid turn: ${character.player} tried to use action points during ${this.getCurrentTurn()}'s turn`);
             return;
@@ -239,14 +249,14 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
         // Create full character object with defaults
         const newCharacter: ICharacter = {
             name: data.name,
-            race: (data.race || 'human') as Race,
+            race: data.race ? toRace(data.race) : 'human',
             description: data.description || '',
             position: data.position,
             location: '',  // Required by IPositionable
             blocker: true,  // Characters are blockers
-            direction: (data.direction || 'bottom') as Direction,
+            direction: data.direction ? toDirection(data.direction) : 'down',
             player: data.player || this.getCurrentTurn(),
-            action: (data.action || 'idle') as Action,
+            action: data.action ? toAction(data.action) : 'idle',
             path: [],
             health: data.health || 100,
             maxHealth: data.maxHealth || 100,
@@ -287,7 +297,9 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
         const removedCharacter = this.#characters[index];
         this.#characters.splice(index, 1);
         this.dispatch(StateChangeEvent.characters, structuredClone(this.#characters));
-        this.dispatch(StateChangeEvent.characterRemoved, structuredClone(removedCharacter!));
+        if (removedCharacter) {
+            this.dispatch(StateChangeEvent.characterRemoved, structuredClone(removedCharacter));
+        }
         this.onSave?.();
     }
 
@@ -300,6 +312,11 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
     }
 
     get characters(): DeepReadonly<IState['characters']> {
+        return this.#characters;
+    }
+
+    // Internal getter for mutable access
+    getInternalCharacters(): IState['characters'] {
         return this.#characters;
     }
 

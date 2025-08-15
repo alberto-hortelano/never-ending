@@ -1,7 +1,8 @@
 import type { 
     ICharacter, IState, IMessage, Direction, IInventory,
     ICharacterAnimation, ICharacterVisualState, ICellVisualState,
-    IPopupState, IProjectileState, IHighlightStates, IInteractionMode
+    IPopupState, IProjectileState, IHighlightStates, IInteractionMode,
+    IDoor
 } from '../interfaces';
 import type { IStoryState } from '../interfaces/IStory';
 import type { DeepReadonly } from "../helpers/types";
@@ -69,6 +70,8 @@ export enum UpdateStateEvent {
     storyState = 'UpdateStateEvent.storyState',
     /** Update language */
     language = 'UpdateStateEvent.language',
+    /** Update doors */
+    doors = 'UpdateStateEvent.doors',
 }
 
 export interface UpdateStateEventsMap {
@@ -113,7 +116,7 @@ export interface UpdateStateEventsMap {
     [UpdateStateEvent.removeCharacter]: {
         characterName: string;
     };
-    [UpdateStateEvent.map]: DeepReadonly<IState['map']>;
+    [UpdateStateEvent.map]: IState['map'];
     
     // UI State Events
     [UpdateStateEvent.uiCharacterAnimation]: {
@@ -180,6 +183,7 @@ export interface UpdateStateEventsMap {
     };
     [UpdateStateEvent.storyState]: Partial<IStoryState>;
     [UpdateStateEvent.language]: 'en' | 'es';
+    [UpdateStateEvent.doors]: Record<string, IDoor>;
 }
 
 /** Events when the state has changed. All can listen. Only State can dispatch */
@@ -217,6 +221,8 @@ export enum StateChangeEvent {
     storyState = 'StateChangeEvent.storyState',
     /** Language changed */
     language = 'StateChangeEvent.language',
+    /** Doors state changed */
+    doors = 'StateChangeEvent.doors',
 }
 
 export interface StateChangeEventsMap {
@@ -251,4 +257,5 @@ export interface StateChangeEventsMap {
     [StateChangeEvent.uiSelectedCharacter]: string | undefined;
     [StateChangeEvent.storyState]: DeepReadonly<IStoryState>;
     [StateChangeEvent.language]: 'en' | 'es';
+    [StateChangeEvent.doors]: DeepReadonly<Record<string, IDoor>>;
 }

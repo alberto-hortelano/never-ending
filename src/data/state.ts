@@ -1,4 +1,4 @@
-import { IState, ICharacter, IMessage, IItem, IWeapon, IInventory, IGame } from "../common/interfaces";
+import { IState, ICharacter, IMessage, IItem, IWeapon, IInventory, IGame, IDoor } from "../common/interfaces";
 import { MapGenerator } from "../common/helpers/MapGenerator";
 import { positionCharacters } from "../common/helpers/map";
 import { TeamService } from "../common/services/TeamService";
@@ -299,12 +299,77 @@ export const initialState = (x: number, y: number, playerData: Partial<ICharacte
     const map = mapGenerator.getCells();
     const characters: ICharacter[] = [player, ...charactersData.map(createCharacter)];
     const messages: IMessage[] = [];
+    
+    // Create default doors
+    const doors: Record<string, IDoor> = {
+        // Regular door between player and data rooms
+        'door_24_25_25_25': {
+            id: 'door_24_25_25_25',
+            type: 'regular',
+            position: { x: 24, y: 25 },
+            side: 'east',
+            targetPosition: { x: 25, y: 25 },
+            isOpen: false,
+            isLocked: false
+        },
+        // Locked door to the west of enemy
+        'door_23_25_22_25': {
+            id: 'door_23_25_22_25',
+            type: 'locked',
+            position: { x: 23, y: 25 },
+            side: 'west',
+            targetPosition: { x: 22, y: 25 },
+            isOpen: false,
+            isLocked: true,
+            keyRequired: 'key_armory'
+        },
+        // Another regular door
+        'door_25_26_25_27': {
+            id: 'door_25_26_25_27',
+            type: 'regular',
+            position: { x: 25, y: 26 },
+            side: 'south',
+            targetPosition: { x: 25, y: 27 },
+            isOpen: true,
+            isLocked: false
+        },
+        // Transition door (exit to north)
+        'transition_25_20_north': {
+            id: 'transition_25_20_north',
+            type: 'transition',
+            position: { x: 25, y: 20 },
+            side: 'north',
+            isOpen: false,
+            isLocked: false,
+            transition: {
+                description: 'Salida hacia el páramo exterior',
+                targetMap: 'wasteland',
+                actionRequest: 'generate_new_map'
+            }
+        },
+        // Another transition door (exit to east)
+        'transition_30_25_east': {
+            id: 'transition_30_25_east',
+            type: 'transition',
+            position: { x: 30, y: 25 },
+            side: 'east',
+            isOpen: false,
+            isLocked: false,
+            transition: {
+                description: 'Portal hacia las ruinas antiguas',
+                targetMap: 'ancient_ruins',
+                actionRequest: 'generate_new_map'
+            }
+        }
+    };
+    
     const initialState: IState = {
         game,
         map,
         characters: positionCharacters(characters, map),
         messages,
         overwatchData: {},
+        doors,
         ui: {
             animations: {
                 characters: {}

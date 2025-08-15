@@ -49,6 +49,8 @@ export interface StorylineCommand extends AICommand {
     type: 'storyline';
     content: string;
     description: string;
+    action: 'map' | 'character' | 'movement' | 'attack'; // Required action
+    actionData?: any; // Additional data for the action
 }
 
 export interface TacticalDirectiveCommand extends AICommand {
@@ -96,6 +98,17 @@ export interface MapCommand extends AICommand {
             suit: string;
         };
     }>;
+    doors?: Array<{
+        type: 'regular' | 'locked' | 'transition';
+        position: { x: number; y: number };
+        side: 'north' | 'south' | 'east' | 'west' | 'between';
+        targetPosition?: { x: number; y: number };
+        keyRequired?: string;
+        transition?: {
+            description: string;
+            targetMap?: string;
+        };
+    }>;
 }
 
 export class AICommandParser {
@@ -134,6 +147,11 @@ export class AICommandParser {
     }
 
     private validateMovement(command: any): MovementCommand | null {
+        if (!command || typeof command !== 'object') {
+            console.error('Movement command is not an object');
+            return null;
+        }
+        
         if (!Array.isArray(command.characters) || command.characters.length === 0) {
             console.error('Movement command missing characters array');
             return null;
@@ -146,7 +164,8 @@ export class AICommandParser {
             }
         }
 
-        return command as MovementCommand;
+        // At this point, we've validated the structure matches MovementCommand
+        return command;
     }
 
     private validateAttack(command: any): AttackCommand | null {
@@ -167,7 +186,8 @@ export class AICommandParser {
             }
         }
 
-        return command as AttackCommand;
+        // At this point, we've validated the structure matches AttackCommand
+        return command;
     }
 
     private validateSpeech(command: any): SpeechCommand | null {
@@ -181,7 +201,8 @@ export class AICommandParser {
             return null;
         }
 
-        return command as SpeechCommand;
+        // At this point, we've validated the structure matches SpeechCommand
+        return command;
     }
 
     private validateCharacter(command: any): CharacterCommand | null {
@@ -222,7 +243,8 @@ export class AICommandParser {
             }
         }
 
-        return command as CharacterCommand;
+        // At this point, we've validated the structure matches CharacterCommand
+        return command;
     }
 
     private validateStoryline(command: any): StorylineCommand | null {
@@ -231,7 +253,8 @@ export class AICommandParser {
             return null;
         }
 
-        return command as StorylineCommand;
+        // At this point, we've validated the structure matches StorylineCommand
+        return command;
     }
 
     private validateMap(command: any): MapCommand | null {
@@ -286,7 +309,8 @@ export class AICommandParser {
             }
         }
 
-        return command as MapCommand;
+        // At this point, we've validated the structure matches MapCommand
+        return command;
     }
 
     private validatePalette(palette: any): boolean {
@@ -389,7 +413,8 @@ export class AICommandParser {
             }
         }
 
-        return command as TacticalDirectiveCommand;
+        // At this point, we've validated the structure matches TacticalDirectiveCommand
+        return command;
     }
     
     private validateItem(command: any): AICommand | null {

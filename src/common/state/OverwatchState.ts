@@ -52,6 +52,11 @@ export class OverwatchState extends EventBus<UpdateStateEventsMap, StateChangeEv
         return this.#overwatchData;
     }
 
+    // Internal getter for mutable access
+    getInternalOverwatchData(): IState['overwatchData'] {
+        return this.#overwatchData;
+    }
+
     getCharacterOverwatchData(characterName: string): DeepReadonly<IOverwatchData> | undefined {
         return this.#overwatchData[characterName];
     }

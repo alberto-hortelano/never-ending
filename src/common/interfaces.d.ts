@@ -9,6 +9,7 @@ export interface IState {
     overwatchData: Record<string, IOverwatchData>;
     story?: IStoryState;
     language?: 'en' | 'es';
+    doors?: Record<string, IDoor>;
 }
 
 export interface IOverwatchData {
@@ -43,6 +44,7 @@ export interface ICell {
     locations: string[];
     elements: IPositionable[];
     content: IPositionable | null;
+    doors?: IDoor[];
 }
 export interface IPositionable {
     position: ICoord;
@@ -370,5 +372,33 @@ export interface ISimplifiedItem {
     name: string;
     weight: number;
     cost: number;
+}
+
+export type DoorSide = 'north' | 'south' | 'east' | 'west' | 'between';
+export type DoorType = 'regular' | 'transition' | 'locked';
+
+export interface IDoor {
+    id: string;
+    type: DoorType;
+    position: ICoord;
+    side: DoorSide;
+    targetPosition?: ICoord; // For regular doors between cells
+    isOpen: boolean;
+    isLocked: boolean;
+    keyRequired?: string; // Item ID for locked doors
+    transition?: ITransition; // For exit/transition doors
+}
+
+export interface ITransition {
+    description: string; // Narrative text shown to player
+    actionRequest?: string; // Action to request from AI (e.g., "generate_new_map")
+    targetMap?: string; // Map identifier for transitions
+    storylineEvent?: IStorylineEvent; // Trigger storyline when entering
+}
+
+export interface IStorylineEvent {
+    type: 'storyline';
+    content: string;
+    choices?: string[]; // Player choices if applicable
 }
 

@@ -106,12 +106,16 @@ export class Inventory extends EventBus<
         return items.reduce((sum, item) => sum + item.weight, 0);
     }
 
+    private static isWeapon(item: DeepReadonly<IItem>): item is DeepReadonly<IWeapon> {
+        return item.type === 'weapon';
+    }
+
     public static groupItemsByType(items: DeepReadonly<IItem[]>): {
         weapons: IWeapon[];
         otherItems: IItem[];
     } {
-        const weapons = items.filter(item => item.type === 'weapon') as IWeapon[];
-        const otherItems = items.filter(item => item.type !== 'weapon') as IItem[];
+        const weapons = items.filter(this.isWeapon) as IWeapon[];
+        const otherItems = items.filter(item => !this.isWeapon(item)) as IItem[];
         return { weapons, otherItems };
     }
 

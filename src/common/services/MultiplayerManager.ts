@@ -257,14 +257,9 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
     private syncStateToClients() {
         if (!this.isHost || !this.state) return;
 
-        const currentState: IState = {
-            game: structuredClone(this.state.game) as IState['game'],
-            map: structuredClone(this.state.map) as IState['map'],
-            characters: structuredClone(this.state.characters) as IState['characters'],
-            messages: structuredClone(this.state.messages) as IState['messages'],
-            ui: structuredClone(this.state.ui) as IState['ui'],
-            overwatchData: structuredClone(this.state.overwatchData) as IState['overwatchData']
-        };
+        // Get mutable state and clone it for comparison
+        const internalState = this.state.getInternalState();
+        const currentState: IState = structuredClone(internalState);
 
         if (this.lastSyncedState) {
             // Send diff if we have a previous state

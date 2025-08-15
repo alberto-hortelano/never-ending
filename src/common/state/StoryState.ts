@@ -1,9 +1,10 @@
 import { EventBus } from '../events/EventBus';
 import { UpdateStateEvent, StateChangeEvent } from '../events/StateEvents';
+import type { UpdateStateEventsMap, StateChangeEventsMap } from '../events/StateEvents';
 import type { IStoryState } from '../interfaces/IStory';
 import type { DeepReadonly } from '../helpers/types';
 
-export class StoryState extends EventBus {
+export class StoryState extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> {
     private _story: IStoryState = {
         selectedOrigin: null,
         currentChapter: 0,
@@ -24,7 +25,7 @@ export class StoryState extends EventBus {
         
         // Listen for story state updates
         if (!isPreview) {
-            (this as any).listen(UpdateStateEvent.storyState, (storyUpdate: Partial<IStoryState>) => {
+            this.listen(UpdateStateEvent.storyState, (storyUpdate) => {
                 this.updateStoryState(storyUpdate);
             });
         }
@@ -34,7 +35,12 @@ export class StoryState extends EventBus {
         return {
             ...this._story,
             storyFlags: new Set(this._story.storyFlags) // Clone the Set for readonly
-        } as DeepReadonly<IStoryState>;
+        };
+    }
+
+    // Internal getter for mutable access
+    getInternalStory(): IStoryState {
+        return this._story;
     }
     
     set story(newStory: IStoryState) {
@@ -82,7 +88,7 @@ export class StoryState extends EventBus {
         
         // Dispatch state change event
         if (!this.isPreview) {
-            (this as any).dispatch(StateChangeEvent.storyState, this.story);
+            this.dispatch(StateChangeEvent.storyState, this.story);
         }
         
         // Save state

@@ -34,6 +34,7 @@ export enum ControlsEvent {
     meleeDefenseSelected = 'ControlsEvent.meleeDefenseSelected',
     toggleMelee = 'ControlsEvent.toggleMelee',
     selectOrigin = 'ControlsEvent.selectOrigin',
+    doorClick = 'ControlsEvent.doorClick',
 }
 
 export interface ControlsEventsMap {
@@ -99,4 +100,5 @@ export interface ControlsEventsMap {
     };
     [ControlsEvent.toggleMelee]: ICharacter['name'];
     [ControlsEvent.selectOrigin]: IOriginStory;
+    [ControlsEvent.doorClick]: { doorId: string };
 }

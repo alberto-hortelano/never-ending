@@ -171,7 +171,7 @@ export class Action extends EventBus<
         }
 
         // Dispatch the action's associated event
-        this.dispatch(action.event as any, characterName);
+        this.dispatch(action.event, characterName);
     }
 
     private findActionById(actionId: string): ActionItem | undefined {

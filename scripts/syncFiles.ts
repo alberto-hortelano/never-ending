@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import * as fs from 'fs';
-import * as path from 'path';
-import * as crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
 
 interface SyncOptions {
     source: string;
@@ -113,10 +113,10 @@ function hasValidExtension(filePath: string, extensions: string[]): boolean {
 function directoryContainsTargetFiles(dirPath: string, extensions: string[]): boolean {
     try {
         const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-        
+
         for (const entry of entries) {
             const entryPath = path.join(dirPath, entry.name);
-            
+
             if (entry.isFile() && hasValidExtension(entry.name, extensions)) {
                 return true;
             } else if (entry.isDirectory()) {
@@ -125,7 +125,7 @@ function directoryContainsTargetFiles(dirPath: string, extensions: string[]): bo
                 }
             }
         }
-        
+
         return false;
     } catch (err) {
         console.error(`Error checking directory ${dirPath}:`, err);
@@ -161,13 +161,13 @@ async function copyFile(sourcePath: string, destPath: string): Promise<void> {
 async function cleanupDirectory(dirPath: string): Promise<void> {
     try {
         const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-        
+
         for (const entry of entries) {
             const entryPath = path.join(dirPath, entry.name);
-            
+
             if (entry.isDirectory()) {
                 await cleanupDirectory(entryPath);
-                
+
                 // Try to remove if empty
                 try {
                     fs.rmdirSync(entryPath);
@@ -264,7 +264,7 @@ async function processDirectory(sourcePath: string, destPath: string): Promise<v
                     if (!fs.existsSync(srcEntryPath) || !directoryContainsTargetFiles(srcEntryPath, options.extensions)) {
                         // Recursively clean up subdirectory first
                         await cleanupDirectory(destEntryPath);
-                        
+
                         // Try to remove the directory if it's empty
                         try {
                             fs.rmdirSync(destEntryPath);

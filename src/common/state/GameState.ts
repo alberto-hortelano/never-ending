@@ -31,6 +31,11 @@ export class GameState extends EventBus<UpdateStateEventsMap & GameEventsMap, St
         return this.#game;
     }
 
+    // Internal getter for mutable access
+    getInternalGame(): IState['game'] {
+        return this.#game;
+    }
+
     getCurrentTurn(): string {
         return this.#game.turn;
     }

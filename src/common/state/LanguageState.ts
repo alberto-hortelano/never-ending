@@ -1,8 +1,14 @@
 import { EventBus, UpdateStateEvent, UpdateStateEventsMap, StateChangeEvent, StateChangeEventsMap } from '../events';
 import { DeepReadonly } from '../helpers/types';
 
+type LanguageCode = 'en' | 'es';
+
+function isValidLanguage(value: unknown): value is LanguageCode {
+    return value === 'en' || value === 'es';
+}
+
 export class LanguageState extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> {
-    private _language: 'en' | 'es' = 'en';
+    private _language: LanguageCode = 'en';
     private saveCallback?: () => void;
     private isPreview: boolean;
 
@@ -23,8 +29,8 @@ export class LanguageState extends EventBus<UpdateStateEventsMap, StateChangeEve
     private loadLanguagePreference(): void {
         // Try to load from localStorage first
         const savedLang = localStorage.getItem('language');
-        if (savedLang && (savedLang === 'en' || savedLang === 'es')) {
-            this._language = savedLang as 'en' | 'es';
+        if (isValidLanguage(savedLang)) {
+            this._language = savedLang;
             return;
         }
 
@@ -43,11 +49,16 @@ export class LanguageState extends EventBus<UpdateStateEventsMap, StateChangeEve
         localStorage.setItem('language', this._language);
     }
 
-    get language(): DeepReadonly<'en' | 'es'> {
+    get language(): DeepReadonly<LanguageCode> {
         return this._language;
     }
 
-    setLanguage(language: 'en' | 'es'): void {
+    // Internal getter for mutable access
+    getInternalLanguage(): LanguageCode {
+        return this._language;
+    }
+
+    setLanguage(language: LanguageCode): void {
         if (this._language !== language) {
             this._language = language;
             this.saveLanguagePreference();
@@ -64,12 +75,12 @@ export class LanguageState extends EventBus<UpdateStateEventsMap, StateChangeEve
         }
     }
 
-    serialize(): 'en' | 'es' {
+    serialize(): LanguageCode {
         return this._language;
     }
 
-    deserialize(language?: 'en' | 'es'): void {
-        if (language) {
+    deserialize(language?: LanguageCode): void {
+        if (language && isValidLanguage(language)) {
             this._language = language;
             this.saveLanguagePreference();
         }

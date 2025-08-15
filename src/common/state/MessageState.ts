@@ -26,4 +26,9 @@ export class MessageState extends EventBus<UpdateStateEventsMap, StateChangeEven
     get messages(): DeepReadonly<IState['messages']> {
         return this.#messages;
     }
+
+    // Internal getter for mutable access
+    getInternalMessages(): IState['messages'] {
+        return this.#messages;
+    }
 }

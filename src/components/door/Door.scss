@@ -1,0 +1,148 @@
+@use '../variables' as *;
+
+:host {
+    position: absolute;
+    pointer-events: auto;
+    cursor: pointer;
+    transition: all $transition-duration-base ease;
+    z-index: 20;
+    
+    // Default door appearance
+    background-color: $gray-600;
+    border: 1px solid $gray-700;
+    
+    // Hover effect
+    &:hover {
+        filter: brightness(1.2);
+        box-shadow: $shadow-lg;
+    }
+}
+
+// Door positioning based on side
+:host(.north) {
+    top: -2px;
+    left: 35%;
+    width: 30%;
+    height: 4px;
+    border-radius: $border-radius-sm;
+}
+
+:host(.south) {
+    bottom: -2px;
+    left: 35%;
+    width: 30%;
+    height: 4px;
+    border-radius: $border-radius-sm;
+}
+
+:host(.east) {
+    right: -2px;
+    top: 35%;
+    width: 4px;
+    height: 30%;
+    border-radius: $border-radius-sm;
+}
+
+:host(.west) {
+    left: -2px;
+    top: 35%;
+    width: 4px;
+    height: 30%;
+    border-radius: $border-radius-sm;
+}
+
+// Door types
+:host(.regular) {
+    background-color: $gray-500;
+    border-color: $gray-600;
+}
+
+:host(.locked) {
+    background-color: $gray-700;
+    border-color: $gray-800;
+    
+    &::after {
+        content: '🔒';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 0.5rem;
+        filter: grayscale(1);
+    }
+}
+
+:host(.transition) {
+    background: linear-gradient(135deg, $color-info, $color-highlight);
+    border-color: $color-info;
+    animation: pulse 2s infinite;
+    
+    &::after {
+        content: '➤';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 0.6rem;
+        color: white;
+    }
+}
+
+// Open state
+:host(.open) {
+    background-color: transparent !important;
+    border-style: dashed;
+    border-color: $gray-400;
+    pointer-events: none;
+    
+    &::after {
+        display: none;
+    }
+}
+
+// Animations
+@keyframes pulse {
+    0%, 100% {
+        opacity: 0.8;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+}
+
+// Orientation-specific icons
+:host(.transition.north)::after {
+    content: '↑';
+}
+
+:host(.transition.south)::after {
+    content: '↓';
+}
+
+:host(.transition.east)::after {
+    content: '→';
+}
+
+:host(.transition.west)::after {
+    content: '←';
+}
+
+// Mobile adjustments
+@media (max-width: $breakpoint-md) {
+    :host {
+        // Slightly larger on mobile for easier tapping
+        &.north, &.south {
+            height: 6px;
+            width: 40%;
+            left: 30%;
+        }
+        
+        &.east, &.west {
+            width: 6px;
+            height: 40%;
+            top: 30%;
+        }
+    }
+}

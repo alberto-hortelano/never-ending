@@ -1,6 +1,7 @@
 import { ControlsEvent, StateChangeEvent } from "../../common/events";
-import { ICoord, ICellVisualState } from "../../common/interfaces";
+import { ICoord, ICellVisualState, IDoor } from "../../common/interfaces";
 import { Component } from "../Component";
+import "../door/Door";
 
 export default class Cell extends Component {
     static get observedAttributes() {
@@ -40,6 +41,11 @@ export default class Cell extends Component {
         if (state?.ui.visualStates.cells[this.cellKey]) {
             this.applyVisualState(state.ui.visualStates.cells[this.cellKey] as ICellVisualState);
         }
+        
+        // Check for doors at this position
+        if (state?.doors) {
+            this.renderDoors(state.doors as any);
+        }
 
         // Listen for UI state changes
         this.listen(StateChangeEvent.uiVisualStates, (visualStates) => {
@@ -50,6 +56,11 @@ export default class Cell extends Component {
                 // No visual state means cell should be reset
                 this.resetVisualState();
             }
+        });
+        
+        // Listen for door state changes
+        this.listen(StateChangeEvent.doors, (doors) => {
+            this.renderDoors(doors as any);
         });
 
         // Add touch event listener for mobile
@@ -128,6 +139,26 @@ export default class Cell extends Component {
         requestAnimationFrame(() => {
             this.classList.remove(...Cell.states);
             this.style.removeProperty('--highlight-intensity');
+        });
+    }
+    
+    private renderDoors(doors: Record<string, IDoor>) {
+        // Remove existing door elements
+        const existingDoors = this.querySelectorAll('door-component');
+        existingDoors.forEach(door => door.remove());
+        
+        // Find doors at this position
+        Object.entries(doors).forEach(([doorId, door]) => {
+            if (door.position.x === this.coords.x && door.position.y === this.coords.y) {
+                const doorElement = document.createElement('door-component');
+                doorElement.setAttribute('door-id', doorId);
+                doorElement.setAttribute('door-type', door.type);
+                doorElement.setAttribute('door-side', door.side);
+                doorElement.setAttribute('is-open', door.isOpen.toString());
+                doorElement.setAttribute('is-locked', door.isLocked.toString());
+                
+                this.appendChild(doorElement);
+            }
         });
     }
 }

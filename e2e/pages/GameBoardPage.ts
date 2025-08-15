@@ -22,13 +22,13 @@ export class GameBoardPage {
   async waitForGameToStart() {
     // Wait for container to be visible
     await this.container.waitFor({ state: 'visible' });
-    
+
     // Wait for board to be visible
     await this.board.waitFor({ state: 'visible' });
-    
+
     // Wait for turn indicator
     await this.turnIndicator.waitFor({ state: 'visible' });
-    
+
     // Wait for the board's shadow DOM to be ready
     await this.page.waitForFunction(() => {
       const board = document.querySelector('board-component');
@@ -41,7 +41,7 @@ export class GameBoardPage {
     await this.page.evaluate(({ x, y }) => {
       const board = document.querySelector('board-component');
       if (board && board.shadowRoot) {
-        const cell = board.shadowRoot.querySelector(`cell-component[data-x="${x}"][data-y="${y}"]`) as HTMLElement;
+        const cell = board.shadowRoot.querySelector<HTMLElement>(`cell-component[data-x="${x}"][data-y="${y}"]`);
         if (cell) cell.click();
       }
     }, { x, y });
@@ -49,7 +49,7 @@ export class GameBoardPage {
 
   async selectCharacter(characterName: string) {
     await this.page.evaluate((name) => {
-      const character = document.querySelector(`character-component[id="${name}"]`) as HTMLElement;
+      const character = document.querySelector<HTMLElement>(`character-component[id="${name}"]`);
       if (character) character.click();
     }, characterName);
   }
@@ -87,7 +87,7 @@ export class GameBoardPage {
     await this.page.evaluate((action) => {
       const actionsComponent = document.querySelector('actions-component');
       if (actionsComponent && actionsComponent.shadowRoot) {
-        const actionButton = actionsComponent.shadowRoot.querySelector(`[data-action="${action}"]`) as HTMLElement;
+        const actionButton = actionsComponent.shadowRoot.querySelector<HTMLElement>(`[data-action="${action}"]`);
         if (actionButton) actionButton.click();
       }
     }, actionName);
@@ -98,7 +98,7 @@ export class GameBoardPage {
     await this.page.evaluate(() => {
       const bottomBar = document.querySelector('bottom-bar');
       if (bottomBar && bottomBar.shadowRoot) {
-        const endTurnBtn = bottomBar.shadowRoot.querySelector('.end-turn-btn') as HTMLElement;
+        const endTurnBtn = bottomBar.shadowRoot.querySelector<HTMLElement>('.end-turn-btn');
         if (endTurnBtn) endTurnBtn.click();
       }
     });
@@ -139,7 +139,7 @@ export class GameBoardPage {
     await this.page.evaluate(() => {
       const bottomBar = document.querySelector('bottom-bar');
       if (bottomBar && bottomBar.shadowRoot) {
-        const actionsBtn = bottomBar.shadowRoot.querySelector('.actions-btn') as HTMLElement;
+        const actionsBtn = bottomBar.shadowRoot.querySelector<HTMLElement>('.actions-btn');
         if (actionsBtn) actionsBtn.click();
       }
     });
@@ -170,7 +170,7 @@ export class GameBoardPage {
     await this.selectCharacter('Character1');
     await this.moveCharacterTo(5, 5);
     await this.endTurn();
-    
+
     await this.selectCharacter('Character2');
     await this.moveCharacterTo(6, 5);
     await this.endTurn();
@@ -182,11 +182,11 @@ export class GameBoardPage {
     await this.page.evaluate(() => {
       const bottomBar = document.querySelector('bottom-bar');
       if (bottomBar && bottomBar.shadowRoot) {
-        const inventoryBtn = bottomBar.shadowRoot.querySelector('.inventory-btn') as HTMLElement;
+        const inventoryBtn = bottomBar.shadowRoot.querySelector<HTMLElement>('.inventory-btn');
         if (inventoryBtn) inventoryBtn.click();
       }
     });
-    
+
     // Equip weapon of specified type
     await this.page.click(`.weapon-item[data-type="${weaponType}"]`);
     await this.page.click('button:has-text("Equip")');
@@ -198,11 +198,11 @@ export class GameBoardPage {
     await this.page.evaluate(() => {
       const bottomBar = document.querySelector('bottom-bar');
       if (bottomBar && bottomBar.shadowRoot) {
-        const inventoryBtn = bottomBar.shadowRoot.querySelector('.inventory-btn') as HTMLElement;
+        const inventoryBtn = bottomBar.shadowRoot.querySelector<HTMLElement>('.inventory-btn');
         if (inventoryBtn) inventoryBtn.click();
       }
     });
-    
+
     // Unequip all weapons
     await this.page.click('button:has-text("Unequip All")');
   }

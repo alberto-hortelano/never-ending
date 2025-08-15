@@ -1,8 +1,8 @@
-import type { IInteractionMode as InteractionMode } from "./interfaces";
-import { EventBus, UpdateStateEvent, UpdateStateEventsMap, StateChangeEvent, StateChangeEventsMap } from "./events";
+import type { IInteractionMode } from "./interfaces";
+import { EventBus, UpdateStateEvent, UpdateStateEventsMap, StateChangeEventsMap } from "./events";
 
 export interface ModeCleanupHandler {
-    mode: InteractionMode['type'];
+    mode: IInteractionMode['type'];
     cleanup: () => void;
 }
 
@@ -11,26 +11,17 @@ export interface ModeCleanupHandler {
  * Ensures proper cleanup when switching between modes.
  */
 export class InteractionModeManager extends EventBus<StateChangeEventsMap, UpdateStateEventsMap> {
-    private static instance: InteractionModeManager;
-    private currentMode: InteractionMode = { type: 'normal' };
-    private cleanupHandlers = new Map<InteractionMode['type'], () => void>();
-    
-    private constructor() {
-        super();
-        
-        // Listen for mode changes
-        this.listen(StateChangeEvent.uiInteractionMode, (mode) => {
-            this.handleModeChange(mode);
-        });
-    }
-    
+    private static instance: InteractionModeManager | null = null;
+    private currentMode: IInteractionMode = { type: 'normal' };
+    private cleanupHandlers = new Map<IInteractionMode['type'], () => void>();
+
     static getInstance(): InteractionModeManager {
         if (!InteractionModeManager.instance) {
             InteractionModeManager.instance = new InteractionModeManager();
         }
         return InteractionModeManager.instance;
     }
-    
+
     /**
      * Reset the singleton instance - for testing only
      */
@@ -38,53 +29,49 @@ export class InteractionModeManager extends EventBus<StateChangeEventsMap, Updat
         if (InteractionModeManager.instance) {
             // Clean up any existing listeners
             InteractionModeManager.instance.cleanupCurrentMode();
-            InteractionModeManager.instance = null as any;
+            InteractionModeManager.instance = null;
         }
     }
-    
+
     /**
      * Register a cleanup handler for a specific mode
      */
-    registerCleanupHandler(mode: InteractionMode['type'], cleanup: () => void): void {
+    registerCleanupHandler(mode: IInteractionMode['type'], cleanup: () => void): void {
         this.cleanupHandlers.set(mode, cleanup);
     }
-    
+
     /**
      * Request a mode change - this will handle cleanup automatically
      */
-    requestModeChange(newMode: InteractionMode): void {
+    requestModeChange(newMode: IInteractionMode): void {
         // If we're already in this mode, do nothing
         if (this.currentMode.type === newMode.type) {
             return;
         }
-        
+
         // Perform cleanup for the current mode
         this.cleanupCurrentMode();
-        
+
         // Update current mode before dispatching (so subsequent calls see the correct mode)
         this.currentMode = newMode;
-        
+
         // Dispatch the mode change
         this.dispatch(UpdateStateEvent.uiInteractionMode, newMode);
     }
-    
-    private handleModeChange(_newMode: InteractionMode): void {
-        // Mode is already updated in requestModeChange
-    }
-    
+
     private cleanupCurrentMode(): void {
         const currentModeType = this.currentMode.type;
-        
+
         // Always clear all highlights when changing modes
         this.clearAllHighlights();
-        
+
         // Run mode-specific cleanup if registered
         const cleanupHandler = this.cleanupHandlers.get(currentModeType);
         if (cleanupHandler) {
             cleanupHandler();
         }
     }
-    
+
     private clearAllHighlights(): void {
         this.dispatch(UpdateStateEvent.uiHighlights, {
             reachableCells: [],
@@ -92,11 +79,11 @@ export class InteractionModeManager extends EventBus<StateChangeEventsMap, Updat
             targetableCells: []
         });
     }
-    
+
     /**
      * Get the current interaction mode
      */
-    getCurrentMode(): InteractionMode {
+    getCurrentMode(): IInteractionMode {
         return this.currentMode;
     }
 }

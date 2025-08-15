@@ -20,7 +20,7 @@ export class Movement extends EventBus<
     private reachableCells?: ICoord[];
     // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     private listeners: Array<{ event: string; handler: Function }> = [];
-    private completedMovements = new Map<string, { path: ICoord[], finalDirection: string, fromNetwork?: boolean, paidCells: number }>();
+    private completedMovements = new Map<string, { path: ICoord[], finalDirection: Direction, fromNetwork?: boolean, paidCells: number }>();
     private modeManager: InteractionModeManager;
     private previewedDestination?: ICoord; // Track the currently previewed destination for mobile two-step
 
@@ -29,7 +29,7 @@ export class Movement extends EventBus<
     ) {
         super();
         this.modeManager = InteractionModeManager.getInstance();
-        
+
         // Register cleanup handler for movement mode
         this.modeManager.registerCleanupHandler('moving', () => {
             this.cleanupMovementMode();
@@ -59,14 +59,14 @@ export class Movement extends EventBus<
         this.remove(this);
         this.listeners = [];
     }
-    
+
     private cleanupMovementMode() {
         this.movingCharacter = undefined;
         this.reachableCells = undefined;
         this.previewedDestination = undefined;
         this.clearPathPreview();
     }
-    
+
     // Helper method to check if running on mobile
     private isMobileDevice(): boolean {
         // In tests, always return false to maintain existing behavior
@@ -75,7 +75,7 @@ export class Movement extends EventBus<
         }
         return window.innerWidth <= 768;
     }
-    
+
     // Get the current path cells being displayed
     private getCurrentPathCells(): readonly ICoord[] | undefined {
         const highlights = this.state.ui?.transientUI?.highlights;
@@ -86,14 +86,14 @@ export class Movement extends EventBus<
         if (!this.movingCharacter || !this.reachableCells) {
             return;
         }
-        
+
         const isReachable = this.reachableCells.find(c => c.x === position.x && c.y === position.y);
-        
+
         if (isReachable) {
             if (this.isMobileDevice()) {
                 // Mobile: Two-step interaction
-                if (this.previewedDestination && 
-                    this.previewedDestination.x === position.x && 
+                if (this.previewedDestination &&
+                    this.previewedDestination.x === position.x &&
                     this.previewedDestination.y === position.y) {
                     // Second tap on same cell - confirm movement
                     this.selectDestination(this.movingCharacter, this.reachableCells, position);
@@ -111,7 +111,7 @@ export class Movement extends EventBus<
             // Check if clicking on a path cell (mobile confirmation)
             const currentPath = this.getCurrentPathCells();
             const isOnPath = currentPath?.find(c => c.x === position.x && c.y === position.y);
-            
+
             if (isOnPath && this.isMobileDevice()) {
                 // Tapping on path confirms movement to previewed destination
                 this.selectDestination(this.movingCharacter, this.reachableCells, this.previewedDestination);
@@ -150,7 +150,7 @@ export class Movement extends EventBus<
             }
             return;
         }
-        
+
         // When a character path is set, create a movement animation
         if (character.path && character.path.length > 0) {
 
@@ -232,7 +232,7 @@ export class Movement extends EventBus<
         if (!fullCharacter) return;
 
         const moveCost = fullCharacter.actions.general.move;
-        
+
         // Only deduct if we haven't paid for all cells yet
         if (movementData.paidCells < movementData.path.length) {
             // Deduct for one cell
@@ -241,18 +241,18 @@ export class Movement extends EventBus<
                 actionId: 'move',
                 cost: moveCost
             });
-            
+
             // Increment the paid cells counter
             movementData.paidCells++;
         }
     }
-    
+
     private onShowMovement(characterName: ControlsEventsMap[ControlsEvent.showMovement]) {
         const character = this.state.findCharacter(characterName);
         if (!character) {
             return;
         }
-        
+
         // Check if character is defeated
         if (character.health <= 0) {
             return;
@@ -276,7 +276,7 @@ export class Movement extends EventBus<
                 if (character && pathData && pathData.path.length > 0) {
                     // Position has already been updated incrementally during movement
                     // Just update the final direction to ensure it's correct
-                    const finalDirection = pathData.finalDirection as Direction;
+                    const finalDirection = pathData.finalDirection;
 
                     // Only update direction if it's different from current
                     if (character.direction !== finalDirection) {
@@ -297,8 +297,8 @@ export class Movement extends EventBus<
     // Helpers
     private selectDestination(character: DeepReadonly<ICharacter>, _reachableCells: ICoord[], destination: ICoord) {
         const path = calculatePath(
-            character.position, 
-            destination, 
+            character.position,
+            destination,
             this.state.map,
             this.state.characters,
             character.name
@@ -332,20 +332,20 @@ export class Movement extends EventBus<
             this.movingCharacter = undefined;
             this.reachableCells = undefined;
         }
-        
+
         // Clear the character's path
         this.dispatch(UpdateStateEvent.characterPath, { ...character, path: [] });
-        
+
         // Clear any highlights
         this.dispatch(UpdateStateEvent.uiHighlights, {
             reachableCells: [],
             pathCells: []
         });
-        
+
         // Remove from completed movements tracking
         this.completedMovements.delete(character.name);
     }
-    
+
     private showMovement(character: DeepReadonly<ICharacter>) {
         // Always get fresh character data from state to ensure we have the latest position
         const freshCharacter = this.state.findCharacter(character.name);
@@ -359,8 +359,8 @@ export class Movement extends EventBus<
         const maxDistance = Math.floor(pointsLeft / moveCost);
 
         const reachableCells = getReachableCells(
-            freshCharacter.position, 
-            maxDistance, 
+            freshCharacter.position,
+            maxDistance,
             this.state.map,
             this.state.characters,
             freshCharacter.name
@@ -394,8 +394,8 @@ export class Movement extends EventBus<
 
         // Calculate path
         const path = calculatePath(
-            this.movingCharacter.position, 
-            destination, 
+            this.movingCharacter.position,
+            destination,
             this.state.map,
             this.state.characters,
             this.movingCharacter.name
@@ -444,7 +444,7 @@ export class Movement extends EventBus<
             }
             // Keep the last previewed direction - don't restore original
         }
-        
+
         // Clear path preview in UI state but keep reachable cells
         if (this.reachableCells) {
             this.dispatch(UpdateStateEvent.uiHighlights, {

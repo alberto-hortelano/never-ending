@@ -45,4 +45,9 @@ export class UIState {
     get ui(): DeepReadonly<IState['ui']> {
         return this.#ui;
     }
+
+    // Internal getter for mutable access
+    getInternalUI(): IState['ui'] {
+        return this.#ui;
+    }
 }

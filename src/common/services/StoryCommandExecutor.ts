@@ -1,9 +1,10 @@
 import { EventBus } from '../events/EventBus';
-import { UpdateStateEvent } from '../events';
+import { UpdateStateEvent, UpdateStateEventsMap } from '../events';
 import type { AICommand, MapCommand, StorylineCommand } from './AICommandParser';
-import type { ICharacter, IItem, IWeapon, IRoom } from '../interfaces';
+import type { ICharacter, IItem, IWeapon, IRoom, IDoor } from '../interfaces';
 import type { IStoryState } from '../interfaces/IStory';
 import { MapGenerator } from '../helpers/MapGenerator';
+import { DoorService } from './DoorService';
 import { weapons as availableWeapons, items as availableItems } from '../../data/state';
 
 export interface ItemSpawnCommand extends AICommand {
@@ -17,7 +18,7 @@ export interface ItemSpawnCommand extends AICommand {
     }>;
 }
 
-export class StoryCommandExecutor extends EventBus {
+export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
     private static instance: StoryCommandExecutor;
     
     private constructor() {
@@ -66,7 +67,12 @@ export class StoryCommandExecutor extends EventBus {
             const newMap = mapGen.getCells();
             
             // Update the map state
-            (this as any).dispatch(UpdateStateEvent.map, newMap);
+            this.dispatch(UpdateStateEvent.map, newMap);
+            
+            // Handle door generation if included in map command
+            if (command.doors && command.doors.length > 0) {
+                await this.generateDoorsFromMap(command.doors, newMap);
+            }
             
             // Handle character spawning if included in map command
             if (command.characters && command.characters.length > 0) {
@@ -86,7 +92,7 @@ export class StoryCommandExecutor extends EventBus {
     }
     
     /**
-     * Execute a storyline command - updates narrative state
+     * Execute a storyline command - updates narrative state and triggers action
      */
     public async executeStorylineCommand(command: StorylineCommand, storyState?: IStoryState): Promise<void> {
         console.log('[StoryExecutor] Executing storyline command:', command);
@@ -104,23 +110,63 @@ export class StoryCommandExecutor extends EventBus {
             
             // Update story state with new journal entry
             const currentEntries = storyState.journalEntries || [];
-            (this as any).dispatch(UpdateStateEvent.storyState, {
+            this.dispatch(UpdateStateEvent.storyState, {
                 journalEntries: [...currentEntries, journalEntry]
             });
         }
         
         // Display as message
-        (this as any).dispatch(UpdateStateEvent.updateMessages, [{
-            role: 'narrator',
+        this.dispatch(UpdateStateEvent.updateMessages, [{
+            role: 'assistant',
             content: command.content
         }]);
         
-        // Could trigger specific game events based on storyline
+        // Execute the required action
+        if (command.action) {
+            console.log(`[StoryExecutor] Triggering action: ${command.action}`);
+            
+            switch (command.action) {
+                case 'map':
+                    // Request new map generation from AI
+                    console.log('[StoryExecutor] Requesting new map generation');
+                    // This would trigger AI to generate a new map based on description
+                    break;
+                    
+                case 'character':
+                    // Spawn new characters
+                    if (command.actionData?.characters) {
+                        await this.spawnCharactersFromMap(command.actionData.characters, []);
+                    }
+                    break;
+                    
+                case 'movement':
+                    // Move existing characters
+                    if (command.actionData?.movements) {
+                        // Handle character movements
+                        console.log('[StoryExecutor] Processing character movements');
+                    }
+                    break;
+                    
+                case 'attack':
+                    // Initiate combat
+                    if (command.actionData?.combatants) {
+                        // Trigger combat between specified characters
+                        console.log('[StoryExecutor] Initiating combat');
+                    }
+                    break;
+                    
+                default:
+                    console.warn(`[StoryExecutor] Unknown action type: ${command.action}`);
+            }
+        } else {
+            console.warn('[StoryExecutor] Storyline command missing required action!');
+        }
+        
+        // Check for chapter transitions
         if (command.description) {
-            // Check for chapter transitions
             if (command.description.includes('chapter') || command.description.includes('capítulo')) {
                 const currentChapter = storyState?.currentChapter || 1;
-                (this as any).dispatch(UpdateStateEvent.storyState, {
+                this.dispatch(UpdateStateEvent.storyState, {
                     currentChapter: currentChapter + 1
                 });
             }
@@ -191,7 +237,7 @@ export class StoryCommandExecutor extends EventBus {
                         equippedWeapons: { primary: null, secondary: null }
                     };
                     
-                    (this as any).dispatch(UpdateStateEvent.updateInventory, {
+                    this.dispatch(UpdateStateEvent.updateInventory, {
                         characterName: location.character.name,
                         inventory: {
                             ...currentInventory,
@@ -209,6 +255,74 @@ export class StoryCommandExecutor extends EventBus {
             } catch (error) {
                 console.error(`[StoryExecutor] Error spawning item ${itemData.name}:`, error);
             }
+        }
+    }
+    
+    /**
+     * Generate doors from AI map command
+     */
+    private async generateDoorsFromMap(doors: any[], map: any): Promise<void> {
+        const doorService = DoorService.getInstance();
+        const generatedDoors: Record<string, IDoor> = {};
+        
+        for (const doorData of doors) {
+            try {
+                let door: IDoor;
+                
+                if (doorData.type === 'transition') {
+                    // Create transition door
+                    door = doorService.createTransitionDoor(
+                        doorData.position,
+                        doorData.side,
+                        doorData.transition?.description || 'Una puerta misteriosa',
+                        doorData.transition?.targetMap
+                    );
+                } else if (doorData.type === 'locked') {
+                    // Create locked door
+                    door = doorService.createDoorBetweenRooms(
+                        doorData.position,
+                        doorData.targetPosition || { x: doorData.position.x, y: doorData.position.y + 1 },
+                        true
+                    );
+                    if (doorData.keyRequired) {
+                        door.keyRequired = doorData.keyRequired;
+                    }
+                } else {
+                    // Create regular door
+                    door = doorService.createDoorBetweenRooms(
+                        doorData.position,
+                        doorData.targetPosition || { x: doorData.position.x, y: doorData.position.y + 1 },
+                        false
+                    );
+                }
+                
+                // Override side if specified
+                if (doorData.side) {
+                    door.side = doorData.side;
+                }
+                
+                // Add door to collection
+                generatedDoors[door.id] = door;
+                
+                // Update the cell to include door reference
+                const cellY = doorData.position.y;
+                const cellX = doorData.position.x;
+                if (map[cellY] && map[cellY][cellX]) {
+                    if (!map[cellY][cellX].doors) {
+                        map[cellY][cellX].doors = [];
+                    }
+                    map[cellY][cellX].doors.push(door);
+                }
+                
+                console.log(`[StoryExecutor] Generated door ${door.id} at position`, doorData.position);
+            } catch (error) {
+                console.error(`[StoryExecutor] Error generating door:`, error);
+            }
+        }
+        
+        // Dispatch doors state update
+        if (Object.keys(generatedDoors).length > 0) {
+            this.dispatch(UpdateStateEvent.doors, generatedDoors);
         }
     }
     
@@ -249,8 +363,8 @@ export class StoryCommandExecutor extends EventBus {
                     }
                 };
                 
-                // Add character to game
-                (this as any).dispatch(UpdateStateEvent.addCharacter, newCharacter);
+                // Add character to game (we know name and position are set)
+                this.dispatch(UpdateStateEvent.addCharacter, newCharacter as Partial<ICharacter> & { name: string; position: { x: number; y: number } });
                 
                 console.log(`[StoryExecutor] Spawned character ${charData.name} at`, position);
             } catch (error) {
