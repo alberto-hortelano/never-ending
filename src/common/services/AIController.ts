@@ -626,125 +626,142 @@ export class AIController extends EventBus<
             return;
         }
         
-        // Enter movement mode first to get reachable cells
-        this.dispatch(ControlsEvent.showMovement, character.name);
+        // For AI characters, calculate the full path directly without entering movement mode
+        const path = calculatePath(
+            character.position,
+            targetLocation,
+            this.state!.map,
+            this.state!.characters,
+            character.name
+        );
         
-        // Wait for Movement system to set up, then find best reachable position
-        await new Promise<void>(resolve => {
-            setTimeout(async () => {
-            // Get reachable cells from highlights in UI state
-            const highlights = this.state?.ui?.transientUI?.highlights;
-            const reachableCells = highlights?.reachableCells || [];
+        if (path.length === 0) {
+            console.log('[AI] No path to target found');
             
-            if (reachableCells.length === 0) {
-                this.endAITurn();
-                return;
-            }
+            // Detect what's blocking the path
+            const blockage = this.detectBlockingEntity(character.position, targetLocation);
             
-            // Use smart pathfinding to find the best cell
-            // Convert readonly array to regular array for the function
-            const mutableReachableCells = [...reachableCells];
-            const bestCell = this.findBestMovementCell(mutableReachableCells, targetLocation, character);
-            
-            if (!bestCell) {
-                console.log('[AI] No path to target found from any reachable cell');
+            if (blockage.type === 'character' && blockage.character && this.state) {
+                const isAlly = TeamService.areAllied(character, blockage.character, this.state.game.teams);
+                console.log(`[AI] Path blocked by ${isAlly ? 'ally' : 'enemy'}: ${blockage.character.name} (health: ${blockage.character.health})`);
                 
-                // Detect what's blocking the path
-                const blockage = this.detectBlockingEntity(character.position, targetLocation);
+                // Request new AI instructions with context about the blockage
+                const blockageContext = {
+                    blocked: true,
+                    blockingCharacter: {
+                        name: blockage.character.name,
+                        isAlly: isAlly,
+                        health: blockage.character.health,
+                        maxHealth: blockage.character.maxHealth,
+                        position: blockage.character.position,
+                        distance: this.getDistance(character.position, blockage.character.position)
+                    },
+                    originalTarget: targetChar?.name || 'location',
+                    message: `Cannot reach ${targetChar?.name || 'target location'} - ${blockage.character.name} is blocking the path.`
+                };
                 
-                if (blockage.type === 'character' && blockage.character && this.state) {
-                    const isAlly = TeamService.areAllied(character, blockage.character, this.state.game.teams);
-                    console.log(`[AI] Path blocked by ${isAlly ? 'ally' : 'enemy'}: ${blockage.character.name} (health: ${blockage.character.health})`);
-                    
-                    // Request new AI instructions with context about the blockage
-                    const blockageContext = {
-                        blocked: true,
-                        blockingCharacter: {
-                            name: blockage.character.name,
-                            isAlly: isAlly,
-                            health: blockage.character.health,
-                            maxHealth: blockage.character.maxHealth,
-                            position: blockage.character.position,
-                            distance: this.getDistance(character.position, blockage.character.position)
-                        },
-                        originalTarget: targetChar?.name || 'location',
-                        message: `Cannot reach ${targetChar?.name || 'target location'} - ${blockage.character.name} is blocking the path.`
-                    };
-                    
-                    // Build special context and request new action from AI
-                    if (!this.contextBuilder) {
-                        console.log('[AI] No context builder available');
-                        if (!this.isProcessingMultipleCharacters) {
-                            this.endAITurn();
-                        }
-                        resolve();
-                        return;
+                // Build special context and request new action from AI
+                if (!this.contextBuilder) {
+                    console.log('[AI] No context builder available');
+                    if (!this.isProcessingMultipleCharacters) {
+                        this.endAITurn();
                     }
-                    
-                    const context = this.contextBuilder.buildTurnContext(character, this.state);
-                    (context as any).blockageInfo = blockageContext;
-                    
-                    console.log('[AI] Requesting new instructions due to blocked path');
-                    const response = await this.gameEngineService.requestAIAction(context);
-                    
-                    if (response.command) {
-                        const validatedCommand = this.commandParser.validate(response.command);
-                        if (validatedCommand) {
-                            console.log(`[AI] New action after blockage: ${validatedCommand.type}`);
-                            await this.executeAICommand(validatedCommand, character);
-                            resolve();
-                            return;
-                        }
-                    }
-                } else if (blockage.type === 'wall') {
-                    console.log('[AI] Path blocked by wall/obstacle');
-                    // Could request alternative strategy here
-                }
-                
-                // If no alternative found, end turn
-                if (!this.isProcessingMultipleCharacters) {
-                    this.endAITurn();
-                }
-                resolve();
-                return;
-            }
-            
-            console.log(`[AI] Moving to optimal cell using pathfinding`);
-            this.dispatch(ControlsEvent.cellClick, { x: bestCell.x, y: bestCell.y });
-            
-            // After another delay, check if we need to execute pending speech
-            const timeoutId = setTimeout(async () => {
-                // Don't do anything if we're processing multiple characters
-                if (this.isProcessingMultipleCharacters) {
                     return;
                 }
-                // Check if we're still in AI turn (movement might have changed it)
-                if (this.state && this.state.game.turn === character.player) {
-                    // Check if we have a pending speech command and are now close enough
-                    const pendingSpeech = this.pendingSpeechCommands.get(character.name);
-                    if (pendingSpeech) {
-                        const newDistance = this.getDistance(character.position, targetLocation);
-                        const viewDistance = 15; // Standard view distance
-                        const hasLineOfSight = this.checkLineOfSight(character.position, targetLocation);
-                        
-                        // Check if within speaking range, view range, and has line of sight
-                        if (newDistance <= 8 && newDistance <= viewDistance && hasLineOfSight) {
-                            this.pendingSpeechCommands.delete(character.name);
-                            await this.executeSpeech(pendingSpeech, character);
-                            return;
-                        }
+                
+                const context = this.contextBuilder.buildTurnContext(character, this.state);
+                (context as any).blockageInfo = blockageContext;
+                
+                console.log('[AI] Requesting new instructions due to blocked path');
+                const response = await this.gameEngineService.requestAIAction(context);
+                
+                if (response.command) {
+                    const validatedCommand = this.commandParser.validate(response.command);
+                    if (validatedCommand) {
+                        console.log(`[AI] New action after blockage: ${validatedCommand.type}`);
+                        await this.executeAICommand(validatedCommand, character);
+                        return;
                     }
-                    this.endAITurn();
                 }
-            }, 1000);
+            } else if (blockage.type === 'wall') {
+                console.log('[AI] Path blocked by wall/obstacle');
+            }
             
-            // Store timeout so we can cancel it if needed
-            this.movementTimeouts.push(timeoutId);
-            
-            // Resolve the promise after setting up the timeout
-            resolve();
-        }, 750); // Slightly longer delay to ensure Movement system is ready
+            // If no alternative found, end turn
+            if (!this.isProcessingMultipleCharacters) {
+                this.endAITurn();
+            }
+            return;
+        }
+        
+        // Calculate how many cells we can move based on action points
+        const moveCost = character.actions.general.move;
+        const pointsLeft = character.actions.pointsLeft;
+        const maxCellsToMove = Math.floor(pointsLeft / moveCost);
+        
+        // Move as far as we can toward the target (up to maxCellsToMove cells)
+        const cellsToMove = Math.min(path.length, maxCellsToMove);
+        
+        if (cellsToMove === 0) {
+            console.log('[AI] Not enough action points to move');
+            if (!this.isProcessingMultipleCharacters) {
+                this.endAITurn();
+            }
+            return;
+        }
+        
+        // Get the destination cell (either the target or as far as we can go)
+        const moveToIndex = cellsToMove - 1; // -1 because array is 0-indexed
+        const moveToDest = path[moveToIndex];
+        
+        console.log(`[AI] Moving ${cellsToMove} cells toward target (${path.length} total cells to target)`);
+        
+        // Directly set the character's path to move them
+        // This will trigger the animation system to move the character
+        const pathToMove = path.slice(0, cellsToMove);
+        this.dispatch(UpdateStateEvent.characterPath, { 
+            ...character, 
+            path: pathToMove 
         });
+        
+        // After movement completes, check if we need to execute pending speech or continue moving
+        const timeoutId = setTimeout(async () => {
+            // Don't do anything if we're processing multiple characters
+            if (this.isProcessingMultipleCharacters) {
+                return;
+            }
+            
+            // Check if we're still in AI turn (movement might have changed it)
+            if (this.state && this.state.game.turn === character.player) {
+                // Check if we have a pending speech command and are now close enough
+                const pendingSpeech = this.pendingSpeechCommands.get(character.name);
+                if (pendingSpeech && moveToDest) {
+                    const newDistance = this.getDistance(moveToDest, targetLocation);
+                    const viewDistance = 15; // Standard view distance
+                    // For conversations, ignore characters blocking - only walls should block speech
+                    const hasLineOfSight = this.checkLineOfSight(moveToDest, targetLocation, true);
+                    
+                    // Check if within speaking range, view range, and has line of sight
+                    if (newDistance <= 8 && newDistance <= viewDistance && hasLineOfSight) {
+                        this.pendingSpeechCommands.delete(character.name);
+                        await this.executeSpeech(pendingSpeech, character);
+                        return;
+                    }
+                }
+                
+                // If we haven't reached the target and still have action points, continue in next loop
+                if (cellsToMove < path.length) {
+                    console.log('[AI] Will continue movement in next action loop');
+                    // ongoingMovement is already set, so next loop will continue
+                } else {
+                    console.log('[AI] Reached destination');
+                    this.ongoingMovement = undefined;
+                }
+            }
+        }, 1500); // Wait for movement animation to complete
+        
+        // Store timeout so we can cancel it if needed
+        this.movementTimeouts.push(timeoutId);
     }
 
     private async executeAttack(command: AICommand, character: DeepReadonly<ICharacter>): Promise<void> {
@@ -910,51 +927,60 @@ export class AIController extends EventBus<
     }
     
     /**
-     * Find the best reachable cell to move to using actual pathfinding
-     * Returns null if no path to target exists from any reachable cell
+     * Find positions within conversation range that have line of sight to the target
+     * This is used when an AI character wants to speak but is blocked by walls
      */
-    private findBestMovementCell(
-        reachableCells: ICoord[], 
-        targetLocation: ICoord, 
-        character: DeepReadonly<ICharacter>
-    ): ICoord | null {
-        if (!this.state || reachableCells.length === 0) return null;
+    private findPositionsWithLineOfSight(
+        from: ICoord, 
+        target: ICoord, 
+        maxDistance: number = 8
+    ): ICoord[] {
+        if (!this.state) return [];
         
-        let bestCell: ICoord | null = null;
-        let shortestTotalPath = Infinity;
+        const positions: ICoord[] = [];
+        const map = this.state.map;
         
-        for (const cell of reachableCells) {
-            // Calculate path from this reachable cell to the target
-            const pathToTarget = calculatePath(
-                cell,
-                targetLocation,
-                this.state.map,
-                this.state.characters,
-                character.name
-            );
-            
-            // If there's a path from this cell to the target
-            if (pathToTarget.length > 0) {
-                // Total path length is: current->cell + cell->target
-                const pathToCell = calculatePath(
-                    character.position,
-                    cell,
-                    this.state.map,
-                    this.state.characters,
-                    character.name
+        // Search in a square around the target within maxDistance
+        const searchRadius = Math.ceil(maxDistance);
+        for (let dy = -searchRadius; dy <= searchRadius; dy++) {
+            for (let dx = -searchRadius; dx <= searchRadius; dx++) {
+                const x = Math.round(target.x) + dx;
+                const y = Math.round(target.y) + dy;
+                
+                // Check if position is valid and within range
+                const testPos = { x, y };
+                const distance = this.getDistance(testPos, target);
+                if (distance > maxDistance) continue;
+                
+                // Check if the cell is walkable
+                const cell = map[y]?.[x];
+                if (!cell || cell.content?.blocker) continue;
+                
+                // Check if there's a character already there
+                const occupied = this.state.characters.some(c => 
+                    Math.round(c.position.x) === x && 
+                    Math.round(c.position.y) === y &&
+                    c.health > 0
                 );
+                if (occupied) continue;
                 
-                const totalPathLength = pathToCell.length + pathToTarget.length;
-                
-                if (totalPathLength < shortestTotalPath) {
-                    shortestTotalPath = totalPathLength;
-                    bestCell = cell;
+                // Check if this position has line of sight to target (ignoring characters)
+                if (this.checkLineOfSight(testPos, target, true)) {
+                    positions.push(testPos);
                 }
             }
         }
         
-        return bestCell;
+        // Sort by distance from the character's current position
+        positions.sort((a, b) => {
+            const distA = this.getDistance(from, a);
+            const distB = this.getDistance(from, b);
+            return distA - distB;
+        });
+        
+        return positions;
     }
+    
     
     /**
      * Detect what's blocking the path between two positions
@@ -1165,12 +1191,33 @@ export class AIController extends EventBus<
                               'too far to speak';
                 console.log(`[AI]   → Cannot speak (${reason}), moving closer`);
                 
+                // If blocked by walls, find a position with line of sight
+                let targetLocation = nearestHuman.name;
+                if (!hasLineOfSight) {
+                    const goodPositions = this.findPositionsWithLineOfSight(
+                        speaker.position, 
+                        nearestHuman.position, 
+                        8  // conversation range
+                    );
+                    
+                    if (goodPositions.length > 0) {
+                        // Use the closest position with line of sight as the target
+                        const bestPos = goodPositions[0];
+                        if (bestPos) {
+                            targetLocation = `${bestPos.x},${bestPos.y}`;
+                            console.log(`[AI]   → Found position with line of sight at ${targetLocation}`);
+                        }
+                    } else {
+                        console.log(`[AI]   → No positions with line of sight found, moving directly toward target`);
+                    }
+                }
+                
                 // Execute a movement command to get closer
                 const moveCommand: AICommand = {
                     type: 'movement',
                     characters: [{
                         name: character.name,
-                        location: nearestHuman.name  // Move toward the nearest human character
+                        location: targetLocation
                     }]
                 };
                 
