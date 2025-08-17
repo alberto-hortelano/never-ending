@@ -18,3 +18,4 @@ export { default as BottomBar } from './bottombar/BottomBar';
 export * from './defensewheel/DefenseWheel';
 export * from './originselection/OriginSelection';
 export * from './storyjournal/StoryJournal';
+export * from './loadingscreen/LoadingScreen';

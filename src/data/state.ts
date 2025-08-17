@@ -1,4 +1,4 @@
-import { IState, ICharacter, IMessage, IItem, IWeapon, IInventory, IGame, IDoor } from "../common/interfaces";
+import { IState, ICharacter, IMessage, IItem, IWeapon, IInventory, IGame, IDoor, ICell } from "../common/interfaces";
 import { MapGenerator } from "../common/helpers/MapGenerator";
 import { positionCharacters } from "../common/helpers/map";
 import { TeamService } from "../common/services/TeamService";
@@ -401,3 +401,85 @@ export const initialState = (x: number, y: number, playerData: Partial<ICharacte
 }
 
 export const getBaseState = () => initialState(40, 50, player, [data, enemy]);
+
+/**
+ * Creates an empty state for AI-driven games
+ * Only includes the player and Data, no map or other characters
+ * The AI will populate everything else
+ */
+export const getEmptyState = (): IState => {
+    const game: IGame = {
+        turn: 'human',
+        players: ['human', 'ai'],
+        playerInfo: {
+            'human': { name: 'Player', isAI: false },
+            'ai': { name: 'AI', isAI: true }
+        },
+        teams: TeamService.createSinglePlayerTeams()
+    };
+    
+    // Create minimal characters - just player and Data
+    const minimalPlayer: ICharacter = {
+        ...baseCharacter,
+        ...player,
+        name: 'player',
+        position: { x: 10, y: 10 }, // Start position that will likely be in a room
+    } as ICharacter;
+    
+    const minimalData: ICharacter = {
+        ...baseCharacter,
+        ...data,
+        name: 'Data',
+        position: { x: 11, y: 10 }, // Next to player
+    } as ICharacter;
+    
+    // Create an empty 50x50 map with just floor tiles
+    const emptyMap: ICell[][] = [];
+    for (let y = 0; y < 50; y++) {
+        emptyMap[y] = [];
+        for (let x = 0; x < 50; x++) {
+            emptyMap[y]![x] = {
+                position: { x, y },
+                locations: ['floor'], // Just basic floor
+                elements: [],
+                content: null
+            };
+        }
+    }
+    
+    const initialState: IState = {
+        game,
+        map: emptyMap,
+        characters: [minimalPlayer, minimalData],
+        messages: [],
+        overwatchData: {},
+        ui: {
+            animations: {
+                characters: {}
+            },
+            visualStates: {
+                characters: {},
+                cells: {},
+                board: {
+                    mapWidth: 50,
+                    mapHeight: 50,
+                    hasPopupActive: false
+                }
+            },
+            transientUI: {
+                highlights: {
+                    reachableCells: [],
+                    pathCells: [],
+                    targetableCells: []
+                },
+                popups: {},
+                projectiles: []
+            },
+            interactionMode: {
+                type: 'normal'
+            }
+        }
+    };
+    
+    return initialState;
+};

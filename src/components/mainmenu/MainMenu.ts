@@ -31,9 +31,19 @@ export class MainMenu extends Component {
         });
         
         // Listen for origin selection
-        this.listen(ControlsEvent.selectOrigin, (_origin) => {
-            // Origin selected, start the game
-            this.multiplayerManager.switchToSinglePlayer();
+        this.listen(ControlsEvent.selectOrigin, (origin) => {
+            console.log('[MainMenu] Received origin selection:', origin?.id, origin?.name);
+            console.log('[MainMenu] Origin has story data:', {
+                hasOrigin: !!origin,
+                originName: origin?.nameES,
+                startingLocation: origin?.startingLocation
+            });
+            
+            // Origin selected, start the game with the origin data
+            console.log('[MainMenu] Calling multiplayerManager.switchToSinglePlayer() with origin data');
+            this.multiplayerManager.switchToSinglePlayer(origin);
+            
+            console.log('[MainMenu] Dispatching startSinglePlayer event');
             this.dispatch('startSinglePlayer', {});
             this.style.display = 'none';
         });

@@ -18,6 +18,7 @@ import { TacticalExecutor, TacticalDirective } from './TacticalExecutor';
 import { CombatStances } from './CombatStances';
 import { StoryCommandExecutor } from './StoryCommandExecutor';
 import { ICharacter, ICoord, Direction } from '../interfaces';
+import type { IOriginStory, IStoryState } from '../interfaces/IStory';
 import { DeepReadonly } from '../helpers/types';
 import { calculatePath } from '../helpers/map';
 import { TeamService } from './TeamService';
@@ -69,6 +70,23 @@ export class AIController extends EventBus<
             AIController.instance = new AIController();
         }
         return AIController.instance;
+    }
+    
+    /**
+     * Maps AI direction values to game direction values
+     */
+    private mapDirection(direction: string): Direction {
+        const directionMap: { [key: string]: Direction } = {
+            'top': 'up',
+            'bottom': 'down',
+            'left': 'left',
+            'right': 'right',
+            'top-left': 'up-left',
+            'top-right': 'up-right',
+            'bottom-left': 'down-left',
+            'bottom-right': 'down-right'
+        };
+        return (directionMap[direction] || direction) as Direction;
     }
 
     public setGameState(state: State): void {
@@ -1331,7 +1349,7 @@ export class AIController extends EventBus<
                 position: spawnLocation,
                 x: spawnLocation.x,
                 y: spawnLocation.y,
-                direction: (charData.orientation || 'bottom') as Direction,
+                direction: this.mapDirection(charData.orientation || 'down'),
                 speed: charData.speed || 'medium',
                 player: this.state.game.turn, // Assign to current AI player
                 health: 100,
@@ -1513,5 +1531,168 @@ export class AIController extends EventBus<
     public disableTacticalSystem(): void {
         this.useTacticalSystem = false;
         console.log('[AI] Tactical system DISABLED - will always use AI endpoint for all decisions');
+    }
+    
+    /**
+     * Initialize the story when starting single player mode with an origin
+     * Requests the AI to generate initial map, characters, and narrative setup
+     */
+    public async initializeStoryFromOrigin(): Promise<void> {
+        console.log('[AI] initializeStoryFromOrigin called');
+        
+        if (!this.state) {
+            console.error('[AI] Cannot initialize story - no state available');
+            return;
+        }
+        
+        console.log('[AI] State exists, checking story...');
+        const storyState = this.state.story;
+        console.log('[AI] Story state:', {
+            hasStory: !!storyState,
+            hasSelectedOrigin: !!storyState?.selectedOrigin,
+            originName: storyState?.selectedOrigin?.name
+        });
+        
+        if (!storyState?.selectedOrigin) {
+            console.error('[AI] Cannot initialize story - no origin selected');
+            console.error('[AI] Full story state:', storyState);
+            return;
+        }
+        
+        console.log('[AI] Initializing story from origin:', storyState.selectedOrigin.name);
+        console.log('[AI] Origin details:', {
+            id: storyState.selectedOrigin.id,
+            nameES: storyState.selectedOrigin.nameES,
+            startingLocation: storyState.selectedOrigin.startingLocation,
+            traits: storyState.selectedOrigin.specialTraits
+        });
+        
+        try {
+            // Create a non-readonly copy of the origin for the API call
+            const originCopy: IOriginStory = {
+                id: storyState.selectedOrigin.id,
+                name: storyState.selectedOrigin.name,
+                nameES: storyState.selectedOrigin.nameES,
+                description: storyState.selectedOrigin.description,
+                descriptionES: storyState.selectedOrigin.descriptionES,
+                startingLocation: storyState.selectedOrigin.startingLocation,
+                startingCompanion: storyState.selectedOrigin.startingCompanion ? {
+                    name: storyState.selectedOrigin.startingCompanion.name,
+                    type: storyState.selectedOrigin.startingCompanion.type,
+                    description: storyState.selectedOrigin.startingCompanion.description
+                } : undefined,
+                initialInventory: [...storyState.selectedOrigin.initialInventory],
+                factionRelations: { ...storyState.selectedOrigin.factionRelations },
+                specialTraits: [...storyState.selectedOrigin.specialTraits],
+                narrativeHooks: [...storyState.selectedOrigin.narrativeHooks]
+            };
+            
+            // Create a non-readonly copy of the story state
+            const storyStateCopy: IStoryState = {
+                selectedOrigin: originCopy,
+                currentChapter: storyState.currentChapter,
+                completedMissions: [...storyState.completedMissions],
+                majorDecisions: storyState.majorDecisions.map(d => ({
+                    id: d.id,
+                    missionId: d.missionId,
+                    choice: d.choice,
+                    consequences: [...d.consequences],
+                    timestamp: d.timestamp
+                })),
+                factionReputation: { ...storyState.factionReputation },
+                // Use the origin's special traits as the initial story flags
+                storyFlags: new Set<string>(originCopy.specialTraits),
+                journalEntries: storyState.journalEntries.map(j => ({ ...j }))
+            };
+            
+            // Request story initialization from AI
+            console.log('[AI] Calling AIGameEngineService.requestStoryInitialization...');
+            const response = await this.gameEngineService.requestStoryInitialization(
+                originCopy,
+                storyStateCopy
+            );
+            
+            console.log('[AI] Response received:', {
+                hasResponse: !!response,
+                hasCommands: !!response?.commands,
+                commandCount: response?.commands?.length || 0,
+                hasNarrative: !!response?.narrative
+            });
+            
+            if (!response) {
+                console.error('[AI] Failed to get story initialization response');
+                return;
+            }
+            
+            // Execute the initialization commands
+            // These should include map generation, character spawning, and initial narrative
+            if (response.commands && Array.isArray(response.commands)) {
+                console.log('[AI] Executing story initialization commands:', response.commands.length);
+                
+                for (const command of response.commands) {
+                    const validatedCommand = this.commandParser.validate(command);
+                    if (validatedCommand) {
+                        console.log('[AI] Executing initialization command:', validatedCommand.type);
+                        
+                        // Execute commands without a specific character context
+                        // These are story-level commands like map generation
+                        // Pass an empty character for story-level commands
+                        const emptyCharacter: DeepReadonly<ICharacter> = {
+                            name: '',
+                            player: '',
+                            position: { x: 0, y: 0 },
+                            direction: 'down' as Direction,
+                            health: 0,
+                            maxHealth: 0,
+                            palette: { skin: '', helmet: '', suit: '' },
+                            race: 'human',
+                            description: '',
+                            action: 'idle',
+                            actions: {
+                                pointsLeft: 0,
+                                general: { move: 0, talk: 0, use: 0, inventory: 0 },
+                                rangedCombat: { shoot: 0, aim: 0, overwatch: 0, cover: 0, throw: 0 },
+                                closeCombat: { powerStrike: 0, slash: 0, fastAttack: 0, feint: 0, breakGuard: 0 }
+                            },
+                            path: [],
+                            location: '',
+                            blocker: true,
+                            inventory: {
+                                items: [],
+                                maxWeight: 0,
+                                equippedWeapons: {
+                                    primary: null,
+                                    secondary: null
+                                }
+                            }
+                        };
+                        await this.executeAICommand(validatedCommand, emptyCharacter);
+                        
+                        // Small delay between commands for stability
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    } else {
+                        console.warn('[AI] Invalid initialization command:', command);
+                    }
+                }
+            }
+            
+            // If there's an initial narrative message, display it
+            if (response.narrative) {
+                console.log('[AI] Initial narrative received:', response.narrative);
+                // This could be shown via a popup or conversation system
+                // For now, just log it
+            } else {
+                console.log('[AI] No narrative text in response');
+            }
+            
+            console.log('[AI] Story initialization complete');
+            
+        } catch (error) {
+            console.error('[AI] Error initializing story:', error);
+            console.error('[AI] Error details:', {
+                message: (error as Error).message,
+                stack: (error as Error).stack
+            });
+        }
     }
 }

@@ -1,7 +1,7 @@
 import { EventBus } from '../events/EventBus';
 import { UpdateStateEvent, UpdateStateEventsMap } from '../events';
 import type { AICommand, MapCommand, StorylineCommand } from './AICommandParser';
-import type { ICharacter, IItem, IWeapon, IRoom, IDoor } from '../interfaces';
+import type { ICharacter, IItem, IWeapon, IRoom, IDoor, Direction } from '../interfaces';
 import type { IStoryState } from '../interfaces/IStory';
 import { MapGenerator } from '../helpers/MapGenerator';
 import { DoorService } from './DoorService';
@@ -33,11 +33,41 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
     }
     
     /**
+     * Maps AI direction values to game direction values
+     */
+    private mapDirection(direction: string): string {
+        const directionMap: { [key: string]: string } = {
+            'top': 'up',
+            'bottom': 'down',
+            'left': 'left',
+            'right': 'right',
+            'top-left': 'up-left',
+            'top-right': 'up-right',
+            'bottom-left': 'down-left',
+            'bottom-right': 'down-right'
+        };
+        return directionMap[direction] || direction;
+    }
+    
+    /**
      * Execute a map generation command from AI
      * This replaces the current map with a new one
      */
     public async executeMapCommand(command: MapCommand, _storyState?: IStoryState): Promise<void> {
-        console.log('[StoryExecutor] Executing map command:', command);
+        console.log('[StoryExecutor] Executing map command');
+        console.log('[StoryExecutor] Map command details:', {
+            hasPalette: !!command.palette,
+            buildingCount: command.buildings?.length || 0,
+            doorCount: command.doors?.length || 0,
+            characterCount: command.characters?.length || 0
+        });
+        
+        if (command.buildings) {
+            console.log('[StoryExecutor] Buildings to generate:', command.buildings.map(b => ({
+                name: b.name,
+                roomCount: b.rooms?.length || 0
+            })));
+        }
         
         try {
             // Convert AI building data to rooms for map generator
@@ -69,6 +99,46 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
             // Update the map state
             this.dispatch(UpdateStateEvent.map, newMap);
             
+            // Player and Data already exist in state from getEmptyState()
+            // but their positions (10,10 and 11,10) might be in walls after map generation
+            // The best approach is to remove them first, then re-add them with valid positions
+            
+            // First, remove the existing player and Data
+            this.dispatch(UpdateStateEvent.removeCharacter, { characterName: 'player' });
+            this.dispatch(UpdateStateEvent.removeCharacter, { characterName: 'Data' });
+            console.log('[StoryExecutor] Removed existing player and Data to reposition them');
+            
+            // Now add them back with valid positions in the first room
+            const firstRoomName = rooms.length > 0 ? rooms[0]!.name : 'floor';
+            
+            // Prepend player and Data to the characters list for spawning
+            if (!command.characters) {
+                command.characters = [];
+            }
+            
+            // Add player and Data at the beginning of the character list
+            // They'll be spawned with proper positions based on the room
+            // Using 'any' type to include custom fields
+            const playerChar: any = {
+                name: 'player',
+                location: firstRoomName,
+                race: 'human',
+                player: 'human',  // Mark as human-controlled
+                team: 'player'
+            };
+            
+            const dataChar: any = {
+                name: 'Data',
+                location: firstRoomName,
+                race: 'synth',
+                player: 'human',  // Also controlled by human player
+                team: 'player'
+            };
+            
+            command.characters.unshift(playerChar, dataChar);
+            
+            console.log('[StoryExecutor] Added player and Data to spawn list for room:', firstRoomName);
+            
             // Handle door generation if included in map command
             if (command.doors && command.doors.length > 0) {
                 await this.generateDoorsFromMap(command.doors, newMap);
@@ -85,9 +155,13 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                 console.log('[StoryExecutor] Setting terrain color:', command.palette.terrain);
             }
             
-            console.log('[StoryExecutor] Map generation complete');
+            console.log('[StoryExecutor] Map generation complete - map updated');
         } catch (error) {
             console.error('[StoryExecutor] Error executing map command:', error);
+            console.error('[StoryExecutor] Error details:', {
+                message: (error as Error).message,
+                stack: (error as Error).stack
+            });
         }
     }
     
@@ -95,7 +169,13 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
      * Execute a storyline command - updates narrative state and triggers action
      */
     public async executeStorylineCommand(command: StorylineCommand, storyState?: IStoryState): Promise<void> {
-        console.log('[StoryExecutor] Executing storyline command:', command);
+        console.log('[StoryExecutor] Executing storyline command');
+        console.log('[StoryExecutor] Storyline details:', {
+            hasTitle: !!command.storyline?.title,
+            hasDescription: !!command.storyline?.description,
+            objectiveCount: command.storyline?.objectives?.length || 0,
+            triggerAction: command.trigger_action
+        });
         
         // Add to journal
         if (storyState) {
@@ -177,7 +257,8 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
      * Spawn items or weapons at locations
      */
     public async executeItemSpawnCommand(command: ItemSpawnCommand): Promise<void> {
-        console.log('[StoryExecutor] Executing item spawn command:', command);
+        console.log('[StoryExecutor] Executing item spawn command');
+        console.log('[StoryExecutor] Items to spawn:', command.items?.length || 0);
         
         for (const itemData of command.items) {
             try {
@@ -256,12 +337,21 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                 console.error(`[StoryExecutor] Error spawning item ${itemData.name}:`, error);
             }
         }
+        
+        console.log('[StoryExecutor] Item spawn command completed');
     }
     
     /**
      * Generate doors from AI map command
      */
     private async generateDoorsFromMap(doors: any[], map: any): Promise<void> {
+        console.log(`[StoryExecutor] Generating ${doors.length} doors...`);
+        console.log('[StoryExecutor] Door positions:', doors.map(d => ({
+            position: d.position,
+            type: d.type,
+            locked: d.locked
+        })));
+        
         const doorService = DoorService.getInstance();
         const generatedDoors: Record<string, IDoor> = {};
         
@@ -330,6 +420,16 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
      * Spawn characters as part of map generation
      */
     private async spawnCharactersFromMap(characters: any[], map: any): Promise<void> {
+        console.log(`[StoryExecutor] Spawning ${characters.length} characters...`);
+        console.log('[StoryExecutor] Characters to spawn:', characters.map(c => ({
+            name: c.name,
+            race: c.race,
+            location: c.location
+        })));
+        
+        // Check if player and Data already exist before spawning
+        console.log('[StoryExecutor] Note: player and Data should already exist in state from getEmptyState()');
+        
         for (const charData of characters) {
             try {
                 // Find spawn position based on location description
@@ -346,9 +446,9 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                     race: charData.race || 'human',
                     description: charData.description || '',
                     position: position,
-                    direction: charData.orientation || 'bottom',
-                    player: 'ai', // NPCs are AI-controlled
-                    team: this.determineTeam(charData),
+                    direction: this.mapDirection(charData.orientation || 'down') as Direction,
+                    player: charData.player || 'ai', // Use provided player value or default to AI
+                    team: charData.team || this.determineTeam(charData), // Use provided team or determine it
                     health: 100,
                     maxHealth: 100,
                     palette: charData.palette || {
@@ -378,9 +478,51 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
      */
     private findSpawnPosition(location: string, map: any): { x: number, y: number } | null {
         // Parse location string
-        // Could be: "room name", "near character", "x,y coordinates", etc.
+        // Could be: "room name", "near character", "x,y coordinates", "center", "near_player", etc.
         
-        // Try coordinates first
+        // Handle special cases
+        if (location === 'center') {
+            // Find a walkable position near the center of the map
+            const centerX = Math.floor(map[0].length / 2);
+            const centerY = Math.floor(map.length / 2);
+            
+            // Search in expanding circles from center
+            for (let radius = 0; radius < 10; radius++) {
+                for (let dy = -radius; dy <= radius; dy++) {
+                    for (let dx = -radius; dx <= radius; dx++) {
+                        const y = centerY + dy;
+                        const x = centerX + dx;
+                        if (y >= 0 && y < map.length && x >= 0 && x < map[0].length) {
+                            const cell = map[y][x];
+                            if (cell && cell.locations && !cell.locations.includes('wall') && !cell.content?.blocker) {
+                                return { x, y };
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (location === 'near_player') {
+            // Try to find a position adjacent to the player's current position
+            // This is a simplified version - in reality we'd need to check the actual player position
+            const playerPos = this.findSpawnPosition('center', map);
+            if (playerPos) {
+                const offsets: [number, number][] = [[0, 1], [1, 0], [0, -1], [-1, 0]];
+                for (const [dx, dy] of offsets) {
+                    const x = playerPos.x + dx;
+                    const y = playerPos.y + dy;
+                    if (y >= 0 && y < map.length && x >= 0 && x < map[0].length) {
+                        const cell = map[y][x];
+                        if (cell && cell.locations && !cell.locations.includes('wall') && !cell.content?.blocker) {
+                            return { x, y };
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Try coordinates
         const coordMatch = location.match(/(\d+),\s*(\d+)/);
         if (coordMatch) {
             return {

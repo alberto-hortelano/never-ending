@@ -1,7 +1,7 @@
 import { Component } from '../Component';
 import { originStories } from '../../common/data/originStories';
 import type { IOriginStory } from '../../common/interfaces/IStory';
-import { ControlsEvent, UpdateStateEvent } from '../../common/events';
+import { ControlsEvent } from '../../common/events';
 
 export class OriginSelection extends Component {
     protected override hasHtml = true;
@@ -72,28 +72,23 @@ export class OriginSelection extends Component {
 
 
     private startGame() {
-        if (!this.selectedOrigin) return;
+        if (!this.selectedOrigin) {
+            console.log('[OriginSelection] No origin selected, cannot start game');
+            return;
+        }
 
-        // Dispatch origin selection event
-        this.eventBus.dispatch(ControlsEvent.selectOrigin, this.selectedOrigin);
-
-        // Update game state with selected origin
-        this.eventBus.dispatch(UpdateStateEvent.storyState, {
-            selectedOrigin: this.selectedOrigin,
-            currentChapter: 1,
-            completedMissions: [],
-            majorDecisions: [],
-            factionReputation: this.selectedOrigin.factionRelations,
-            storyFlags: new Set<string>(this.selectedOrigin.specialTraits),
-            journalEntries: [{
-                id: 'origin_' + this.selectedOrigin.id,
-                title: `Inicio: ${this.selectedOrigin.nameES}`,
-                content: this.selectedOrigin.descriptionES,
-                date: new Date().toISOString(),
-                type: 'main' as const,
-                isRead: false
-            }]
+        console.log('[OriginSelection] Starting game with origin:', this.selectedOrigin.id, this.selectedOrigin.name);
+        console.log('[OriginSelection] Origin details:', {
+            nameES: this.selectedOrigin.nameES,
+            startingLocation: this.selectedOrigin.startingLocation,
+            companion: this.selectedOrigin.startingCompanion?.name || 'None',
+            traits: this.selectedOrigin.specialTraits
         });
+
+        // Dispatch origin selection event to start the game with the origin data
+        // The story state will be set in MultiplayerManager.switchToSinglePlayer()
+        console.log('[OriginSelection] Dispatching ControlsEvent.selectOrigin to start game with origin data');
+        this.eventBus.dispatch(ControlsEvent.selectOrigin, this.selectedOrigin);
 
         // Hide origin selection
         this.remove();

@@ -1,5 +1,5 @@
 import type { IMessage } from '../interfaces';
-import type { IStoryState } from '../interfaces/IStory';
+import type { IStoryState, IOriginStory } from '../interfaces/IStory';
 import { AICommand } from './AICommandParser';
 
 export interface AIGameEngineResponse {
@@ -413,6 +413,9 @@ CRITICAL REMINDERS:
         messages: IMessage[],
         retry = 0
     ): Promise<{ messages: IMessage[], content: string }> {
+        console.log('[AIGameEngineService] callGameEngine - sending request to /gameEngine');
+        console.log('[AIGameEngineService] Message count:', messages.length);
+        
         try {
             const response = await fetch('/gameEngine', {
                 method: 'POST',
@@ -422,9 +425,11 @@ CRITICAL REMINDERS:
                 body: JSON.stringify(messages)
             });
 
+            console.log('[AIGameEngineService] Response status:', response.status, response.statusText);
+            
             if (!response.ok) {
                 const errorData = await response.json();
-                console.error('[AI GameEngine] Server error:', errorData);
+                console.error('[AIGameEngineService] Server error:', errorData);
                 throw new Error(errorData.error || `API request failed: ${response.statusText}`);
             }
 
@@ -432,6 +437,8 @@ CRITICAL REMINDERS:
             // 1. A direct JSON command object
             // 2. An array of messages with the command in the last message
             const responseData = await response.json();
+            console.log('[AIGameEngineService] Response data type:', Array.isArray(responseData) ? 'array' : typeof responseData);
+            console.log('[AIGameEngineService] Response has type field:', !!responseData.type);
             // Check if it's a direct command response
             if (responseData.type) {
                 return {
@@ -457,9 +464,25 @@ CRITICAL REMINDERS:
             };
         } catch (error) {
             console.error('[AI GameEngine] Error in callGameEngine:', error);
+            
+            // Check if it's an overload error (529)
+            const errorMessage = (error as Error).message || '';
+            const isOverloadError = errorMessage.includes('529') || errorMessage.includes('overloaded');
+            
             if (retry < this.maxRetries) {
+                // Calculate exponential backoff delay
+                // For overload errors, use longer delays
+                const baseDelay = isOverloadError ? 5000 : this.retryDelay;
+                const backoffDelay = baseDelay * Math.pow(2, retry);
+                
                 console.log(`[AI GameEngine] Retrying... (attempt ${retry + 1}/${this.maxRetries})`);
-                await new Promise(resolve => setTimeout(resolve, this.retryDelay));
+                console.log(`[AI GameEngine] Waiting ${backoffDelay}ms before retry (exponential backoff)`);
+                
+                if (isOverloadError) {
+                    console.log('[AI GameEngine] Service is overloaded, using longer delay');
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, backoffDelay));
                 return this.callGameEngine(messages, retry + 1);
             }
             throw error;
@@ -483,6 +506,193 @@ CRITICAL REMINDERS:
             console.error('[AI GameEngine] Failed to parse AI response:', error);
             console.error('[AI GameEngine] Response was:', response);
             return null;
+        }
+    }
+    
+    public async requestStoryInitialization(
+        origin: IOriginStory,
+        _storyState: IStoryState
+    ): Promise<{ commands: AICommand[], narrative?: string }> {
+        console.log('[AIGameEngineService] requestStoryInitialization called');
+        console.log('[AIGameEngineService] Origin:', {
+            id: origin.id,
+            name: origin.name,
+            nameES: origin.nameES,
+            startingLocation: origin.startingLocation
+        });
+        
+        const messages: IMessage[] = [];
+        
+        // Add the narrative architect prompt as a user message with context
+        // Note: The IMessage interface only supports 'user' | 'assistant' roles
+        if (this.narrativeArchitectPrompt) {
+            messages.push({
+                role: 'user',
+                content: `SYSTEM CONTEXT:
+${this.narrativeArchitectPrompt}
+
+---
+`
+            });
+        }
+        
+        // Build the initialization request
+        const initRequest = `
+# STORY INITIALIZATION REQUEST
+
+You are initializing a new game session for "Never Ending". Generate the initial map, characters, and narrative setup based on the selected origin story.
+
+## SELECTED ORIGIN
+Name: ${origin.nameES} (${origin.name})
+Description: ${origin.descriptionES}
+Starting Location Type: ${origin.startingLocation}
+Companion: ${origin.startingCompanion?.name || 'None'}
+Special Traits: ${origin.specialTraits.join(', ')}
+Faction Relations: ${Object.entries(origin.factionRelations).map(([f, v]) => `${f}: ${v}`).join(', ')}
+
+## REQUIRED INITIALIZATION
+
+Generate the following in order:
+
+1. **MAP GENERATION**
+   - Create a tactical map appropriate for "${origin.startingLocation}"
+   - Include buildings, rooms, corridors, and environmental features
+   - Place strategic cover and obstacles
+   - The map should support the narrative of ${origin.nameES}
+
+2. **CHARACTER PLACEMENT**
+   - Player character "player" and companion "Data" are already present
+   ${origin.startingCompanion ? `- Also place companion "${origin.startingCompanion.name}" near the player` : ''}
+   - Generate 2-4 initial NPCs or enemies appropriate to the origin story
+   - Place them strategically on the map
+
+3. **INITIAL NARRATIVE**
+   - Create an opening scenario that reflects the origin's theme
+   - Set up an immediate objective or situation for the player
+   - All text must be in Spanish
+
+## RESPONSE FORMAT
+
+Return a JSON object with:
+{
+  "commands": [
+    {"type": "map", "palette": {...}, "buildings": [...]},
+    {"type": "character", "characters": [...]},
+    {"type": "storyline", "storyline": {...}}
+  ],
+  "narrative": "Initial story text in Spanish to display to the player"
+}
+
+## MAP COMMAND FORMAT
+{
+  "type": "map",
+  "palette": {
+    "floor": "#hexcolor",
+    "wall": "#hexcolor",
+    "door": "#hexcolor"
+  },
+  "buildings": [
+    {
+      "name": "Building Name",
+      "x": 10,
+      "y": 10,
+      "width": 20,
+      "height": 15,
+      "rooms": [
+        {
+          "name": "Room Name",
+          "x": 0,
+          "y": 0,
+          "width": 10,
+          "height": 10,
+          "doors": [{"position": "north", "x": 5}]
+        }
+      ],
+      "corridors": [...]
+    }
+  ]
+}
+
+## CHARACTER COMMAND FORMAT
+{
+  "type": "character",
+  "characters": [
+    {
+      "name": "Character Name",
+      "race": "human/robot/alien",
+      "description": "Brief description",
+      "location": "10,10",
+      "player": "ai",
+      "personality": "aggressive/defensive/neutral",
+      "palette": {
+        "skin": "#hexcolor",
+        "helmet": "#hexcolor",
+        "suit": "#hexcolor"
+      }
+    }
+  ]
+}
+
+## STORYLINE COMMAND FORMAT
+{
+  "type": "storyline",
+  "storyline": {
+    "title": "Mission Title in Spanish",
+    "description": "Mission description in Spanish",
+    "objectives": [
+      {"id": "obj1", "description": "Objective in Spanish", "completed": false}
+    ]
+  }
+}
+
+Remember: ALL narrative text, descriptions, objectives, and dialogue MUST be in Spanish.`;
+
+        messages.push({
+            role: 'user',
+            content: initRequest
+        });
+        
+        console.log('[AIGameEngineService] Sending initialization request to /gameEngine endpoint');
+        console.log('[AIGameEngineService] Request length:', initRequest.length, 'characters');
+        
+        try {
+            console.log('[AIGameEngineService] Calling game engine API...');
+            const response = await this.callGameEngine(messages);
+            console.log('[AIGameEngineService] API response received');
+            console.log('[AIGameEngineService] Response content length:', response.content?.length || 0);
+            
+            const parsedResponse = this.parseAIResponse(response.content);
+            console.log('[AIGameEngineService] Parsed response:', {
+                hasParsedResponse: !!parsedResponse,
+                responseType: parsedResponse?.type,
+                hasCommands: !!parsedResponse?.commands,
+                commandCount: parsedResponse?.commands?.length || 0
+            });
+            
+            // Handle both single command and array of commands
+            let commands: AICommand[] = [];
+            let narrative: string | undefined;
+            
+            if (parsedResponse) {
+                // Check if response has commands array
+                if ('commands' in parsedResponse && Array.isArray(parsedResponse.commands)) {
+                    commands = parsedResponse.commands;
+                    narrative = parsedResponse.narrative;
+                } else if (parsedResponse.type) {
+                    // Single command response
+                    commands = [parsedResponse];
+                }
+            }
+            
+            console.log('[AIGameEngineService] Returning commands:', commands.length, 'narrative:', !!narrative);
+            return { commands, narrative };
+        } catch (error) {
+            console.error('[AIGameEngineService] Failed to initialize story:', error);
+            console.error('[AIGameEngineService] Error details:', {
+                message: (error as Error).message,
+                stack: (error as Error).stack
+            });
+            return { commands: [] };
         }
     }
 

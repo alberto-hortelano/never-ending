@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import './components';
 import { Component } from './components/Component';
+import { LoadingScreen } from './components/loadingscreen/LoadingScreen';
 import { Movement } from "./common/Movement";
 import { Talk } from "./common/Talk";
 import { Shoot } from "./common/Shoot";
@@ -15,7 +16,7 @@ import { AutoSelectCharacter } from "./common/services/AutoSelectCharacter";
 import { MultiplayerManager } from "./common/services/MultiplayerManager";
 import { AIController } from "./common/services/AIController";
 import { GameEvent, EventBus } from "./common/events";
-import { initialState } from './data/state';
+import { initialState, getBaseState } from './data/state';
 import { initializeCSSVariables } from './common/initializeCSSVariables';
 
 // Initialize global CSS variables
@@ -122,12 +123,144 @@ multiplayerManager.listen('stateSynced', () => {
     // State has been synced, UI will update automatically through events
 });
 
-multiplayerManager.listen('switchedToSinglePlayer', (event) => {
+// Loading screen instance
+let loadingScreen: LoadingScreen | null = null;
+
+multiplayerManager.listen('switchedToSinglePlayer', async (event) => {
+    console.log('[Web] Received switchedToSinglePlayer event');
+    console.log('[Web] Event state has story:', {
+        hasStory: !!event.state?.story,
+        hasSelectedOrigin: !!event.state?.story?.selectedOrigin,
+        originName: event.state?.story?.selectedOrigin?.name
+    });
+    
     // Create a new game state for single player
     const gameState = new State(event.state);
-
+    console.log('[Web] Created new State instance');
+    
     // Set the state back to MultiplayerManager
     multiplayerManager.setGameState(gameState);
-
-    play(gameState);
+    
+    // IMPORTANT: Set the Component state reference BEFORE AI initialization
+    // This ensures Character components can find spawned characters in the correct state
+    Component.setGameState(gameState);
+    
+    // Check if we need AI initialization
+    if (gameState.story?.selectedOrigin) {
+        console.log('[Web] Origin selected, starting AI initialization flow');
+        
+        // Game state is already created and will be used later
+        
+        // Create and show loading screen
+        if (!loadingScreen) {
+            loadingScreen = document.createElement('loading-screen') as LoadingScreen;
+            document.body.appendChild(loadingScreen);
+        }
+        
+        // Set up loading screen
+        loadingScreen.setOriginStory(gameState.story.selectedOrigin);
+        loadingScreen.setSteps([
+            { id: 'connect', label: 'Conectando con IA...', status: 'pending' },
+            { id: 'generate_map', label: 'Generando mapa...', status: 'pending' },
+            { id: 'place_characters', label: 'Colocando personajes...', status: 'pending' },
+            { id: 'create_story', label: 'Creando narrativa...', status: 'pending' },
+            { id: 'finalize', label: 'Finalizando...', status: 'pending' }
+        ]);
+        
+        // Set up callbacks
+        loadingScreen.setCallbacks(
+            // Fallback: use default state
+            () => {
+                console.log('[Web] User selected fallback to default state');
+                loadingScreen?.hide();
+                // Start with default state instead
+                const defaultState = new State(getBaseState());
+                multiplayerManager.setGameState(defaultState);
+                play(defaultState);
+            },
+            // Retry: try AI initialization again
+            () => {
+                console.log('[Web] User selected retry AI initialization');
+                initializeAIStory(gameState);
+            }
+        );
+        
+        loadingScreen.show();
+        
+        // Dispatch AI initialization started event
+        eventBus.dispatch(GameEvent.aiInitializationStarted, { origin: gameState.story.selectedOrigin });
+        
+        // Start AI initialization
+        await initializeAIStory(gameState);
+        
+    } else {
+        console.log('[Web] No origin selected, starting game normally');
+        play(gameState);
+    }
 });
+
+// Function to initialize AI story
+async function initializeAIStory(gameState: State) {
+    const aiController = AIController.getInstance();
+    aiController.setGameState(gameState);
+    
+    // Update loading screen
+    loadingScreen?.updateStep('connect', 'active');
+    eventBus.dispatch(GameEvent.aiInitializationProgress, {
+        stepId: 'connect',
+        status: 'active',
+        message: 'Conectando con el servicio de IA...'
+    });
+    
+    try {
+        // Small delay to show loading screen
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        loadingScreen?.updateStep('connect', 'completed');
+        loadingScreen?.updateStep('generate_map', 'active');
+        
+        // Call AI initialization
+        console.log('[Web] Calling AI story initialization...');
+        await aiController.initializeStoryFromOrigin();
+        
+        // If we get here, initialization succeeded
+        console.log('[Web] AI initialization completed successfully');
+        
+        loadingScreen?.updateStep('generate_map', 'completed');
+        loadingScreen?.updateStep('place_characters', 'completed');
+        loadingScreen?.updateStep('create_story', 'completed');
+        loadingScreen?.updateStep('finalize', 'active');
+        
+        // Small delay before starting game
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        loadingScreen?.updateStep('finalize', 'completed');
+        loadingScreen?.hide();
+        
+        // Now start the game with the AI-initialized state
+        eventBus.dispatch(GameEvent.aiInitializationComplete, { state: gameState });
+        play(gameState);
+        
+    } catch (error) {
+        console.error('[Web] AI initialization failed:', error);
+        
+        // Update loading screen to show error
+        const errorMessage = (error as Error).message || 'Error desconocido';
+        
+        // Check if it's an overload error
+        if (errorMessage.includes('overloaded') || errorMessage.includes('529')) {
+            loadingScreen?.updateStep('connect', 'error', 'Servicio sobrecargado');
+            loadingScreen?.showError('El servicio de IA está temporalmente sobrecargado. Por favor, intenta de nuevo en unos momentos.');
+        } else {
+            loadingScreen?.updateStep('connect', 'error', errorMessage);
+            loadingScreen?.showError(`Error al inicializar la historia: ${errorMessage}`);
+        }
+        
+        eventBus.dispatch(GameEvent.aiInitializationFailed, {
+            message: errorMessage,
+            retryCount: 0,
+            maxRetries: 3,
+            canRetry: true
+        });
+    }
+}

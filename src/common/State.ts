@@ -217,6 +217,12 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap & State
             this.languageState.deserialize(state.language);
         }
         
+        // Initialize story state if present
+        if (state.story) {
+            console.log('[State] Loading story state:', state.story);
+            this.storyState.story = state.story;
+        }
+        
         // No need to complete initialization anymore since we handle events differently
     }
 }

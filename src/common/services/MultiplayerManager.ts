@@ -3,7 +3,7 @@ import { NetworkService } from './NetworkService';
 import { State } from '../State';
 import { IState, IUIState, ICharacter, IOverwatchData } from '../interfaces';
 import { GameEvent, UpdateStateEvent, ControlsEvent } from '../events';
-import { getBaseState } from '../../data/state';
+import { getBaseState, getEmptyState } from '../../data/state';
 import { StateDiffService, StateDiff } from './StateDiffService';
 
 // Type for network event data
@@ -285,16 +285,48 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
         this.lastSyncedState = currentState;
     }
 
-    switchToSinglePlayer() {
+    switchToSinglePlayer(origin?: any) {
+        console.log('[MultiplayerManager] Switching to single player mode');
+        console.log('[MultiplayerManager] Received origin:', origin?.id, origin?.name);
         this.isMultiplayer = false;
         this.isHost = false;
 
-        // Get the base state data for single player
-        const singlePlayerState = getBaseState();
+        // Use empty state if origin provided (AI will generate content)
+        // Otherwise use the default base state
+        const singlePlayerState = origin ? getEmptyState() : getBaseState();
+        
+        // If an origin was provided, add the story state
+        if (origin) {
+            console.log('[MultiplayerManager] Adding origin to state');
+            singlePlayerState.story = {
+                selectedOrigin: origin,
+                currentChapter: 1,
+                completedMissions: [],
+                majorDecisions: [],
+                factionReputation: origin.factionRelations || {},
+                storyFlags: new Set<string>(origin.specialTraits || []),
+                journalEntries: [{
+                    id: 'origin_' + origin.id,
+                    title: `Inicio: ${origin.nameES}`,
+                    content: origin.descriptionES,
+                    date: new Date().toISOString(),
+                    type: 'main' as const,
+                    isRead: false
+                }]
+            };
+        }
+        
+        console.log('[MultiplayerManager] Base state created, checking for story data...');
+        console.log('[MultiplayerManager] Story state:', {
+            hasStory: !!singlePlayerState.story,
+            hasSelectedOrigin: !!singlePlayerState.story?.selectedOrigin,
+            originName: singlePlayerState.story?.selectedOrigin?.name
+        });
         
         // Don't create state here - let web.ts handle it
         this.state = null;
 
+        console.log('[MultiplayerManager] Dispatching switchedToSinglePlayer event');
         this.dispatch('switchedToSinglePlayer', { state: singlePlayerState });
     }
 
