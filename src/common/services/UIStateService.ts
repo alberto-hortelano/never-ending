@@ -273,27 +273,141 @@ export class UIStateService extends EventBus<UpdateStateEventsMap, StateChangeEv
         return Array.from(types) as Array<'movement' | 'attack' | 'path' | 'overwatch'>;
     }
 
-    private onUIHighlights(data: UpdateStateEventsMap[UpdateStateEvent.uiHighlights]) {
-        const startTime = performance.now();
-        const uiState = this.getUIState();
+    private categorizeHighlightedCells(cells: Record<string, ICellVisualState | undefined>): {
+        previouslyHighlighted: Set<string>;
+        overwatchCells: Map<string, ICellVisualState>;
+    } {
         const previouslyHighlighted = new Set<string>();
         const overwatchCells = new Map<string, ICellVisualState>();
 
-        try {
-            Object.keys(uiState.visualStates.cells).forEach(cellKey => {
-                const cell = uiState.visualStates.cells[cellKey];
-                if (cell?.isHighlighted) {
-                    const isOverwatch = cell.highlightTypes?.includes('overwatch') || cell.highlightType === 'overwatch';
-                    if (isOverwatch) {
-                        overwatchCells.set(cellKey, cell);
-                    } else {
-                        previouslyHighlighted.add(cellKey);
-                    }
+        Object.keys(cells).forEach(cellKey => {
+            const cell = cells[cellKey];
+            if (cell?.isHighlighted) {
+                const isOverwatch = cell.highlightTypes?.includes('overwatch') || cell.highlightType === 'overwatch';
+                if (isOverwatch) {
+                    overwatchCells.set(cellKey, cell);
+                } else {
+                    previouslyHighlighted.add(cellKey);
                 }
-            });
-        } catch (error) {
-            console.error('[UIStateService] Error processing cells:', error);
+            }
+        });
+
+        return { previouslyHighlighted, overwatchCells };
+    }
+
+    private collectCellsToKeep(
+        data: UpdateStateEventsMap[UpdateStateEvent.uiHighlights],
+        currentHighlights: { reachableCells: ICoord[], pathCells: ICoord[], targetableCells: ICoord[] }
+    ): Set<string> {
+        const cellsToKeep = new Set<string>();
+
+        // Add reachable cells
+        const reachableCells = data.reachableCells !== undefined ? data.reachableCells : currentHighlights.reachableCells;
+        reachableCells.forEach(coord => cellsToKeep.add(`${coord.x},${coord.y}`));
+
+        // Add path cells
+        const pathCells = data.pathCells !== undefined ? data.pathCells : currentHighlights.pathCells;
+        pathCells.forEach(coord => cellsToKeep.add(`${coord.x},${coord.y}`));
+
+        // Add targetable cells
+        const targetableCells = data.targetableCells !== undefined ? data.targetableCells : currentHighlights.targetableCells;
+        targetableCells.forEach(coord => cellsToKeep.add(`${coord.x},${coord.y}`));
+
+        return cellsToKeep;
+    }
+
+    private createCellUpdate(
+        cellKey: string,
+        _coord: ICoord,
+        highlightType: 'movement' | 'attack' | 'path',
+        overwatchCell?: ICellVisualState,
+        existingCell?: ICellVisualState
+    ): CellVisualUpdate | null {
+        if (highlightType === 'path') {
+            const hasPathHighlight = existingCell?.highlightTypes?.includes('path');
+            const hasCorrectClass = existingCell?.classList?.includes('path');
+            
+            if (overwatchCell) {
+                const mergedTypes = this.mergeHighlightTypes(overwatchCell.highlightTypes, 'path');
+                if (!existingCell || JSON.stringify(existingCell.highlightTypes) !== JSON.stringify(mergedTypes) || !hasCorrectClass) {
+                    return {
+                        cellKey,
+                        visualState: {
+                            isHighlighted: true,
+                            highlightTypes: mergedTypes,
+                            highlightIntensity: overwatchCell.highlightIntensity,
+                            classList: ['path']
+                        }
+                    };
+                }
+            } else if (!hasPathHighlight || !hasCorrectClass) {
+                return {
+                    cellKey,
+                    visualState: {
+                        isHighlighted: true,
+                        highlightTypes: ['path'],
+                        classList: ['path']
+                    }
+                };
+            }
+        } else if (highlightType === 'movement') {
+            const hasMovementHighlight = existingCell?.highlightTypes?.includes('movement');
+            
+            if (overwatchCell) {
+                const mergedTypes = this.mergeHighlightTypes(overwatchCell.highlightTypes, 'movement');
+                if (!existingCell || JSON.stringify(existingCell.highlightTypes) !== JSON.stringify(mergedTypes)) {
+                    return {
+                        cellKey,
+                        visualState: {
+                            isHighlighted: true,
+                            highlightTypes: mergedTypes,
+                            highlightIntensity: overwatchCell.highlightIntensity,
+                            classList: ['highlight']
+                        }
+                    };
+                }
+            } else if (!hasMovementHighlight) {
+                return {
+                    cellKey,
+                    visualState: {
+                        isHighlighted: true,
+                        highlightTypes: ['movement'],
+                        classList: ['highlight']
+                    }
+                };
+            }
+        } else if (highlightType === 'attack') {
+            if (overwatchCell) {
+                return {
+                    cellKey,
+                    visualState: {
+                        isHighlighted: true,
+                        highlightTypes: this.mergeHighlightTypes(overwatchCell.highlightTypes, 'attack'),
+                        highlightIntensity: overwatchCell.highlightIntensity,
+                        classList: ['highlight']
+                    }
+                };
+            } else {
+                return {
+                    cellKey,
+                    visualState: {
+                        isHighlighted: true,
+                        highlightTypes: ['attack'],
+                        classList: ['highlight']
+                    }
+                };
+            }
         }
+
+        return null;
+    }
+
+    private onUIHighlights(data: UpdateStateEventsMap[UpdateStateEvent.uiHighlights]) {
+        const startTime = performance.now();
+        const uiState = this.getUIState();
+        
+        // Categorize existing highlighted cells
+        const { previouslyHighlighted, overwatchCells } = this.categorizeHighlightedCells(uiState.visualStates.cells);
 
         // Only update the properties that are explicitly provided
         // If a property is provided (even as empty array), it replaces the old value
@@ -316,43 +430,8 @@ export class UIStateService extends EventBus<UpdateStateEventsMap, StateChangeEv
 
         const cellUpdates: Array<CellVisualUpdate> = [];
 
-        // Track which cells need to be cleared
-        const cellsToKeep = new Set<string>();
-
-        // Mark cells that should remain highlighted
-        // If an array is undefined, keep the existing cells of that type
-        if (data.reachableCells !== undefined) {
-            data.reachableCells.forEach(coord => {
-                cellsToKeep.add(`${coord.x},${coord.y}`);
-            });
-        } else {
-            // Keep existing reachable cells
-            uiState.transientUI.highlights.reachableCells.forEach(coord => {
-                cellsToKeep.add(`${coord.x},${coord.y}`);
-            });
-        }
-
-        if (data.pathCells !== undefined) {
-            data.pathCells.forEach(coord => {
-                cellsToKeep.add(`${coord.x},${coord.y}`);
-            });
-        } else {
-            // Keep existing path cells
-            uiState.transientUI.highlights.pathCells.forEach(coord => {
-                cellsToKeep.add(`${coord.x},${coord.y}`);
-            });
-        }
-
-        if (data.targetableCells !== undefined) {
-            data.targetableCells.forEach(coord => {
-                cellsToKeep.add(`${coord.x},${coord.y}`);
-            });
-        } else {
-            // Keep existing targetable cells
-            uiState.transientUI.highlights.targetableCells.forEach(coord => {
-                cellsToKeep.add(`${coord.x},${coord.y}`);
-            });
-        }
+        // Collect cells that should remain highlighted
+        const cellsToKeep = this.collectCellsToKeep(data, uiState.transientUI.highlights);
 
         // Only clear cells that are no longer needed (but not overwatch cells)
         let clearedCount = 0;
@@ -409,101 +488,43 @@ export class UIStateService extends EventBus<UpdateStateEventsMap, StateChangeEv
             console.log(`[UIStateService] Large update: cleared=${clearedCount}, updates=${cellUpdates.length}`);
         }
 
+        // Process reachable cells
         data.reachableCells?.forEach(coord => {
             const cellKey = `${coord.x},${coord.y}`;
-            const existingCell = uiState.visualStates.cells[cellKey];
-            const existingOverwatch = overwatchCells.get(cellKey);
-
-            // Check if cell already has correct movement highlight
-            const hasMovementHighlight = existingCell?.highlightTypes?.includes('movement');
-
-            if (existingOverwatch) {
-                const mergedTypes = this.mergeHighlightTypes(existingOverwatch.highlightTypes, 'movement');
-                // Only update if types changed
-                if (!existingCell || JSON.stringify(existingCell.highlightTypes) !== JSON.stringify(mergedTypes)) {
-                    cellUpdates.push({
-                        cellKey,
-                        visualState: {
-                            isHighlighted: true,
-                            highlightTypes: mergedTypes,
-                            highlightIntensity: existingOverwatch.highlightIntensity,
-                            classList: ['highlight']
-                        }
-                    });
-                }
-            } else if (!hasMovementHighlight) {
-                // Only update if not already a movement highlight
-                cellUpdates.push({
-                    cellKey,
-                    visualState: {
-                        isHighlighted: true,
-                        highlightTypes: ['movement'],
-                        classList: ['highlight']
-                    }
-                });
-            }
+            const update = this.createCellUpdate(
+                cellKey,
+                coord,
+                'movement',
+                overwatchCells.get(cellKey),
+                uiState.visualStates.cells[cellKey]
+            );
+            if (update) cellUpdates.push(update);
         });
 
+        // Process path cells
         data.pathCells?.forEach(coord => {
             const cellKey = `${coord.x},${coord.y}`;
-            const existingCell = uiState.visualStates.cells[cellKey];
-            const existingOverwatch = overwatchCells.get(cellKey);
-
-            // Check if cell already has path highlight
-            const hasPathHighlight = existingCell?.highlightTypes?.includes('path');
-            const hasCorrectClass = existingCell?.classList?.includes('path');
-
-            if (existingOverwatch) {
-                const mergedTypes = this.mergeHighlightTypes(existingOverwatch.highlightTypes, 'path');
-                // Only update if types changed
-                if (!existingCell || JSON.stringify(existingCell.highlightTypes) !== JSON.stringify(mergedTypes) || !hasCorrectClass) {
-                    cellUpdates.push({
-                        cellKey,
-                        visualState: {
-                            isHighlighted: true,
-                            highlightTypes: mergedTypes,
-                            highlightIntensity: existingOverwatch.highlightIntensity,
-                            classList: ['path']
-                        }
-                    });
-                }
-            } else if (!hasPathHighlight || !hasCorrectClass) {
-                // Only update if not already a path highlight with correct class
-                cellUpdates.push({
-                    cellKey,
-                    visualState: {
-                        isHighlighted: true,
-                        highlightTypes: ['path'],
-                        classList: ['path']
-                    }
-                });
-            }
+            const update = this.createCellUpdate(
+                cellKey,
+                coord,
+                'path',
+                overwatchCells.get(cellKey),
+                uiState.visualStates.cells[cellKey]
+            );
+            if (update) cellUpdates.push(update);
         });
 
+        // Process targetable cells
         data.targetableCells?.forEach(coord => {
             const cellKey = `${coord.x},${coord.y}`;
-            const existingOverwatch = overwatchCells.get(cellKey);
-
-            if (existingOverwatch) {
-                cellUpdates.push({
-                    cellKey,
-                    visualState: {
-                        isHighlighted: true,
-                        highlightTypes: this.mergeHighlightTypes(existingOverwatch.highlightTypes, 'attack'),
-                        highlightIntensity: existingOverwatch.highlightIntensity,
-                        classList: ['highlight']
-                    }
-                });
-            } else {
-                cellUpdates.push({
-                    cellKey,
-                    visualState: {
-                        isHighlighted: true,
-                        highlightTypes: ['attack'],
-                        classList: ['highlight']
-                    }
-                });
-            }
+            const update = this.createCellUpdate(
+                cellKey,
+                coord,
+                'attack',
+                overwatchCells.get(cellKey),
+                uiState.visualStates.cells[cellKey]
+            );
+            if (update) cellUpdates.push(update);
         });
 
         // Check if we're clearing all highlights

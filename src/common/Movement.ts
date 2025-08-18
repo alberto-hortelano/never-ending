@@ -19,10 +19,10 @@ export class Movement extends EventBus<
 
     private movingCharacter?: DeepReadonly<ICharacter>;
     private reachableCells?: ICoord[];
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    private listeners: Array<{ event: string; handler: Function }> = [];
+    private listeners: Array<{ event: string; handler: (...args: unknown[]) => void }> = [];
     private completedMovements = new Map<string, { path: ICoord[], finalDirection: Direction, fromNetwork?: boolean, paidCells: number }>();
     private modeManager: InteractionModeManager;
+    private readonly MAX_COMPLETED_MOVEMENTS = 50; // Limit map size to prevent memory leaks
     private previewedDestination?: ICoord; // Track the currently previewed destination for mobile two-step
     private lastPathPreviewDestination?: ICoord; // Cache last path preview destination to avoid redundant calculations
     private throttledShowPathPreview: (destination: ICoord) => void;
@@ -60,13 +60,19 @@ export class Movement extends EventBus<
         handler: (data: (GameEventsMap & ControlsEventsMap & StateChangeEventsMap)[K]) => void
     ) {
         this.listen(event, handler);
-        this.listeners.push({ event, handler });
+        this.listeners.push({ event, handler: handler as (...args: unknown[]) => void });
     }
 
     destroy() {
         // Remove all listeners for this Movement instance
         this.remove(this);
         this.listeners = [];
+        // Clear all data structures to prevent memory leaks
+        this.completedMovements.clear();
+        this.movingCharacter = undefined;
+        this.reachableCells = undefined;
+        this.previewedDestination = undefined;
+        this.lastPathPreviewDestination = undefined;
     }
 
     private cleanupMovementMode() {
@@ -200,6 +206,14 @@ export class Movement extends EventBus<
                 fromNetwork: character.fromNetwork,
                 paidCells: 0  // Track how many cells we've already paid for
             });
+            
+            // Clean up old entries if map gets too large
+            if (this.completedMovements.size > this.MAX_COMPLETED_MOVEMENTS) {
+                const firstKey = this.completedMovements.keys().next().value;
+                if (firstKey) {
+                    this.completedMovements.delete(firstKey);
+                }
+            }
 
             // Add walk class at the start (unless character is defeated)
             const stateCharacter = this.state.findCharacter(character.name);

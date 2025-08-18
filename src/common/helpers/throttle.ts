@@ -7,14 +7,14 @@
  * @param delay The minimum time in milliseconds between function executions
  * @returns A throttled version of the function
  */
-export function throttle<T extends (...args: any[]) => any>(
-    func: T,
+export function throttle<TArgs extends unknown[], TReturn>(
+    func: (...args: TArgs) => TReturn,
     delay: number
-): (...args: Parameters<T>) => void {
+): (...args: TArgs) => void {
     let isThrottled = false;
-    let lastArgs: Parameters<T> | null = null;
+    let lastArgs: TArgs | null = null;
 
-    return function(this: any, ...args: Parameters<T>) {
+    return function(this: unknown, ...args: TArgs) {
         if (isThrottled) {
             // Store the most recent arguments to call at the end of throttle period
             lastArgs = args;

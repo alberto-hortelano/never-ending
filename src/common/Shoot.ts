@@ -1,5 +1,5 @@
 import type { DeepReadonly } from "./helpers/types";
-import type { ICharacter, ICoord, ICell, Direction } from "./interfaces";
+import type { ICharacter, ICoord } from "./interfaces";
 import type { State } from "./State";
 
 import {
@@ -9,26 +9,9 @@ import {
     ActionEvent, ActionEventsMap,
 } from "./events";
 import { DirectionsService } from "./services/DirectionsService";
-import { CharacterService } from "./services/CharacterService";
 import { InteractionModeManager } from "./InteractionModeManager";
+import { ShootingService, VisibleCell, SHOOT_CONSTANTS } from "./services/ShootingService";
 
-export interface VisibleCell {
-    coord: ICoord;
-    intensity: number; // 0-1, where 1 is fully visible
-}
-
-// Constants for shooting mechanics
-const SHOOT_CONSTANTS = {
-    DEFAULT_ANGLE_OF_VISION: 120,
-    DEFAULT_UNARMED_DAMAGE: 5,
-    DEFAULT_UNARMED_RANGE: 10,
-    VISIBILITY_THRESHOLD: 0.01,
-    DISTANCE_DAMAGE_FALLOFF: 0.5, // 50% damage reduction at max range
-    AIM_RANGE_BONUS: 0.5, // 50% range increase per aim level
-    CRITICAL_HIT_BASE_CHANCE: 0.05, // 5% base critical chance
-    CRITICAL_HIT_AIM_BONUS: 0.05, // 5% additional critical chance per aim level
-    CRITICAL_HIT_MULTIPLIER: 2.0, // Double damage on critical hits
-} as const;
 
 export class Shoot extends EventBus<
     GUIEventsMap & ControlsEventsMap & StateChangeEventsMap & ActionEventsMap,
@@ -58,100 +41,6 @@ export class Shoot extends EventBus<
         this.listen(GUIEvent.popupShow, () => this.clearShootingHighlights());
     }
 
-    private calculateVisibleCells(
-        map: DeepReadonly<ICell[][]>,
-        position: ICoord,
-        direction: Direction,
-        range: number,
-        angleOfVision: number = 90
-    ): VisibleCell[] {
-        const visibleCells: VisibleCell[] = [];
-        const halfAngle = angleOfVision / 2;
-        const baseAngle = DirectionsService.getDirectionAngle(direction);
-        const rangeSquared = range * range;
-
-        // Calculate bounding box to limit cells to check
-        const minX = Math.max(0, Math.floor(position.x - range));
-        const maxX = Math.min(map[0]!.length - 1, Math.ceil(position.x + range));
-        const minY = Math.max(0, Math.floor(position.y - range));
-        const maxY = Math.min(map.length - 1, Math.ceil(position.y + range));
-
-        // Check only cells within the bounding box
-        for (let y = minY; y <= maxY; y++) {
-            for (let x = minX; x <= maxX; x++) {
-                if (x === position.x && y === position.y) continue; // Skip origin
-
-                const dx = x - position.x;
-                const dy = y - position.y;
-                const distanceSquared = dx * dx + dy * dy;
-
-                // Early exit if beyond range (using squared distance to avoid sqrt)
-                if (distanceSquared > rangeSquared) continue;
-
-                // Skip the cross product check for now - it seems to be causing issues
-                // We'll rely on the angle check below instead
-
-                // Check if target cell itself is blocked
-                const targetCell = map[y]?.[x];
-                if (targetCell?.content?.blocker) {
-                    continue; // Skip blocked cells
-                }
-
-                // Check if a living character is blocking this cell (but allow targeting characters)
-                if (CharacterService.isCharacterAtPosition(this.state.characters, { x, y })) {
-                    // We can see the character, but not cells behind them
-                    const hasLineOfSight = this.checkLineOfSight(map, position, { x, y });
-                    if (hasLineOfSight) {
-                        // Calculate visibility for the character's cell
-                        const angleToTarget = Math.atan2(dy, dx) * 180 / Math.PI;
-                        const relativeAngle = this.normalizeAngle(angleToTarget - baseAngle);
-
-                        if (Math.abs(relativeAngle) <= halfAngle) {
-                            const angleVisibility = this.calculateAngleVisibility(relativeAngle, halfAngle);
-                            const distance = Math.sqrt(distanceSquared);
-                            const distanceVisibility = this.calculateDistanceVisibility(distance, range);
-
-                            const intensity = angleVisibility * distanceVisibility;
-                            if (intensity > SHOOT_CONSTANTS.VISIBILITY_THRESHOLD) {
-                                visibleCells.push({
-                                    coord: { x, y },
-                                    intensity
-                                });
-                            }
-                        }
-                    }
-                    continue; // Don't check cells behind characters
-                }
-
-                // Now do the precise angle calculation for cells that passed early checks
-                const angleToTarget = Math.atan2(dy, dx) * 180 / Math.PI;
-                const relativeAngle = this.normalizeAngle(angleToTarget - baseAngle);
-
-                // Check if within field of vision
-                if (Math.abs(relativeAngle) <= halfAngle) {
-                    // Check for obstacles blocking line of sight
-                    const hasLineOfSight = this.checkLineOfSight(map, position, { x, y });
-
-                    if (hasLineOfSight) {
-                        // Calculate visibility based on angle and distance
-                        const angleVisibility = this.calculateAngleVisibility(relativeAngle, halfAngle);
-                        const distance = Math.sqrt(distanceSquared);
-                        const distanceVisibility = this.calculateDistanceVisibility(distance, range);
-
-                        const intensity = angleVisibility * distanceVisibility;
-                        if (intensity > SHOOT_CONSTANTS.VISIBILITY_THRESHOLD) { // Threshold to avoid very dim cells
-                            visibleCells.push({
-                                coord: { x, y },
-                                intensity
-                            });
-                        }
-                    }
-                }
-            }
-        }
-
-        return visibleCells;
-    }
 
     // Listeners
     private onShowShooting(characterName: ControlsEventsMap[ControlsEvent.showShooting]) {
@@ -353,12 +242,13 @@ export class Shoot extends EventBus<
         const angleOfVision = SHOOT_CONSTANTS.DEFAULT_ANGLE_OF_VISION;
 
         this.shootingCharacter = character;
-        this.visibleCells = this.calculateVisibleCells(
+        this.visibleCells = ShootingService.calculateVisibleCells(
             this.state.map,
             character.position,
             character.direction,
             range,
-            angleOfVision
+            angleOfVision,
+            this.state.characters
         );
 
         // Update interaction mode to shooting
@@ -475,63 +365,6 @@ export class Shoot extends EventBus<
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    private normalizeAngle(angle: number): number {
-        // Normalize angle to [-180, 180]
-        while (angle > 180) angle -= 360;
-        while (angle < -180) angle += 360;
-        return angle;
-    }
-
-    private calculateAngleVisibility(relativeAngle: number, halfAngle: number): number {
-        // Full visibility at center, decreasing towards edges
-        const edgeDistance = Math.abs(relativeAngle) / halfAngle;
-        return Math.max(0, 1 - edgeDistance);
-    }
-
-    private calculateDistanceVisibility(distance: number, maxRange: number): number {
-        // Linear falloff for now, could be quadratic
-        return Math.max(0, 1 - (distance / maxRange));
-    }
-
-    private checkLineOfSight(map: DeepReadonly<ICell[][]>, from: ICoord, to: ICoord): boolean {
-        // Bresenham's line algorithm to check for obstacles
-        const dx = Math.abs(to.x - from.x);
-        const dy = Math.abs(to.y - from.y);
-        const sx = from.x < to.x ? 1 : -1;
-        const sy = from.y < to.y ? 1 : -1;
-        let err = dx - dy;
-        let x = from.x;
-        let y = from.y;
-
-        while (x !== to.x || y !== to.y) {
-            // Skip the starting position
-            if (x !== from.x || y !== from.y) {
-                const cell = map[y]?.[x];
-                if (cell?.content?.blocker) {
-                    return false; // Obstacle blocks line of sight
-                }
-
-                // Check if a living character is blocking line of sight (except at the target position)
-                if (!(x === to.x && y === to.y)) {
-                    if (CharacterService.isCharacterAtPosition(this.state.characters, { x, y })) {
-                        return false; // Character blocks line of sight
-                    }
-                }
-            }
-
-            const e2 = 2 * err;
-            if (e2 > -dy) {
-                err -= dy;
-                x += sx;
-            }
-            if (e2 < dx) {
-                err += dx;
-                y += sy;
-            }
-        }
-
-        return true;
-    }
 
     private getEquippedRangedWeapon(character: DeepReadonly<ICharacter>) {
         const primaryWeapon = character.inventory.equippedWeapons.primary;
@@ -556,7 +389,6 @@ export class Shoot extends EventBus<
     private getWeaponRange(character: DeepReadonly<ICharacter>): number {
         const weapon = this.getEquippedRangedWeapon(character);
         const baseRange = weapon ? weapon.range : SHOOT_CONSTANTS.DEFAULT_UNARMED_RANGE;
-        // Apply aim bonus
         return baseRange * (1 + SHOOT_CONSTANTS.AIM_RANGE_BONUS * this.aimLevel);
     }
 

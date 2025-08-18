@@ -446,29 +446,3 @@ export interface IJournalEntry {
     isRead: boolean;
 }
 
-export interface IFaction {
-    id: string;
-    name: string;
-    nameES: string;
-    description: string;
-    hostile: boolean;
-    reputation: number;
-    territories: string[];
-}
-
-export interface IMissionTemplate {
-    id: string;
-    type: 'combat' | 'diplomacy' | 'exploration' | 'infiltration' | 'resource';
-    requiredOrigin?: string;
-    requiredReputation?: { faction: string; min: number };
-    requiredFlags?: string[];
-    narrativeContext: string;
-    mapType: 'spaceship' | 'station' | 'planet' | 'settlement' | 'ruins';
-    objectives: string[];
-    rewards: {
-        reputation?: Record<string, number>;
-        items?: string[];
-        flags?: string[];
-    };
-}
-
