@@ -10,6 +10,7 @@ import {
 import { animationService } from "./services/AnimationService";
 import { DirectionsService } from "./services/DirectionsService";
 import { InteractionModeManager } from "./InteractionModeManager";
+import { throttle } from "./helpers/throttle";
 
 export class Movement extends EventBus<
     GameEventsMap & ControlsEventsMap & StateChangeEventsMap,
@@ -23,12 +24,20 @@ export class Movement extends EventBus<
     private completedMovements = new Map<string, { path: ICoord[], finalDirection: Direction, fromNetwork?: boolean, paidCells: number }>();
     private modeManager: InteractionModeManager;
     private previewedDestination?: ICoord; // Track the currently previewed destination for mobile two-step
+    private lastPathPreviewDestination?: ICoord; // Cache last path preview destination to avoid redundant calculations
+    private throttledShowPathPreview: (destination: ICoord) => void;
 
     constructor(
         private state: State,
     ) {
         super();
         this.modeManager = InteractionModeManager.getInstance();
+
+        // Create throttled version of showPathPreview to limit frequency of path calculations
+        // 50ms throttle provides good balance between responsiveness and performance
+        this.throttledShowPathPreview = throttle((destination: ICoord) => {
+            this.showPathPreview(destination);
+        }, 50);
 
         // Register cleanup handler for movement mode
         this.modeManager.registerCleanupHandler('moving', () => {
@@ -64,6 +73,7 @@ export class Movement extends EventBus<
         this.movingCharacter = undefined;
         this.reachableCells = undefined;
         this.previewedDestination = undefined;
+        this.lastPathPreviewDestination = undefined;
         this.clearPathPreview();
     }
 
@@ -125,8 +135,20 @@ export class Movement extends EventBus<
     }
     private onCellMouseEnter(position: ControlsEventsMap[ControlsEvent.cellMouseEnter]) {
         // Only show path preview on desktop (mobile uses click for preview)
-        if (!this.isMobileDevice() && this.movingCharacter && this.reachableCells?.find(c => c.x === position.x && c.y === position.y)) {
-            this.showPathPreview(position);
+        if (!this.isMobileDevice() && this.movingCharacter && this.reachableCells) {
+            const start = performance.now();
+            const isReachable = this.reachableCells.find(c => c.x === position.x && c.y === position.y);
+            
+            if (isReachable) {
+                // Use throttled version to prevent excessive path calculations during rapid mouse movement
+                this.throttledShowPathPreview(position);
+            }
+            
+            // Only log if very slow
+            const duration = performance.now() - start;
+            if (duration > 100) {
+                console.log(`[Movement] onCellMouseEnter slow: ${duration.toFixed(1)}ms`);
+            }
         }
     }
     private onCellMouseLeave() {
@@ -382,7 +404,15 @@ export class Movement extends EventBus<
         });
     }
     private showPathPreview(destination: ICoord) {
+        const start = performance.now();
         if (!this.movingCharacter || !this.reachableCells) return;
+
+        // Skip if we're already showing path to this destination
+        if (this.lastPathPreviewDestination && 
+            this.lastPathPreviewDestination.x === destination.x && 
+            this.lastPathPreviewDestination.y === destination.y) {
+            return;
+        }
 
         // Verify character still exists in current state
         const currentCharacter = this.state.findCharacter(this.movingCharacter.name);
@@ -401,6 +431,9 @@ export class Movement extends EventBus<
             this.movingCharacter.name
         );
 
+        // Cache the destination
+        this.lastPathPreviewDestination = destination;
+
         // Calculate pending cost for this path
         const moveCost = this.movingCharacter.actions.general.move;
         const pendingCost = moveCost * path.length;
@@ -411,9 +444,9 @@ export class Movement extends EventBus<
             cost: pendingCost
         });
 
-        // Update UI state with path preview cells while preserving reachable cells
+        // OPTIMIZATION: Only send pathCells since reachable cells don't change
+        // UIStateService will preserve existing reachable cells
         this.dispatch(UpdateStateEvent.uiHighlights, {
-            reachableCells: this.reachableCells,
             pathCells: path
         });
 
@@ -430,8 +463,17 @@ export class Movement extends EventBus<
                 direction: newDirection
             });
         }
+        
+        // Only log if very slow
+        const duration = performance.now() - start;
+        if (duration > 100) {
+            console.log(`[Movement] showPathPreview slow: ${duration.toFixed(1)}ms`);
+        }
     }
     private clearPathPreview() {
+        // Clear cached path preview data
+        this.lastPathPreviewDestination = undefined;
+        
         // Clear pending cost if we have a moving character
         if (this.movingCharacter) {
             // Only dispatch if character still exists in state
@@ -445,12 +487,10 @@ export class Movement extends EventBus<
             // Keep the last previewed direction - don't restore original
         }
 
-        // Clear path preview in UI state but keep reachable cells
-        if (this.reachableCells) {
-            this.dispatch(UpdateStateEvent.uiHighlights, {
-                reachableCells: this.reachableCells,
-                pathCells: []
-            });
-        }
+        // OPTIMIZATION: Only send pathCells:[] to clear the path
+        // Don't resend reachableCells - they haven't changed
+        this.dispatch(UpdateStateEvent.uiHighlights, {
+            pathCells: []
+        });
     }
 };

@@ -68,6 +68,23 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
             }
             return;
         }
+        
+        // Log targeted cell updates to show the improvement
+        if (key === 'StateChangeEvent.uiCellUpdate' && filter) {
+            const targetedListeners = filterBucket?.size ?? 0;
+            if (targetedListeners > 0) {
+                // Only 1 listener (the targeted cell) instead of 5000+!
+                if (Math.random() < 0.01) { // Sample 1% to avoid spam
+                    console.log(`[EventBus] Targeted update to cell ${filter}: ${targetedListeners} listener (not 5000+!)`);
+                }
+            }
+        }
+        
+        // Track performance for expensive events (uiVisualStates no longer used for cells)
+        const isExpensiveEvent = key === 'StateChangeEvent.uiTransient';
+        const startTime = isExpensiveEvent ? performance.now() : 0;
+        const totalListeners = (bucket?.size ?? 0) + (filterBucket?.size ?? 0);
+        
         // console.log(eventName);
         if (bucket && filterKey !== key) {
             for (const [, cb] of bucket) {
@@ -89,6 +106,14 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
                         console.log(`Error in listener for "${filterKey}":`, err);
                     }
                 }
+            }
+        }
+        
+        if (isExpensiveEvent) {
+            const duration = performance.now() - startTime;
+            // Only log if VERY slow - this is the main bottleneck
+            if (duration > 100) {
+                console.log(`[EventBus] ${key} dispatch slow: ${duration.toFixed(1)}ms for ${totalListeners} listeners`);
             }
         }
     }

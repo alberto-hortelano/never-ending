@@ -1,5 +1,6 @@
 import type { IMessage, IStoryState, IOriginStory } from '../interfaces';
 import { AICommand } from './AICommandParser';
+import { AIBrowserCacheService } from './AIBrowserCacheService';
 
 export interface AIGameEngineResponse {
     messages: IMessage[];
@@ -219,10 +220,10 @@ Remember: You can ONLY interact with what's ACTUALLY in the game state, not what
         const startTime = Date.now();
         
         // Log the request
-        console.log('[AI GameEngine] === REQUEST START ===');
-        console.log('[AI GameEngine] Character:', context.currentCharacter?.name);
-        console.log('[AI GameEngine] Visible characters:', context.visibleCharacters?.map((c: any) => `${c.name} (health: ${c.health?.current})`).join(', '));
-        console.log('[AI GameEngine] Characters in conversation range:', context.charactersInConversationRange?.map((c: any) => c.name).join(', '));
+        // console.log('[AI GameEngine] === REQUEST START ===');
+        // console.log('[AI GameEngine] Character:', context.currentCharacter?.name);
+        // console.log('[AI GameEngine] Visible characters:', context.visibleCharacters?.map((c: any) => `${c.name} (health: ${c.health?.current})`).join(', '));
+        // console.log('[AI GameEngine] Characters in conversation range:', context.charactersInConversationRange?.map((c: any) => c.name).join(', '));
 
         // Add system context as first message
         if (systemPrompt || this.narrativeArchitectPrompt) {
@@ -243,16 +244,16 @@ Remember: You can ONLY interact with what's ACTUALLY in the game state, not what
             const response = await this.callGameEngine(messages);
             const command = this.parseAIResponse(response.content);
             
-            const duration = Date.now() - startTime;
-            console.log('[AI GameEngine] === REQUEST SUCCESS ===');
-            console.log('[AI GameEngine] Duration:', duration, 'ms');
-            console.log('[AI GameEngine] Command type:', command?.type || 'none');
+            // const duration = Date.now() - startTime;
+            // console.log('[AI GameEngine] === REQUEST SUCCESS ===');
+            // console.log('[AI GameEngine] Duration:', duration, 'ms');
+            // console.log('[AI GameEngine] Command type:', command?.type || 'none');
             if (command?.type === 'speech') {
-                console.log('[AI GameEngine] Speech preview:', command.content?.substring(0, 50) + '...');
+                // console.log('[AI GameEngine] Speech preview:', command.content?.substring(0, 50) + '...');
             } else if (command?.type === 'attack') {
-                console.log('[AI GameEngine] Attack target:', command.characters?.[0]?.target);
+                // console.log('[AI GameEngine] Attack target:', command.characters?.[0]?.target);
             } else if (command?.type === 'movement') {
-                console.log('[AI GameEngine] Movement location:', command.characters?.[0]?.location);
+                // console.log('[AI GameEngine] Movement location:', command.characters?.[0]?.location);
             }
 
             return {
@@ -412,8 +413,16 @@ CRITICAL REMINDERS:
         messages: IMessage[],
         retry = 0
     ): Promise<{ messages: IMessage[], content: string }> {
-        console.log('[AIGameEngineService] callGameEngine - sending request to /gameEngine');
-        console.log('[AIGameEngineService] Message count:', messages.length);
+        // console.log('[AIGameEngineService] callGameEngine - sending request to /gameEngine');
+        // console.log('[AIGameEngineService] Message count:', messages.length);
+        
+        // Check cache first
+        const cacheKey = { messages, endpoint: '/gameEngine' };
+        const cachedResponse = AIBrowserCacheService.getCachedResponse(cacheKey);
+        if (cachedResponse) {
+            console.log('[AIGameEngineService] Using cached response');
+            return cachedResponse;
+        }
         
         try {
             const response = await fetch('/gameEngine', {
@@ -424,7 +433,7 @@ CRITICAL REMINDERS:
                 body: JSON.stringify(messages)
             });
 
-            console.log('[AIGameEngineService] Response status:', response.status, response.statusText);
+            // console.log('[AIGameEngineService] Response status:', response.status, response.statusText);
             
             if (!response.ok) {
                 const errorData = await response.json();
@@ -436,14 +445,17 @@ CRITICAL REMINDERS:
             // 1. A direct JSON command object
             // 2. An array of messages with the command in the last message
             const responseData = await response.json();
-            console.log('[AIGameEngineService] Response data type:', Array.isArray(responseData) ? 'array' : typeof responseData);
-            console.log('[AIGameEngineService] Response has type field:', !!responseData.type);
+            // console.log('[AIGameEngineService] Response data type:', Array.isArray(responseData) ? 'array' : typeof responseData);
+            // console.log('[AIGameEngineService] Response has type field:', !!responseData.type);
             // Check if it's a direct command response
             if (responseData.type) {
-                return {
+                const result = {
                     messages: messages,
                     content: JSON.stringify(responseData)
                 };
+                // Cache the successful response
+                AIBrowserCacheService.cacheResponse(cacheKey, result);
+                return result;
             }
             
             // Otherwise treat as message array
@@ -451,16 +463,22 @@ CRITICAL REMINDERS:
             const lastMessage = updatedMessages[updatedMessages.length - 1];
             if (!lastMessage || lastMessage.role !== 'assistant') {
                 // If not messages format, assume it's a direct response
-                return {
+                const result = {
                     messages: messages,
                     content: JSON.stringify(responseData)
                 };
+                // Cache the successful response
+                AIBrowserCacheService.cacheResponse(cacheKey, result);
+                return result;
             }
 
-            return {
+            const result = {
                 messages: updatedMessages,
                 content: lastMessage.content
             };
+            // Cache the successful response
+            AIBrowserCacheService.cacheResponse(cacheKey, result);
+            return result;
         } catch (error) {
             console.error('[AI GameEngine] Error in callGameEngine:', error);
             
@@ -474,11 +492,11 @@ CRITICAL REMINDERS:
                 const baseDelay = isOverloadError ? 5000 : this.retryDelay;
                 const backoffDelay = baseDelay * Math.pow(2, retry);
                 
-                console.log(`[AI GameEngine] Retrying... (attempt ${retry + 1}/${this.maxRetries})`);
-                console.log(`[AI GameEngine] Waiting ${backoffDelay}ms before retry (exponential backoff)`);
+                // console.log(`[AI GameEngine] Retrying... (attempt ${retry + 1}/${this.maxRetries})`);
+                // console.log(`[AI GameEngine] Waiting ${backoffDelay}ms before retry (exponential backoff)`);
                 
                 if (isOverloadError) {
-                    console.log('[AI GameEngine] Service is overloaded, using longer delay');
+                    // console.log('[AI GameEngine] Service is overloaded, using longer delay');
                 }
                 
                 await new Promise(resolve => setTimeout(resolve, backoffDelay));
@@ -512,13 +530,13 @@ CRITICAL REMINDERS:
         origin: IOriginStory,
         _storyState: IStoryState
     ): Promise<{ commands: AICommand[], narrative?: string }> {
-        console.log('[AIGameEngineService] requestStoryInitialization called');
-        console.log('[AIGameEngineService] Origin:', {
-            id: origin.id,
-            name: origin.name,
-            nameES: origin.nameES,
-            startingLocation: origin.startingLocation
-        });
+        // console.log('[AIGameEngineService] requestStoryInitialization called');
+        // console.log('[AIGameEngineService] Origin:', {
+        //     id: origin.id,
+        //     name: origin.name,
+        //     nameES: origin.nameES,
+        //     startingLocation: origin.startingLocation
+        // });
         
         const messages: IMessage[] = [];
         
@@ -651,22 +669,22 @@ Remember: ALL narrative text, descriptions, objectives, and dialogue MUST be in 
             content: initRequest
         });
         
-        console.log('[AIGameEngineService] Sending initialization request to /gameEngine endpoint');
-        console.log('[AIGameEngineService] Request length:', initRequest.length, 'characters');
+        // console.log('[AIGameEngineService] Sending initialization request to /gameEngine endpoint');
+        // console.log('[AIGameEngineService] Request length:', initRequest.length, 'characters');
         
         try {
-            console.log('[AIGameEngineService] Calling game engine API...');
+            // console.log('[AIGameEngineService] Calling game engine API...');
             const response = await this.callGameEngine(messages);
-            console.log('[AIGameEngineService] API response received');
-            console.log('[AIGameEngineService] Response content length:', response.content?.length || 0);
+            // console.log('[AIGameEngineService] API response received');
+            // console.log('[AIGameEngineService] Response content length:', response.content?.length || 0);
             
             const parsedResponse = this.parseAIResponse(response.content);
-            console.log('[AIGameEngineService] Parsed response:', {
-                hasParsedResponse: !!parsedResponse,
-                responseType: parsedResponse?.type,
-                hasCommands: !!parsedResponse?.commands,
-                commandCount: parsedResponse?.commands?.length || 0
-            });
+            // console.log('[AIGameEngineService] Parsed response:', {
+            //     hasParsedResponse: !!parsedResponse,
+            //     responseType: parsedResponse?.type,
+            //     hasCommands: !!parsedResponse?.commands,
+            //     commandCount: parsedResponse?.commands?.length || 0
+            // });
             
             // Handle both single command and array of commands
             let commands: AICommand[] = [];
@@ -683,7 +701,7 @@ Remember: ALL narrative text, descriptions, objectives, and dialogue MUST be in 
                 }
             }
             
-            console.log('[AIGameEngineService] Returning commands:', commands.length, 'narrative:', !!narrative);
+            // console.log('[AIGameEngineService] Returning commands:', commands.length, 'narrative:', !!narrative);
             return { commands, narrative };
         } catch (error) {
             console.error('[AIGameEngineService] Failed to initialize story:', error);

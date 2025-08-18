@@ -3,6 +3,16 @@ import { ICoord, ICellVisualState, IDoor } from "../../common/interfaces";
 import { Component } from "../Component";
 import "../door/Door";
 
+declare global {
+    interface Window {
+        cellEventStats?: {
+            count: number;
+            totalTime: number;
+            updateCount: number;
+        };
+    }
+}
+
 export default class Cell extends Component {
     static get observedAttributes() {
         return ['content'];
@@ -47,16 +57,15 @@ export default class Cell extends Component {
             this.renderDoors(state.doors as any);
         }
 
-        // Listen for UI state changes
-        this.listen(StateChangeEvent.uiVisualStates, (visualStates) => {
-            const cellVisualState = visualStates.cells[this.cellKey];
-            if (cellVisualState) {
-                this.applyVisualState(cellVisualState as ICellVisualState);
+        // Listen for targeted cell updates (only for this specific cell)
+        this.listen(StateChangeEvent.uiCellUpdate, (cellUpdate) => {
+            if (cellUpdate.visualState) {
+                this.applyVisualState(cellUpdate.visualState as ICellVisualState);
             } else {
                 // No visual state means cell should be reset
                 this.resetVisualState();
             }
-        });
+        }, this.cellKey); // Use cellKey as filter to only receive updates for this cell
         
         // Listen for door state changes
         this.listen(StateChangeEvent.doors, (doors) => {

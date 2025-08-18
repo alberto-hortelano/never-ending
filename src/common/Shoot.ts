@@ -227,7 +227,7 @@ export class Shoot extends EventBus<
         }
 
         const { characterName, position } = data;
-        console.log(`[Shoot] Character click: ${characterName} at (${position.x}, ${position.y}) by ${this.shootingCharacter.name}`);
+        // console.log(`[Shoot] Character click: ${characterName} at (${position.x}, ${position.y}) by ${this.shootingCharacter.name}`);
 
         // Check if clicked position is in a visible cell
         const isInVisibleCell = this.visibleCells.find(vc =>
@@ -286,7 +286,7 @@ export class Shoot extends EventBus<
             const shootCost = this.shootingCharacter.actions?.rangedCombat?.shoot || 30;
             const aimCost = (this.shootingCharacter.actions?.rangedCombat?.aim || 10) * this.aimLevel;
             
-            console.log(`[Shoot] Deducting action points for ${this.shootingCharacter.name}: shoot=${shootCost}, aim=${aimCost}`);
+            // console.log(`[Shoot] Deducting action points for ${this.shootingCharacter.name}: shoot=${shootCost}, aim=${aimCost}`);
 
             // Deduct shoot points
             this.dispatch(UpdateStateEvent.deductActionPoints, {

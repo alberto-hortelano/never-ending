@@ -208,6 +208,8 @@ export enum StateChangeEvent {
     uiAnimations = 'StateChangeEvent.uiAnimations',
     /** UI visual states changed */
     uiVisualStates = 'StateChangeEvent.uiVisualStates',
+    /** Targeted cell update - sent to specific cells only */
+    uiCellUpdate = 'StateChangeEvent.uiCellUpdate',
     /** UI transient state changed */
     uiTransient = 'StateChangeEvent.uiTransient',
     /** UI interaction mode changed */
@@ -242,6 +244,7 @@ export interface StateChangeEventsMap {
     // UI State Change Events
     [StateChangeEvent.uiAnimations]: DeepReadonly<IState['ui']['animations']>;
     [StateChangeEvent.uiVisualStates]: DeepReadonly<IState['ui']['visualStates']>;
+    [StateChangeEvent.uiCellUpdate]: { visualState: ICellVisualState | null };
     [StateChangeEvent.uiTransient]: DeepReadonly<IState['ui']['transientUI']>;
     [StateChangeEvent.uiInteractionMode]: DeepReadonly<IState['ui']['interactionMode']>;
     [StateChangeEvent.overwatchData]: DeepReadonly<Record<string, {

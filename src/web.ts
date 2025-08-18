@@ -18,6 +18,7 @@ import { AIController } from "./common/services/AIController";
 import { GameEvent, EventBus } from "./common/events";
 import { initialState, getBaseState } from './data/state';
 import { initializeCSSVariables } from './common/initializeCSSVariables';
+import './common/services/AICacheManager'; // Initialize AI cache
 
 // Initialize global CSS variables
 document.documentElement.style.setProperty('--cell-width', '4dvh');
@@ -127,16 +128,16 @@ multiplayerManager.listen('stateSynced', () => {
 let loadingScreen: LoadingScreen | null = null;
 
 multiplayerManager.listen('switchedToSinglePlayer', async (event) => {
-    console.log('[Web] Received switchedToSinglePlayer event');
-    console.log('[Web] Event state has story:', {
-        hasStory: !!event.state?.story,
-        hasSelectedOrigin: !!event.state?.story?.selectedOrigin,
-        originName: event.state?.story?.selectedOrigin?.name
-    });
+    // console.log('[Web] Received switchedToSinglePlayer event');
+    // console.log('[Web] Event state has story:', {
+    //     hasStory: !!event.state?.story,
+    //     hasSelectedOrigin: !!event.state?.story?.selectedOrigin,
+    //     originName: event.state?.story?.selectedOrigin?.name
+    // });
     
     // Create a new game state for single player
     const gameState = new State(event.state);
-    console.log('[Web] Created new State instance');
+    // console.log('[Web] Created new State instance');
     
     // Set the state back to MultiplayerManager
     multiplayerManager.setGameState(gameState);
@@ -147,7 +148,7 @@ multiplayerManager.listen('switchedToSinglePlayer', async (event) => {
     
     // Check if we need AI initialization
     if (gameState.story?.selectedOrigin) {
-        console.log('[Web] Origin selected, starting AI initialization flow');
+        // console.log('[Web] Origin selected, starting AI initialization flow');
         
         // Game state is already created and will be used later
         
@@ -171,7 +172,7 @@ multiplayerManager.listen('switchedToSinglePlayer', async (event) => {
         loadingScreen.setCallbacks(
             // Fallback: use default state
             () => {
-                console.log('[Web] User selected fallback to default state');
+                // console.log('[Web] User selected fallback to default state');
                 loadingScreen?.hide();
                 // Start with default state instead
                 const defaultState = new State(getBaseState());
@@ -180,7 +181,7 @@ multiplayerManager.listen('switchedToSinglePlayer', async (event) => {
             },
             // Retry: try AI initialization again
             () => {
-                console.log('[Web] User selected retry AI initialization');
+                // console.log('[Web] User selected retry AI initialization');
                 initializeAIStory(gameState);
             }
         );
@@ -194,7 +195,7 @@ multiplayerManager.listen('switchedToSinglePlayer', async (event) => {
         await initializeAIStory(gameState);
         
     } else {
-        console.log('[Web] No origin selected, starting game normally');
+        // console.log('[Web] No origin selected, starting game normally');
         play(gameState);
     }
 });
@@ -220,11 +221,11 @@ async function initializeAIStory(gameState: State) {
         loadingScreen?.updateStep('generate_map', 'active');
         
         // Call AI initialization
-        console.log('[Web] Calling AI story initialization...');
+        // console.log('[Web] Calling AI story initialization...');
         await aiController.initializeStoryFromOrigin();
         
         // If we get here, initialization succeeded
-        console.log('[Web] AI initialization completed successfully');
+        // console.log('[Web] AI initialization completed successfully');
         
         loadingScreen?.updateStep('generate_map', 'completed');
         loadingScreen?.updateStep('place_characters', 'completed');

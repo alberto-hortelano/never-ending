@@ -93,6 +93,7 @@ export default class Board extends Component {
 
 
   private updateMap(newMap: StateChangeEventsMap[StateChangeEvent.map]) {
+    const startTime = performance.now();
     this.mapData = newMap;
     this.id = 'board';
 
@@ -112,6 +113,7 @@ export default class Board extends Component {
     this.innerHTML = '';
 
     const cellsToRender = BoardService.getCellsToRender(this.mapData);
+    const totalCells = cellsToRender.length;
 
     cellsToRender.forEach(cellData => {
       const cellElement = document.createElement('cell-component');
@@ -126,6 +128,9 @@ export default class Board extends Component {
 
       this.appendChild(cellElement);
     });
+    
+    const duration = performance.now() - startTime;
+    console.log(`[Board] Created ${totalCells} cells (${dimensions.width}x${dimensions.height}) in ${duration.toFixed(1)}ms`);
   }
 
 
