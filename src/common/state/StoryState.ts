@@ -1,7 +1,7 @@
 import { EventBus } from '../events/EventBus';
 import { UpdateStateEvent, StateChangeEvent } from '../events/StateEvents';
 import type { UpdateStateEventsMap, StateChangeEventsMap } from '../events/StateEvents';
-import type { IStoryState } from '../interfaces/IStory';
+import type { IStoryState } from '../interfaces';
 import type { DeepReadonly } from '../helpers/types';
 
 export class StoryState extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> {

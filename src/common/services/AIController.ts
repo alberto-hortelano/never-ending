@@ -17,8 +17,7 @@ import { AIGameEngineService } from './AIGameEngineService';
 import { TacticalExecutor, TacticalDirective } from './TacticalExecutor';
 import { CombatStances } from './CombatStances';
 import { StoryCommandExecutor } from './StoryCommandExecutor';
-import { ICharacter, ICoord, Direction } from '../interfaces';
-import type { IOriginStory, IStoryState } from '../interfaces/IStory';
+import { ICharacter, ICoord, Direction, IOriginStory, IStoryState } from '../interfaces';
 import { DeepReadonly } from '../helpers/types';
 import { calculatePath } from '../helpers/map';
 import { TeamService } from './TeamService';
@@ -571,7 +570,7 @@ export class AIController extends EventBus<
     private async executeMovement(command: AICommand, character: DeepReadonly<ICharacter>): Promise<void> {
         // Find target location
         const targetLocationString = command.characters[0].location;
-        const targetLocation = this.resolveLocation(targetLocationString);
+        const targetLocation = this.resolveLocation(targetLocationString, character);
         
         if (!targetLocation || !isFinite(targetLocation.x) || !isFinite(targetLocation.y) || 
             targetLocation.x < -1000 || targetLocation.x > 1000 || 
@@ -1410,28 +1409,61 @@ export class AIController extends EventBus<
         }
     }
 
-    private resolveLocation(location: string): ICoord | null {
+    private resolveLocation(location: string, fromCharacter?: DeepReadonly<ICharacter>): ICoord | null {
         if (!this.state) {
             return null;
         }
         
-        // Parse location string to find actual map position
-        // Could be: "building/room", "near character name", coordinates, etc.
+        const lowerLocation = location.toLowerCase().trim();
+        
+        // Handle relative directions (north, south, east, west)
+        if (fromCharacter && ['north', 'south', 'east', 'west', 'up', 'down', 'left', 'right'].includes(lowerLocation)) {
+            const moveDistance = 5; // Move 5 cells in the direction
+            switch (lowerLocation) {
+                case 'north':
+                case 'up':
+                    return { x: fromCharacter.position.x, y: fromCharacter.position.y - moveDistance };
+                case 'south':
+                case 'down':
+                    return { x: fromCharacter.position.x, y: fromCharacter.position.y + moveDistance };
+                case 'east':
+                case 'right':
+                    return { x: fromCharacter.position.x + moveDistance, y: fromCharacter.position.y };
+                case 'west':
+                case 'left':
+                    return { x: fromCharacter.position.x - moveDistance, y: fromCharacter.position.y };
+            }
+        }
+        
+        // Handle "center" or "center of map"
+        if (lowerLocation.includes('center')) {
+            const mapWidth = this.state.map[0]?.length || 50;
+            const mapHeight = this.state.map.length || 50;
+            return { x: Math.floor(mapWidth / 2), y: Math.floor(mapHeight / 2) };
+        }
         
         // Try to find character by name (case-insensitive)
         const targetChar = this.state.characters.find((c: DeepReadonly<ICharacter>) => 
-            c.name.toLowerCase() === location.toLowerCase()
+            c.name.toLowerCase() === lowerLocation
         );
         if (targetChar) {
             return { x: targetChar.position.x, y: targetChar.position.y };
         }
 
+        // Try to find room by name
+        const roomPosition = this.findRoomCenter(location);
+        if (roomPosition) {
+            return roomPosition;
+        }
+
         // Try to parse as building/room
         if (location.includes('/')) {
-            // const [building, room] = location.split('/');
-            // Would need to look up building and room positions from map data
-            // For now, return null
-            return null;
+            const parts = location.split('/');
+            const roomName = parts[parts.length - 1]; // Get last part as room name
+            const roomPos = roomName ? this.findRoomCenter(roomName) : null;
+            if (roomPos) {
+                return roomPos;
+            }
         }
 
         // Try to parse as coordinates
@@ -1448,6 +1480,36 @@ export class AIController extends EventBus<
             }
         }
 
+        return null;
+    }
+    
+    private findRoomCenter(roomName: string): ICoord | null {
+        if (!this.state) return null;
+        
+        const map = this.state.map;
+        const roomPositions: ICoord[] = [];
+        const lowerRoomName = roomName.toLowerCase();
+        
+        // Find all cells belonging to this room
+        for (let y = 0; y < map.length; y++) {
+            for (let x = 0; x < (map[0]?.length || 0); x++) {
+                const cell = map[y]?.[x];
+                if (cell?.locations && cell.locations.length > 0) {
+                    const cellRoom = cell.locations[0];
+                    if (cellRoom && cellRoom.toLowerCase().includes(lowerRoomName)) {
+                        roomPositions.push({ x, y });
+                    }
+                }
+            }
+        }
+        
+        // Calculate center of room
+        if (roomPositions.length > 0) {
+            const centerX = Math.floor(roomPositions.reduce((sum, pos) => sum + pos.x, 0) / roomPositions.length);
+            const centerY = Math.floor(roomPositions.reduce((sum, pos) => sum + pos.y, 0) / roomPositions.length);
+            return { x: centerX, y: centerY };
+        }
+        
         return null;
     }
 

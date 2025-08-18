@@ -1,8 +1,7 @@
 import { EventBus } from '../events/EventBus';
 import { UpdateStateEvent, UpdateStateEventsMap } from '../events';
 import type { AICommand, MapCommand, StorylineCommand } from './AICommandParser';
-import type { ICharacter, IItem, IWeapon, IRoom, IDoor, Direction } from '../interfaces';
-import type { IStoryState } from '../interfaces/IStory';
+import type { ICharacter, IItem, IWeapon, IRoom, IDoor, Direction, IStoryState } from '../interfaces';
 import { MapGenerator } from '../helpers/MapGenerator';
 import { DoorService } from './DoorService';
 import { weapons as availableWeapons, items as availableItems } from '../../data/state';
@@ -54,20 +53,6 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
      * This replaces the current map with a new one
      */
     public async executeMapCommand(command: MapCommand, _storyState?: IStoryState): Promise<void> {
-        console.log('[StoryExecutor] Executing map command');
-        console.log('[StoryExecutor] Map command details:', {
-            hasPalette: !!command.palette,
-            buildingCount: command.buildings?.length || 0,
-            doorCount: command.doors?.length || 0,
-            characterCount: command.characters?.length || 0
-        });
-        
-        if (command.buildings) {
-            console.log('[StoryExecutor] Buildings to generate:', command.buildings.map(b => ({
-                name: b.name,
-                roomCount: b.rooms?.length || 0
-            })));
-        }
         
         try {
             // Convert AI building data to rooms for map generator
@@ -100,44 +85,47 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
             this.dispatch(UpdateStateEvent.map, newMap);
             
             // Player and Data already exist in state from getEmptyState()
-            // but their positions (10,10 and 11,10) might be in walls after map generation
-            // The best approach is to remove them first, then re-add them with valid positions
+            // We need to ensure they are preserved and properly positioned
             
-            // First, remove the existing player and Data
-            this.dispatch(UpdateStateEvent.removeCharacter, { characterName: 'player' });
-            this.dispatch(UpdateStateEvent.removeCharacter, { characterName: 'Data' });
-            console.log('[StoryExecutor] Removed existing player and Data to reposition them');
-            
-            // Now add them back with valid positions in the first room
-            const firstRoomName = rooms.length > 0 ? rooms[0]!.name : 'floor';
-            
-            // Prepend player and Data to the characters list for spawning
+            // Prepare the characters list if not provided
             if (!command.characters) {
                 command.characters = [];
             }
             
-            // Add player and Data at the beginning of the character list
-            // They'll be spawned with proper positions based on the room
-            // Using 'any' type to include custom fields
-            const playerChar: any = {
-                name: 'player',
-                location: firstRoomName,
-                race: 'human',
-                player: 'human',  // Mark as human-controlled
-                team: 'player'
-            };
+            // Check if AI already included player and Data in the character list
+            const hasPlayer = command.characters.some((c: any) => 
+                c.name?.toLowerCase() === 'player'
+            );
+            const hasData = command.characters.some((c: any) => 
+                c.name?.toLowerCase() === 'data' || c.name === 'Data'
+            );
             
-            const dataChar: any = {
-                name: 'Data',
-                location: firstRoomName,
-                race: 'synth',
-                player: 'human',  // Also controlled by human player
-                team: 'player'
-            };
+            // Get first room name for spawning
+            const firstRoomName = rooms.length > 0 ? rooms[0]!.name : 'floor';
             
-            command.characters.unshift(playerChar, dataChar);
+            // If player is not in the AI's character list, add it
+            if (!hasPlayer) {
+                const playerChar: any = {
+                    name: 'player',
+                    location: firstRoomName,
+                    race: 'human',
+                    player: 'human',  // Mark as human-controlled
+                    team: 'player'
+                };
+                command.characters.unshift(playerChar);
+            }
             
-            console.log('[StoryExecutor] Added player and Data to spawn list for room:', firstRoomName);
+            // If Data is not in the AI's character list, add it
+            if (!hasData) {
+                const dataChar: any = {
+                    name: 'Data',
+                    location: firstRoomName,
+                    race: 'robot',
+                    player: 'human',  // Also controlled by human player
+                    team: 'player'
+                };
+                command.characters.unshift(dataChar);
+            }
             
             // Handle door generation if included in map command
             if (command.doors && command.doors.length > 0) {
@@ -152,10 +140,13 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
             // Update terrain palette if specified
             if (command.palette?.terrain) {
                 // This would update CSS variables or terrain rendering
-                console.log('[StoryExecutor] Setting terrain color:', command.palette.terrain);
             }
             
-            console.log('[StoryExecutor] Map generation complete - map updated');
+            // SAFETY CHECK: Ensure player and Data always exist after map generation
+            // This is a critical failsafe to prevent them from being lost
+            await this.ensurePlayerAndDataExist(newMap);
+            
+            // Map generation complete
         } catch (error) {
             console.error('[StoryExecutor] Error executing map command:', error);
             console.error('[StoryExecutor] Error details:', {
@@ -420,20 +411,58 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
      * Spawn characters as part of map generation
      */
     private async spawnCharactersFromMap(characters: any[], map: any): Promise<void> {
-        console.log(`[StoryExecutor] Spawning ${characters.length} characters...`);
-        console.log('[StoryExecutor] Characters to spawn:', characters.map(c => ({
-            name: c.name,
-            race: c.race,
-            location: c.location
-        })));
+        // Track occupied positions to avoid overlapping
+        const occupiedPositions = new Set<string>();
         
-        // Check if player and Data already exist before spawning
-        console.log('[StoryExecutor] Note: player and Data should already exist in state from getEmptyState()');
+        // Helper to mark position as occupied
+        const markPositionOccupied = (x: number, y: number): void => {
+            occupiedPositions.add(`${x},${y}`);
+        };
         
+        // First, handle player and Data specially - they exist from getEmptyState()
+        // We just need to update their positions
         for (const charData of characters) {
+            const isPlayer = charData.name?.toLowerCase() === 'player';
+            const isData = charData.name === 'Data' || charData.name?.toLowerCase() === 'data';
+            
+            if (isPlayer || isData) {
+                try {
+                    // Find spawn position based on location description
+                    const position = this.findSpawnPosition(charData.location, map, occupiedPositions);
+                    
+                    if (!position) {
+                        console.warn(`[StoryExecutor] Could not find spawn position for ${charData.name}`);
+                        continue;
+                    }
+                    
+                    // Update the existing character's position
+                    // Note: We need to create a minimal character object with the new position
+                    this.dispatch(UpdateStateEvent.characterPosition, {
+                        name: isPlayer ? 'player' : 'Data',
+                        position: position
+                    } as any);
+                    
+                    // Mark position as occupied
+                    markPositionOccupied(position.x, position.y);
+                } catch (error) {
+                    console.error(`[StoryExecutor] Error updating position for ${charData.name}:`, error);
+                }
+                continue; // Skip to next character
+            }
+        }
+        
+        // Now spawn all other characters
+        for (const charData of characters) {
+            // Skip player and Data as they were handled above
+            if (charData.name?.toLowerCase() === 'player' || 
+                charData.name === 'Data' || 
+                charData.name?.toLowerCase() === 'data') {
+                continue;
+            }
+            
             try {
                 // Find spawn position based on location description
-                const position = this.findSpawnPosition(charData.location, map);
+                const position = this.findSpawnPosition(charData.location, map, occupiedPositions);
                 
                 if (!position) {
                     console.warn(`[StoryExecutor] Could not find spawn position for ${charData.name}`);
@@ -466,7 +495,8 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                 // Add character to game (we know name and position are set)
                 this.dispatch(UpdateStateEvent.addCharacter, newCharacter as Partial<ICharacter> & { name: string; position: { x: number; y: number } });
                 
-                console.log(`[StoryExecutor] Spawned character ${charData.name} at`, position);
+                // Mark position as occupied
+                markPositionOccupied(position.x, position.y);
             } catch (error) {
                 console.error(`[StoryExecutor] Error spawning character ${charData.name}:`, error);
             }
@@ -476,7 +506,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
     /**
      * Find a suitable spawn position based on location description
      */
-    private findSpawnPosition(location: string, map: any): { x: number, y: number } | null {
+    private findSpawnPosition(location: string, map: any, occupiedPositions?: Set<string>): { x: number, y: number } | null {
         // Parse location string
         // Could be: "room name", "near character", "x,y coordinates", "center", "near_player", etc.
         
@@ -494,7 +524,9 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                         const x = centerX + dx;
                         if (y >= 0 && y < map.length && x >= 0 && x < map[0].length) {
                             const cell = map[y][x];
-                            if (cell && cell.locations && !cell.locations.includes('wall') && !cell.content?.blocker) {
+                            const posKey = `${x},${y}`;
+                            if (cell && cell.locations && !cell.locations.includes('wall') && 
+                                !cell.content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
                                 return { x, y };
                             }
                         }
@@ -514,7 +546,9 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                     const y = playerPos.y + dy;
                     if (y >= 0 && y < map.length && x >= 0 && x < map[0].length) {
                         const cell = map[y][x];
-                        if (cell && cell.locations && !cell.locations.includes('wall') && !cell.content?.blocker) {
+                        const posKey = `${x},${y}`;
+                        if (cell && cell.locations && !cell.locations.includes('wall') && 
+                            !cell.content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
                             return { x, y };
                         }
                     }
@@ -538,7 +572,8 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                 if (cell.locations && cell.locations.some((loc: string) => 
                     loc.toLowerCase().includes(location.toLowerCase())
                 )) {
-                    if (!cell.content?.blocker) {
+                    const posKey = `${x},${y}`;
+                    if (!cell.content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
                         return { x, y };
                     }
                 }
@@ -600,5 +635,175 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
             type: 'ground',
             position: { x: 25, y: 25 }
         };
+    }
+    
+    /**
+     * Ensure player and Data characters always exist after map generation
+     * This is a safety check to prevent these critical characters from being lost
+     */
+    private async ensurePlayerAndDataExist(map: any): Promise<void> {
+        // Track occupied positions
+        const occupiedPositions = new Set<string>();
+        
+        // Find a safe spawn position in the first room or any walkable cell
+        const findSafePosition = (excludePositions?: Set<string>): { x: number, y: number } | null => {
+            // Try to find a walkable cell near the center
+            const centerX = Math.floor(map[0]?.length / 2) || 25;
+            const centerY = Math.floor(map.length / 2) || 25;
+            
+            for (let radius = 0; radius < 15; radius++) {
+                for (let dy = -radius; dy <= radius; dy++) {
+                    for (let dx = -radius; dx <= radius; dx++) {
+                        const y = centerY + dy;
+                        const x = centerX + dx;
+                        if (y >= 0 && y < map.length && x >= 0 && x < (map[0]?.length || 0)) {
+                            const cell = map[y]?.[x];
+                            const posKey = `${x},${y}`;
+                            if (cell && cell.locations && !cell.locations.includes('wall') && 
+                                (!excludePositions || !excludePositions.has(posKey))) {
+                                return { x, y };
+                            }
+                        }
+                    }
+                }
+            }
+            return null; // No valid position found
+        };
+        
+        // Try to create player if missing
+        // Note: We can't directly check state from here, so we'll use a try-add approach
+        // The UpdateStateEvent.addCharacter already handles duplicates gracefully (warns and skips)
+        const playerPosition = findSafePosition(occupiedPositions);
+        if (playerPosition) {
+            occupiedPositions.add(`${playerPosition.x},${playerPosition.y}`);
+            // Try to ensure player exists - this is a safety net
+            // The actual state management will prevent duplicates
+            this.dispatch(UpdateStateEvent.addCharacter, {
+                    name: 'player',
+                    race: 'human',
+                    description: 'The player character',
+                    position: playerPosition,
+                    direction: 'down' as Direction,
+                    player: 'human',
+                    team: 'player',
+                    health: 100,
+                    maxHealth: 100,
+                    palette: {
+                        skin: '#d7a55f',
+                        helmet: 'white',
+                        suit: 'white'
+                    },
+                    inventory: {
+                        items: [],
+                        maxWeight: 50,
+                        equippedWeapons: { primary: null, secondary: null }
+                    },
+                    blocker: true,
+                    action: 'idle',
+                    path: [],
+                    location: '',
+                    actions: {
+                        pointsLeft: 100,
+                        general: {
+                            move: 20,
+                            talk: 0,
+                            use: 5,
+                            inventory: 20,
+                        },
+                        rangedCombat: {
+                            shoot: 20,
+                            aim: 20,
+                            overwatch: 20,
+                            cover: 20,
+                            throw: 20,
+                        },
+                        closeCombat: {
+                            powerStrike: 25,
+                            slash: 20,
+                            fastAttack: 15,
+                            feint: 20,
+                            breakGuard: 20,
+                        }
+                    }
+                });
+        }
+        
+        // Try to create Data if missing - find an adjacent position to player
+        let dataPosition: { x: number, y: number } | null = null;
+        
+        if (playerPosition) {
+            // Try to find an adjacent position to the player
+            const offsets: [number, number][] = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+            for (const [dx, dy] of offsets) {
+                const x = playerPosition.x + dx;
+                const y = playerPosition.y + dy;
+                if (y >= 0 && y < map.length && x >= 0 && x < (map[0]?.length || 0)) {
+                    const cell = map[y]?.[x];
+                    const posKey = `${x},${y}`;
+                    if (cell && cell.locations && !cell.locations.includes('wall') && 
+                        !occupiedPositions.has(posKey)) {
+                        dataPosition = { x, y };
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // If no adjacent position found, find any safe position
+        if (!dataPosition) {
+            dataPosition = findSafePosition(occupiedPositions);
+        }
+        
+        // Ensure Data exists
+        if (dataPosition) {
+        this.dispatch(UpdateStateEvent.addCharacter, {
+                name: 'Data',
+                race: 'robot',
+                description: 'An advanced synthetic companion',
+                position: dataPosition,
+                direction: 'down' as Direction,
+                player: 'human',
+                team: 'player',
+                health: 100,
+                maxHealth: 100,
+                palette: {
+                    skin: 'yellow',
+                    helmet: 'gold',
+                    suit: 'gold'
+                },
+                inventory: {
+                    items: [],
+                    maxWeight: 50,
+                    equippedWeapons: { primary: null, secondary: null }
+                },
+                blocker: true,
+                action: 'idle',
+                path: [],
+                location: '',
+                actions: {
+                    pointsLeft: 100,
+                    general: {
+                        move: 20,
+                        talk: 0,
+                        use: 5,
+                        inventory: 20,
+                    },
+                    rangedCombat: {
+                        shoot: 20,
+                        aim: 20,
+                        overwatch: 20,
+                        cover: 20,
+                        throw: 20,
+                    },
+                    closeCombat: {
+                        powerStrike: 25,
+                        slash: 20,
+                        fastAttack: 15,
+                        feint: 20,
+                        breakGuard: 20,
+                    }
+                }
+            });
+        }
     }
 }

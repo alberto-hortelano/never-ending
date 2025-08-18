@@ -1,4 +1,4 @@
-import type { IOriginStory } from '../interfaces/IStory';
+import type { IOriginStory } from '../interfaces';
 
 export const originStories: IOriginStory[] = [
     {

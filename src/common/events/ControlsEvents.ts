@@ -1,7 +1,6 @@
-import type { ICoord, ICharacter, IWeapon, IItem, Direction } from "../interfaces";
+import type { ICoord, ICharacter, IWeapon, IItem, Direction, IOriginStory } from "../interfaces";
 import type { DeepReadonly } from "../helpers/types";
 import type { MeleeAttackType } from "../services/MeleeCombatService";
-import type { IOriginStory } from "../interfaces/IStory";
 
 /** Controls Events */
 export enum ControlsEvent {

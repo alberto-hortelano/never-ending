@@ -1,6 +1,6 @@
 import { Component } from '../Component';
 import { originStories } from '../../common/data/originStories';
-import type { IOriginStory } from '../../common/interfaces/IStory';
+import type { IOriginStory } from '../../common/interfaces';
 import { ControlsEvent } from '../../common/events';
 
 export class OriginSelection extends Component {

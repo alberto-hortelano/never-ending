@@ -1,5 +1,4 @@
-import type { IMessage } from '../interfaces';
-import type { IStoryState, IOriginStory } from '../interfaces/IStory';
+import type { IMessage, IStoryState, IOriginStory } from '../interfaces';
 import { AICommand } from './AICommandParser';
 
 export interface AIGameEngineResponse {

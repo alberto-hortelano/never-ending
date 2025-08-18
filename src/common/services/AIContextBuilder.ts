@@ -300,6 +300,13 @@ export class AIContextBuilder {
         const state = this.state;
         const map = state.map as ExtendedMap;
         
+        // Get current room/location
+        const currentCell = (map as any)[Math.floor(character.position.y)]?.[Math.floor(character.position.x)];
+        const currentLocation = currentCell?.locations?.[0] || 'unknown';
+        
+        // Get nearby rooms and their positions
+        const nearbyRooms = this.getNearbyRooms(character);
+        
         // Get nearby buildings
         const nearbyBuildings = this.getNearbyBuildings(character);
         
@@ -309,10 +316,77 @@ export class AIContextBuilder {
 
         return {
             terrain: map?.palette?.terrain || 'urban',
+            currentLocation: currentLocation,
+            currentPosition: character.position,
+            nearbyRooms: nearbyRooms,
             buildings: nearbyBuildings,
             obstacles: obstacles,
             coverPositions: coverPositions
-        };
+        } as any;
+    }
+
+    private getNearbyRooms(character: DeepReadonly<ICharacter>): any[] {
+        const state = this.state;
+        const map = state.map;
+        const rooms: any[] = [];
+        const searchRadius = 15;
+        const roomPositions = new Map<string, { positions: ICoord[], center: ICoord }>();
+        
+        // Scan nearby cells to find rooms
+        for (let dy = -searchRadius; dy <= searchRadius; dy++) {
+            for (let dx = -searchRadius; dx <= searchRadius; dx++) {
+                const x = Math.floor(character.position.x) + dx;
+                const y = Math.floor(character.position.y) + dy;
+                
+                if (y >= 0 && y < map.length && x >= 0 && x < (map[0]?.length || 0)) {
+                    const cell = map[y]?.[x];
+                    if (cell?.locations && cell.locations.length > 0) {
+                        const roomName = cell.locations[0];
+                        if (roomName && roomName !== 'wall' && roomName !== 'floor') {
+                            if (!roomPositions.has(roomName)) {
+                                roomPositions.set(roomName, { positions: [], center: { x: 0, y: 0 } });
+                            }
+                            roomPositions.get(roomName)!.positions.push({ x, y });
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Calculate center position for each room
+        for (const [roomName, data] of roomPositions) {
+            if (data.positions.length > 0) {
+                const centerX = Math.floor(data.positions.reduce((sum, pos) => sum + pos.x, 0) / data.positions.length);
+                const centerY = Math.floor(data.positions.reduce((sum, pos) => sum + pos.y, 0) / data.positions.length);
+                const distance = Math.sqrt(
+                    Math.pow(centerX - character.position.x, 2) +
+                    Math.pow(centerY - character.position.y, 2)
+                );
+                
+                rooms.push({
+                    name: roomName,
+                    centerPosition: { x: centerX, y: centerY },
+                    distance: Math.round(distance),
+                    direction: this.getDirection(character.position, { x: centerX, y: centerY })
+                });
+            }
+        }
+        
+        // Sort by distance
+        rooms.sort((a, b) => a.distance - b.distance);
+        
+        return rooms.slice(0, 5); // Return closest 5 rooms
+    }
+    
+    private getDirection(from: ICoord, to: ICoord): string {
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        
+        if (Math.abs(dx) > Math.abs(dy)) {
+            return dx > 0 ? 'east' : 'west';
+        } else {
+            return dy > 0 ? 'south' : 'north';
+        }
     }
 
     private getNearbyBuildings(character: DeepReadonly<ICharacter>): any[] {

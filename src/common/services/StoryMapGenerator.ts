@@ -1,5 +1,4 @@
-import type { IRoom } from '../interfaces';
-import type { IOriginStory } from '../interfaces/IStory';
+import type { IRoom, IOriginStory } from '../interfaces';
 import { MapGenerator } from '../helpers/MapGenerator';
 
 interface MapTemplate {

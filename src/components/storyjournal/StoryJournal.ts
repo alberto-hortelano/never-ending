@@ -1,6 +1,6 @@
 import { Component } from '../Component';
 import { StateChangeEvent } from '../../common/events';
-import type { IJournalEntry } from '../../common/interfaces/IStory';
+import type { IJournalEntry } from '../../common/interfaces';
 import { i18n } from '../../common/i18n/i18n';
 
 export class StoryJournal extends Component {

@@ -2,9 +2,8 @@ import type {
     ICharacter, IState, IMessage, Direction, IInventory,
     ICharacterAnimation, ICharacterVisualState, ICellVisualState,
     IPopupState, IProjectileState, IHighlightStates, IInteractionMode,
-    IDoor
+    IDoor, IStoryState
 } from '../interfaces';
-import type { IStoryState } from '../interfaces/IStory';
 import type { DeepReadonly } from "../helpers/types";
 
 /** Events to update state. Only State can listen. All can dispatch */

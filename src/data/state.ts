@@ -188,7 +188,7 @@ export const baseCharacter: ICharacter = {
 const createCharacter = (character?: Partial<ICharacter>): ICharacter => ({ ...structuredClone(baseCharacter), ...character });
 
 const data: Partial<ICharacter> = {
-    name: 'data',
+    name: 'Data',
     race: 'robot',
     player: 'ai',
     team: 'player', // Data is on the player's team

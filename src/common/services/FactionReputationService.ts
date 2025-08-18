@@ -1,6 +1,6 @@
 import { EventBus } from '../events/EventBus';
 import { UpdateStateEvent } from '../events/StateEvents';
-import type { IStoryState } from '../interfaces/IStory';
+import type { IStoryState } from '../interfaces';
 import { factions } from '../data/originStories';
 
 export interface ReputationChange {
