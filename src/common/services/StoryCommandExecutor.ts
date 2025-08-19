@@ -1,7 +1,7 @@
 import { EventBus } from '../events/EventBus';
 import { UpdateStateEvent, UpdateStateEventsMap } from '../events';
 import type { AICommand, MapCommand, StorylineCommand, CharacterCommand } from './AICommandParser';
-import type { ICharacter, IItem, IWeapon, IRoom, IDoor, Direction, IStoryState, ItemType } from '../interfaces';
+import type { ICharacter, IItem, IWeapon, IRoom, IDoor, Direction, IStoryState, ItemType, Race, Action } from '../interfaces';
 import { MapGenerator } from '../helpers/MapGenerator';
 import { DoorService } from './DoorService';
 import { weapons as availableWeapons, items as availableItems } from '../../data/state';
@@ -75,6 +75,9 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
     public async executeMapCommand(command: MapCommand, _storyState?: IStoryState): Promise<void> {
         
         try {
+            // Log the full AI command for debugging
+            console.log('[StoryExecutor] Full AI map command:', JSON.stringify(command, null, 2));
+            
             // Convert AI building data to rooms for map generator
             const rooms: IRoom[] = [];
             for (const building of command.buildings) {
@@ -88,10 +91,12 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                         'huge': 11
                     };
                     
+                    const roomName = `${building.name} - ${room.name}`;
                     rooms.push({
-                        name: `${building.name} - ${room.name}`,
+                        name: roomName,
                         size: sizeMap[room.size] || 5
                     });
+                    console.log(`[StoryExecutor] Added room: "${roomName}" with size ${sizeMap[room.size] || 5}`);
                 }
             }
             
@@ -343,7 +348,9 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                         characterName: location.character.name,
                         inventory: {
                             ...currentInventory,
-                            items: [...((currentInventory as any).items || []), item]
+                            items: [...((currentInventory as any).items || []), item],
+                            maxWeight: (currentInventory as any).maxWeight || 50,
+                            equippedWeapons: (currentInventory as any).equippedWeapons || { primary: null, secondary: null }
                         }
                     });
                     
@@ -424,7 +431,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                     if (!map[cellY][cellX].doors) {
                         map[cellY][cellX].doors = [];
                     }
-                    map[cellY][cellX].doors.push(door);
+                    (map[cellY][cellX] as any).doors!.push(door);
                 }
                 
                 console.log(`[StoryExecutor] Generated door ${door.id} at position`, doorData.position);
@@ -470,11 +477,29 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                     console.log(`[Character Position] Updating ${charData.name} position to (${position.x}, ${position.y})`);
                     
                     // Update the existing character's position
-                    // Note: We need to create a minimal character object with the new position
+                    // For now, just dispatch with minimal info - the state handler should handle this
                     this.dispatch(UpdateStateEvent.characterPosition, {
                         name: isPlayer ? 'player' : 'Data',
-                        position: position
-                    } as Partial<ICharacter>);
+                        position: position,
+                        race: 'human' as Race,
+                        description: '',
+                        action: 'idle' as Action,
+                        player: isPlayer ? 'human' : 'ai',
+                        direction: 'down' as Direction,
+                        location: '',
+                        path: [],
+                        blocker: true,
+                        palette: { skin: '', helmet: '', suit: '' },
+                        inventory: { items: [], maxWeight: 50, equippedWeapons: { primary: null, secondary: null } },
+                        actions: { 
+                            pointsLeft: 0, 
+                            general: { move: 0, talk: 0, use: 0, inventory: 0 },
+                            rangedCombat: { shoot: 0, aim: 0, overwatch: 0, cover: 0, throw: 0 },
+                            closeCombat: { powerStrike: 0, slash: 0, fastAttack: 0, feint: 0, breakGuard: 0 }
+                        },
+                        health: 100,
+                        maxHealth: 100
+                    } as ICharacter);
                     
                     // Mark position as occupied
                     markPositionOccupied(position.x, position.y);
@@ -503,17 +528,34 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                     continue;
                 }
                 
+                // Validate position is within map bounds
+                if (position.x < 0 || position.x >= (map[0]?.length || 0) || 
+                    position.y < 0 || position.y >= map.length) {
+                    console.error(`[Character Position] ERROR: Position (${position.x}, ${position.y}) is outside map bounds for ${charData.name}!`);
+                    console.error(`[Character Position] Map bounds: 0-${(map[0]?.length || 0) - 1} x 0-${map.length - 1}`);
+                    // Try to find a safe fallback position
+                    const safePos = this.findSafePosition(map, occupiedPositions);
+                    if (safePos) {
+                        console.log(`[Character Position] Using safe fallback position (${safePos.x}, ${safePos.y}) for ${charData.name}`);
+                        position.x = safePos.x;
+                        position.y = safePos.y;
+                    } else {
+                        console.error(`[Character Position] No safe position found for ${charData.name}, skipping character`);
+                        continue;
+                    }
+                }
+                
                 console.log(`[Character Position] Spawning ${charData.name} at position (${position.x}, ${position.y})`);
                 
                 // Create character
                 const newCharacter: Partial<ICharacter> = {
                     name: charData.name,
-                    race: charData.race || 'human',
+                    race: (charData.race || 'human') as Race,
                     description: charData.description || '',
                     position: position,
                     direction: this.mapDirection(charData.orientation || 'down') as Direction,
-                    player: charData.player || 'ai', // Use provided player value or default to AI
-                    team: charData.team || this.determineTeam(charData), // Use provided team or determine it
+                    player: (charData as any).player || 'ai', // Use provided player value or default to AI
+                    team: (charData as any).team || this.determineTeam(charData), // Use provided team or determine it
                     health: 100,
                     maxHealth: 100,
                     palette: charData.palette || {
@@ -540,19 +582,170 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
     }
     
     /**
+     * Find a safe walkable position in the map
+     */
+    private findSafePosition(map: MapCell[][], occupiedPositions?: Set<string>): { x: number, y: number } | null {
+        // Try center first
+        const centerX = Math.floor((map[0]?.length || 50) / 2);
+        const centerY = Math.floor(map.length / 2);
+        
+        // Search in expanding circles from center
+        for (let radius = 0; radius < Math.max(map.length, map[0]?.length || 0); radius++) {
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    const y = centerY + dy;
+                    const x = centerX + dx;
+                    if (y >= 0 && y < map.length && map[0] && x >= 0 && x < map[0].length) {
+                        const cell = map[y]?.[x];
+                        const posKey = `${x},${y}`;
+                        if (cell && cell.locations && !cell.locations.includes('wall') && 
+                            !(cell as any).content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
+                            return { x, y };
+                        }
+                    }
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Find a room position by name with fuzzy matching
+     */
+    private findRoomPosition(roomName: string, map: MapCell[][], occupiedPositions?: Set<string>): { x: number, y: number } | null {
+        const lowerRoomName = roomName.toLowerCase().trim();
+        console.log(`[Character Position] Searching for room: "${roomName}" (normalized: "${lowerRoomName}")`);
+        
+        // First try exact match
+        for (let y = 0; y < map.length; y++) {
+            const row = map[y];
+            if (!row) continue;
+            for (let x = 0; x < row.length; x++) {
+                const cell = row[x];
+                if (!cell) continue;
+                if (cell.locations && cell.locations.some((loc: string) => 
+                    loc.toLowerCase() === lowerRoomName
+                )) {
+                    const posKey = `${x},${y}`;
+                    if (!(cell as any).content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
+                        console.log(`[Character Position] Found exact match for room "${roomName}" at (${x}, ${y})`);
+                        return { x, y };
+                    }
+                }
+            }
+        }
+        
+        // Try partial match (room name is contained in cell location)
+        for (let y = 0; y < map.length; y++) {
+            const row = map[y];
+            if (!row) continue;
+            for (let x = 0; x < row.length; x++) {
+                const cell = row[x];
+                if (!cell) continue;
+                if (cell.locations && cell.locations.some((loc: string) => 
+                    loc.toLowerCase().includes(lowerRoomName) || lowerRoomName.includes(loc.toLowerCase())
+                )) {
+                    const posKey = `${x},${y}`;
+                    if (!(cell as any).content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
+                        console.log(`[Character Position] Found partial match for room "${roomName}" at (${x}, ${y})`);
+                        return { x, y };
+                    }
+                }
+            }
+        }
+        
+        // Try matching individual words
+        const roomWords = lowerRoomName.split(/[\s\-\/]+/);
+        if (roomWords.length > 1) {
+            for (const word of roomWords) {
+                if (word.length < 3) continue; // Skip short words
+                for (let y = 0; y < map.length; y++) {
+                    const row = map[y];
+                    if (!row) continue;
+                    for (let x = 0; x < row.length; x++) {
+                        const cell = row[x];
+                        if (!cell) continue;
+                        if (cell.locations && cell.locations.some((loc: string) => 
+                            loc.toLowerCase().includes(word)
+                        )) {
+                            const posKey = `${x},${y}`;
+                            if (!(cell as any).content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
+                                console.log(`[Character Position] Found word match for "${word}" from "${roomName}" at (${x}, ${y})`);
+                                return { x, y };
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        console.log(`[Character Position] No match found for room "${roomName}"`);
+        return null;
+    }
+    
+    /**
      * Find a suitable spawn position based on location description
      */
     private findSpawnPosition(location: string, map: MapCell[][], occupiedPositions?: Set<string>): { x: number, y: number } | null {
         console.log(`[Character Position] Finding spawn position for location: "${location}"`);
         console.log(`[Character Position] Map dimensions: ${map?.length || 0}x${map?.[0]?.length || 0}`);
         
+        // Log all available room names for debugging
+        const availableRooms = new Set<string>();
+        for (let y = 0; y < map.length; y++) {
+            const row = map[y];
+            if (!row) continue;
+            for (let x = 0; x < row.length; x++) {
+                const cell = row[x];
+                if (cell?.locations) {
+                    cell.locations.forEach((loc: string) => {
+                        if (loc !== 'wall' && loc !== 'floor') {
+                            availableRooms.add(loc);
+                        }
+                    });
+                }
+            }
+        }
+        console.log(`[Character Position] Available rooms on map:`, Array.from(availableRooms));
+        
         // Parse location string
-        // Could be: "room name", "near character", "x,y coordinates", "center", "near_player", etc.
+        // Could be: "room name", "near character", "x,y coordinates", "center", "near_player", "room/player", etc.
+        
+        // Handle special case: "location/player" means near player in that location
+        if (location.includes('/player')) {
+            console.log(`[Character Position] Location "${location}" appears to be near player format`);
+            // Extract the room name part
+            const roomName = location.replace('/player', '').trim();
+            console.log(`[Character Position] Looking for room: "${roomName}" to place near player`);
+            
+            // Try to find the room first
+            const roomPos = this.findRoomPosition(roomName, map, occupiedPositions);
+            if (roomPos) {
+                console.log(`[Character Position] Found room "${roomName}" at (${roomPos.x}, ${roomPos.y}), placing near player`);
+                // Try to find a position adjacent to this room position
+                const offsets: [number, number][] = [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, -1], [1, -1], [-1, 1]];
+                for (const [dx, dy] of offsets) {
+                    const x = roomPos.x + dx;
+                    const y = roomPos.y + dy;
+                    if (y >= 0 && y < map.length && map[0] && x >= 0 && x < map[0].length) {
+                        const cell = map[y]?.[x];
+                        const posKey = `${x},${y}`;
+                        if (cell && cell.locations && !cell.locations.includes('wall') && 
+                            !(cell as any).content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
+                            return { x, y };
+                        }
+                    }
+                }
+                // If no adjacent position found, return the room position itself
+                return roomPos;
+            }
+        }
         
         // Handle special cases
         if (location === 'center') {
             // Find a walkable position near the center of the map
-            const centerX = Math.floor(map[0].length / 2);
+            const centerX = map[0] ? Math.floor(map[0].length / 2) : Math.floor(map.length / 2);
             const centerY = Math.floor(map.length / 2);
             
             // Search in expanding circles from center
@@ -561,11 +754,11 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                     for (let dx = -radius; dx <= radius; dx++) {
                         const y = centerY + dy;
                         const x = centerX + dx;
-                        if (y >= 0 && y < map.length && x >= 0 && x < map[0].length) {
-                            const cell = map[y][x];
+                        if (y >= 0 && y < map.length && map[0] && x >= 0 && x < map[0].length) {
+                            const cell = map[y]?.[x];
                             const posKey = `${x},${y}`;
                             if (cell && cell.locations && !cell.locations.includes('wall') && 
-                                !cell.content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
+                                !(cell as any).content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
                                 console.log(`[Character Position] Found center position at (${x}, ${y})`);
                                 return { x, y };
                             }
@@ -584,11 +777,11 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                 for (const [dx, dy] of offsets) {
                     const x = playerPos.x + dx;
                     const y = playerPos.y + dy;
-                    if (y >= 0 && y < map.length && x >= 0 && x < map[0].length) {
-                        const cell = map[y][x];
+                    if (y >= 0 && y < map.length && map[0] && x >= 0 && x < map[0].length) {
+                        const cell = map[y]?.[x];
                         const posKey = `${x},${y}`;
                         if (cell && cell.locations && !cell.locations.includes('wall') && 
-                            !cell.content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
+                            !(cell as any).content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
                             return { x, y };
                         }
                     }
@@ -605,25 +798,36 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
             };
         }
         
-        // Find room by name and get a random walkable cell
+        // Try to find room by name (with fuzzy matching)
+        const roomPos = this.findRoomPosition(location, map, occupiedPositions);
+        if (roomPos) {
+            return roomPos;
+        }
+        
+        // Default to first walkable position if nothing found
+        console.log(`[Character Position] WARNING: Could not find valid position for "${location}", searching for first walkable cell`);
+        
+        // Find the first walkable cell in the map
         for (let y = 0; y < map.length; y++) {
-            for (let x = 0; x < map[y].length; x++) {
-                const cell = map[y][x];
-                if (cell.locations && cell.locations.some((loc: string) => 
-                    loc.toLowerCase().includes(location.toLowerCase())
-                )) {
-                    const posKey = `${x},${y}`;
-                    if (!cell.content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
-                        return { x, y };
-                    }
+            const row = map[y];
+            if (!row) continue;
+            for (let x = 0; x < row.length; x++) {
+                const cell = row[x];
+                if (!cell) continue;
+                const posKey = `${x},${y}`;
+                if (cell.locations && !cell.locations.includes('wall') && 
+                    !(cell as any).content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
+                    console.log(`[Character Position] Using fallback position (${x}, ${y}) - first walkable cell found`);
+                    return { x, y };
                 }
             }
         }
         
-        // Default to center if nothing found
-        console.log(`[Character Position] WARNING: Could not find valid position for "${location}", defaulting to (25, 25)`);
-        console.log(`[Character Position] This may place character outside visible map!`);
-        return { x: 25, y: 25 };
+        // Absolute fallback - center of actual map bounds
+        const fallbackX = Math.floor((map[0]?.length || 50) / 2);
+        const fallbackY = Math.floor(map.length / 2);
+        console.log(`[Character Position] ERROR: No walkable cells found! Using map center (${fallbackX}, ${fallbackY})`);
+        return { x: fallbackX, y: fallbackY };
     }
     
     /**
@@ -636,7 +840,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
         }
         
         // Check if hostile based on description
-        const desc = (charData.description || '').toLowerCase();
+        const desc = ((charData.description || '') as string).toLowerCase();
         if (desc.includes('enemy') || desc.includes('hostile') || desc.includes('enemigo')) {
             return 'enemy';
         }
@@ -690,7 +894,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
         // Find a safe spawn position in the first room or any walkable cell
         const findSafePosition = (excludePositions?: Set<string>): { x: number, y: number } | null => {
             // Try to find a walkable cell near the center
-            const centerX = Math.floor(map[0]?.length / 2) || 25;
+            const centerX = map[0] ? Math.floor(map[0].length / 2) : 25;
             const centerY = Math.floor(map.length / 2) || 25;
             
             for (let radius = 0; radius < 15; radius++) {
