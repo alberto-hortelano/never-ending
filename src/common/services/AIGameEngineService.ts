@@ -1,10 +1,76 @@
 import type { IMessage, IStoryState, IOriginStory } from '../interfaces';
 import { AICommand } from './AICommandParser';
-import { AIBrowserCacheService } from './AIBrowserCacheService';
+import { AIBrowserCacheService, type AIRequest, type AIResponse } from './AIBrowserCacheService';
 
 export interface AIGameEngineResponse {
     messages: IMessage[];
     command: AICommand | null;
+}
+
+// Define a specific response type for game engine
+interface GameEngineResponse extends AIResponse {
+    messages: IMessage[];
+    content: string;
+}
+
+// Define a specific request type for game engine
+interface GameEngineRequest extends AIRequest {
+    messages: IMessage[];
+    endpoint: string;
+}
+
+// Character interfaces
+interface CharacterInfo {
+    name: string;
+    race?: string;
+    position?: { x: number; y: number };
+    health?: {
+        current: number;
+        max: number;
+    };
+    faction?: string;
+    personality?: string;
+    isAlly?: boolean;
+    isEnemy?: boolean;
+    isAdjacent?: boolean;
+    distanceFromCurrent?: number;
+    canConverse?: boolean;
+}
+
+interface ConversationExchange {
+    speaker: string;
+    content: string;
+}
+
+interface RecentEvent {
+    description: string;
+}
+
+interface ThreatInfo {
+    source: string;
+    level: number;
+    type: string;
+    distance: number;
+}
+
+interface TacticalAnalysis {
+    threats?: ThreatInfo[];
+    suggestedStance?: string;
+}
+
+// Main context interface
+interface AIActionContext {
+    currentCharacter?: CharacterInfo;
+    visibleCharacters?: CharacterInfo[];
+    charactersInConversationRange?: CharacterInfo[];
+    recentEvents?: RecentEvent[];
+    conversationHistory?: ConversationExchange[];
+    activeConversations?: Map<string, ConversationExchange[]>;
+    tacticalAnalysis?: TacticalAnalysis;
+    blockageInfo?: string;
+    npcFaction?: string;
+    recentConversation?: ConversationExchange[];
+    [key: string]: unknown; // Allow additional properties
 }
 
 export class AIGameEngineService {
@@ -28,7 +94,7 @@ export class AIGameEngineService {
         missionType: string,
         narrativeContext: string,
         storyState?: IStoryState
-    ): Promise<any> {
+    ): Promise<unknown> {
         const messages: IMessage[] = [];
         
         // Build map generation prompt
@@ -212,7 +278,7 @@ Remember: You can ONLY interact with what's ACTUALLY in the game state, not what
     }
 
     public async requestAIAction(
-        context: any,
+        context: AIActionContext,
         systemPrompt?: string,
         storyState?: IStoryState
     ): Promise<AIGameEngineResponse> {
@@ -222,8 +288,8 @@ Remember: You can ONLY interact with what's ACTUALLY in the game state, not what
         // Log the request
         // console.log('[AI GameEngine] === REQUEST START ===');
         // console.log('[AI GameEngine] Character:', context.currentCharacter?.name);
-        // console.log('[AI GameEngine] Visible characters:', context.visibleCharacters?.map((c: any) => `${c.name} (health: ${c.health?.current})`).join(', '));
-        // console.log('[AI GameEngine] Characters in conversation range:', context.charactersInConversationRange?.map((c: any) => c.name).join(', '));
+        // console.log('[AI GameEngine] Visible characters:', context.visibleCharacters?.map((c) => `${c.name} (health: ${c.health?.current})`).join(', '));
+        // console.log('[AI GameEngine] Characters in conversation range:', context.charactersInConversationRange?.map((c) => c.name).join(', '));
 
         // Add system context as first message
         if (systemPrompt || this.narrativeArchitectPrompt) {
@@ -272,13 +338,13 @@ Remember: You can ONLY interact with what's ACTUALLY in the game state, not what
         }
     }
 
-    private buildContextPrompt(context: any, storyState?: IStoryState): string {
+    private buildContextPrompt(context: AIActionContext, storyState?: IStoryState): string {
         const current = context.currentCharacter;
         const visibleChars = context.visibleCharacters || [];
         const conversableChars = context.charactersInConversationRange || [];
         
         // Build character descriptions with clear status
-        const characterDescriptions = visibleChars.map((char: any) => {
+        const characterDescriptions = visibleChars.map((char) => {
             const status = [];
             if (char.isAlly) status.push('ALLY');
             if (char.isEnemy) status.push('ENEMY');
@@ -291,18 +357,18 @@ Remember: You can ONLY interact with what's ACTUALLY in the game state, not what
         // Create natural language situation summary
         let situationSummary = `## CURRENT SITUATION
 
-You are: ${current.name} (${current.race || 'unknown'})
-Your position: (${Math.round(current.position?.x || 0)}, ${Math.round(current.position?.y || 0)})
-Your health: ${current.health?.current}/${current.health?.max}
-Your faction: ${current.faction || 'neutral'}
-Your personality: ${current.personality || 'standard'}
+You are: ${current?.name || 'unknown'} (${current?.race || 'unknown'})
+Your position: (${Math.round(current?.position?.x || 0)}, ${Math.round(current?.position?.y || 0)})
+Your health: ${current?.health?.current || 0}/${current?.health?.max || 100}
+Your faction: ${current?.faction || 'neutral'}
+Your personality: ${current?.personality || 'standard'}
 
 ## VISIBLE CHARACTERS (${visibleChars.length} total)
 ${characterDescriptions || '  None visible'}
 
 ## CONVERSATION OPTIONS (within 8 cells)
 ${conversableChars.length > 0 
-    ? conversableChars.map((c: any) => `  - ${c.name} (${Math.round(c.distanceFromCurrent)}m) - Ready to talk`).join('\n')
+    ? conversableChars.map((c) => `  - ${c.name} (${Math.round(c.distanceFromCurrent || 0)}m) - Ready to talk`).join('\n')
     : '  No characters in conversation range - need to move closer'}
 `;
         
@@ -310,7 +376,7 @@ ${conversableChars.length > 0
         if (context.recentEvents && context.recentEvents.length > 0) {
             situationSummary += `
 ## RECENT EVENTS
-${context.recentEvents.map((e: any) => `  - ${e.description}`).join('\n')}
+${context.recentEvents.map((e) => `  - ${e.description}`).join('\n')}
 `;
         }
         
@@ -318,7 +384,7 @@ ${context.recentEvents.map((e: any) => `  - ${e.description}`).join('\n')}
         if (context.conversationHistory && context.conversationHistory.length > 0) {
             situationSummary += `
 ## RECENT CONVERSATION HISTORY
-${context.conversationHistory.map((exchange: any) => 
+${context.conversationHistory.map((exchange) => 
     `  - ${exchange.speaker}: "${exchange.content}"`
 ).join('\n')}
 `;
@@ -327,10 +393,12 @@ ${context.conversationHistory.map((exchange: any) =>
         // Add active conversations if any
         if (context.activeConversations && context.activeConversations.size > 0) {
             const activeConvos: string[] = [];
-            context.activeConversations.forEach((exchanges: any[], key: string) => {
+            context.activeConversations.forEach((exchanges, key) => {
                 if (exchanges.length > 0) {
                     const lastExchange = exchanges[exchanges.length - 1];
-                    activeConvos.push(`  - With ${key}: Last said "${lastExchange.content}" by ${lastExchange.speaker}`);
+                    if (lastExchange) {
+                        activeConvos.push(`  - With ${key}: Last said "${lastExchange.content}" by ${lastExchange.speaker}`);
+                    }
                 }
             });
             if (activeConvos.length > 0) {
@@ -348,7 +416,7 @@ ${activeConvos.join('\n')}
                 situationSummary += `
 ## TACTICAL ASSESSMENT
 Threats detected:
-${threats.map((t: any) => `  - ${t.source}: threat level ${t.level}, ${t.type} threat at ${t.distance}m`).join('\n')}
+${threats.map((t) => `  - ${t.source}: threat level ${t.level}, ${t.type} threat at ${t.distance}m`).join('\n')}
 Recommended stance: ${context.tacticalAnalysis.suggestedStance}
 `;
             }
@@ -366,14 +434,23 @@ Companion: ${storyState.selectedOrigin.startingCompanion?.name || 'None'}
         
         // Handle blockage situations
         if (context.blockageInfo) {
-            const info = context.blockageInfo;
-            const blocker = info.blockingCharacter;
-            situationSummary += `
+            if (typeof context.blockageInfo === 'string') {
+                situationSummary += `
+## ⚠️ PATH BLOCKED
+${context.blockageInfo}
+`;
+            } else if (typeof context.blockageInfo === 'object') {
+                const info = context.blockageInfo as any;
+                const blocker = info.blockingCharacter;
+                if (blocker) {
+                    situationSummary += `
 ## ⚠️ PATH BLOCKED
 Cannot reach ${info.originalTarget} - ${blocker.name} is blocking!
 ${blocker.name} is ${blocker.isAlly ? 'an ALLY' : 'an ENEMY'} at ${Math.round(blocker.distance)} cells
 ${blocker.distance <= 8 ? '✓ Can talk to resolve' : '✗ Too far to talk - move closer first'}
 `;
+                }
+            }
         }
         
         // Clear action reminders based on situation
@@ -383,10 +460,10 @@ ${blocker.distance <= 8 ? '✓ Can talk to resolve' : '✗ Too far to talk - mov
 `;
         
         // Priority guidance based on situation
-        if (conversableChars.some((c: any) => c.isAlly)) {
+        if (conversableChars.some((c) => c.isAlly)) {
             actionGuidance += `📢 PRIORITY: You have allies in conversation range! Consider speaking first.\n`;
         }
-        if (visibleChars.some((c: any) => c.isAdjacent && c.isEnemy)) {
+        if (visibleChars.some((c) => c.isAdjacent && c.isEnemy)) {
             actionGuidance += `⚔️ COMBAT: Enemy adjacent! Attack or retreat immediately.\n`;
         }
         if (conversableChars.length === 0 && visibleChars.length > 0) {
@@ -399,7 +476,7 @@ ${blocker.distance <= 8 ? '✓ Can talk to resolve' : '✗ Too far to talk - mov
         return situationSummary + actionGuidance + `
 ## YOUR RESPONSE
 Based on the above situation, choose ONE action following the JSON format.
-Remember: ${current.name} would act according to their ${current.personality || 'standard'} personality.
+Remember: ${current?.name || 'character'} would act according to their ${current?.personality || 'standard'} personality.
 
 CRITICAL REMINDERS:
 - Can ONLY see/interact with the ${visibleChars.length} characters listed above
@@ -417,8 +494,8 @@ CRITICAL REMINDERS:
         // console.log('[AIGameEngineService] Message count:', messages.length);
         
         // Check cache first
-        const cacheKey = { messages, endpoint: '/gameEngine' };
-        const cachedResponse = AIBrowserCacheService.getCachedResponse(cacheKey);
+        const cacheKey: GameEngineRequest = { messages, endpoint: '/gameEngine' };
+        const cachedResponse = AIBrowserCacheService.getCachedResponse<GameEngineRequest, GameEngineResponse>(cacheKey);
         if (cachedResponse) {
             console.log('[AIGameEngineService] Using cached response');
             return cachedResponse;
@@ -449,12 +526,12 @@ CRITICAL REMINDERS:
             // console.log('[AIGameEngineService] Response has type field:', !!responseData.type);
             // Check if it's a direct command response
             if (responseData.type) {
-                const result = {
+                const result: GameEngineResponse = {
                     messages: messages,
                     content: JSON.stringify(responseData)
                 };
                 // Cache the successful response
-                AIBrowserCacheService.cacheResponse(cacheKey, result);
+                AIBrowserCacheService.cacheResponse<GameEngineRequest, GameEngineResponse>(cacheKey, result);
                 return result;
             }
             
@@ -463,21 +540,21 @@ CRITICAL REMINDERS:
             const lastMessage = updatedMessages[updatedMessages.length - 1];
             if (!lastMessage || lastMessage.role !== 'assistant') {
                 // If not messages format, assume it's a direct response
-                const result = {
+                const result: GameEngineResponse = {
                     messages: messages,
                     content: JSON.stringify(responseData)
                 };
                 // Cache the successful response
-                AIBrowserCacheService.cacheResponse(cacheKey, result);
+                AIBrowserCacheService.cacheResponse<GameEngineRequest, GameEngineResponse>(cacheKey, result);
                 return result;
             }
 
-            const result = {
+            const result: GameEngineResponse = {
                 messages: updatedMessages,
                 content: lastMessage.content
             };
             // Cache the successful response
-            AIBrowserCacheService.cacheResponse(cacheKey, result);
+            AIBrowserCacheService.cacheResponse<GameEngineRequest, GameEngineResponse>(cacheKey, result);
             return result;
         } catch (error) {
             console.error('[AI GameEngine] Error in callGameEngine:', error);
@@ -694,7 +771,7 @@ Remember: ALL narrative text, descriptions, objectives, and dialogue MUST be in 
                 // Check if response has commands array
                 if ('commands' in parsedResponse && Array.isArray(parsedResponse.commands)) {
                     commands = parsedResponse.commands;
-                    narrative = parsedResponse.narrative;
+                    narrative = parsedResponse.narrative as string | undefined;
                 } else if (parsedResponse.type) {
                     // Single command response
                     commands = [parsedResponse];
@@ -717,7 +794,7 @@ Remember: ALL narrative text, descriptions, objectives, and dialogue MUST be in 
         speaker: string,
         listener: string,
         playerChoice: string,
-        context?: any,
+        context?: AIActionContext,
         storyState?: IStoryState
     ): Promise<AIGameEngineResponse> {
         const messages: IMessage[] = [];

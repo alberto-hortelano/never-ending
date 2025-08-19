@@ -1,7 +1,7 @@
 import { EventBus } from '../events/EventBus';
 import { UpdateStateEvent, UpdateStateEventsMap } from '../events';
-import type { AICommand, MapCommand, StorylineCommand } from './AICommandParser';
-import type { ICharacter, IItem, IWeapon, IRoom, IDoor, Direction, IStoryState } from '../interfaces';
+import type { AICommand, MapCommand, StorylineCommand, CharacterCommand } from './AICommandParser';
+import type { ICharacter, IItem, IWeapon, IRoom, IDoor, Direction, IStoryState, ItemType } from '../interfaces';
 import { MapGenerator } from '../helpers/MapGenerator';
 import { DoorService } from './DoorService';
 import { weapons as availableWeapons, items as availableItems } from '../../data/state';
@@ -15,6 +15,26 @@ export interface ItemSpawnCommand extends AICommand {
         location: string; // Character name or position
         description?: string;
     }>;
+}
+
+interface CharacterData {
+    name: string;
+    location?: string;
+    race?: string;
+    player?: string;
+    team?: string;
+    faction?: string;
+    personality?: string;
+    [key: string]: unknown;
+}
+
+interface MapCell {
+    room?: string;
+    terrain?: string;
+    wall?: boolean;
+    door?: boolean;
+    locations?: string[];
+    [key: string]: unknown;
 }
 
 export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
@@ -93,10 +113,10 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
             }
             
             // Check if AI already included player and Data in the character list
-            const hasPlayer = command.characters.some((c: any) => 
+            const hasPlayer = command.characters.some((c) => 
                 c.name?.toLowerCase() === 'player'
             );
-            const hasData = command.characters.some((c: any) => 
+            const hasData = command.characters.some((c) => 
                 c.name?.toLowerCase() === 'data' || c.name === 'Data'
             );
             
@@ -105,36 +125,44 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
             
             // If player is not in the AI's character list, add it
             if (!hasPlayer) {
-                const playerChar: any = {
+                const playerChar = {
                     name: 'player',
                     location: firstRoomName,
-                    race: 'human',
+                    race: 'human' as const,
+                    description: 'The player character',
+                    speed: 'medium' as const,
+                    orientation: 'bottom' as const,
+                    palette: undefined,
                     player: 'human',  // Mark as human-controlled
                     team: 'player'
                 };
-                command.characters.unshift(playerChar);
+                command.characters.unshift(playerChar as any);
             }
             
             // If Data is not in the AI's character list, add it
             if (!hasData) {
-                const dataChar: any = {
+                const dataChar = {
                     name: 'Data',
                     location: firstRoomName,
-                    race: 'robot',
+                    race: 'robot' as const,
+                    description: 'Your robot companion',
+                    speed: 'medium' as const,
+                    orientation: 'bottom' as const,
+                    palette: undefined,
                     player: 'human',  // Also controlled by human player
                     team: 'player'
                 };
-                command.characters.unshift(dataChar);
+                command.characters.unshift(dataChar as any);
             }
             
             // Handle door generation if included in map command
             if (command.doors && command.doors.length > 0) {
-                await this.generateDoorsFromMap(command.doors, newMap);
+                await this.generateDoorsFromMap(command.doors, newMap as unknown as MapCell[][]);
             }
             
             // Handle character spawning if included in map command
             if (command.characters && command.characters.length > 0) {
-                await this.spawnCharactersFromMap(command.characters, newMap);
+                await this.spawnCharactersFromMap(command.characters, newMap as unknown as MapCell[][]);
             }
             
             // Update terrain palette if specified
@@ -144,7 +172,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
             
             // SAFETY CHECK: Ensure player and Data always exist after map generation
             // This is a critical failsafe to prevent them from being lost
-            await this.ensurePlayerAndDataExist(newMap);
+            await this.ensurePlayerAndDataExist(newMap as unknown as MapCell[][]);
             
             // Map generation complete
         } catch (error) {
@@ -161,11 +189,12 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
      */
     public async executeStorylineCommand(command: StorylineCommand, storyState?: IStoryState): Promise<void> {
         console.log('[StoryExecutor] Executing storyline command');
+        const storyline = (command as any).storyline;
         console.log('[StoryExecutor] Storyline details:', {
-            hasTitle: !!command.storyline?.title,
-            hasDescription: !!command.storyline?.description,
-            objectiveCount: command.storyline?.objectives?.length || 0,
-            triggerAction: command.trigger_action
+            hasTitle: !!storyline?.title,
+            hasDescription: !!storyline?.description,
+            objectiveCount: storyline?.objectives?.length || 0,
+            triggerAction: (command as any).trigger_action
         });
         
         // Add to journal
@@ -206,7 +235,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                 case 'character':
                     // Spawn new characters
                     if (command.actionData?.characters) {
-                        await this.spawnCharactersFromMap(command.actionData.characters, []);
+                        await this.spawnCharactersFromMap((command.actionData as any).characters, [] as unknown as MapCell[][]);
                     }
                     break;
                     
@@ -293,7 +322,8 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                             weight: 1,
                             cost: 50,
                             icon: '📦',
-                            type: itemData.type as any
+                            type: (['weapon', 'consumable', 'armor'].includes(itemData.type) ? 
+                                  itemData.type as ItemType : 'misc')
                         };
                     }
                 }
@@ -313,7 +343,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                         characterName: location.character.name,
                         inventory: {
                             ...currentInventory,
-                            items: [...currentInventory.items, item]
+                            items: [...((currentInventory as any).items || []), item]
                         }
                     });
                     
@@ -335,12 +365,14 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
     /**
      * Generate doors from AI map command
      */
-    private async generateDoorsFromMap(doors: any[], map: any): Promise<void> {
+    private async generateDoorsFromMap(doors: MapCommand['doors'], map: MapCell[][]): Promise<void> {
+        if (!doors) return;
+        
         console.log(`[StoryExecutor] Generating ${doors.length} doors...`);
         console.log('[StoryExecutor] Door positions:', doors.map(d => ({
             position: d.position,
             type: d.type,
-            locked: d.locked
+            locked: (d as any).locked
         })));
         
         const doorService = DoorService.getInstance();
@@ -410,7 +442,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
     /**
      * Spawn characters as part of map generation
      */
-    private async spawnCharactersFromMap(characters: any[], map: any): Promise<void> {
+    private async spawnCharactersFromMap(characters: CharacterCommand['characters'], map: MapCell[][]): Promise<void> {
         // Track occupied positions to avoid overlapping
         const occupiedPositions = new Set<string>();
         
@@ -442,7 +474,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                     this.dispatch(UpdateStateEvent.characterPosition, {
                         name: isPlayer ? 'player' : 'Data',
                         position: position
-                    } as any);
+                    } as Partial<ICharacter>);
                     
                     // Mark position as occupied
                     markPositionOccupied(position.x, position.y);
@@ -510,7 +542,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
     /**
      * Find a suitable spawn position based on location description
      */
-    private findSpawnPosition(location: string, map: any, occupiedPositions?: Set<string>): { x: number, y: number } | null {
+    private findSpawnPosition(location: string, map: MapCell[][], occupiedPositions?: Set<string>): { x: number, y: number } | null {
         console.log(`[Character Position] Finding spawn position for location: "${location}"`);
         console.log(`[Character Position] Map dimensions: ${map?.length || 0}x${map?.[0]?.length || 0}`);
         
@@ -597,7 +629,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
     /**
      * Determine team based on character data
      */
-    private determineTeam(charData: any): string {
+    private determineTeam(charData: CharacterData): string {
         // Check faction or alignment
         if (charData.faction) {
             return charData.faction;
@@ -622,7 +654,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
      */
     private resolveItemLocation(location: string): { 
         type: 'character' | 'ground',
-        character?: any,
+        character?: CharacterData,
         position?: { x: number, y: number }
     } {
         // Check if it's a character name
@@ -651,7 +683,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
      * Ensure player and Data characters always exist after map generation
      * This is a safety check to prevent these critical characters from being lost
      */
-    private async ensurePlayerAndDataExist(map: any): Promise<void> {
+    private async ensurePlayerAndDataExist(map: MapCell[][]): Promise<void> {
         // Track occupied positions
         const occupiedPositions = new Set<string>();
         

@@ -6,16 +6,16 @@ import { ControlsEvent } from '../../common/events';
 export class OriginSelection extends Component {
     protected override hasHtml = true;
     protected override hasCss = true;
-    
+
     private selectedOrigin: IOriginStory | null = null;
 
     override async connectedCallback() {
         const root = await super.connectedCallback();
         if (!root) return root;
-        
+
         this.renderOrigins(root);
         this.setupEventListeners(root);
-        
+
         return root;
     }
 
@@ -29,9 +29,9 @@ export class OriginSelection extends Component {
                 <p class="origin-english">${origin.name}</p>
                 <p class="origin-description">${origin.descriptionES}</p>
                 <div class="origin-traits">
-                    ${origin.specialTraits.map(trait => 
-                        `<span class="trait">${trait.replace(/_/g, ' ')}</span>`
-                    ).join('')}
+                    ${origin.specialTraits.map(trait =>
+            `<span class="trait">${trait.replace(/_/g, ' ')}</span>`
+        ).join('')}
                 </div>
                 <div class="origin-companion">
                     <span class="companion-label">Compañero:</span>
@@ -40,8 +40,8 @@ export class OriginSelection extends Component {
                 <div class="faction-relations">
                     <h4>Relaciones Iniciales:</h4>
                     ${Object.entries(origin.factionRelations)
-                        .filter(([_, value]) => value !== 0)
-                        .map(([faction, value]) => `
+                .filter(([_, value]) => value !== 0)
+                .map(([faction, value]) => `
                             <div class="faction-relation">
                                 <span class="faction-name">${this.getFactionName(faction)}</span>
                                 <span class="faction-value ${value > 0 ? 'positive' : 'negative'}">${value > 0 ? '+' : ''}${value}</span>
@@ -77,17 +77,6 @@ export class OriginSelection extends Component {
             return;
         }
 
-        console.log('[OriginSelection] Starting game with origin:', this.selectedOrigin.id, this.selectedOrigin.name);
-        console.log('[OriginSelection] Origin details:', {
-            nameES: this.selectedOrigin.nameES,
-            startingLocation: this.selectedOrigin.startingLocation,
-            companion: this.selectedOrigin.startingCompanion?.name || 'None',
-            traits: this.selectedOrigin.specialTraits
-        });
-
-        // Dispatch origin selection event to start the game with the origin data
-        // The story state will be set in MultiplayerManager.switchToSinglePlayer()
-        console.log('[OriginSelection] Dispatching ControlsEvent.selectOrigin to start game with origin data');
         this.eventBus.dispatch(ControlsEvent.selectOrigin, this.selectedOrigin);
 
         // Hide origin selection

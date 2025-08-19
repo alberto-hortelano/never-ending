@@ -17,6 +17,7 @@ export interface GameContext {
         objectives?: string[];
     };
     tacticalAnalysis?: TacticalAnalysis;  // New tactical assessment
+    [key: string]: unknown;  // Allow additional properties for compatibility
 }
 
 export interface TacticalAnalysis {
@@ -51,7 +52,7 @@ export interface CharacterContext {
     energy: { current: number; max: number };
     orientation: string;
     speed: string;
-    inventory?: any[];
+    inventory?: Array<{ name: string; type: string; quantity?: number; [key: string]: unknown }>;
     faction?: string;
     personality?: string;
     isPlayer: boolean;
@@ -71,10 +72,17 @@ export interface CharacterContext {
 
 export interface MapContext {
     terrain: string;
+    currentLocation?: string;
+    currentPosition?: ICoord;
+    nearbyRooms?: Array<{
+        position: ICoord;
+        name: string;
+        distance: number;
+    }>;
     buildings: Array<{
         name: string;
         position: { x: number; y: number };
-        rooms: string[];
+        distance: number;
     }>;
     obstacles: Array<{ x: number; y: number }>;
     coverPositions: Array<{ x: number; y: number }>;
@@ -152,10 +160,11 @@ export class AIContextBuilder {
         };
     }
 
-    public buildDialogueContext(dialogue: any, state: State): any {
+    public buildDialogueContext(dialogue: unknown, state: State): Record<string, unknown> {
         this.state = state;
-        const speaker = state.characters.find((c: DeepReadonly<ICharacter>) => c.name === dialogue.speaker);
-        const listener = state.characters.find((c: DeepReadonly<ICharacter>) => c.name === dialogue.listener);
+        const dlg = dialogue as Record<string, unknown>;
+        const speaker = state.characters.find((c: DeepReadonly<ICharacter>) => c.name === dlg.speaker);
+        const listener = state.characters.find((c: DeepReadonly<ICharacter>) => c.name === dlg.listener);
 
         return {
             dialogue: dialogue,
@@ -301,8 +310,9 @@ export class AIContextBuilder {
         const map = state.map as ExtendedMap;
         
         // Get current room/location
-        const currentCell = (map as any)[Math.floor(character.position.y)]?.[Math.floor(character.position.x)];
-        const currentLocation = currentCell?.locations?.[0] || 'unknown';
+        const currentCell = (map as Record<string, Record<string, unknown>>)[Math.floor(character.position.y)]?.[Math.floor(character.position.x)];
+        const locations = currentCell && typeof currentCell === 'object' && 'locations' in currentCell ? currentCell.locations : undefined;
+        const currentLocation = Array.isArray(locations) ? locations[0] : 'unknown';
         
         // Get nearby rooms and their positions
         const nearbyRooms = this.getNearbyRooms(character);
@@ -322,13 +332,13 @@ export class AIContextBuilder {
             buildings: nearbyBuildings,
             obstacles: obstacles,
             coverPositions: coverPositions
-        } as any;
+        };
     }
 
-    private getNearbyRooms(character: DeepReadonly<ICharacter>): any[] {
+    private getNearbyRooms(character: DeepReadonly<ICharacter>): Array<{ position: ICoord; name: string; distance: number }> {
         const state = this.state;
         const map = state.map;
-        const rooms: any[] = [];
+        const rooms: Array<{ position: ICoord; name: string; distance: number }> = [];
         const searchRadius = 15;
         const roomPositions = new Map<string, { positions: ICoord[], center: ICoord }>();
         
@@ -365,9 +375,8 @@ export class AIContextBuilder {
                 
                 rooms.push({
                     name: roomName,
-                    centerPosition: { x: centerX, y: centerY },
-                    distance: Math.round(distance),
-                    direction: this.getDirection(character.position, { x: centerX, y: centerY })
+                    position: { x: centerX, y: centerY },
+                    distance: Math.round(distance)
                 });
             }
         }
@@ -378,20 +387,10 @@ export class AIContextBuilder {
         return rooms.slice(0, 5); // Return closest 5 rooms
     }
     
-    private getDirection(from: ICoord, to: ICoord): string {
-        const dx = to.x - from.x;
-        const dy = to.y - from.y;
-        
-        if (Math.abs(dx) > Math.abs(dy)) {
-            return dx > 0 ? 'east' : 'west';
-        } else {
-            return dy > 0 ? 'south' : 'north';
-        }
-    }
 
-    private getNearbyBuildings(character: DeepReadonly<ICharacter>): any[] {
+    private getNearbyBuildings(character: DeepReadonly<ICharacter>): Array<{ position: ICoord; name: string; distance: number }> {
         const state = this.state;
-        const buildings: any[] = [];
+        const buildings: Array<{ position: ICoord; name: string; distance: number }> = [];
         const nearDistance = 20;
         const map = state.map as ExtendedMap;
 
@@ -406,7 +405,7 @@ export class AIContextBuilder {
                     buildings.push({
                         name: building.name,
                         position: building.position,
-                        rooms: building.rooms.map((r: { name: string }) => r.name)
+                        distance: Math.round(distance)
                     });
                 }
             }
@@ -426,7 +425,7 @@ export class AIContextBuilder {
     }
 
 
-    private buildGameState(): any {
+    private buildGameState(): { turn: number | string; phase: string; objectives?: string[] } {
         const state = this.state;
         const game = state.game as ExtendedGame;
         

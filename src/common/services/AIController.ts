@@ -475,7 +475,7 @@ export class AIController extends EventBus<
         
         // Check if response contains tactical directive
         if (response.command?.type === 'tactical_directive') {
-            const directive = response.command as TacticalDirective;
+            const directive = response.command as unknown as TacticalDirective;
             this.tacticalExecutor.setDirective(directive);
             console.log('[AI] Received tactical directive:', directive.objective);
             
@@ -492,8 +492,9 @@ export class AIController extends EventBus<
             if (validatedCommand) {
                 // Log the AI decision with more context
                 if (validatedCommand.type === 'attack') {
-                    const attackType = validatedCommand.characters?.[0]?.attack || 'unknown';
-                    const target = validatedCommand.characters?.[0]?.target || 'unknown';
+                    const chars = (validatedCommand as any).characters;
+                    const attackType = chars?.[0]?.attack || 'unknown';
+                    const target = chars?.[0]?.target || 'unknown';
                     console.log(`[AI] ${character.name}: ${validatedCommand.type} (${attackType} vs ${target})`);
                 } else {
                     console.log(`[AI] ${character.name}: ${validatedCommand.type}`);
@@ -569,7 +570,12 @@ export class AIController extends EventBus<
 
     private async executeMovement(command: AICommand, character: DeepReadonly<ICharacter>): Promise<void> {
         // Find target location
-        const targetLocationString = command.characters[0].location;
+        const chars = (command as any).characters;
+        if (!chars || !chars[0]) {
+            console.log('[AI] ExecuteMovement - No characters in command');
+            return;
+        }
+        const targetLocationString = chars[0].location;
         const targetLocation = this.resolveLocation(targetLocationString, character);
         
         if (!targetLocation || !isFinite(targetLocation.x) || !isFinite(targetLocation.y) || 
@@ -787,7 +793,12 @@ export class AIController extends EventBus<
             return;
         }
 
-        const attackData = command.characters[0];
+        const chars = (command as any).characters;
+        if (!chars || !chars[0]) {
+            console.log('[AI] ExecuteAttack - No characters in command');
+            return;
+        }
+        const attackData = chars[0];
         
         // Handle 'area' target for overwatch
         if (attackData.target === 'area' && attackData.attack === 'hold') {
@@ -808,7 +819,7 @@ export class AIController extends EventBus<
         }
         
         const targetChar = this.state.characters.find((c: DeepReadonly<ICharacter>) => 
-            c.name.toLowerCase() === attackData.target.toLowerCase()
+            c.name.toLowerCase() === (attackData.target as string).toLowerCase()
         );
         
         if (!targetChar) {
@@ -1154,11 +1165,12 @@ export class AIController extends EventBus<
         }
         
         // Log the speech action
-        console.log(`[AI]   → Speaking: "${command.content}"`);
+        console.log(`[AI]   → Speaking: "${(command as any).content}"`);
         
         // Check if we should use the Talk system for nearby conversation
+        const source = (command as any).source;
         const speaker = this.state.characters.find((c: DeepReadonly<ICharacter>) => 
-            c.name.toLowerCase() === (command.source || '').toLowerCase()
+            c.name.toLowerCase() === (source || '').toLowerCase()
         );
         
         // Find any human-controlled character that's in conversation range
@@ -1255,12 +1267,12 @@ export class AIController extends EventBus<
                     type: 'dialogue',
                     actor: speaker.name,
                     target: firstHuman.name,
-                    description: `${speaker.name} says: "${command.content}"`,
+                    description: `${speaker.name} says: "${(command as any).content}"`,
                     turn: this.state.game.turn,
                     dialogue: {
                         speaker: speaker.name,
-                        content: command.content || '',
-                        answers: command.answers
+                        content: (command as any).content || '',
+                        answers: (command as any).answers
                     }
                 });
             }
@@ -1273,7 +1285,7 @@ export class AIController extends EventBus<
                     visible: true,
                     position: undefined,
                     data: {
-                        title: `${command.source || speaker.name} - Conversación`
+                        title: `${source || speaker.name} - Conversación`
                     }
                 }
             });
@@ -1284,9 +1296,9 @@ export class AIController extends EventBus<
                 // No need to call ConversationEvent.start which would make another API call
                 this.dispatch(ConversationEvent.update, {
                     type: 'speech',
-                    source: command.source || speaker.name,
-                    content: command.content || '',
-                    answers: command.answers || [],
+                    source: source || speaker.name,
+                    content: (command as any).content || '',
+                    answers: (command as any).answers || [],
                     action: undefined
                 });
                 
@@ -1303,8 +1315,8 @@ export class AIController extends EventBus<
             // Record dialogue event
             this.contextBuilder.recordEvent({
                 type: 'dialogue',
-                actor: command.source,
-                description: `${command.source}: ${command.content}`,
+                actor: source,
+                description: `${source}: ${(command as any).content}`,
                 turn: this.state.game.turn
             });
             
@@ -1313,13 +1325,13 @@ export class AIController extends EventBus<
         
         // If not close enough or can't find characters, just log and end turn
         console.log('[AI] ExecuteSpeech - Cannot talk, characters too far or not found');
-        console.log(`[AI] ${command.source} wants to say:`, command.content);
+        console.log(`[AI] ${source} wants to say:`, (command as any).content);
         
         // Record the attempt
         this.contextBuilder.recordEvent({
             type: 'dialogue',
-            actor: command.source,
-            description: `${command.source} (too far): ${command.content}`,
+            actor: source,
+            description: `${source} (too far): ${(command as any).content}`,
             turn: this.state.game.turn
         });
         
@@ -1332,7 +1344,9 @@ export class AIController extends EventBus<
         if (!this.state || !this.contextBuilder) return;
         
         // Spawn new characters during gameplay
-        for (const charData of command.characters) {
+        const chars = (command as any).characters;
+        if (!chars) return;
+        for (const charData of chars) {
             const spawnLocation = this.resolveLocation(charData.location);
             
             if (!spawnLocation) {
