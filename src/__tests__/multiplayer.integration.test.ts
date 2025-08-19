@@ -4,7 +4,7 @@ import { State } from '../common/State';
 import { MultiplayerManager } from '../common/services/MultiplayerManager';
 import { NetworkService } from '../common/services/NetworkService';
 import { StartGameEvent } from '../common/events/NetworkEvents';
-import { IState } from '../common/interfaces';
+import { IState, IGame } from '../common/interfaces';
 import { UpdateStateEvent, GameEvent } from '../common/events';
 import { baseCharacter } from '../data/state';
 import { createTestState } from './helpers/testState.helper';
@@ -498,7 +498,11 @@ describe('Multiplayer Integration Tests', () => {
                         pointsLeft: 5 // Changed AP values
                     }
                 })) as IState['characters'],
-                game: { ...state.game, players: [...state.game.players] },
+                game: { 
+                    ...state.game, 
+                    players: [...state.game.players],
+                    teams: state.game.teams ? { ...state.game.teams } : undefined
+                } as IGame,
                 messages: [...state.messages]
             });
 

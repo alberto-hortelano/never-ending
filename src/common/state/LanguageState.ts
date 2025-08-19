@@ -27,18 +27,27 @@ export class LanguageState extends EventBus<UpdateStateEventsMap, StateChangeEve
     }
 
     private loadLanguagePreference(): void {
-        // Try to load from localStorage first
-        const savedLang = localStorage.getItem('language');
-        if (isValidLanguage(savedLang)) {
-            this._language = savedLang;
-            return;
+        // Check if we're in a browser environment
+        if (typeof localStorage !== 'undefined') {
+            // Try to load from localStorage first
+            const savedLang = localStorage.getItem('language');
+            if (isValidLanguage(savedLang)) {
+                this._language = savedLang;
+                return;
+            }
         }
 
-        // Otherwise detect browser language
-        const browserLang = navigator.language.toLowerCase();
-        if (browserLang.startsWith('es')) {
-            this._language = 'es';
+        // Check if navigator is available (browser environment)
+        if (typeof navigator !== 'undefined' && navigator.language) {
+            // Otherwise detect browser language
+            const browserLang = navigator.language.toLowerCase();
+            if (browserLang.startsWith('es')) {
+                this._language = 'es';
+            } else {
+                this._language = 'en';
+            }
         } else {
+            // Default to English in test environment
             this._language = 'en';
         }
         
@@ -46,7 +55,9 @@ export class LanguageState extends EventBus<UpdateStateEventsMap, StateChangeEve
     }
 
     private saveLanguagePreference(): void {
-        localStorage.setItem('language', this._language);
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('language', this._language);
+        }
     }
 
     get language(): DeepReadonly<LanguageCode> {

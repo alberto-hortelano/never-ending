@@ -136,7 +136,14 @@ describe('AI Action Points Management', () => {
                         enemy: { members: ['Enemy'], name: 'Enemy Team' }
                     }
                 },
-                characters: []
+                characters: [],
+                map: Array(30).fill(null).map((_, y) => 
+                    Array(30).fill(null).map((_, x) => ({
+                        position: { x, y },
+                        type: 'floor',
+                        content: null
+                    }))
+                )
             };
 
             const character: any = {

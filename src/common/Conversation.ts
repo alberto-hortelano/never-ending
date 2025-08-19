@@ -197,15 +197,15 @@ export class Conversation extends EventBus<
                         parsed.content = parsed.content.substring(0, this.maxMessageLength) + '...';
                     }
                     
-                    // Check if conversation should end (no answers or empty answers array)
-                    const shouldEnd = !parsed.answers || parsed.answers.length === 0 || 
+                    // Check if conversation should end (empty answers array or specific text)
+                    const shouldEnd = (parsed.answers && parsed.answers.length === 0) || 
                                     parsed.content.toLowerCase().includes('fin de la conversación');
                     
                     return {
                         type: 'speech',
                         source: parsed.source,
                         content: parsed.content,
-                        answers: shouldEnd ? [] : (parsed.answers || ['Continuar']),  // Empty array ends conversation
+                        answers: shouldEnd ? [] : (parsed.answers || ['Continuar']),  // Default to 'Continuar' if no answers provided
                         action: parsed.action
                     };
                 } else if (parsed.type === 'movement' || parsed.type === 'attack' || 

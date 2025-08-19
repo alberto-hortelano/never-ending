@@ -231,6 +231,10 @@ describe('AI Speech System', () => {
             // Create a new test state with data far from player
             const farTestState: IState = {
                 ...testState,
+                game: {
+                    ...testState.game,
+                    turn: 'ai' // Set to AI turn so data can move
+                },
                 characters: testState.characters.map(c => 
                     c.name === 'data' 
                         ? { ...c, position: { x: 20, y: 20 } } // Far away
@@ -242,9 +246,9 @@ describe('AI Speech System', () => {
             
             const dataCharacter = farState.characters.find(c => c.name === 'data');
             
-            // Spy on the movement dispatch
+            // Spy on the movement dispatch (AI characters use characterPath)
             const movementSpy = jest.fn();
-            aiController.listen(ControlsEvent.showMovement, movementSpy);
+            aiController.listen(UpdateStateEvent.characterPath, movementSpy);
             
             const speechCommand = {
                 type: 'speech' as const,
@@ -261,12 +265,16 @@ describe('AI Speech System', () => {
             jest.advanceTimersByTime(100);
             
             // Should have initiated movement instead of conversation
-            expect(movementSpy).toHaveBeenCalledWith('data');
+            expect(movementSpy).toHaveBeenCalled();
+            const callArg = movementSpy.mock.calls[0][0];
+            expect(callArg.name).toBe('data');
+            expect(Array.isArray(callArg.path)).toBe(true);
+            expect(callArg.path.length).toBeGreaterThan(0);
             expect(popupShowSpy).not.toHaveBeenCalled();
             expect(conversationUpdateSpy).not.toHaveBeenCalled();
             
             // Verify that the speech command was stored as pending
-            expect((aiController as any).pendingSpeechCommand).toEqual(speechCommand);
+            expect((aiController as any).pendingSpeechCommands.get('data')).toEqual(speechCommand);
         });
         
         it('should handle speech with multiple answer options', async () => {

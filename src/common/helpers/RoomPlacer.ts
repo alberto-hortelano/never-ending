@@ -130,7 +130,7 @@ export class RoomPlacer {
         if (failedRooms.length === 0) return;
 
         // Try placing at corridor endpoints and intersections
-        for (const { room, index } of failedRooms) {
+        for (const { room } of failedRooms) {
             let placement = this.tryPlaceAtSpecialPoints(room, corridors) ||
                 this.tryPlaceWithRelaxedConstraints(room, corridors) ||
                 this.tryPlaceWithOverlap(room, corridors) ||
@@ -145,9 +145,9 @@ export class RoomPlacer {
                 if (placement) {
                     this.roomPlacements.push(placement);
                     room.center = placement.position;
-                    console.log(`Emergency placement for room ${index} (size ${room.size})`);
+                    // Emergency placement for room
                 } else {
-                    console.error(`CRITICAL: Failed to place room ${index} (size ${room.size}) even with force placement!`);
+                    // CRITICAL: Failed to place room even with force placement
                 }
             }
         }

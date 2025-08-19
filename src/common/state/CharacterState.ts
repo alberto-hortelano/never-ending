@@ -60,6 +60,15 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
             return;
         }
 
+        // Log position updates to track characters outside map
+        console.log(`[Character Position] Setting ${characterData.name} position to (${characterData.position.x}, ${characterData.position.y})`);
+        
+        // Check if position might be outside typical map bounds
+        if (characterData.position.x < 0 || characterData.position.y < 0 || 
+            characterData.position.x >= 50 || characterData.position.y >= 50) {
+            console.warn(`[Character Position] WARNING: ${characterData.name} positioned outside typical map bounds at (${characterData.position.x}, ${characterData.position.y})`);
+        }
+
         character.position = characterData.position;
         character.direction = characterData.direction;
 
@@ -244,6 +253,15 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
         if (this.#characters.find(c => c.name === data.name)) {
             console.warn(`Character ${data.name} already exists`);
             return;
+        }
+
+        // Log character spawning to track positions
+        console.log(`[Character Position] Adding new character ${data.name} at position (${data.position.x}, ${data.position.y})`);
+        
+        // Check if spawn position might be outside typical map bounds
+        if (data.position.x < 0 || data.position.y < 0 || 
+            data.position.x >= 50 || data.position.y >= 50) {
+            console.warn(`[Character Position] WARNING: ${data.name} being added outside typical map bounds at (${data.position.x}, ${data.position.y})`);
         }
 
         // Create full character object with defaults

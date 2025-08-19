@@ -224,10 +224,13 @@ describe('AIController', () => {
             const character = state.characters.find((c: any) => c.name === 'data');
             await (aiController as any).executeMovement(command, character);
             
-            // Should dispatch showMovement
+            // Should dispatch characterPath for AI character movement
             expect(dispatchSpy).toHaveBeenCalledWith(
-                ControlsEvent.showMovement,
-                'data'
+                UpdateStateEvent.characterPath,
+                expect.objectContaining({
+                    name: 'data',
+                    path: expect.any(Array)
+                })
             );
             
             // Wait longer for the new implementation that waits for reachable cells
@@ -248,10 +251,13 @@ describe('AIController', () => {
             const character = state.characters.find((c: any) => c.name === 'data');
             await (aiController as any).executeMovement(command, character);
             
-            // Should dispatch showMovement
+            // Should dispatch characterPath for AI character movement
             expect(dispatchSpy).toHaveBeenCalledWith(
-                ControlsEvent.showMovement,
-                'data'
+                UpdateStateEvent.characterPath,
+                expect.objectContaining({
+                    name: 'data',
+                    path: expect.any(Array)
+                })
             );
             
             // Wait for the new longer timeout
@@ -312,8 +318,11 @@ describe('AIController', () => {
             await new Promise(resolve => setTimeout(resolve, 200));
             
             expect(dispatchSpy).toHaveBeenCalledWith(
-                ControlsEvent.cellClick,
-                { x: 5, y: 5 } // Player's position
+                ControlsEvent.characterClick,
+                { 
+                    characterName: 'player',
+                    position: { x: 5, y: 5 }
+                }
             );
         });
         
@@ -351,14 +360,14 @@ describe('AIController', () => {
             
             // The new implementation checks distance and uses the Talk system
             // Since characters are far apart (data at 15,15 and player at 5,5)
-            // It will just log and end turn
+            // It will try to move closer first, storing the speech as pending
             expect(dispatchSpy).toHaveBeenCalled();
             
-            // Check that endAITurn was called
-            const endTurnCall = dispatchSpy.mock.calls.find(
-                call => call[0] === GameEvent.changeTurn
+            // Should dispatch characterPath to move closer
+            const moveCall = dispatchSpy.mock.calls.find(
+                call => call[0] === UpdateStateEvent.characterPath
             );
-            expect(endTurnCall).toBeTruthy();
+            expect(moveCall).toBeTruthy();
         });
     });
     

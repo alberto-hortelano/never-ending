@@ -241,11 +241,11 @@ describe('AI Conversation Range', () => {
             expect(context.charactersInConversationRange).toBeDefined();
             expect(Array.isArray(context.charactersInConversationRange)).toBe(true);
             
-            // Should include player (2 cells) and ally (3 cells), but not enemy (4 cells) or distant (10 cells)
+            // With conversation range of 8: Should include player (2), ally (3), and enemy (4), but not distant (10)
             const conversableNames = context.charactersInConversationRange.map(c => c.name);
             expect(conversableNames).toContain('player');
             expect(conversableNames).toContain('ally');
-            expect(conversableNames).not.toContain('enemy');
+            expect(conversableNames).toContain('enemy');  // Now in range at 4 cells
             expect(conversableNames).not.toContain('distant');
         });
         
@@ -261,7 +261,7 @@ describe('AI Conversation Range', () => {
             
             expect(playerContext?.canConverse).toBe(true);  // 2 cells - can converse
             expect(allyContext?.canConverse).toBe(true);    // 3 cells - can converse
-            expect(enemyContext?.canConverse).toBe(false);  // 4 cells - cannot converse
+            expect(enemyContext?.canConverse).toBe(true);   // 4 cells - now can converse (range is 8)
             expect(distantContext?.canConverse).toBe(false); // 10 cells - cannot converse
         });
         
@@ -283,14 +283,14 @@ describe('AI Conversation Range', () => {
             const dataCharacter = state.characters.find(c => c.name === 'data');
             const context = contextBuilder.buildTurnContext(dataCharacter!, state);
             
-            // All characters in conversation range should have distance <= 3
+            // All characters in conversation range should have distance <= 8
             context.charactersInConversationRange.forEach(char => {
-                expect(char.distanceFromCurrent).toBeLessThanOrEqual(3);
+                expect(char.distanceFromCurrent).toBeLessThanOrEqual(8);
                 expect(char.canConverse).toBe(true);
             });
             
-            // Should have exactly 2 characters in range (player and ally)
-            expect(context.charactersInConversationRange.length).toBe(2);
+            // Should have exactly 3 characters in range (player, ally, and enemy)
+            expect(context.charactersInConversationRange.length).toBe(3);
         });
         
         it('should handle empty conversation range', () => {

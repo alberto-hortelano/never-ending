@@ -242,12 +242,15 @@ describe('AI Conversation Integration', () => {
             // Track all events in order
             const eventLog: { type: string; data: any }[] = [];
             
+            // Create a separate EventBus instance for listening (shares same static listeners)
+            const testListener = new EventBus<any, any>();
+            
             // Listen to multiple events
-            aiController.listen(UpdateStateEvent.uiPopup, (data) => {
+            testListener.listen(UpdateStateEvent.uiPopup, (data) => {
                 eventLog.push({ type: 'popup', data });
             });
             
-            aiController.listen(ConversationEvent.update, (data) => {
+            testListener.listen(ConversationEvent.update, (data) => {
                 eventLog.push({ type: 'conversation', data });
             });
             
@@ -335,7 +338,7 @@ describe('AI Conversation Integration', () => {
             expect(conversationUpdateSpy).not.toHaveBeenCalled();
             
             // Verify pending speech command was stored
-            expect((aiController as any).pendingSpeechCommand).toEqual(speechCommand);
+            expect((aiController as any).pendingSpeechCommands.get('data')).toEqual(speechCommand);
         });
     });
 });

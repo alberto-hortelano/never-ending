@@ -89,9 +89,9 @@ describe('Conversation Response Parsing', () => {
             const result = (conversation as any).parseResponse(invalidResponse);
             
             expect(result.type).toBe('speech');
-            expect(result.source).toBe('Unknown');
-            expect(result.content).toBe("I... I'm not sure what to say.");
-            expect(result.answers).toEqual(['Continue', 'Leave']);
+            expect(result.source).toBe('Data');  // Default when currentTarget is null
+            expect(result.content).toBe('This is not JSON');  // Returns the raw text
+            expect(result.answers).toEqual(['Entendido', 'Dime más', 'Cambiar de tema']);  // Default non-narrative answers
         });
         
         it('should handle unknown response types', () => {

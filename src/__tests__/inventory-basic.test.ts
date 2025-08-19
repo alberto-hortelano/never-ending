@@ -29,7 +29,7 @@ describe('Inventory Basic Test', () => {
     });
     
     test('data character has inventory items', () => {
-        const data = state.findCharacter('data');
+        const data = state.findCharacter('Data');  // Capital D
         expect(data).toBeDefined();
         expect(data?.inventory.items.length).toBeGreaterThan(0);
         

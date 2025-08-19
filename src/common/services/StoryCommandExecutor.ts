@@ -435,6 +435,8 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                         continue;
                     }
                     
+                    console.log(`[Character Position] Updating ${charData.name} position to (${position.x}, ${position.y})`);
+                    
                     // Update the existing character's position
                     // Note: We need to create a minimal character object with the new position
                     this.dispatch(UpdateStateEvent.characterPosition, {
@@ -465,9 +467,11 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                 const position = this.findSpawnPosition(charData.location, map, occupiedPositions);
                 
                 if (!position) {
-                    console.warn(`[StoryExecutor] Could not find spawn position for ${charData.name}`);
+                    console.warn(`[Character Position] ERROR: Could not find spawn position for ${charData.name} at location "${charData.location}"`);
                     continue;
                 }
+                
+                console.log(`[Character Position] Spawning ${charData.name} at position (${position.x}, ${position.y})`);
                 
                 // Create character
                 const newCharacter: Partial<ICharacter> = {
@@ -507,6 +511,9 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
      * Find a suitable spawn position based on location description
      */
     private findSpawnPosition(location: string, map: any, occupiedPositions?: Set<string>): { x: number, y: number } | null {
+        console.log(`[Character Position] Finding spawn position for location: "${location}"`);
+        console.log(`[Character Position] Map dimensions: ${map?.length || 0}x${map?.[0]?.length || 0}`);
+        
         // Parse location string
         // Could be: "room name", "near character", "x,y coordinates", "center", "near_player", etc.
         
@@ -527,6 +534,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                             const posKey = `${x},${y}`;
                             if (cell && cell.locations && !cell.locations.includes('wall') && 
                                 !cell.content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
+                                console.log(`[Character Position] Found center position at (${x}, ${y})`);
                                 return { x, y };
                             }
                         }
@@ -581,6 +589,8 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
         }
         
         // Default to center if nothing found
+        console.log(`[Character Position] WARNING: Could not find valid position for "${location}", defaulting to (25, 25)`);
+        console.log(`[Character Position] This may place character outside visible map!`);
         return { x: 25, y: 25 };
     }
     
