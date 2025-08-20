@@ -1430,9 +1430,17 @@ export class AIController extends EventBus<
         
         const lowerLocation = location.toLowerCase().trim();
         
-        // Handle relative directions (north, south, east, west)
-        if (fromCharacter && ['north', 'south', 'east', 'west', 'up', 'down', 'left', 'right'].includes(lowerLocation)) {
+        // Handle relative directions (including diagonals)
+        const directions = [
+            'north', 'south', 'east', 'west', 'up', 'down', 'left', 'right',
+            'northeast', 'northwest', 'southeast', 'southwest',
+            'north-east', 'north-west', 'south-east', 'south-west'
+        ];
+        
+        if (fromCharacter && directions.includes(lowerLocation)) {
             const moveDistance = 5; // Move 5 cells in the direction
+            const diagonalDistance = Math.floor(moveDistance * 0.7); // Diagonal moves are slightly shorter
+            
             switch (lowerLocation) {
                 case 'north':
                 case 'up':
@@ -1446,6 +1454,18 @@ export class AIController extends EventBus<
                 case 'west':
                 case 'left':
                     return { x: fromCharacter.position.x - moveDistance, y: fromCharacter.position.y };
+                case 'northeast':
+                case 'north-east':
+                    return { x: fromCharacter.position.x + diagonalDistance, y: fromCharacter.position.y - diagonalDistance };
+                case 'northwest':
+                case 'north-west':
+                    return { x: fromCharacter.position.x - diagonalDistance, y: fromCharacter.position.y - diagonalDistance };
+                case 'southeast':
+                case 'south-east':
+                    return { x: fromCharacter.position.x + diagonalDistance, y: fromCharacter.position.y + diagonalDistance };
+                case 'southwest':
+                case 'south-west':
+                    return { x: fromCharacter.position.x - diagonalDistance, y: fromCharacter.position.y + diagonalDistance };
             }
         }
         
@@ -1755,8 +1775,16 @@ export class AIController extends EventBus<
             // If there's an initial narrative message, display it
             if (response.narrative) {
                 console.log('[AI] Initial narrative received:', response.narrative);
-                // This could be shown via a popup or conversation system
-                // For now, just log it
+                
+                // Show the narrative as a conversation from the narrator
+                // Use empty answers array to show close button instead of continue
+                this.dispatch(ConversationEvent.update, {
+                    type: 'speech',
+                    source: 'Narrador',
+                    content: response.narrative,
+                    answers: [],  // Empty array means show close button
+                    action: undefined
+                });
             } else {
                 console.log('[AI] No narrative text in response');
             }

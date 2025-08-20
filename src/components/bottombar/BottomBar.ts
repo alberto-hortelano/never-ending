@@ -1,6 +1,7 @@
 import { Component } from "../Component";
-import { ControlsEvent, UpdateStateEvent, StateChangeEvent } from "../../common/events";
+import { ControlsEvent, UpdateStateEvent, StateChangeEvent, ConversationEvent, ConversationEventsMap } from "../../common/events";
 import type { Actions } from "../actions/Actions";
+import type { Conversation } from "../conversation/Conversation";
 import { i18n } from "../../common/i18n/i18n";
 
 export default class BottomBar extends Component {
@@ -8,6 +9,9 @@ export default class BottomBar extends Component {
     protected override hasHtml = true;
     
     private meleeActionsVisible = false;
+    private conversationComponent?: Conversation;
+    private conversationSection?: HTMLElement;
+    private isConversationVisible = false;
     
     constructor() {
         super();
@@ -20,6 +24,9 @@ export default class BottomBar extends Component {
     override async connectedCallback() {
         const root = await super.connectedCallback();
         if (!root) return root;
+        
+        // Get reference to conversation section
+        this.conversationSection = root.querySelector('.conversation-section') as HTMLElement;
         
         this.setupEventListeners(root);
         this.updateTranslations();
@@ -42,6 +49,44 @@ export default class BottomBar extends Component {
         this.listen(StateChangeEvent.uiInteractionMode, (mode) => {
             this.updateMobileHint(mode, root);
         });
+        
+        // Store the last conversation data to re-dispatch after component creation
+        let lastConversationData: ConversationEventsMap[ConversationEvent.update] | null = null;
+        
+        // Listen for conversation events
+        this.listen(ConversationEvent.start, (data: ConversationEventsMap[ConversationEvent.start]) => {
+            console.log('[BottomBar] Received ConversationEvent.start:', data);
+            this.showConversation();
+        });
+        
+        this.listen(ConversationEvent.update, (data: ConversationEventsMap[ConversationEvent.update]) => {
+            console.log('[BottomBar] Received ConversationEvent.update:', data);
+            lastConversationData = data;
+            
+            // If conversation is not visible yet, show it
+            if (!this.isConversationVisible) {
+                console.log('[BottomBar] Conversation not visible, showing it now');
+                this.showConversation();
+                
+                // Re-dispatch the update event after a short delay to ensure the component is ready
+                setTimeout(() => {
+                    if (lastConversationData) {
+                        console.log('[BottomBar] Re-dispatching conversation update to newly created component');
+                        this.dispatch(ConversationEvent.update, lastConversationData);
+                    }
+                }, 100);
+            } else {
+                console.log('[BottomBar] Conversation already visible');
+            }
+        });
+        
+        // Listen for conversation ended event from the conversation component
+        if (this.conversationSection) {
+            this.conversationSection.addEventListener('conversation-ended', () => {
+                // Close immediately when user clicks close button
+                this.hideConversation();
+            });
+        }
     }
     
     private updateMobileHint(mode: any, root: ShadowRoot) {
@@ -136,6 +181,55 @@ export default class BottomBar extends Component {
         if (state?.ui?.selectedCharacter) {
             this.showCharacterActions(state.ui.selectedCharacter, root);
         }
+    }
+    
+    private showConversation() {
+        console.log('[BottomBar] showConversation called');
+        if (!this.conversationSection) {
+            console.error('[BottomBar] No conversation section found!');
+            return;
+        }
+        
+        // Create conversation component if it doesn't exist
+        if (!this.conversationComponent) {
+            console.log('[BottomBar] Creating conversation-ui component');
+            this.conversationComponent = document.createElement('conversation-ui') as Conversation;
+            this.conversationSection.appendChild(this.conversationComponent);
+            console.log('[BottomBar] Conversation component created and appended');
+            
+            // Listen for conversation-ended event
+            this.conversationComponent.addEventListener('conversation-ended', () => {
+                console.log('[BottomBar] Received conversation-ended event');
+                // Close immediately when user clicks close button
+                this.hideConversation();
+            });
+        } else {
+            console.log('[BottomBar] Conversation component already exists');
+        }
+        
+        // Show the conversation section
+        this.conversationSection.style.display = 'block';
+        this.isConversationVisible = true;
+        console.log('[BottomBar] Conversation section shown');
+        
+        // Notify that bottom bar has expanded
+        this.dispatch(UpdateStateEvent.uiBottomBarExpanded, true);
+    }
+    
+    private hideConversation() {
+        if (!this.conversationSection) return;
+        
+        this.conversationSection.style.display = 'none';
+        this.isConversationVisible = false;
+        
+        // Clear the conversation component
+        if (this.conversationComponent) {
+            this.conversationSection.removeChild(this.conversationComponent);
+            this.conversationComponent = undefined;
+        }
+        
+        // Notify that bottom bar has collapsed
+        this.dispatch(UpdateStateEvent.uiBottomBarExpanded, false);
     }
     
     private updateTranslations() {

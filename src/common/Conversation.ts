@@ -120,6 +120,14 @@ export class Conversation extends EventBus<
                 console.warn('[Conversation] Received empty or placeholder response from AI');
             }
             
+            // If AI returned a non-conversation action (like 'map'), we should execute it
+            if (conversationData.action && conversationData.action !== 'speech') {
+                console.log('[Conversation] AI wants to execute action:', conversationData.action);
+                // The conversation will show "Fin de la conversación" and close
+                // The actual command execution should be handled by the AI controller
+                // For now, just log it - the AI controller needs to listen for this
+            }
+            
             this.dispatch(ConversationEvent.update, conversationData);
 
             // Update messages state

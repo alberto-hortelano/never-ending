@@ -31,6 +31,14 @@ if (typeof window !== 'undefined') {
         },
         
         /**
+         * Clear problematic cached responses
+         */
+        clearProblematic: () => {
+            AIBrowserCacheService.clearProblematicCache();
+            console.log('✓ Problematic cache entries cleared');
+        },
+        
+        /**
          * Enable/disable caching
          */
         toggle: (enabled?: boolean) => {
@@ -46,9 +54,10 @@ if (typeof window !== 'undefined') {
          */
         help: () => {
             console.log('=== AI Cache Commands ===');
-            console.log('AICache.stats()     - Show cache statistics');
-            console.log('AICache.clear()     - Clear all cached responses');  
-            console.log('AICache.toggle()    - Toggle cache on/off');
+            console.log('AICache.stats()          - Show cache statistics');
+            console.log('AICache.clear()          - Clear all cached responses');  
+            console.log('AICache.clearProblematic() - Clear problematic/corrupted cache entries');
+            console.log('AICache.toggle()         - Toggle cache on/off');
             console.log('AICache.toggle(true/false) - Set cache state');
             console.log('');
             console.log('Cache is stored in memory and localStorage.');

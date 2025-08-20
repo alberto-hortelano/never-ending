@@ -71,6 +71,8 @@ export enum UpdateStateEvent {
     language = 'UpdateStateEvent.language',
     /** Update doors */
     doors = 'UpdateStateEvent.doors',
+    /** Update bottom bar expanded state */
+    uiBottomBarExpanded = 'UpdateStateEvent.uiBottomBarExpanded',
 }
 
 export interface UpdateStateEventsMap {
@@ -183,6 +185,7 @@ export interface UpdateStateEventsMap {
     [UpdateStateEvent.storyState]: Partial<IStoryState>;
     [UpdateStateEvent.language]: 'en' | 'es';
     [UpdateStateEvent.doors]: Record<string, IDoor>;
+    [UpdateStateEvent.uiBottomBarExpanded]: boolean;
 }
 
 /** Events when the state has changed. All can listen. Only State can dispatch */
@@ -224,6 +227,8 @@ export enum StateChangeEvent {
     language = 'StateChangeEvent.language',
     /** Doors state changed */
     doors = 'StateChangeEvent.doors',
+    /** Bottom bar expanded state changed */
+    uiBottomBarExpanded = 'StateChangeEvent.uiBottomBarExpanded',
 }
 
 export interface StateChangeEventsMap {
@@ -260,4 +265,5 @@ export interface StateChangeEventsMap {
     [StateChangeEvent.storyState]: DeepReadonly<IStoryState>;
     [StateChangeEvent.language]: 'en' | 'es';
     [StateChangeEvent.doors]: DeepReadonly<Record<string, IDoor>>;
+    [StateChangeEvent.uiBottomBarExpanded]: boolean;
 }

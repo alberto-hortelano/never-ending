@@ -1,9 +1,8 @@
 import type { SelectCharacter } from "../selectcharacter/SelectCharacter";
-import type { Conversation } from "../conversation/Conversation";
 import type { Inventory } from "../inventory/Inventory";
 
 import { Component } from "../Component";
-import { ControlsEvent, ControlsEventsMap, ConversationEvent, ConversationEventsMap, UpdateStateEvent, StateChangeEvent } from "../../common/events";
+import { ControlsEvent, ControlsEventsMap, ConversationEvent, UpdateStateEvent, StateChangeEvent } from "../../common/events";
 import { Draggable } from "../../common/helpers/Draggable";
 import type { IPopupState } from "../../common/interfaces";
 import { i18n } from "../../common/i18n/i18n";
@@ -94,31 +93,7 @@ export class Popup extends Component {
             }, 50);
         });
 
-        // Listen for conversation start to create the conversation UI with loading state
-        this.listen(ConversationEvent.start, (data: ConversationEventsMap[ConversationEvent.start]) => {
-            isShowing = true;
-            this.showConversationLoading(data);
-
-            // Reset the flag after a short delay to allow the click event to finish bubbling
-            setTimeout(() => {
-                isShowing = false;
-            }, 50);
-        });
-
-        // Listen for conversation updates to show the conversation UI
-        this.listen(ConversationEvent.update, (data: ConversationEventsMap[ConversationEvent.update]) => {
-            // Only create new conversation UI if one doesn't exist
-            const existingConversation = this.querySelector('conversation-ui');
-            if (!existingConversation) {
-                isShowing = true;
-                this.showConversation(data);
-
-                // Reset the flag after a short delay to allow the click event to finish bubbling
-                setTimeout(() => {
-                    isShowing = false;
-                }, 50);
-            }
-        });
+        // Conversations are now handled by the BottomBar component
 
         // Close popup when clicking outside (if not pinned)
         document.addEventListener('click', (e) => {
@@ -134,18 +109,7 @@ export class Popup extends Component {
 
         // Actions are now in BottomBar, so no need to listen for action-selected events
 
-        // Listen for conversation updates from Conversation component
-        this.addEventListener('conversation-updated', () => {
-            // Keep popup open during conversations
-        });
-        
-        // Listen for conversation end event
-        this.addEventListener('conversation-ended', () => {
-            // Close popup when conversation ends
-            setTimeout(() => {
-                this.hide();
-            }, 500);
-        });
+        // Conversations are now handled by the BottomBar component
     }
 
     private isMobile(): boolean {
@@ -214,31 +178,6 @@ export class Popup extends Component {
         this.show(`${characterName} - Inventory`);
     }
 
-    private showConversationLoading(data: ConversationEventsMap[ConversationEvent.start]) {
-        this.clearContent();
-
-        // Create and append conversation UI component
-        const conversationComponent = document.createElement('conversation-ui') as Conversation;
-        this.appendChild(conversationComponent);
-
-        const title = `${data.talkingCharacter.name} - Conversation`;
-        this.show(title);
-    }
-
-    private showConversation(data: ConversationEventsMap[ConversationEvent.update]) {
-        this.clearContent();
-
-        // Create and append conversation UI component
-        const conversationComponent = document.createElement('conversation-ui') as Conversation;
-        this.appendChild(conversationComponent);
-
-        // Determine title based on conversation type
-        const title = data.type === 'speech' && data.source
-            ? `${data.source} - Conversation`
-            : 'Conversation';
-
-        this.show(title);
-    }
 
     private clearContent() {
         // Remove all child components
@@ -271,7 +210,6 @@ export class Popup extends Component {
             else if (firstChild.tagName === 'SELECT-CHARACTER') contentType = 'actions'; // Talk uses actions type
             else if (firstChild.tagName === 'ROTATE-SELECTOR') contentType = 'rotate';
             else if (firstChild.tagName === 'INVENTORY-COMPONENT') contentType = 'inventory';
-            else if (firstChild.tagName === 'CONVERSATION-UI') contentType = 'conversation';
         }
 
         // Update popup state
@@ -349,16 +287,16 @@ export class Popup extends Component {
     }
 
     private applyPopupState(popupState: IPopupState) {
+        // Conversations are now handled by the BottomBar component
+        if (popupState.type === 'conversation') {
+            // Hide and skip conversation popups as they're handled by BottomBar now
+            this.classList.add('hidden');
+            return;
+        }
+        
         // Apply visibility
         if (popupState.visible) {
             this.classList.remove('hidden');
-            
-            // If it's a conversation popup and we don't have a conversation component, create one
-            if (popupState.type === 'conversation' && !this.querySelector('conversation-ui')) {
-                this.clearContent();
-                const conversationComponent = document.createElement('conversation-ui') as Conversation;
-                this.appendChild(conversationComponent);
-            }
         } else {
             this.classList.add('hidden');
         }
@@ -398,7 +336,6 @@ export class Popup extends Component {
             else if (firstChild.tagName === 'SELECT-CHARACTER') contentType = 'actions';
             else if (firstChild.tagName === 'ROTATE-SELECTOR') contentType = 'rotate';
             else if (firstChild.tagName === 'INVENTORY-COMPONENT') contentType = 'inventory';
-            else if (firstChild.tagName === 'CONVERSATION-UI') contentType = 'conversation';
         }
 
         return {

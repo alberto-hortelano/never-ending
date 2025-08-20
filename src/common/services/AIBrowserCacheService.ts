@@ -216,6 +216,44 @@ export class AIBrowserCacheService {
     }
 
     /**
+     * Clear problematic cache entries (e.g., those with invalid AI responses)
+     */
+    public static clearProblematicCache(): void {
+        try {
+            const problematicPatterns = [
+                'northeast', // Invalid direction
+                'Arquitecto Narrativo', // AI setup messages
+                'Estoy listo', // AI ready messages
+                'Entendido', // AI acknowledgment messages
+                'esperando órdenes', // AI waiting messages
+                'mouysz' // Known problematic cache hash
+            ];
+            
+            let clearedCount = 0;
+            
+            // Check all cached entries
+            this.memoryCache.forEach((entry, hash) => {
+                const responseStr = JSON.stringify(entry.response);
+                const hasProblematicContent = problematicPatterns.some(pattern => 
+                    responseStr.toLowerCase().includes(pattern.toLowerCase())
+                );
+                
+                if (hasProblematicContent) {
+                    console.log(`[AICache] Removing problematic cache entry: ${hash.substring(0, 6)}...`);
+                    this.removeFromCache(hash);
+                    clearedCount++;
+                }
+            });
+            
+            if (clearedCount > 0) {
+                console.log(`[AICache] Cleared ${clearedCount} problematic cache entries`);
+            }
+        } catch (error) {
+            console.error('[AICache] Error clearing problematic cache:', error);
+        }
+    }
+
+    /**
      * Get cache statistics
      */
     public static getCacheStats(): CacheStats {

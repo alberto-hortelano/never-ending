@@ -1,5 +1,19 @@
 <div class="conversation-container">
-    <div class="conversation-loading">
+    <div class="conversation-navigation">
+        <button class="nav-previous" disabled>
+            <span class="nav-arrow">←</span>
+            <span class="nav-text">Previous</span>
+        </button>
+        <span class="nav-counter">
+            <span class="current-index">0</span> / <span class="total-count">0</span>
+        </span>
+        <button class="nav-next" disabled>
+            <span class="nav-text">Next</span>
+            <span class="nav-arrow">→</span>
+        </button>
+    </div>
+    
+    <div class="conversation-loading" style="display: block;">
         <span class="loading-text">Loading conversation...</span>
     </div>
     

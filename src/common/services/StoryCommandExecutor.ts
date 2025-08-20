@@ -491,6 +491,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                         blocker: true,
                         palette: { skin: '', helmet: '', suit: '' },
                         inventory: { items: [], maxWeight: 50, equippedWeapons: { primary: null, secondary: null } },
+                        fromNetwork: true, // Bypass turn validation during story initialization
                         actions: { 
                             pointsLeft: 0, 
                             general: { move: 0, talk: 0, use: 0, inventory: 0 },
@@ -571,6 +572,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                 };
                 
                 // Add character to game (we know name and position are set)
+                // Note: Character spawning during story initialization doesn't follow turn rules
                 this.dispatch(UpdateStateEvent.addCharacter, newCharacter as Partial<ICharacter> & { name: string; position: { x: number; y: number } });
                 
                 // Mark position as occupied
