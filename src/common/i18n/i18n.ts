@@ -20,18 +20,27 @@ export class I18n {
   }
 
   private loadLanguagePreference(): void {
-    // Try to load from localStorage first
-    const savedLang = localStorage.getItem('language');
-    if (savedLang && (savedLang === 'en' || savedLang === 'es')) {
-      this.currentLanguage = savedLang as Language;
-      return;
+    // Check if localStorage is available (not in test environment)
+    if (typeof localStorage !== 'undefined') {
+      // Try to load from localStorage first
+      const savedLang = localStorage.getItem('language');
+      if (savedLang && (savedLang === 'en' || savedLang === 'es')) {
+        this.currentLanguage = savedLang as Language;
+        return;
+      }
     }
 
-    // Otherwise detect browser language
-    const browserLang = navigator.language.toLowerCase();
-    if (browserLang.startsWith('es')) {
-      this.currentLanguage = 'es';
+    // Check if navigator is available (browser environment)
+    if (typeof navigator !== 'undefined' && navigator.language) {
+      // Otherwise detect browser language
+      const browserLang = navigator.language.toLowerCase();
+      if (browserLang.startsWith('es')) {
+        this.currentLanguage = 'es';
+      } else {
+        this.currentLanguage = 'en';
+      }
     } else {
+      // Default to English in test environment
       this.currentLanguage = 'en';
     }
     
@@ -39,7 +48,10 @@ export class I18n {
   }
 
   private saveLanguagePreference(): void {
-    localStorage.setItem('language', this.currentLanguage);
+    // Only save to localStorage if it's available
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('language', this.currentLanguage);
+    }
   }
 
   private listenForLanguageChanges(): void {

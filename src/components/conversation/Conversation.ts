@@ -186,8 +186,8 @@ export class Conversation extends Component {
             if (this.answersElement && isCurrentConversation) {
                 const closeButton = document.createElement('button');
                 closeButton.className = 'answer-button close-button';
-                closeButton.innerHTML = '✕ Cerrar';
-                closeButton.title = 'Cerrar conversación';
+                closeButton.innerHTML = `✕ ${i18n.t('common.close')}`;
+                closeButton.title = i18n.t('common.close');
                 closeButton.addEventListener('click', () => {
                     // Dispatch event to close conversation immediately
                     this.dispatchEvent(new CustomEvent('conversation-ended', {

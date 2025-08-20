@@ -82,7 +82,8 @@ export abstract class Component extends HTMLElement {
         if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
             return Promise.resolve(new CSSStyleSheet());
         }
-        const cssUrl = new URL(`./${this.name.toLowerCase()}/${this.name}.css`, (import.meta as any).url).href.replace('/js/components/', '/css/components/');
+        // @ts-ignore - import.meta is available at runtime
+        const cssUrl = new URL(`./${this.name.toLowerCase()}/${this.name}.css`, import.meta.url).href.replace('/js/components/', '/css/components/');
         let cssPromise = Component.styleSheetCache.get(this.name);
         if (!cssPromise) {
             cssPromise = this.createStyleSheet(cssUrl);
@@ -125,7 +126,8 @@ export abstract class Component extends HTMLElement {
 
     // Helper to fetch and build an HTMLTemplateElement
     private async createTemplate(): Promise<HTMLTemplateElement> {
-        const url = new URL(`./${this.name.toLowerCase()}/${this.name}.html`, (import.meta as any).url).href.replace('/js/components/', '/html/components/');
+        // @ts-ignore - import.meta is available at runtime
+        const url = new URL(`./${this.name.toLowerCase()}/${this.name}.html`, import.meta.url).href.replace('/js/components/', '/html/components/');
         const res = await fetch(url);
         if (!res.ok) {
             console.error(`Failed to load template ${url}: ${res.statusText}`);
