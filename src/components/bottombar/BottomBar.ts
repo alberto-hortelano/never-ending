@@ -79,14 +79,6 @@ export default class BottomBar extends Component {
                 console.log('[BottomBar] Conversation already visible');
             }
         });
-        
-        // Listen for conversation ended event from the conversation component
-        if (this.conversationSection) {
-            this.conversationSection.addEventListener('conversation-ended', () => {
-                // Close immediately when user clicks close button
-                this.hideConversation();
-            });
-        }
     }
     
     private updateMobileHint(mode: any, root: ShadowRoot) {
