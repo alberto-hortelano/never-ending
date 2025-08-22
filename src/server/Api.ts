@@ -1,6 +1,6 @@
 import type { Express } from 'express';
 import type { Server } from 'http';
-import type { IMessage } from '../common/interfaces';
+import type { IMessage, IOriginStory, IStoryState } from '../common/interfaces';
 
 import express from 'express';
 import { dirname, resolve, extname, join } from 'path';
@@ -36,6 +36,8 @@ export class Api {
         this.jsFiles();
         this.staticFiles();
         this.gameEngine();
+        this.storyPlan();
+        this.sceneContext();
     }
 
     private jsFiles() {
@@ -101,5 +103,169 @@ export class Api {
                 });
             }
         });
+    }
+
+    private storyPlan() {
+        this.app.post('/storyPlan', async (req, res) => {
+            try {
+                const { origin, currentState, playerDecisions } = req.body as {
+                    origin: IOriginStory;
+                    currentState?: IStoryState;
+                    playerDecisions?: string[];
+                };
+
+                if (!origin) {
+                    res.status(400).json({ error: 'Origin story is required' });
+                    return;
+                }
+
+                // Build story planning prompt
+                const prompt = this.buildStoryPlanPrompt(origin, currentState, playerDecisions);
+                
+                const messages: IMessage[] = [{
+                    role: 'user',
+                    content: prompt
+                }];
+
+                // Add small delay to prevent rate limiting
+                await new Promise(r => setTimeout(r, 1000));
+                
+                const response = await sendMessage(messages);
+                
+                res.json({
+                    type: 'storyPlan',
+                    content: response
+                });
+            } catch (error) {
+                console.error('Api - /storyPlan - error:', error);
+                res.status(500).json({
+                    error: error instanceof Error ? error.message : String(error)
+                });
+            }
+        });
+    }
+
+    private sceneContext() {
+        this.app.post('/sceneContext', async (req, res) => {
+            try {
+                const { missionId, visibleCharacters, storyState } = req.body as {
+                    missionId: string;
+                    visibleCharacters: any[];
+                    storyState: IStoryState;
+                };
+
+                // Build scene context prompt
+                const prompt = this.buildSceneContextPrompt(missionId, visibleCharacters, storyState);
+                
+                const messages: IMessage[] = [{
+                    role: 'user',
+                    content: prompt
+                }];
+
+                // Add small delay to prevent rate limiting
+                await new Promise(r => setTimeout(r, 1000));
+                
+                const response = await sendMessage(messages);
+                
+                res.json({
+                    type: 'sceneContext',
+                    content: response
+                });
+            } catch (error) {
+                console.error('Api - /sceneContext - error:', error);
+                res.status(500).json({
+                    error: error instanceof Error ? error.message : String(error)
+                });
+            }
+        });
+    }
+
+    private buildStoryPlanPrompt(
+        origin: IOriginStory,
+        currentState?: IStoryState,
+        playerDecisions?: string[]
+    ): string {
+        let prompt = `# STORY PLAN GENERATION REQUEST
+
+Generate a comprehensive story plan for "Never Ending" based on the following:
+
+## Selected Origin: ${origin.nameES}
+- Description: ${origin.descriptionES}
+- Starting Location: ${origin.startingLocation}
+- Special Traits: ${origin.specialTraits.join(', ')}
+- Faction Relations: ${Object.entries(origin.factionRelations).map(([f, v]) => `${f}: ${v}`).join(', ')}`;
+
+        if (currentState) {
+            prompt += `
+
+## Current Progress:
+- Chapter: ${currentState.currentChapter}
+- Completed Missions: ${currentState.completedMissions.join(', ')}
+- Story Flags: ${Array.from(currentState.storyFlags).join(', ')}`;
+        }
+
+        if (playerDecisions && playerDecisions.length > 0) {
+            prompt += `
+
+## Player Decisions:
+${playerDecisions.map((d, i) => `${i + 1}. ${d}`).join('\n')}`;
+        }
+
+        prompt += `
+
+## Requirements:
+Create a multi-act story with:
+
+1. **Overall Narrative** (200 words)
+   - Main story arc connecting all acts
+   - Central conflict and resolution path
+   - Thematic elements
+
+2. **Three Acts** each containing:
+   - Act title and description (Spanish and English)
+   - 3-5 missions per act
+   - Key characters and their roles
+   - Important objects and their purposes
+   - Climax description
+
+3. **Each Mission** should include:
+   - Mission name and type (combat/exploration/infiltration/diplomacy/survival)
+   - Clear objectives (primary and secondary)
+   - Required objects or items
+   - NPCs with defined roles
+   - Map context (environment, atmosphere)
+   - Narrative hooks for player engagement
+
+Return a JSON object with the complete story structure.
+Remember: All player-facing text should be primarily in Spanish.`;
+
+        return prompt;
+    }
+
+    private buildSceneContextPrompt(
+        missionId: string,
+        visibleCharacters: any[],
+        storyState: IStoryState
+    ): string {
+        return `# SCENE CONTEXT REQUEST
+
+Generate contextual information for the current scene:
+
+## Current Mission: ${missionId}
+## Visible Characters: ${visibleCharacters.map(c => c.name).join(', ')}
+## Story Progress:
+- Chapter: ${storyState.currentChapter}
+- Completed Objectives: ${storyState.completedObjectives?.join(', ') || 'None'}
+
+## Requirements:
+Provide:
+1. Current objectives with descriptions
+2. Character purposes and dialogue topics
+3. Important objects in the scene
+4. Narrative hooks to guide player action
+5. Suggested next actions
+
+Return as JSON with scene context details.
+Remember: All text in Spanish.`;
     }
 }

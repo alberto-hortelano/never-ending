@@ -1,0 +1,80 @@
+<div class="story-planner">
+    <div class="story-header">
+        <h2 class="story-title">Story Overview</h2>
+        <button class="toggle-btn" data-action="toggle-details">
+            <span class="toggle-icon">▼</span>
+        </button>
+    </div>
+    
+    <div class="story-content" data-content="main">
+        <!-- Overall Narrative -->
+        <section class="narrative-section">
+            <h3>Narrative</h3>
+            <p class="narrative-text" data-field="narrative"></p>
+            <div class="theme-tag" data-field="theme"></div>
+        </section>
+        
+        <!-- Current Act -->
+        <section class="act-section">
+            <div class="act-header">
+                <h3 data-field="act-title">Act 1</h3>
+                <span class="act-progress" data-field="act-progress">Mission 1/3</span>
+            </div>
+            <p class="act-description" data-field="act-description"></p>
+        </section>
+        
+        <!-- Current Mission -->
+        <section class="mission-section">
+            <div class="mission-header">
+                <h3 data-field="mission-name">Current Mission</h3>
+                <span class="mission-type" data-field="mission-type">Combat</span>
+            </div>
+            <p class="mission-description" data-field="mission-description"></p>
+            
+            <!-- Objectives -->
+            <div class="objectives-list">
+                <h4>Objectives</h4>
+                <ul data-list="objectives">
+                    <!-- Populated dynamically -->
+                </ul>
+            </div>
+            
+            <!-- Narrative Hooks -->
+            <div class="narrative-hooks" data-field="hooks">
+                <!-- Populated dynamically -->
+            </div>
+        </section>
+        
+        <!-- Key Characters -->
+        <section class="characters-section">
+            <h3>Key Characters</h3>
+            <div class="characters-grid" data-grid="characters">
+                <!-- Populated dynamically -->
+            </div>
+        </section>
+        
+        <!-- Important Objects -->
+        <section class="objects-section">
+            <h3>Important Objects</h3>
+            <div class="objects-list" data-list="objects">
+                <!-- Populated dynamically -->
+            </div>
+        </section>
+        
+        <!-- Debug Info -->
+        <section class="debug-section" data-debug="true" style="display: none;">
+            <h3>Debug Info</h3>
+            <pre class="debug-content" data-field="debug"></pre>
+        </section>
+    </div>
+    
+    <!-- Floating Action Buttons -->
+    <div class="story-actions">
+        <button class="action-btn" data-action="refresh-plan" title="Refresh Story Plan">
+            🔄
+        </button>
+        <button class="action-btn" data-action="toggle-debug" title="Toggle Debug">
+            🐛
+        </button>
+    </div>
+}

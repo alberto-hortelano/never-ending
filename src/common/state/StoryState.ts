@@ -1,7 +1,7 @@
 import { EventBus } from '../events/EventBus';
 import { UpdateStateEvent, StateChangeEvent } from '../events/StateEvents';
 import type { UpdateStateEventsMap, StateChangeEventsMap } from '../events/StateEvents';
-import type { IStoryState } from '../interfaces';
+import type { IStoryState, IStoryPlan, IMission } from '../interfaces';
 import type { DeepReadonly } from '../helpers/types';
 
 export class StoryState extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> {
@@ -12,7 +12,10 @@ export class StoryState extends EventBus<UpdateStateEventsMap, StateChangeEvents
         majorDecisions: [],
         factionReputation: {},
         storyFlags: new Set<string>(),
-        journalEntries: []
+        journalEntries: [],
+        storyPlan: undefined,
+        currentMissionId: undefined,
+        completedObjectives: []
     };
     
     private saveCallback?: () => void;
@@ -86,6 +89,29 @@ export class StoryState extends EventBus<UpdateStateEventsMap, StateChangeEvents
             this._story.journalEntries = [...update.journalEntries];
         }
         
+        // Update story plan
+        if (update.storyPlan !== undefined) {
+            this._story.storyPlan = update.storyPlan;
+        }
+        
+        // Update current mission ID
+        if (update.currentMissionId !== undefined) {
+            this._story.currentMissionId = update.currentMissionId;
+        }
+        
+        // Update completed objectives
+        if (update.completedObjectives) {
+            if (!this._story.completedObjectives) {
+                this._story.completedObjectives = [];
+            }
+            // Add new completed objectives to the list
+            for (const objId of update.completedObjectives) {
+                if (!this._story.completedObjectives.includes(objId)) {
+                    this._story.completedObjectives.push(objId);
+                }
+            }
+        }
+        
         // Dispatch state change event
         if (!this.isPreview) {
             this.dispatch(StateChangeEvent.storyState, this.story);
@@ -128,5 +154,45 @@ export class StoryState extends EventBus<UpdateStateEventsMap, StateChangeEvents
             entry.id === entryId ? { ...entry, isRead: true } : entry
         );
         this.updateStoryState({ journalEntries: newEntries });
+    }
+    
+    // Story plan methods
+    public getStoryPlan(): IStoryPlan | undefined {
+        return this._story.storyPlan;
+    }
+    
+    public setStoryPlan(plan: IStoryPlan) {
+        this.updateStoryState({ storyPlan: plan });
+    }
+    
+    public getCurrentMissionId(): string | undefined {
+        return this._story.currentMissionId;
+    }
+    
+    public getCurrentMission(): IMission | undefined {
+        if (!this._story.storyPlan || !this._story.currentMissionId) {
+            return undefined;
+        }
+        
+        for (const act of this._story.storyPlan.acts) {
+            const mission = act.missions.find(m => m.id === this._story.currentMissionId);
+            if (mission) {
+                return mission;
+            }
+        }
+        
+        return undefined;
+    }
+    
+    public isObjectiveCompleted(objectiveId: string): boolean {
+        return this._story.completedObjectives?.includes(objectiveId) || false;
+    }
+    
+    public markMissionCompleted(missionId: string) {
+        const newMissions = [...this._story.completedMissions];
+        if (!newMissions.includes(missionId)) {
+            newMissions.push(missionId);
+            this.updateStoryState({ completedMissions: newMissions });
+        }
     }
 }
