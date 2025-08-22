@@ -427,6 +427,9 @@ export interface IStoryState {
     factionReputation: Record<string, number>;
     storyFlags: Set<string>;
     journalEntries: IJournalEntry[];
+    storyPlan?: IStoryPlan;
+    currentMissionId?: string;
+    completedObjectives?: string[];
 }
 
 export interface IStoryDecision {
@@ -444,5 +447,113 @@ export interface IJournalEntry {
     date: string;
     type: 'main' | 'side' | 'faction' | 'personal';
     isRead: boolean;
+}
+
+// Story Planning Interfaces
+export interface IStoryPlan {
+    overallNarrative: string;
+    theme: string;
+    acts: IStoryAct[];
+    currentAct: number;
+    currentScene: number;
+    totalEstimatedMissions: number;
+}
+
+export interface IStoryAct {
+    id: string;
+    actNumber: number;
+    title: string;
+    titleES: string;
+    description: string;
+    descriptionES: string;
+    missions: IMission[];
+    keyCharacters: IKeyCharacter[];
+    keyObjects: IStoryObject[];
+    climaxDescription: string;
+}
+
+export interface IMission {
+    id: string;
+    actId: string;
+    name: string;
+    nameES: string;
+    description: string;
+    descriptionES: string;
+    type: 'combat' | 'exploration' | 'infiltration' | 'diplomacy' | 'survival';
+    objectives: IObjective[];
+    requiredObjects: string[];
+    npcs: INPCRole[];
+    mapContext: IMapContext;
+    narrativeHooks: string[];
+    estimatedDuration: number; // in turns
+    isCompleted: boolean;
+    isCurrent: boolean;
+}
+
+export interface IObjective {
+    id: string;
+    description: string;
+    descriptionES: string;
+    type: 'primary' | 'secondary' | 'hidden';
+    completed: boolean;
+    conditions: IObjectiveCondition[];
+}
+
+export interface IObjectiveCondition {
+    type: 'kill' | 'reach' | 'collect' | 'talk' | 'survive' | 'escort' | 'destroy';
+    target?: string;
+    count?: number;
+    location?: string;
+}
+
+export interface IKeyCharacter {
+    name: string;
+    role: 'protagonist' | 'antagonist' | 'ally' | 'neutral' | 'questgiver';
+    description: string;
+    motivation: string;
+    appearanceActs: number[];
+}
+
+export interface IStoryObject {
+    id: string;
+    name: string;
+    nameES: string;
+    description: string;
+    significance: 'critical' | 'important' | 'minor';
+    purpose: string;
+    location?: string;
+    owner?: string;
+}
+
+export interface INPCRole {
+    name: string;
+    type: 'enemy' | 'ally' | 'neutral' | 'civilian';
+    personality: string;
+    dialogue: string[];
+    purpose: string;
+    equipment?: string[];
+}
+
+export interface IMapContext {
+    environment: 'spaceship' | 'station' | 'planet' | 'settlement' | 'ruins' | 'wilderness';
+    atmosphere: string;
+    lightingCondition: 'bright' | 'normal' | 'dim' | 'dark';
+    hazards?: string[];
+    specialFeatures?: string[];
+}
+
+export interface IScreenContext {
+    currentMission: IMission | null;
+    currentObjectives: IObjective[];
+    visibleObjects: IStoryObject[];
+    activeNPCs: INPCWithPurpose[];
+    narrativeHooks: string[];
+    suggestedActions: string[];
+}
+
+export interface INPCWithPurpose extends ICharacter {
+    narrativePurpose: string;
+    currentObjective: string;
+    dialogueTopics: string[];
 }
 

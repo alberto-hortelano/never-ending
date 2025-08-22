@@ -1,5 +1,5 @@
 import { State } from '../State';
-import { ICharacter, IGame, ICoord } from '../interfaces';
+import { ICharacter, IGame, ICoord, IMission, IScreenContext } from '../interfaces';
 import { DeepReadonly } from '../helpers/types';
 import { TeamService } from './TeamService';
 
@@ -17,6 +17,8 @@ export interface GameContext {
         objectives?: string[];
     };
     tacticalAnalysis?: TacticalAnalysis;  // New tactical assessment
+    storyContext?: StoryContextInfo;  // Story planning context
+    screenContext?: IScreenContext;  // Current screen context
     [key: string]: unknown;  // Allow additional properties for compatibility
 }
 
@@ -109,6 +111,21 @@ export interface ConversationExchange {
     timestamp?: number;
 }
 
+export interface StoryContextInfo {
+    currentAct?: number;
+    currentMission?: {
+        id: string;
+        name: string;
+        type: string;
+        objectives: string[];
+    };
+    completedObjectives?: string[];
+    narrativeHooks?: string[];
+    suggestedActions?: string[];
+    keyCharactersPresent?: string[];
+    importantObjectsNearby?: string[];
+}
+
 interface ExtendedGame extends IGame {
     phase?: string;
     currentMission?: string;
@@ -146,6 +163,9 @@ export class AIContextBuilder {
         // Only include tactical analysis if there are actual enemies visible
         const hasEnemies = visibleChars.some(c => c.isEnemy);
         const tacticalAnalysis = hasEnemies ? this.performTacticalAnalysis(character, visibleChars) : undefined;
+        
+        // Build story context if available
+        const storyContext = this.buildStoryContext(state);
 
         return {
             currentCharacter: currentChar,
@@ -156,7 +176,8 @@ export class AIContextBuilder {
             conversationHistory: this.conversationHistory.slice(-5), // Last 5 conversation exchanges
             activeConversations: this.activeConversations,
             gameState: gameState,
-            tacticalAnalysis: tacticalAnalysis
+            tacticalAnalysis: tacticalAnalysis,
+            storyContext: storyContext
         };
     }
 
@@ -622,6 +643,81 @@ export class AIContextBuilder {
     public clearConversationHistory(): void {
         this.conversationHistory = [];
         this.activeConversations.clear();
+    }
+    
+    private buildStoryContext(state: State): StoryContextInfo | undefined {
+        const storyState = state.story;
+        if (!storyState || !storyState.storyPlan) {
+            return undefined;
+        }
+        
+        const storyPlan = storyState.storyPlan;
+        const currentAct = storyPlan.acts[storyPlan.currentAct];
+        const currentMission = currentAct?.missions.find(m => m.id === storyState.currentMissionId);
+        
+        if (!currentMission) {
+            return undefined;
+        }
+        
+        // Get visible characters that are key to the story
+        const visibleKeyCharacters = currentAct ? currentAct.keyCharacters
+            .filter(kc => state.characters.find(c => c.name === kc.name))
+            .map(kc => kc.name) : [];
+        
+        // Get nearby important objects
+        const nearbyObjects = currentAct ? currentAct.keyObjects
+            .filter(obj => currentMission.requiredObjects.includes(obj.id))
+            .map(obj => obj.name) : [];
+        
+        return {
+            currentAct: storyPlan.currentAct,
+            currentMission: {
+                id: currentMission.id,
+                name: currentMission.nameES,
+                type: currentMission.type,
+                objectives: currentMission.objectives
+                    .filter(o => !o.completed)
+                    .map(o => o.descriptionES)
+            },
+            completedObjectives: storyState.completedObjectives ? [...storyState.completedObjectives] : undefined,
+            narrativeHooks: [...currentMission.narrativeHooks],
+            suggestedActions: this.getSuggestedActionsFromMission(currentMission as IMission, state),
+            keyCharactersPresent: visibleKeyCharacters,
+            importantObjectsNearby: nearbyObjects
+        };
+    }
+    
+    private getSuggestedActionsFromMission(mission: IMission, state: State): string[] {
+        const suggestions: string[] = [];
+        
+        for (const objective of mission.objectives) {
+            if (!objective.completed) {
+                for (const condition of objective.conditions) {
+                    const target = state.characters.find(c => c.name === condition.target);
+                    
+                    switch (condition.type) {
+                        case 'talk':
+                            if (target) {
+                                suggestions.push(`Talk to ${condition.target}`);
+                            }
+                            break;
+                        case 'kill':
+                            if (target) {
+                                suggestions.push(`Eliminate ${condition.target}`);
+                            }
+                            break;
+                        case 'reach':
+                            suggestions.push(`Reach ${condition.location || 'objective location'}`);
+                            break;
+                        case 'collect':
+                            suggestions.push(`Collect ${condition.target}`);
+                            break;
+                    }
+                }
+            }
+        }
+        
+        return suggestions;
     }
 
     /**

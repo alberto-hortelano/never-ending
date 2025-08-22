@@ -19,6 +19,7 @@ import { GameEvent, EventBus } from "./common/events";
 import { initialState, getBaseState } from './data/state';
 import { initializeCSSVariables } from './common/initializeCSSVariables';
 import './common/services/AICacheManager'; // Initialize AI cache
+import { AIBrowserCacheService } from './common/services/AIBrowserCacheService';
 
 // Initialize global CSS variables
 document.documentElement.style.setProperty('--cell-width', '4dvh');
@@ -149,6 +150,9 @@ multiplayerManager.listen('switchedToSinglePlayer', async (event) => {
     // Check if we need AI initialization
     if (gameState.story?.selectedOrigin) {
         // console.log('[Web] Origin selected, starting AI initialization flow');
+        
+        // Clear problematic AI cache entries before initialization
+        AIBrowserCacheService.clearProblematicCache();
         
         // Game state is already created and will be used later
         

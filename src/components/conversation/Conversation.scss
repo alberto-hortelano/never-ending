@@ -9,9 +9,54 @@
 .conversation-container {
     display: flex;
     flex-direction: column;
-    gap: $spacing-lg;
-    padding: $spacing-lg;
+    gap: $spacing-md;
+    padding: $spacing-md;
     min-height: 200px;
+    height: 100%;
+}
+
+.conversation-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $spacing-sm;
+    background: $color-bg-tertiary;
+    border-radius: $border-radius-sm;
+    flex-shrink: 0;
+    
+    button {
+        display: flex;
+        align-items: center;
+        gap: $spacing-xs;
+        padding: $spacing-xs $spacing-sm;
+        background: $color-bg-secondary;
+        border: $border-width solid $color-border-primary;
+        border-radius: $border-radius-sm;
+        color: $color-text-primary;
+        cursor: pointer;
+        transition: $transition-all;
+        font-size: $font-size-sm;
+        
+        &:hover:not(:disabled) {
+            background: $color-bg-hover;
+            border-color: $color-border-hover;
+        }
+        
+        &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .nav-arrow {
+            font-size: $font-size-base;
+        }
+    }
+    
+    .nav-counter {
+        font-size: $font-size-sm;
+        color: $color-text-secondary;
+        font-weight: $font-weight-medium;
+    }
 }
 
 .conversation-content {
@@ -116,6 +161,46 @@
         margin-right: $spacing-sm;
         font-size: $font-size-xs;
         color: $color-primary;
+    }
+    
+    &.close-button {
+        background: $color-bg-secondary;
+        border-color: $color-danger;
+        color: $color-danger;
+        text-align: center;
+        font-weight: $font-weight-medium;
+        
+        &::before {
+            content: none;
+        }
+        
+        &:hover:not(:disabled) {
+            background: rgba($color-danger, 0.1);
+            border-color: $color-danger;
+        }
+    }
+}
+
+.selected-answer {
+    background: rgba($color-primary, 0.1);
+    border: $border-width solid $color-primary;
+    border-radius: $border-radius-sm;
+    padding: $spacing-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+    
+    .selected-label {
+        font-size: $font-size-sm;
+        color: $color-text-secondary;
+        font-weight: $font-weight-medium;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .selected-text {
+        color: $color-text-primary;
+        font-size: $font-size-base;
     }
 }
 

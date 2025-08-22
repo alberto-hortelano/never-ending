@@ -3,6 +3,8 @@ import type { ICharacter } from "../../common/interfaces";
 import { Component } from "../Component";
 import type Character from "../character/Character";
 import { CharacterService } from "../../common/services/CharacterService";
+import { i18n } from "../../common/i18n/i18n";
+import { StateChangeEvent } from "../../common/events";
 
 export interface SelectCharacterOptions {
     characters: DeepReadonly<ICharacter[]>;
@@ -16,9 +18,25 @@ export class SelectCharacter extends Component {
     protected override hasHtml = false;
     private options: SelectCharacterOptions = {
         characters: [],
-        emptyMessage: 'No characters available.',
-        title: 'Select Character'
+        emptyMessage: i18n.t('select.noCharacters'),
+        title: i18n.t('select.title')
     };
+
+    constructor() {
+        super();
+        // Listen for language changes
+        this.listen(StateChangeEvent.language, () => {
+            // Update default messages with new language
+            this.options.emptyMessage = this.options.emptyMessage || i18n.t('select.noCharacters');
+            this.options.title = this.options.title || i18n.t('select.title');
+            // Re-render
+            const root = this.shadowRoot;
+            if (root) {
+                root.innerHTML = '';
+                this.renderCharacterList(root);
+            }
+        });
+    }
 
     override async connectedCallback() {
         const root = await super.connectedCallback();
@@ -53,7 +71,7 @@ export class SelectCharacter extends Component {
         if (filteredCharacters.length === 0) {
             const emptyMessage = document.createElement('p');
             emptyMessage.className = 'empty-message';
-            emptyMessage.textContent = this.options.emptyMessage || 'No characters available.';
+            emptyMessage.textContent = this.options.emptyMessage || i18n.t('select.noCharacters');
             container.appendChild(emptyMessage);
         } else {
             const list = document.createElement('div');

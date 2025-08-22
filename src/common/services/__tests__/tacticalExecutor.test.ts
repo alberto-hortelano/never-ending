@@ -129,7 +129,7 @@ describe('TacticalExecutor', () => {
             
             // Should target the closer enemy
             if (action.type === 'attack' && action.command.type === 'attack') {
-                expect(action.command.characters[0].target).toBe('Enemy');
+                expect((action.command as any).characters[0].target).toBe('Enemy');
             }
         });
     });
@@ -216,7 +216,7 @@ describe('TacticalExecutor', () => {
             // Should attack when enemy is close
             if (action.type === 'attack') {
                 expect(action.command.type).toBe('attack');
-                expect(action.command.characters[0].target).toBe('Enemy');
+                expect((action.command as any).characters[0].target).toBe('Enemy');
             }
         });
 
@@ -323,8 +323,8 @@ describe('TacticalExecutor', () => {
             if (action.type === 'movement') {
                 expect(action.command.type).toBe('movement');
                 expect(action.command.characters).toHaveLength(1);
-                expect(action.command.characters[0].name).toBe('TestChar');
-                expect(action.command.characters[0].location).toBeDefined();
+                expect((action.command as any).characters[0].name).toBe('TestChar');
+                expect((action.command as any).characters[0].location).toBeDefined();
             }
         });
 
@@ -340,10 +340,10 @@ describe('TacticalExecutor', () => {
             if (action.type === 'attack') {
                 expect(action.command.type).toBe('attack');
                 expect(action.command.characters).toHaveLength(1);
-                expect(action.command.characters[0].name).toBe('TestChar');
-                expect(action.command.characters[0].target).toBeDefined();
+                expect((action.command as any).characters[0].name).toBe('TestChar');
+                expect((action.command as any).characters[0].target).toBeDefined();
                 expect(['melee', 'kill', 'hold', 'retreat']).toContain(
-                    action.command.characters[0].attack
+                    (action.command as any).characters[0].attack
                 );
             }
         });

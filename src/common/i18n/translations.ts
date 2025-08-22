@@ -146,6 +146,42 @@ export interface TranslationKeys {
   'error.invalidTarget': string;
   'error.characterDead': string;
   'error.gameOver': string;
+  
+  // Inventory
+  'inventory.title': string;
+  'inventory.equipped': string;
+  'inventory.primary': string;
+  'inventory.secondary': string;
+  'inventory.weapons': string;
+  'inventory.otherItems': string;
+  'inventory.empty': string;
+  'inventory.emptySlot': string;
+  'inventory.equip': string;
+  'inventory.weight': string;
+  
+  // Actions
+  'action.aim': string;
+  'action.requiresRangedWeapon': string;
+  'action.move': string;
+  'action.shoot': string;
+  'action.reload': string;
+  'action.melee': string;
+  'action.closeCombat': string;
+  
+  // Select Character
+  'select.noCharacters': string;
+  
+  // Multiplayer
+  'multiplayer.lobby': string;
+  'multiplayer.joinGame': string;
+  'multiplayer.createGame': string;
+  'multiplayer.waiting': string;
+  'multiplayer.players': string;
+  
+  // Loading
+  'loading.pleaseWait': string;
+  'loading.connecting': string;
+  'loading.preparing': string;
 }
 
 export const translations: Record<string, TranslationKeys> = {
@@ -297,6 +333,42 @@ export const translations: Record<string, TranslationKeys> = {
     'error.invalidTarget': 'Invalid target',
     'error.characterDead': 'Character is dead',
     'error.gameOver': 'Game Over',
+    
+    // Inventory
+    'inventory.title': 'Inventory',
+    'inventory.equipped': 'Equipped Weapons',
+    'inventory.primary': 'Primary',
+    'inventory.secondary': 'Secondary',
+    'inventory.weapons': 'Weapons',
+    'inventory.otherItems': 'Other Items',
+    'inventory.empty': 'Your inventory is empty',
+    'inventory.emptySlot': 'Empty',
+    'inventory.equip': 'Equip',
+    'inventory.weight': 'Weight',
+    
+    // Actions
+    'action.aim': 'Aim',
+    'action.requiresRangedWeapon': 'Requires ranged weapon',
+    'action.move': 'Move',
+    'action.shoot': 'Shoot',
+    'action.reload': 'Reload',
+    'action.melee': 'Melee',
+    'action.closeCombat': 'Close Combat',
+    
+    // Select Character
+    'select.noCharacters': 'No characters available',
+    
+    // Multiplayer
+    'multiplayer.lobby': 'Multiplayer Lobby',
+    'multiplayer.joinGame': 'Join Game',
+    'multiplayer.createGame': 'Create Game',
+    'multiplayer.waiting': 'Waiting for players...',
+    'multiplayer.players': 'Players',
+    
+    // Loading
+    'loading.pleaseWait': 'Please wait...',
+    'loading.connecting': 'Connecting...',
+    'loading.preparing': 'Preparing game...',
   },
   
   es: {
@@ -447,6 +519,42 @@ export const translations: Record<string, TranslationKeys> = {
     'error.invalidTarget': 'Objetivo inválido',
     'error.characterDead': 'El personaje está muerto',
     'error.gameOver': 'Fin del Juego',
+    
+    // Inventory
+    'inventory.title': 'Inventario',
+    'inventory.equipped': 'Armas Equipadas',
+    'inventory.primary': 'Primaria',
+    'inventory.secondary': 'Secundaria',
+    'inventory.weapons': 'Armas',
+    'inventory.otherItems': 'Otros Objetos',
+    'inventory.empty': 'Tu inventario está vacío',
+    'inventory.emptySlot': 'Vacío',
+    'inventory.equip': 'Equipar',
+    'inventory.weight': 'Peso',
+    
+    // Actions
+    'action.aim': 'Apuntar',
+    'action.requiresRangedWeapon': 'Requiere arma a distancia',
+    'action.move': 'Mover',
+    'action.shoot': 'Disparar',
+    'action.reload': 'Recargar',
+    'action.melee': 'Cuerpo a cuerpo',
+    'action.closeCombat': 'Combate Cercano',
+    
+    // Select Character
+    'select.noCharacters': 'No hay personajes disponibles',
+    
+    // Multiplayer
+    'multiplayer.lobby': 'Sala Multijugador',
+    'multiplayer.joinGame': 'Unirse a Partida',
+    'multiplayer.createGame': 'Crear Partida',
+    'multiplayer.waiting': 'Esperando jugadores...',
+    'multiplayer.players': 'Jugadores',
+    
+    // Loading
+    'loading.pleaseWait': 'Por favor espera...',
+    'loading.connecting': 'Conectando...',
+    'loading.preparing': 'Preparando juego...',
   }
 };
 

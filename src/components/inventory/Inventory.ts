@@ -3,6 +3,7 @@ import type { InventoryUpdateData } from "../../common/events";
 
 import { Component } from "../Component";
 import { InventoryEvent, StateChangeEvent } from "../../common/events";
+import { i18n } from "../../common/i18n/i18n";
 
 export class Inventory extends Component {
     protected override hasCss = true;
@@ -38,6 +39,14 @@ export class Inventory extends Component {
             }
         });
         
+        // Listen for language changes
+        this.listen(StateChangeEvent.language, () => {
+            if (this.root && this.inventoryData) {
+                this.root.innerHTML = '';
+                this.renderContent(this.root);
+            }
+        });
+        
         return root;
     }
 
@@ -70,7 +79,7 @@ export class Inventory extends Component {
         const header = document.createElement('div');
         header.className = 'inventory-header';
         header.innerHTML = `
-            <h3>Inventory</h3>
+            <h3>${i18n.t('inventory.title')}</h3>
             <div class="weight-info">
                 <span class="weight-icon">⚖️</span>
                 <span class="weight-text">${totalWeight} / ${inventory.maxWeight} kg</span>
@@ -81,17 +90,17 @@ export class Inventory extends Component {
         // Equipped weapons section
         const equippedSection = document.createElement('div');
         equippedSection.className = 'equipped-section';
-        equippedSection.innerHTML = '<h4>Equipped Weapons</h4>';
+        equippedSection.innerHTML = `<h4>${i18n.t('inventory.equipped')}</h4>`;
 
         const weaponSlots = document.createElement('div');
         weaponSlots.className = 'weapon-slots';
 
         // Primary weapon slot
-        const primarySlot = this.createWeaponSlot('Primary', inventory.equippedWeapons.primary, 'primary');
+        const primarySlot = this.createWeaponSlot(i18n.t('inventory.primary'), inventory.equippedWeapons.primary, 'primary');
         weaponSlots.appendChild(primarySlot);
 
         // Secondary weapon slot
-        const secondarySlot = this.createWeaponSlot('Secondary', inventory.equippedWeapons.secondary, 'secondary');
+        const secondarySlot = this.createWeaponSlot(i18n.t('inventory.secondary'), inventory.equippedWeapons.secondary, 'secondary');
         weaponSlots.appendChild(secondarySlot);
 
         equippedSection.appendChild(weaponSlots);
@@ -100,7 +109,7 @@ export class Inventory extends Component {
         // Items list section
         const itemsSection = document.createElement('div');
         itemsSection.className = 'items-section';
-        itemsSection.innerHTML = '<h4>Items</h4>';
+        itemsSection.innerHTML = `<h4>${i18n.t('character.items')}</h4>`;
 
         const itemsList = document.createElement('div');
         itemsList.className = 'items-list';
@@ -112,7 +121,7 @@ export class Inventory extends Component {
         if (weaponItems.length > 0) {
             const weaponsGroup = document.createElement('div');
             weaponsGroup.className = 'item-group';
-            weaponsGroup.innerHTML = '<h5>Weapons</h5>';
+            weaponsGroup.innerHTML = `<h5>${i18n.t('inventory.weapons')}</h5>`;
 
             weaponItems.forEach(weapon => {
                 const itemElement = this.createItemElement(weapon, true);
@@ -126,7 +135,7 @@ export class Inventory extends Component {
         if (otherItems.length > 0) {
             const otherGroup = document.createElement('div');
             otherGroup.className = 'item-group';
-            otherGroup.innerHTML = '<h5>Other Items</h5>';
+            otherGroup.innerHTML = `<h5>${i18n.t('inventory.otherItems')}</h5>`;
 
             otherItems.forEach(item => {
                 const itemElement = this.createItemElement(item, false);
@@ -140,7 +149,7 @@ export class Inventory extends Component {
         if (inventory.items.length === 0) {
             const emptyMessage = document.createElement('div');
             emptyMessage.className = 'empty-message';
-            emptyMessage.textContent = 'Your inventory is empty';
+            emptyMessage.textContent = i18n.t('inventory.empty');
             itemsList.appendChild(emptyMessage);
         }
 
@@ -174,7 +183,7 @@ export class Inventory extends Component {
         } else {
             slotElement.innerHTML = `
                 <div class="slot-label">${label}</div>
-                <div class="empty-slot">Empty</div>
+                <div class="empty-slot">${i18n.t('inventory.emptySlot')}</div>
             `;
         }
 
@@ -204,7 +213,7 @@ export class Inventory extends Component {
             const weapon = item as IWeapon;
             const equipBtn = document.createElement('button');
             equipBtn.className = 'equip-btn';
-            equipBtn.textContent = 'Equip';
+            equipBtn.textContent = i18n.t('inventory.equip');
             equipBtn.addEventListener('click', () => this.handleEquip(weapon));
             itemElement.appendChild(equipBtn);
         }

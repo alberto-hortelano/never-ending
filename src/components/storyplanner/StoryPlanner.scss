@@ -1,0 +1,362 @@
+@use '../variables' as *;
+
+.story-planner {
+    position: fixed;
+    top: $spacing-lg;
+    right: $spacing-lg;
+    width: 380px;
+    max-height: 80vh;
+    background: $color-bg-secondary;
+    border: $border-width solid $color-border-primary;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-lg;
+    overflow: hidden;
+    z-index: $z-index-popup - 1;
+    display: flex;
+    flex-direction: column;
+    
+    .story-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: $spacing-md;
+        background: $color-bg-tertiary;
+        border-bottom: $border-width solid $color-border-secondary;
+        
+        .story-title {
+            margin: 0;
+            font-size: $font-size-lg;
+            color: $color-text-primary;
+        }
+        
+        .toggle-btn {
+            background: none;
+            border: none;
+            color: $color-text-secondary;
+            cursor: pointer;
+            padding: $spacing-xs;
+            transition: $transition-all;
+            
+            &:hover {
+                color: $color-text-primary;
+            }
+            
+            .toggle-icon {
+                display: inline-block;
+                transition: transform $transition-duration-base;
+            }
+            
+            &.collapsed .toggle-icon {
+                transform: rotate(-90deg);
+            }
+        }
+    }
+    
+    .story-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: $spacing-md;
+        
+        section {
+            margin-bottom: $spacing-lg;
+            
+            &:last-child {
+                margin-bottom: 0;
+            }
+        }
+        
+        h3 {
+            margin: 0 0 $spacing-sm 0;
+            font-size: $font-size-base;
+            color: $color-text-primary;
+            font-weight: $font-weight-semibold;
+        }
+        
+        h4 {
+            margin: 0 0 $spacing-xs 0;
+            font-size: $font-size-sm;
+            color: $color-text-secondary;
+            font-weight: $font-weight-medium;
+        }
+    }
+    
+    .narrative-section {
+        .narrative-text {
+            margin: 0 0 $spacing-sm 0;
+            color: $color-text-secondary;
+            font-size: $font-size-sm;
+            line-height: $line-height-relaxed;
+        }
+        
+        .theme-tag {
+            display: inline-block;
+            padding: $spacing-xs $spacing-sm;
+            background: $color-bg-primary;
+            border-radius: $border-radius-sm;
+            font-size: $font-size-xs;
+            color: $color-text-muted;
+            text-transform: uppercase;
+        }
+    }
+    
+    .act-section {
+        .act-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: $spacing-sm;
+            
+            .act-progress {
+                font-size: $font-size-xs;
+                color: $color-text-muted;
+            }
+        }
+        
+        .act-description {
+            margin: 0;
+            color: $color-text-secondary;
+            font-size: $font-size-sm;
+        }
+    }
+    
+    .mission-section {
+        background: $color-bg-primary;
+        padding: $spacing-md;
+        border-radius: $border-radius-md;
+        
+        .mission-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: $spacing-sm;
+            
+            h3 {
+                margin: 0;
+            }
+            
+            .mission-type {
+                padding: $spacing-xs $spacing-sm;
+                background: $color-bg-tertiary;
+                border-radius: $border-radius-sm;
+                font-size: $font-size-xs;
+                color: $color-text-secondary;
+                text-transform: uppercase;
+                
+                &[data-type="combat"] {
+                    background: rgba($color-danger, 0.1);
+                    color: $color-danger;
+                }
+                
+                &[data-type="exploration"] {
+                    background: rgba($color-info, 0.1);
+                    color: $color-info;
+                }
+                
+                &[data-type="diplomacy"] {
+                    background: rgba($color-highlight, 0.1);
+                    color: $color-highlight;
+                }
+            }
+        }
+        
+        .mission-description {
+            margin: 0 0 $spacing-md 0;
+            color: $color-text-secondary;
+            font-size: $font-size-sm;
+        }
+        
+        .objectives-list {
+            ul {
+                margin: 0;
+                padding-left: $spacing-lg;
+                
+                li {
+                    margin-bottom: $spacing-xs;
+                    color: $color-text-secondary;
+                    font-size: $font-size-sm;
+                    
+                    &.completed {
+                        text-decoration: line-through;
+                        opacity: 0.5;
+                    }
+                    
+                    &.primary::before {
+                        content: "⭐ ";
+                    }
+                    
+                    &.secondary::before {
+                        content: "○ ";
+                    }
+                    
+                    &.hidden {
+                        color: $color-text-muted;
+                        font-style: italic;
+                        
+                        &::before {
+                            content: "? ";
+                        }
+                    }
+                }
+            }
+        }
+        
+        .narrative-hooks {
+            margin-top: $spacing-md;
+            padding: $spacing-sm;
+            background: $color-bg-secondary;
+            border-left: 3px solid $color-highlight;
+            border-radius: $border-radius-sm;
+            
+            p {
+                margin: 0;
+                font-size: $font-size-xs;
+                color: $color-text-muted;
+                font-style: italic;
+            }
+        }
+    }
+    
+    .characters-section {
+        .characters-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: $spacing-sm;
+            
+            .character-card {
+                padding: $spacing-sm;
+                background: $color-bg-primary;
+                border-radius: $border-radius-sm;
+                
+                .character-name {
+                    font-size: $font-size-sm;
+                    font-weight: $font-weight-medium;
+                    color: $color-text-primary;
+                    margin-bottom: $spacing-xs;
+                }
+                
+                .character-role {
+                    font-size: $font-size-xs;
+                    color: $color-text-muted;
+                    text-transform: uppercase;
+                    
+                    &.ally {
+                        color: $color-highlight;
+                    }
+                    
+                    &.enemy {
+                        color: $color-danger;
+                    }
+                    
+                    &.neutral {
+                        color: $color-text-secondary;
+                    }
+                }
+            }
+        }
+    }
+    
+    .objects-section {
+        .objects-list {
+            .object-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: $spacing-xs 0;
+                border-bottom: $border-width solid $color-border-secondary;
+                
+                &:last-child {
+                    border-bottom: none;
+                }
+                
+                .object-name {
+                    font-size: $font-size-sm;
+                    color: $color-text-primary;
+                }
+                
+                .object-significance {
+                    font-size: $font-size-xs;
+                    padding: 2px $spacing-xs;
+                    border-radius: $border-radius-sm;
+                    
+                    &.critical {
+                        background: rgba($color-danger, 0.1);
+                        color: $color-danger;
+                    }
+                    
+                    &.important {
+                        background: rgba($color-highlight, 0.1);
+                        color: $color-highlight;
+                    }
+                    
+                    &.minor {
+                        background: $color-bg-tertiary;
+                        color: $color-text-muted;
+                    }
+                }
+            }
+        }
+    }
+    
+    .debug-section {
+        .debug-content {
+            background: $color-bg-primary;
+            padding: $spacing-sm;
+            border-radius: $border-radius-sm;
+            font-size: $font-size-xs;
+            color: $color-text-muted;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+    }
+    
+    .story-actions {
+        position: absolute;
+        bottom: $spacing-md;
+        right: $spacing-md;
+        display: flex;
+        gap: $spacing-sm;
+        
+        .action-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: $color-bg-tertiary;
+            border: $border-width solid $color-border-primary;
+            color: $color-text-secondary;
+            cursor: pointer;
+            transition: $transition-all;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: $font-size-sm;
+            
+            &:hover {
+                background: $color-bg-primary;
+                color: $color-text-primary;
+                transform: scale(1.1);
+            }
+            
+            &:active {
+                transform: scale(0.95);
+            }
+        }
+    }
+    
+    // Collapsed state
+    &.collapsed {
+        .story-content {
+            display: none;
+        }
+        
+        .story-actions {
+            display: none;
+        }
+    }
+    
+    // Mobile responsiveness
+    @include sm-down {
+        width: calc(100% - #{$spacing-lg * 2});
+        max-width: 380px;
+    }
+}

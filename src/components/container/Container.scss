@@ -30,4 +30,19 @@ board-component {
     flex: 1;
     overflow: auto;
     position: relative;
+    transition: flex 0.3s ease-in-out;
+}
+
+// When bottom bar is expanded with conversation
+:host(.bottom-bar-expanded) {
+    bottom-bar {
+        max-height: 50vh;
+        height: 50vh;
+        overflow: visible;
+    }
+    
+    board-component {
+        flex: 1 1 50vh; // Board takes remaining 50vh
+        min-height: 0; // Allow shrinking
+    }
 }

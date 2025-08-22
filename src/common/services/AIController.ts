@@ -11,13 +11,14 @@ import {
     ConversationEventsMap
 } from '../events';
 import { State } from '../State';
-import { AIContextBuilder } from './AIContextBuilder';
+import { AIContextBuilder, GameContext } from './AIContextBuilder';
 import { AICommandParser, AICommand } from './AICommandParser';
 import { AIGameEngineService } from './AIGameEngineService';
 import { TacticalExecutor, TacticalDirective } from './TacticalExecutor';
 import { CombatStances } from './CombatStances';
 import { StoryCommandExecutor } from './StoryCommandExecutor';
-import { ICharacter, ICoord, Direction, IOriginStory, IStoryState } from '../interfaces';
+import { StoryPlanner } from './StoryPlanner';
+import { ICharacter, ICoord, Direction, IOriginStory, IStoryState, IScreenContext } from '../interfaces';
 import { DeepReadonly } from '../helpers/types';
 import { calculatePath } from '../helpers/map';
 import { TeamService } from './TeamService';
@@ -52,6 +53,7 @@ export class AIController extends EventBus<
     private movementTimeouts: NodeJS.Timeout[] = [];
     private tacticalExecutor: TacticalExecutor;
     private storyExecutor: StoryCommandExecutor;
+    private storyPlanner: StoryPlanner;
     private useTacticalSystem: boolean = false; // Flag to enable/disable tactical system - disabled by default to use AI endpoint
     private ongoingMovement?: { characterName: string; targetLocation: ICoord; targetName?: string }; // Track ongoing multi-cell movement
 
@@ -61,6 +63,7 @@ export class AIController extends EventBus<
         this.commandParser = new AICommandParser();
         this.tacticalExecutor = TacticalExecutor.getInstance();
         this.storyExecutor = StoryCommandExecutor.getInstance();
+        this.storyPlanner = StoryPlanner.getInstance();
         CombatStances.initialize();
     }
 
@@ -468,13 +471,86 @@ export class AIController extends EventBus<
         // Build context for AI
         const context = this.contextBuilder.buildTurnContext(character, this.state);
         
+        // Get story context for enhanced AI decision making
+        const storyState = this.state.story;
+        let screenContext: IScreenContext | null = null;
+        let storyStateForPlanner: IStoryState | undefined;
+        
+        if (storyState) {
+            const currentMission = storyState.storyPlan?.acts[storyState.storyPlan.currentAct]?.missions
+                .find(m => m.id === storyState.currentMissionId) || null;
+            
+            const visibleCharacters = Array.from(this.state.characters.values())
+                .filter(c => c.name !== character.name);
+            
+            // Create a proper IStoryState object from the DeepReadonly version
+            // Deep clone to convert DeepReadonly arrays to mutable arrays
+            const selectedOrigin = storyState.selectedOrigin ? {
+                id: storyState.selectedOrigin.id,
+                name: storyState.selectedOrigin.name,
+                nameES: storyState.selectedOrigin.nameES,
+                description: storyState.selectedOrigin.description,
+                descriptionES: storyState.selectedOrigin.descriptionES,
+                startingLocation: storyState.selectedOrigin.startingLocation,
+                startingCompanion: storyState.selectedOrigin.startingCompanion ? {...storyState.selectedOrigin.startingCompanion} : undefined,
+                initialInventory: [...storyState.selectedOrigin.initialInventory],
+                factionRelations: {...storyState.selectedOrigin.factionRelations},
+                specialTraits: [...storyState.selectedOrigin.specialTraits],
+                narrativeHooks: [...storyState.selectedOrigin.narrativeHooks]
+            } : null;
+            
+            const majorDecisions = storyState.majorDecisions.map(d => ({
+                id: d.id,
+                missionId: d.missionId,
+                choice: d.choice,
+                consequences: [...d.consequences],
+                timestamp: d.timestamp
+            }));
+            
+            const storyPlan = storyState.storyPlan ? JSON.parse(JSON.stringify(storyState.storyPlan)) : undefined;
+            
+            storyStateForPlanner = {
+                selectedOrigin,
+                currentChapter: storyState.currentChapter,
+                completedMissions: [...storyState.completedMissions],
+                majorDecisions,
+                factionReputation: {...storyState.factionReputation},
+                storyFlags: (() => {
+                    // Workaround for DeepReadonly Set issue
+                    const flagsArray: string[] = [];
+                    (storyState.storyFlags as Set<string>).forEach((flag: string) => flagsArray.push(flag));
+                    return new Set<string>(flagsArray);
+                })(),
+                journalEntries: storyState.journalEntries.map(e => ({...e})),
+                storyPlan,
+                currentMissionId: storyState.currentMissionId,
+                completedObjectives: storyState.completedObjectives ? [...storyState.completedObjectives] : undefined
+            };
+            
+            if (storyStateForPlanner) {
+                screenContext = await this.storyPlanner.getScreenContext(
+                    currentMission ? JSON.parse(JSON.stringify(currentMission)) : null,
+                    visibleCharacters.map(c => JSON.parse(JSON.stringify(c))) as ICharacter[],
+                    storyStateForPlanner
+                );
+            }
+            
+            // Add screen context to AI context with proper typing
+            if (screenContext) {
+                const contextWithScreen = context as GameContext;
+                contextWithScreen.screenContext = screenContext;
+                console.log(`[AI-Narrative] Added screen context with ${screenContext.narrativeHooks.length} narrative hooks`);
+            }
+        }
+        
         console.log(`[AI-Narrative] Calling AI endpoint for ${character.name}'s decision...`);
         
-        // Get AI decision from game engine
-        const response = await this.gameEngineService.requestAIAction(context);
+        // Get AI decision from game engine with story context
+        const response = await this.gameEngineService.requestAIAction(context, undefined, storyStateForPlanner);
         
         // Check if response contains tactical directive
         if (response.command?.type === 'tactical_directive') {
+            // Type guard for tactical directive
             const directive = response.command as unknown as TacticalDirective;
             this.tacticalExecutor.setDirective(directive);
             console.log('[AI] Received tactical directive:', directive.objective);
@@ -1430,9 +1506,17 @@ export class AIController extends EventBus<
         
         const lowerLocation = location.toLowerCase().trim();
         
-        // Handle relative directions (north, south, east, west)
-        if (fromCharacter && ['north', 'south', 'east', 'west', 'up', 'down', 'left', 'right'].includes(lowerLocation)) {
+        // Handle relative directions (including diagonals)
+        const directions = [
+            'north', 'south', 'east', 'west', 'up', 'down', 'left', 'right',
+            'northeast', 'northwest', 'southeast', 'southwest',
+            'north-east', 'north-west', 'south-east', 'south-west'
+        ];
+        
+        if (fromCharacter && directions.includes(lowerLocation)) {
             const moveDistance = 5; // Move 5 cells in the direction
+            const diagonalDistance = Math.floor(moveDistance * 0.7); // Diagonal moves are slightly shorter
+            
             switch (lowerLocation) {
                 case 'north':
                 case 'up':
@@ -1446,6 +1530,18 @@ export class AIController extends EventBus<
                 case 'west':
                 case 'left':
                     return { x: fromCharacter.position.x - moveDistance, y: fromCharacter.position.y };
+                case 'northeast':
+                case 'north-east':
+                    return { x: fromCharacter.position.x + diagonalDistance, y: fromCharacter.position.y - diagonalDistance };
+                case 'northwest':
+                case 'north-west':
+                    return { x: fromCharacter.position.x - diagonalDistance, y: fromCharacter.position.y - diagonalDistance };
+                case 'southeast':
+                case 'south-east':
+                    return { x: fromCharacter.position.x + diagonalDistance, y: fromCharacter.position.y + diagonalDistance };
+                case 'southwest':
+                case 'south-west':
+                    return { x: fromCharacter.position.x - diagonalDistance, y: fromCharacter.position.y + diagonalDistance };
             }
         }
         
@@ -1755,8 +1851,16 @@ export class AIController extends EventBus<
             // If there's an initial narrative message, display it
             if (response.narrative) {
                 console.log('[AI] Initial narrative received:', response.narrative);
-                // This could be shown via a popup or conversation system
-                // For now, just log it
+                
+                // Show the narrative as a conversation from the narrator
+                // Use empty answers array to show close button instead of continue
+                this.dispatch(ConversationEvent.update, {
+                    type: 'speech',
+                    source: 'Narrador',
+                    content: response.narrative,
+                    answers: [],  // Empty array means show close button
+                    action: undefined
+                });
             } else {
                 console.log('[AI] No narrative text in response');
             }

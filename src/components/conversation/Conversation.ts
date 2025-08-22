@@ -4,6 +4,11 @@ import { Component } from "../Component";
 import { ConversationEvent, ConversationEventsMap, StateChangeEvent } from "../../common/events";
 import { i18n } from "../../common/i18n/i18n";
 
+interface ConversationTurn {
+    data: ConversationUpdateData;
+    selectedAnswer?: string;
+}
+
 export class Conversation extends Component {
     protected override hasCss = true;
     protected override hasHtml = true;
@@ -13,7 +18,11 @@ export class Conversation extends Component {
     private loadingElement?: HTMLElement;
     private freeTextInput?: HTMLInputElement;
     private freeTextSubmit?: HTMLButtonElement;
-    
+
+    // Conversation history tracking
+    private conversationHistory: ConversationTurn[] = [];
+    private currentHistoryIndex = -1;
+
     constructor() {
         super();
         // Listen for language changes
@@ -23,8 +32,12 @@ export class Conversation extends Component {
     }
 
     override async connectedCallback() {
+        console.log('[Conversation] connectedCallback called');
         const root = await super.connectedCallback();
-        if (!root) return root;
+        if (!root) {
+            console.error('[Conversation] No shadow root returned from super.connectedCallback');
+            return root;
+        }
 
         // Get references to shadow DOM elements
         this.contentElement = root.querySelector('.conversation-content') as HTMLElement;
@@ -33,32 +46,91 @@ export class Conversation extends Component {
         this.freeTextInput = root.querySelector('.free-text-input') as HTMLInputElement;
         this.freeTextSubmit = root.querySelector('.free-text-submit') as HTMLButtonElement;
 
+        console.log('[Conversation] DOM elements found:', {
+            contentElement: !!this.contentElement,
+            answersElement: !!this.answersElement,
+            loadingElement: !!this.loadingElement,
+            freeTextInput: !!this.freeTextInput,
+            freeTextSubmit: !!this.freeTextSubmit
+        });
+
+        // Setup navigation buttons
+        this.setupNavigationButtons(root);
+
         // Listen for conversation updates
         this.setupEventListeners();
         this.setupFreeTextHandlers();
-        
+
         // Update translations
         this.updateTranslations();
 
+        console.log('[Conversation] Component initialization complete');
         return root;
     }
 
+    private setupNavigationButtons(root: ShadowRoot) {
+        const prevButton = root.querySelector('.nav-previous') as HTMLButtonElement;
+        const nextButton = root.querySelector('.nav-next') as HTMLButtonElement;
+
+        console.log('[Conversation] Setting up navigation buttons:', { prevButton: !!prevButton, nextButton: !!nextButton });
+
+        if (prevButton) {
+            prevButton.addEventListener('click', () => {
+                console.log('[Conversation] Previous button clicked');
+                this.navigateToPrevious();
+            });
+        }
+
+        if (nextButton) {
+            nextButton.addEventListener('click', () => {
+                console.log('[Conversation] Next button clicked');
+                this.navigateToNext();
+            });
+        }
+    }
+
     private setupEventListeners() {
+        console.log('[Conversation] Setting up event listeners');
+
         this.listen(ConversationEvent.update, (data: ConversationEventsMap[ConversationEvent.update]) => {
+            console.log('[Conversation] Received update event:', data);
             this.updateConversation(data);
         });
 
         this.listen(ConversationEvent.error, (error: ConversationEventsMap[ConversationEvent.error]) => {
+            console.log('[Conversation] Received error event:', error);
             this.showError(error);
         });
+
+        console.log('[Conversation] Event listeners setup complete');
     }
 
-    private updateConversation(data: ConversationUpdateData) {
-        if (!this.contentElement || !this.answersElement) return;
+    private updateConversation(data: ConversationUpdateData, isHistorical = false) {
+        console.log('[Conversation] updateConversation called with:', { data, isHistorical });
+
+        if (!this.contentElement || !this.answersElement) {
+            console.error('[Conversation] Missing content or answers element:', {
+                contentElement: this.contentElement,
+                answersElement: this.answersElement
+            });
+            return;
+        }
 
         // Hide loading message
         if (this.loadingElement) {
+            console.log('[Conversation] Hiding loading element');
             this.loadingElement.style.display = 'none';
+        } else {
+            console.warn('[Conversation] No loading element found');
+        }
+
+        // Add to history if this is a new conversation update
+        if (!isHistorical) {
+            const turn: ConversationTurn = { data };
+            this.conversationHistory.push(turn);
+            this.currentHistoryIndex = this.conversationHistory.length - 1;
+            this.updateNavigationButtons();
+            console.log('[Conversation] Added to history, current index:', this.currentHistoryIndex);
         }
 
         // Clear previous content
@@ -85,9 +157,22 @@ export class Conversation extends Component {
 
         this.contentElement.appendChild(bubble);
 
-        // Add answer buttons or end conversation
-        if (data.answers && data.answers.length > 0 && this.answersElement) {
-            const answersElement = this.answersElement; // Create local reference for TypeScript
+        // Add answer buttons or show selected answer for historical conversations
+        const isCurrentConversation = this.currentHistoryIndex === this.conversationHistory.length - 1;
+        const currentTurn = this.conversationHistory[this.currentHistoryIndex];
+
+        if (isHistorical && currentTurn?.selectedAnswer) {
+            // Show the selected answer for historical conversations
+            const selectedAnswer = document.createElement('div');
+            selectedAnswer.className = 'selected-answer';
+            selectedAnswer.innerHTML = `
+                <span class="selected-label">Your response:</span>
+                <span class="selected-text">${currentTurn.selectedAnswer}</span>
+            `;
+            this.answersElement.appendChild(selectedAnswer);
+        } else if (data.answers && data.answers.length > 0 && this.answersElement && !currentTurn?.selectedAnswer) {
+            // Show interactive answers if no answer has been selected yet
+            const answersElement = this.answersElement;
             data.answers.forEach(answer => {
                 const button = document.createElement('button');
                 button.className = 'answer-button';
@@ -95,7 +180,7 @@ export class Conversation extends Component {
                 button.addEventListener('click', () => this.handleAnswerClick(answer));
                 answersElement.appendChild(button);
             });
-            
+
             // Re-enable free text input for new conversation
             if (this.freeTextInput) {
                 this.freeTextInput.disabled = false;
@@ -103,21 +188,21 @@ export class Conversation extends Component {
             if (this.freeTextSubmit) {
                 this.freeTextSubmit.disabled = false;
             }
-        } else {
-            // No answers means conversation has ended
-            if (this.answersElement) {
-                const endMessage = document.createElement('div');
-                endMessage.className = 'conversation-ended';
-                endMessage.textContent = 'Conversación terminada';
-                this.answersElement.appendChild(endMessage);
+        } else if (!data.answers || data.answers.length === 0) {
+            // No answers means show close button
+            if (this.answersElement && isCurrentConversation && !currentTurn?.selectedAnswer) {
+                const closeButton = document.createElement('button');
+                closeButton.className = 'answer-button close-button';
+                closeButton.innerHTML = `✕ ${i18n.t('common.close')}`;
+                closeButton.title = i18n.t('common.close');
+                closeButton.addEventListener('click', () => {
+                    // Dispatch event to close conversation immediately
+                    this.dispatchEvent(new CustomEvent('conversation-ended', {
+                        bubbles: true
+                    }));
+                });
+                this.answersElement.appendChild(closeButton);
             }
-            
-            // Dispatch event to close conversation popup after a delay
-            setTimeout(() => {
-                this.dispatchEvent(new CustomEvent('conversation-ended', {
-                    bubbles: true
-                }));
-            }, 2000);
         }
 
         // Dispatch event to notify parent that conversation has been updated
@@ -128,6 +213,14 @@ export class Conversation extends Component {
     }
 
     private handleAnswerClick(answer: string) {
+        // Store the selected answer in the current turn
+        if (this.currentHistoryIndex >= 0 && this.currentHistoryIndex < this.conversationHistory.length) {
+            const currentTurn = this.conversationHistory[this.currentHistoryIndex];
+            if (currentTurn) {
+                currentTurn.selectedAnswer = answer;
+            }
+        }
+
         // Dispatch continue event with the selected answer
         this.dispatch(ConversationEvent.continue, answer);
 
@@ -189,6 +282,14 @@ export class Conversation extends Component {
         const text = this.freeTextInput.value.trim();
         if (!text) return;
 
+        // Store the free text as the selected answer
+        if (this.currentHistoryIndex >= 0 && this.currentHistoryIndex < this.conversationHistory.length) {
+            const currentTurn = this.conversationHistory[this.currentHistoryIndex];
+            if (currentTurn) {
+                currentTurn.selectedAnswer = text;
+            }
+        }
+
         // Dispatch continue event with the free text
         this.dispatch(ConversationEvent.continue, text);
 
@@ -215,25 +316,81 @@ export class Conversation extends Component {
         // Show loading state
         this.showLoading();
     }
-    
+
+    private navigateToPrevious() {
+        console.log('[Conversation] navigateToPrevious called, currentIndex:', this.currentHistoryIndex, 'historyLength:', this.conversationHistory.length);
+        if (this.currentHistoryIndex > 0) {
+            this.currentHistoryIndex--;
+            const turn = this.conversationHistory[this.currentHistoryIndex];
+            console.log('[Conversation] Moving to index:', this.currentHistoryIndex, 'turn:', turn);
+            if (turn) {
+                // Pass false for isHistorical when navigating to the most recent conversation
+                const isHistorical = this.currentHistoryIndex < this.conversationHistory.length - 1;
+                this.updateConversation(turn.data, isHistorical);
+                this.updateNavigationButtons();
+            }
+        }
+    }
+
+    private navigateToNext() {
+        console.log('[Conversation] navigateToNext called, currentIndex:', this.currentHistoryIndex, 'historyLength:', this.conversationHistory.length);
+        if (this.currentHistoryIndex < this.conversationHistory.length - 1) {
+            this.currentHistoryIndex++;
+            const turn = this.conversationHistory[this.currentHistoryIndex];
+            console.log('[Conversation] Moving to index:', this.currentHistoryIndex, 'turn:', turn);
+            if (turn) {
+                // Pass false for isHistorical when navigating to the most recent conversation
+                const isHistorical = this.currentHistoryIndex < this.conversationHistory.length - 1;
+                this.updateConversation(turn.data, isHistorical);
+                this.updateNavigationButtons();
+            }
+        }
+    }
+
+    private updateNavigationButtons() {
+        const root = this.shadowRoot;
+        if (!root) return;
+
+        const prevButton = root.querySelector('.nav-previous') as HTMLButtonElement;
+        const nextButton = root.querySelector('.nav-next') as HTMLButtonElement;
+        const currentIndexSpan = root.querySelector('.current-index') as HTMLElement;
+        const totalCountSpan = root.querySelector('.total-count') as HTMLElement;
+
+        if (prevButton) {
+            prevButton.disabled = this.currentHistoryIndex <= 0;
+        }
+
+        if (nextButton) {
+            nextButton.disabled = this.currentHistoryIndex >= this.conversationHistory.length - 1;
+        }
+
+        if (currentIndexSpan) {
+            currentIndexSpan.textContent = (this.currentHistoryIndex + 1).toString();
+        }
+
+        if (totalCountSpan) {
+            totalCountSpan.textContent = this.conversationHistory.length.toString();
+        }
+    }
+
     private updateTranslations() {
         const root = this.shadowRoot;
         if (!root) return;
-        
+
         // Update loading text
         const loadingText = root.querySelector('.conversation-loading');
         if (loadingText) loadingText.textContent = i18n.t('conversation.loading');
-        
+
         // Update placeholder text
         if (this.freeTextInput) {
             this.freeTextInput.placeholder = i18n.t('conversation.typeResponse');
         }
-        
+
         // Update submit button
         if (this.freeTextSubmit) {
             this.freeTextSubmit.textContent = i18n.t('conversation.send');
         }
-        
+
         // Update ended message if present
         const endedMessage = root.querySelector('.conversation-ended');
         if (endedMessage) {

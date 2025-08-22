@@ -286,13 +286,21 @@ export class AICommandParser {
         }
         
         const cmd = command as Record<string, unknown>;
-        if (!cmd.content || !cmd.description) {
-            console.error('Storyline command missing content or description');
+        // Accept either content OR description (or both)
+        if (!cmd.content && !cmd.description) {
+            console.error('Storyline command missing both content and description');
             return null;
         }
+        
+        // Ensure we have at least one of the required fields
+        const validatedCmd = {
+            ...cmd,
+            content: cmd.content || cmd.description || '',
+            description: cmd.description || cmd.content || ''
+        };
 
         // At this point, we've validated the structure matches StorylineCommand
-        return cmd as StorylineCommand;
+        return validatedCmd as StorylineCommand;
     }
 
     private validateMap(command: unknown): MapCommand | null {

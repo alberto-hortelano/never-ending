@@ -1,5 +1,6 @@
 import { Component } from "../Component";
 import { ActionEvent, ActionEventsMap, ActionUpdateData, StateChangeEvent } from "../../common/events";
+import { i18n } from "../../common/i18n/i18n";
 
 export class Actions extends Component {
     protected override hasCss = true;
@@ -69,6 +70,15 @@ export class Actions extends Component {
                 }
             }
         });
+        
+        // Listen for language changes
+        this.listen(StateChangeEvent.language, () => {
+            // Re-render with new translations
+            const state = this.getState();
+            if (state?.ui.selectedCharacter) {
+                this.dispatch(ActionEvent.request, state.ui.selectedCharacter);
+            }
+        });
     }
 
     static get observedAttributes() {
@@ -136,7 +146,7 @@ export class Actions extends Component {
                             meleeButton = this.createMeleeToggleButton(action, data);
                         } else if (action.id === 'shoot' && this.isInShootingMode) {
                             // Transform shoot button to aim if in shooting mode
-                            const aimAction = { ...action, id: 'aim', label: 'Aim', icon: '🎯' };
+                            const aimAction = { ...action, id: 'aim', label: i18n.t('action.aim'), icon: '🎯' };
                             const button = this.createActionButton(aimAction, data);
                             buttonsContainer.appendChild(button);
                         } else {
@@ -193,7 +203,7 @@ export class Actions extends Component {
         if (action.id === 'shoot' && data.hasRangedWeapon === false) {
             button.classList.add('disabled');
             button.disabled = true;
-            button.title = 'Requires ranged weapon';
+            button.title = i18n.t('action.requiresRangedWeapon');
         }
 
         // Add click handler
