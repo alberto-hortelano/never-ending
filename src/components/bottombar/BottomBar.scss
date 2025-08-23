@@ -24,7 +24,9 @@
     height: 100%;
 }
 
-.conversation-section {
+.conversation-section,
+.talk-selection-section,
+.inventory-section {
     flex: 1;
     overflow-y: auto;
     border-bottom: 1px solid $color-border-secondary;
@@ -53,6 +55,28 @@
     // Animation when showing/hiding
     &[style*="display: block"] {
         animation: slideUp 0.3s ease-out;
+    }
+}
+
+// Specific styling for talk selection section
+.talk-selection-section {
+    padding: $spacing-md;
+    
+    // Style for the select-character component
+    select-character {
+        display: block;
+        width: 100%;
+    }
+}
+
+// Specific styling for inventory section
+.inventory-section {
+    padding: $spacing-md;
+    
+    // Style for the inventory component
+    inventory-component {
+        display: block;
+        width: 100%;
     }
 }
 

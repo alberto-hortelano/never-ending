@@ -1,7 +1,9 @@
 import { Component } from "../Component";
-import { ControlsEvent, UpdateStateEvent, StateChangeEvent, ConversationEvent, ConversationEventsMap } from "../../common/events";
+import { ControlsEvent, UpdateStateEvent, StateChangeEvent, ConversationEvent, ConversationEventsMap, ControlsEventsMap } from "../../common/events";
 import type { Actions } from "../actions/Actions";
 import type { Conversation } from "../conversation/Conversation";
+import type { SelectCharacter } from "../selectcharacter/SelectCharacter";
+import type { Inventory } from "../inventory/Inventory";
 import { i18n } from "../../common/i18n/i18n";
 
 export default class BottomBar extends Component {
@@ -12,6 +14,12 @@ export default class BottomBar extends Component {
     private conversationComponent?: Conversation;
     private conversationSection?: HTMLElement;
     private isConversationVisible = false;
+    private talkSelectionSection?: HTMLElement;
+    private isTalkSelectionVisible = false;
+    private selectCharacterComponent?: SelectCharacter;
+    private inventorySection?: HTMLElement;
+    private isInventoryVisible = false;
+    private inventoryComponent?: Inventory;
     
     constructor() {
         super();
@@ -25,8 +33,10 @@ export default class BottomBar extends Component {
         const root = await super.connectedCallback();
         if (!root) return root;
         
-        // Get reference to conversation section
+        // Get references to all sections
         this.conversationSection = root.querySelector('.conversation-section') as HTMLElement;
+        this.talkSelectionSection = root.querySelector('.talk-selection-section') as HTMLElement;
+        this.inventorySection = root.querySelector('.inventory-section') as HTMLElement;
         
         this.setupEventListeners(root);
         this.updateTranslations();
@@ -48,6 +58,16 @@ export default class BottomBar extends Component {
         // Listen for interaction mode changes to show/hide mobile hints
         this.listen(StateChangeEvent.uiInteractionMode, (mode) => {
             this.updateMobileHint(mode, root);
+        });
+        
+        // Listen for showTalk event
+        this.listen(ControlsEvent.showTalk, (data: ControlsEventsMap[ControlsEvent.showTalk]) => {
+            this.showTalkSelection(data);
+        });
+        
+        // Listen for showInventory event
+        this.listen(ControlsEvent.showInventory, (characterName: ControlsEventsMap[ControlsEvent.showInventory]) => {
+            this.showInventory(characterName);
         });
         
         // Store the last conversation data to re-dispatch after component creation
@@ -182,6 +202,10 @@ export default class BottomBar extends Component {
             return;
         }
         
+        // Hide other sections
+        this.hideTalkSelection();
+        this.hideInventory();
+        
         // Create conversation component if it doesn't exist
         if (!this.conversationComponent) {
             console.log('[BottomBar] Creating conversation-ui component');
@@ -220,8 +244,126 @@ export default class BottomBar extends Component {
             this.conversationComponent = undefined;
         }
         
-        // Notify that bottom bar has collapsed
-        this.dispatch(UpdateStateEvent.uiBottomBarExpanded, false);
+        // Check if anything else is visible
+        if (!this.isTalkSelectionVisible && !this.isInventoryVisible) {
+            this.dispatch(UpdateStateEvent.uiBottomBarExpanded, false);
+        }
+    }
+    
+    private showTalkSelection(data: ControlsEventsMap[ControlsEvent.showTalk]) {
+        console.log('[BottomBar] showTalkSelection called:', data);
+        if (!this.talkSelectionSection) {
+            console.error('[BottomBar] No talk selection section found!');
+            return;
+        }
+        
+        // Hide other sections
+        this.hideConversation();
+        this.hideInventory();
+        
+        // Clear any existing component
+        if (this.selectCharacterComponent) {
+            this.talkSelectionSection.removeChild(this.selectCharacterComponent);
+            this.selectCharacterComponent = undefined;
+        }
+        
+        // Create select character component
+        this.selectCharacterComponent = document.createElement('select-character') as SelectCharacter;
+        this.talkSelectionSection.appendChild(this.selectCharacterComponent);
+        
+        // Set options on select character component
+        this.selectCharacterComponent.setOptions({
+            characters: [...data.availableCharacters, data.talkingCharacter],
+            excludeByName: data.talkingCharacter.name,
+            emptyMessage: 'No one else is around to talk to.'
+        });
+        
+        // Listen for character selection
+        this.selectCharacterComponent.addEventListener('character-selected', (e: Event) => {
+            const customEvent = e as CustomEvent;
+            const { selectedCharacter } = customEvent.detail;
+            this.dispatch(ConversationEvent.start, { 
+                talkingCharacter: data.talkingCharacter, 
+                targetCharacter: selectedCharacter 
+            });
+            // Hide talk selection after character is selected
+            this.hideTalkSelection();
+        });
+        
+        // Show the talk selection section
+        this.talkSelectionSection.style.display = 'block';
+        this.isTalkSelectionVisible = true;
+        
+        // Notify that bottom bar has expanded
+        this.dispatch(UpdateStateEvent.uiBottomBarExpanded, true);
+    }
+    
+    private hideTalkSelection() {
+        if (!this.talkSelectionSection) return;
+        
+        this.talkSelectionSection.style.display = 'none';
+        this.isTalkSelectionVisible = false;
+        
+        // Clear the component
+        if (this.selectCharacterComponent) {
+            this.talkSelectionSection.removeChild(this.selectCharacterComponent);
+            this.selectCharacterComponent = undefined;
+        }
+        
+        // Check if anything else is visible
+        if (!this.isConversationVisible && !this.isInventoryVisible) {
+            this.dispatch(UpdateStateEvent.uiBottomBarExpanded, false);
+        }
+    }
+    
+    private showInventory(characterName: ControlsEventsMap[ControlsEvent.showInventory]) {
+        console.log('[BottomBar] showInventory called for:', characterName);
+        if (!this.inventorySection) {
+            console.error('[BottomBar] No inventory section found!');
+            return;
+        }
+        
+        // Hide other sections
+        this.hideConversation();
+        this.hideTalkSelection();
+        
+        // Clear any existing component
+        if (this.inventoryComponent) {
+            this.inventorySection.removeChild(this.inventoryComponent);
+            this.inventoryComponent = undefined;
+        }
+        
+        // Update selected character in state
+        this.dispatch(UpdateStateEvent.uiSelectedCharacter, characterName);
+        
+        // Create inventory component
+        this.inventoryComponent = document.createElement('inventory-component') as Inventory;
+        this.inventorySection.appendChild(this.inventoryComponent);
+        
+        // Show the inventory section
+        this.inventorySection.style.display = 'block';
+        this.isInventoryVisible = true;
+        
+        // Notify that bottom bar has expanded
+        this.dispatch(UpdateStateEvent.uiBottomBarExpanded, true);
+    }
+    
+    private hideInventory() {
+        if (!this.inventorySection) return;
+        
+        this.inventorySection.style.display = 'none';
+        this.isInventoryVisible = false;
+        
+        // Clear the component
+        if (this.inventoryComponent) {
+            this.inventorySection.removeChild(this.inventoryComponent);
+            this.inventoryComponent = undefined;
+        }
+        
+        // Check if anything else is visible
+        if (!this.isConversationVisible && !this.isTalkSelectionVisible) {
+            this.dispatch(UpdateStateEvent.uiBottomBarExpanded, false);
+        }
     }
     
     private updateTranslations() {

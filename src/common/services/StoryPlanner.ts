@@ -330,7 +330,9 @@ Remember: All player-facing text should be primarily in Spanish.`;
             return [];
         }
         
-        return mission.objectives.filter(o => !o.completed);
+        return Array.isArray(mission.objectives) 
+            ? mission.objectives.filter(o => !o.completed)
+            : [];
     }
     
     private getVisibleStoryObjects(): IStoryObject[] {
@@ -358,7 +360,9 @@ Remember: All player-facing text should be primarily in Spanish.`;
         }
         
         return characters.map(char => {
-            const npcRole = mission.npcs.find(npc => npc.name === char.name);
+            const npcRole = Array.isArray(mission.npcs) 
+                ? mission.npcs.find(npc => npc.name === char.name)
+                : undefined;
             
             return {
                 ...char,
@@ -374,7 +378,9 @@ Remember: All player-facing text should be primarily in Spanish.`;
             return [];
         }
         
-        return mission.narrativeHooks;
+        return Array.isArray(mission.narrativeHooks) 
+            ? mission.narrativeHooks
+            : [];
     }
     
     private getSuggestedActions(
@@ -389,7 +395,8 @@ Remember: All player-facing text should be primarily in Spanish.`;
         }
         
         // Suggest actions based on objectives
-        for (const objective of mission.objectives) {
+        if (Array.isArray(mission.objectives)) {
+            for (const objective of mission.objectives) {
             if (!objective.completed) {
                 for (const condition of objective.conditions) {
                     switch (condition.type) {
@@ -412,6 +419,7 @@ Remember: All player-facing text should be primarily in Spanish.`;
                     }
                 }
             }
+        }
         }
         
         return suggestions;

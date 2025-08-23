@@ -1,18 +1,18 @@
-import type { SelectCharacter } from "../selectcharacter/SelectCharacter";
-import type { Inventory } from "../inventory/Inventory";
+// import type { SelectCharacter } from "../selectcharacter/SelectCharacter";
+// import type { Inventory } from "../inventory/Inventory";
 
 import { Component } from "../Component";
-import { ControlsEvent, ControlsEventsMap, ConversationEvent, UpdateStateEvent, StateChangeEvent } from "../../common/events";
-import { Draggable } from "../../common/helpers/Draggable";
+import { UpdateStateEvent, StateChangeEvent } from "../../common/events";
+// import { Draggable } from "../../common/helpers/Draggable";
 import type { IPopupState } from "../../common/interfaces";
 import { i18n } from "../../common/i18n/i18n";
 
 export class Popup extends Component {
     protected override hasCss = true;
     protected override hasHtml = true;
-    private dragHelper?: Draggable;
+    // private dragHelper?: Draggable;
     private isPinned = false;
-    private headerElement?: HTMLElement;
+    // private headerElement?: HTMLElement; // Not used since dragging is disabled
     private titleElement?: HTMLElement;
     private pinButton?: HTMLElement;
     private closeButton?: HTMLElement;
@@ -31,7 +31,7 @@ export class Popup extends Component {
         if (!root) return root;
 
         // Store shadow DOM element references immediately (Pattern 1)
-        this.headerElement = root.querySelector('.popup-header') as HTMLElement;
+        // this.headerElement = root.querySelector('.popup-header') as HTMLElement; // Not used since dragging is disabled
         this.titleElement = root.querySelector('.popup-header h3') as HTMLElement;
         this.pinButton = root.querySelector('.pin-button') as HTMLElement;
         this.closeButton = root.querySelector('.close-button') as HTMLElement;
@@ -72,26 +72,27 @@ export class Popup extends Component {
         //     }, 50);
         // });
 
-        this.listen(ControlsEvent.showTalk, (data: ControlsEventsMap[ControlsEvent.showTalk]) => {
-            isShowing = true;
-            this.showTalk(data);
+        // Talk selection is now handled by the BottomBar component
+        // this.listen(ControlsEvent.showTalk, (data: ControlsEventsMap[ControlsEvent.showTalk]) => {
+        //     isShowing = true;
+        //     this.showTalk(data);
 
-            // Reset the flag after a short delay to allow the click event to finish bubbling
-            setTimeout(() => {
-                isShowing = false;
-            }, 50);
-        });
+        //     // Reset the flag after a short delay to allow the click event to finish bubbling
+        //     setTimeout(() => {
+        //         isShowing = false;
+        //     }, 50);
+        // });
 
+        // Inventory is now handled by the BottomBar component
+        // this.listen(ControlsEvent.showInventory, (characterName: ControlsEventsMap[ControlsEvent.showInventory]) => {
+        //     isShowing = true;
+        //     this.showInventory(characterName);
 
-        this.listen(ControlsEvent.showInventory, (characterName: ControlsEventsMap[ControlsEvent.showInventory]) => {
-            isShowing = true;
-            this.showInventory(characterName);
-
-            // Reset the flag after a short delay to allow the click event to finish bubbling
-            setTimeout(() => {
-                isShowing = false;
-            }, 50);
-        });
+        //     // Reset the flag after a short delay to allow the click event to finish bubbling
+        //     setTimeout(() => {
+        //         isShowing = false;
+        //     }, 50);
+        // });
 
         // Conversations are now handled by the BottomBar component
 
@@ -116,119 +117,125 @@ export class Popup extends Component {
         return window.innerWidth <= 768;
     }
 
-    private setupDraggable() {
-        // Ensure the component is positioned absolutely for dragging
-        this.style.position = 'absolute';
+    // Currently unused - draggable functionality disabled since popup is not actively used
+    // private setupDraggable() {
+    //     // Ensure the component is positioned absolutely for dragging
+    //     this.style.position = 'absolute';
 
-        if (this.headerElement) {
-            this.dragHelper = new Draggable(this, this.headerElement);
+    //     if (this.headerElement) {
+    //         this.dragHelper = new Draggable(this, this.headerElement);
 
-            // Listen for mouseup/touchend to detect drag end and update state
-            const updatePositionInState = () => {
-                const popupState = this.getPopupStateFromDOM();
-                if (popupState && popupState.visible) {
-                    this.dispatch(UpdateStateEvent.uiPopup, {
-                        popupId: this.popupId,
-                        popupState
-                    });
-                }
-            };
+    //         // Listen for mouseup/touchend to detect drag end and update state
+    //         const updatePositionInState = () => {
+    //             const popupState = this.getPopupStateFromDOM();
+    //             if (popupState && popupState.visible) {
+    //                 this.dispatch(UpdateStateEvent.uiPopup, {
+    //                     popupId: this.popupId,
+    //                     popupState
+    //                 });
+    //             }
+    //         };
 
-            document.addEventListener('mouseup', updatePositionInState);
-            document.addEventListener('touchend', updatePositionInState);
-        }
-    }
-
-
-    private showTalk(data: ControlsEventsMap[ControlsEvent.showTalk]) {
-        this.clearContent();
-
-        // Create and append select character component
-        const selectCharacterComponent = document.createElement('select-character') as SelectCharacter;
-        this.appendChild(selectCharacterComponent);
-
-        this.show(`${data.talkingCharacter.name} - Talk to...`);
-
-        // Set options on select character component
-        selectCharacterComponent.setOptions({
-            characters: [...data.availableCharacters, data.talkingCharacter],
-            excludeByName: data.talkingCharacter.name,
-            emptyMessage: 'No one else is around to talk to.'
-        });
-
-        // Listen for character selection and log the conversation
-        selectCharacterComponent.addEventListener('character-selected', (e: Event) => {
-            const customEvent = e as CustomEvent;
-            const { selectedCharacter } = customEvent.detail;
-            this.dispatch(ConversationEvent.start, { talkingCharacter: data.talkingCharacter, targetCharacter: selectedCharacter })
-        });
-    }
+    //         document.addEventListener('mouseup', updatePositionInState);
+    //         document.addEventListener('touchend', updatePositionInState);
+    //     }
+    // }
 
 
-    private showInventory(characterName: ControlsEventsMap[ControlsEvent.showInventory]) {
-        this.clearContent();
+    // Talk selection is now handled by the BottomBar component
+    // private showTalk(data: ControlsEventsMap[ControlsEvent.showTalk]) {
+    //     this.clearContent();
+
+    //     // Create and append select character component
+    //     const selectCharacterComponent = document.createElement('select-character') as SelectCharacter;
+    //     this.appendChild(selectCharacterComponent);
+
+    //     this.show(`${data.talkingCharacter.name} - Talk to...`);
+
+    //     // Set options on select character component
+    //     selectCharacterComponent.setOptions({
+    //         characters: [...data.availableCharacters, data.talkingCharacter],
+    //         excludeByName: data.talkingCharacter.name,
+    //         emptyMessage: 'No one else is around to talk to.'
+    //     });
+
+    //     // Listen for character selection and log the conversation
+    //     selectCharacterComponent.addEventListener('character-selected', (e: Event) => {
+    //         const customEvent = e as CustomEvent;
+    //         const { selectedCharacter } = customEvent.detail;
+    //         this.dispatch(ConversationEvent.start, { talkingCharacter: data.talkingCharacter, targetCharacter: selectedCharacter })
+    //     });
+    // }
+
+    // Inventory is now handled by the BottomBar component
+    // private showInventory(characterName: ControlsEventsMap[ControlsEvent.showInventory]) {
+    //     this.clearContent();
         
-        // Update selected character in state
-        this.dispatch(UpdateStateEvent.uiSelectedCharacter, characterName);
+    //     // Update selected character in state
+    //     this.dispatch(UpdateStateEvent.uiSelectedCharacter, characterName);
 
-        // Create and append inventory component (no longer needs character-name attribute)
-        const inventoryComponent = document.createElement('inventory-component') as Inventory;
-        this.appendChild(inventoryComponent);
+    //     // Create and append inventory component (no longer needs character-name attribute)
+    //     const inventoryComponent = document.createElement('inventory-component') as Inventory;
+    //     this.appendChild(inventoryComponent);
 
-        this.show(`${characterName} - Inventory`);
-    }
+    //     this.show(`${characterName} - Inventory`);
+    // }
 
 
-    private clearContent() {
-        // Remove all child components
-        while (this.firstChild) {
-            this.removeChild(this.firstChild);
-        }
-    }
+    // Currently unused but may be needed if popup is repurposed
+    // private clearContent() {
+    //     // Remove all child components
+    //     while (this.firstChild) {
+    //         this.removeChild(this.firstChild);
+    //     }
+    // }
 
-    private show(title: string) {
-        // Setup draggable on first show when shadow DOM is ready (desktop only)
-        if (!this.dragHelper && !this.isMobile()) {
-            this.setupDraggable();
-        }
+    // Currently unused but may be needed if popup is repurposed
+    // private show(title: string) {
+    //     // Setup draggable on first show when shadow DOM is ready (desktop only)
+    //     if (!this.dragHelper && !this.isMobile()) {
+    //         this.setupDraggable();
+    //     }
 
-        // Calculate position for desktop
-        let position = undefined;
-        if (!this.isMobile()) {
-            // Desktop: center the popup
-            const rect = this.getBoundingClientRect();
-            const leftPos = Math.max(0, (window.innerWidth - rect.width) / 2);
-            const topPos = Math.max(0, (window.innerHeight - rect.height) / 2);
-            position = { x: leftPos, y: topPos };
-        }
+    //     // Calculate position for desktop
+    //     let position = undefined;
+    //     if (!this.isMobile()) {
+    //         // Desktop: center the popup
+    //         const rect = this.getBoundingClientRect();
+    //         const leftPos = Math.max(0, (window.innerWidth - rect.width) / 2);
+    //         const topPos = Math.max(0, (window.innerHeight - rect.height) / 2);
+    //         position = { x: leftPos, y: topPos };
+    //     }
 
-        // Get current content type from the first child element
-        let contentType: IPopupState['type'] = 'actions';
-        const firstChild = this.firstElementChild;
-        if (firstChild) {
-            if (firstChild.tagName === 'ACTIONS-COMPONENT') contentType = 'actions';
-            else if (firstChild.tagName === 'SELECT-CHARACTER') contentType = 'actions'; // Talk uses actions type
-            else if (firstChild.tagName === 'ROTATE-SELECTOR') contentType = 'rotate';
-            else if (firstChild.tagName === 'INVENTORY-COMPONENT') contentType = 'inventory';
-        }
+    //     // Get current content type from the first child element
+    //     let contentType: IPopupState['type'] = 'actions';
+    //     const firstChild = this.firstElementChild;
+    //     if (firstChild) {
+    //         if (firstChild.tagName === 'ACTIONS-COMPONENT') contentType = 'actions';
+    //         // SELECT-CHARACTER is now in BottomBar
+    //         // else if (firstChild.tagName === 'SELECT-CHARACTER') contentType = 'actions'; // Talk uses actions type
+    //         else if (firstChild.tagName === 'ROTATE-SELECTOR') contentType = 'rotate';
+    //         // INVENTORY-COMPONENT is now in BottomBar
+    //         // else if (firstChild.tagName === 'INVENTORY-COMPONENT') contentType = 'inventory';
+    //     }
 
-        // Update popup state
-        this.dispatch(UpdateStateEvent.uiPopup, {
-            popupId: this.popupId,
-            popupState: {
-                type: contentType,
-                visible: true,
-                position,
-                data: { title },
-                isPinned: this.isPinned
-            }
-        });
+    //     // Update popup state
+    //     this.dispatch(UpdateStateEvent.uiPopup, {
+    //         popupId: this.popupId,
+    //         popupState: {
+    //             type: contentType,
+    //             visible: true,
+    //             position,
+    //             data: { title },
+    //             isPinned: this.isPinned
+    //         }
+    //     });
 
-        // Also dispatch the legacy popup show event for Board compatibility
-        this.dispatch(UpdateStateEvent.uiBoardVisual, {
-            updates: { hasPopupActive: true }
-        });
-    }
+    //     // Also dispatch the legacy popup show event for Board compatibility
+    //     this.dispatch(UpdateStateEvent.uiBoardVisual, {
+    //         updates: { hasPopupActive: true }
+    //     });
+    // }
 
     private hide() {
         if (!this.isPinned) {
@@ -333,9 +340,11 @@ export class Popup extends Component {
         const firstChild = this.firstElementChild;
         if (firstChild) {
             if (firstChild.tagName === 'ACTIONS-COMPONENT') contentType = 'actions';
-            else if (firstChild.tagName === 'SELECT-CHARACTER') contentType = 'actions';
+            // SELECT-CHARACTER is now in BottomBar
+            // else if (firstChild.tagName === 'SELECT-CHARACTER') contentType = 'actions';
             else if (firstChild.tagName === 'ROTATE-SELECTOR') contentType = 'rotate';
-            else if (firstChild.tagName === 'INVENTORY-COMPONENT') contentType = 'inventory';
+            // INVENTORY-COMPONENT is now in BottomBar
+            // else if (firstChild.tagName === 'INVENTORY-COMPONENT') contentType = 'inventory';
         }
 
         return {
