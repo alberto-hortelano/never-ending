@@ -16,6 +16,16 @@
     width: 100%;
 }
 
+// Development row - only visible in dev mode
+.dev-row {
+    display: none;
+    width: 100%;
+    
+    development-ui {
+        width: 100%;
+    }
+}
+
 // First row - smaller height
 .top-row {
     display: flex;

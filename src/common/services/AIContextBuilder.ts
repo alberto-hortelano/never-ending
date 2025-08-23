@@ -660,12 +660,12 @@ export class AIContextBuilder {
         }
         
         // Get visible characters that are key to the story
-        const visibleKeyCharacters = currentAct ? currentAct.keyCharacters
+        const visibleKeyCharacters = currentAct && currentAct.keyCharacters ? currentAct.keyCharacters
             .filter(kc => state.characters.find(c => c.name === kc.name))
             .map(kc => kc.name) : [];
         
         // Get nearby important objects
-        const nearbyObjects = currentAct ? currentAct.keyObjects
+        const nearbyObjects = currentAct && currentAct.keyObjects && currentMission.requiredObjects ? currentAct.keyObjects
             .filter(obj => currentMission.requiredObjects.includes(obj.id))
             .map(obj => obj.name) : [];
         
@@ -690,8 +690,12 @@ export class AIContextBuilder {
     private getSuggestedActionsFromMission(mission: IMission, state: State): string[] {
         const suggestions: string[] = [];
         
+        if (!mission.objectives) {
+            return suggestions;
+        }
+        
         for (const objective of mission.objectives) {
-            if (!objective.completed) {
+            if (!objective.completed && objective.conditions) {
                 for (const condition of objective.conditions) {
                     const target = state.characters.find(c => c.name === condition.target);
                     

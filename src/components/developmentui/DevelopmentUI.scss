@@ -1,0 +1,171 @@
+@use '../variables' as *;
+@use 'sass:color';
+
+:host {
+    display: block;
+    width: 100%;
+}
+
+.development-ui {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    padding: $spacing-xs $spacing-md;
+    background: linear-gradient(135deg, 
+        color.adjust($color-danger, $lightness: -20%) 0%, 
+        color.adjust($color-danger, $lightness: -15%) 100%
+    );
+    border-bottom: 2px solid color.adjust($color-danger, $lightness: -10%);
+    color: $color-text-primary;
+    font-size: $font-size-sm;
+    position: relative;
+    min-height: 2.5rem;
+    
+    @include sm-down {
+        padding: $spacing-xs $spacing-sm;
+        gap: $spacing-sm;
+        font-size: $font-size-xs;
+        min-height: 2rem;
+    }
+}
+
+.dev-label {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 2px $spacing-xs;
+    border-radius: $border-radius-sm;
+    font-weight: $font-weight-bold;
+    font-size: $font-size-xs;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.ai-cache-section {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    flex: 1;
+    
+    @include sm-down {
+        gap: $spacing-xs;
+    }
+}
+
+.section-label {
+    font-weight: $font-weight-medium;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.status-indicator {
+    padding: 2px $spacing-xs;
+    border-radius: $border-radius-sm;
+    font-weight: $font-weight-bold;
+    font-size: $font-size-xs;
+    text-transform: uppercase;
+    min-width: 3rem;
+    text-align: center;
+    
+    &.enabled {
+        background: rgba(76, 175, 80, 0.8);
+        color: white;
+    }
+    
+    &.disabled {
+        background: rgba(244, 67, 54, 0.8);
+        color: white;
+    }
+}
+
+.cache-info {
+    display: flex;
+    gap: $spacing-sm;
+    margin-left: $spacing-sm;
+    
+    @include sm-down {
+        display: none;
+    }
+    
+    @include md-up {
+        display: flex;
+    }
+}
+
+.info-badge {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 2px $spacing-sm;
+    border-radius: $border-radius-sm;
+    
+    .badge-label {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: $font-size-xs;
+    }
+    
+    .badge-value {
+        color: white;
+        font-weight: $font-weight-medium;
+    }
+}
+
+.cache-controls {
+    display: flex;
+    gap: $spacing-xs;
+    margin-left: auto;
+}
+
+.dev-btn {
+    padding: 2px $spacing-sm;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: $border-radius-sm;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    cursor: pointer;
+    transition: $transition-all;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    
+    &:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.3);
+        transform: translateY(-1px);
+    }
+    
+    &:active {
+        transform: translateY(0);
+    }
+    
+    &.toggle-btn {
+        min-width: 4rem;
+    }
+    
+    @include sm-down {
+        padding: 2px $spacing-xs;
+        font-size: 0.65rem;
+    }
+}
+
+.notification {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: $spacing-xs $spacing-md;
+    border-radius: $border-radius-base;
+    font-size: $font-size-sm;
+    opacity: 0;
+    pointer-events: none;
+    transition: all $transition-duration-base ease-out;
+    z-index: $z-index-popup;
+    white-space: nowrap;
+    margin-top: $spacing-xs;
+    
+    &.visible {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}

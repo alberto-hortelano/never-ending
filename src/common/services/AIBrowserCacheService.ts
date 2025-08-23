@@ -59,17 +59,31 @@ export function isCachedResponse(obj: unknown): obj is CachedResponse {
 
 export class AIBrowserCacheService {
     private static memoryCache = new Map<string, CachedResponse<AIRequest, AIResponse>>();
-    private static readonly CACHE_ENABLED = typeof window !== 'undefined' && !!window.localStorage;
     private static readonly CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
     private static readonly STORAGE_KEY_PREFIX = 'ai_cache_';
     private static readonly MAX_CACHE_SIZE = 50; // Maximum number of cached responses
     private static readonly MAX_STORAGE_SIZE = 5 * 1024 * 1024; // 5MB max localStorage
+    
+    /**
+     * Check if caching is enabled based on user preference
+     */
+    private static isCacheEnabled(): boolean {
+        if (typeof window === 'undefined' || !window.localStorage) {
+            return false;
+        }
+        // Default to enabled if not explicitly set
+        const userPreference = localStorage.getItem('ai_cache_enabled');
+        return userPreference !== 'false';
+    }
 
     /**
      * Initialize cache from localStorage on startup
      */
     public static initialize(): void {
-        if (!this.CACHE_ENABLED) return;
+        const cacheEnabled = this.isCacheEnabled();
+        console.log(`[AICache] Initializing... Cache enabled: ${cacheEnabled}`);
+        
+        if (!cacheEnabled) return;
 
         try {
             // Load from localStorage into memory
@@ -112,7 +126,10 @@ export class AIBrowserCacheService {
     public static getCachedResponse<TRequest extends AIRequest = AIRequest, TResponse extends AIResponse = AIResponse>(
         request: TRequest
     ): TResponse | null {
-        if (!this.CACHE_ENABLED) return null;
+        if (!this.isCacheEnabled()) {
+            console.log('[AICache] Cache is disabled, skipping cache check');
+            return null;
+        }
 
         try {
             const hash = this.generateHash(request);
@@ -148,7 +165,7 @@ export class AIBrowserCacheService {
         request: TRequest,
         response: TResponse
     ): void {
-        if (!this.CACHE_ENABLED) return;
+        if (!this.isCacheEnabled()) return;
 
         try {
             const hash = this.generateHash(request);
@@ -205,7 +222,7 @@ export class AIBrowserCacheService {
             this.memoryCache.clear();
 
             // Clear localStorage
-            if (this.CACHE_ENABLED) {
+            if (this.isCacheEnabled()) {
                 const keys = Object.keys(localStorage).filter(k => k.startsWith(this.STORAGE_KEY_PREFIX));
                 keys.forEach(key => localStorage.removeItem(key));
                 console.log(`[AICache] Cleared ${keys.length} cached responses`);
@@ -221,12 +238,13 @@ export class AIBrowserCacheService {
     public static clearProblematicCache(): void {
         try {
             const problematicPatterns = [
-                'northeast', // Invalid direction
+                // Only match specific error patterns, not general game content
+                '"direction":"northeast"', // Invalid direction in JSON
                 'Arquitecto Narrativo', // AI setup messages
-                'Estoy listo', // AI ready messages
-                'Entendido', // AI acknowledgment messages
-                'esperando órdenes', // AI waiting messages
-                'mouysz' // Known problematic cache hash
+                'Estoy listo para comenzar', // AI ready messages (more specific)
+                'Entendido. Procedo', // AI acknowledgment messages (more specific)
+                'esperando órdenes del jugador', // AI waiting messages (more specific)
+                // Removed hash pattern as it's too specific
             ];
             
             let clearedCount = 0;
@@ -268,7 +286,7 @@ export class AIBrowserCacheService {
         return {
             count,
             memorySize,
-            enabled: this.CACHE_ENABLED
+            enabled: this.isCacheEnabled()
         };
     }
 
@@ -299,7 +317,7 @@ export class AIBrowserCacheService {
      */
     private static removeFromCache(hash: string): void {
         this.memoryCache.delete(hash);
-        if (this.CACHE_ENABLED) {
+        if (this.isCacheEnabled()) {
             localStorage.removeItem(this.STORAGE_KEY_PREFIX + hash);
         }
     }

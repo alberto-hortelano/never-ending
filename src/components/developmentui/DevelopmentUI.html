@@ -1,0 +1,28 @@
+<div class="development-ui">
+    <div class="dev-label">DEV</div>
+    
+    <div class="ai-cache-section">
+        <span class="section-label">AI Cache:</span>
+        <span id="cache-status" class="status-indicator">OFF</span>
+        
+        <div class="cache-info">
+            <span class="info-badge">
+                <span class="badge-label">Responses:</span>
+                <span id="cache-count" class="badge-value">0</span>
+            </span>
+            <span class="info-badge">
+                <span class="badge-label">Size:</span>
+                <span id="cache-size" class="badge-value">0 KB</span>
+            </span>
+        </div>
+        
+        <div class="cache-controls">
+            <button id="cache-toggle-btn" class="dev-btn toggle-btn">Enable</button>
+            <button id="cache-stats-btn" class="dev-btn">Stats</button>
+            <button id="cache-clear-btn" class="dev-btn">Clear</button>
+            <button id="cache-clear-problematic-btn" class="dev-btn" title="Clear problematic entries">Fix</button>
+        </div>
+    </div>
+    
+    <div id="notification" class="notification"></div>
+</div>

@@ -4,6 +4,8 @@ import type { DeepReadonly } from "../../common/helpers/types";
 import type { IGame, ICharacter } from "../../common/interfaces";
 import { NetworkService } from "../../common/services/NetworkService";
 import { i18n } from "../../common/i18n/i18n";
+import { EnvironmentService } from "../../common/services/EnvironmentService";
+import "../developmentui/DevelopmentUI";
 
 export default class TopBar extends Component {
     protected override hasCss = true;
@@ -25,6 +27,16 @@ export default class TopBar extends Component {
     override async connectedCallback() {
         const root = await super.connectedCallback();
         if (!root) return root;
+        
+        // Show/hide development UI based on environment
+        const devRow = root.querySelector('#dev-row') as HTMLElement;
+        if (devRow) {
+            if (EnvironmentService.isDevelopment()) {
+                devRow.style.display = 'block';
+            } else {
+                devRow.style.display = 'none';
+            }
+        }
         
         // Initialize from state if available
         const state = this.getState();
