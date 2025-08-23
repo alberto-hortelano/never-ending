@@ -665,9 +665,11 @@ export class AIContextBuilder {
             .map(kc => kc.name) : [];
         
         // Get nearby important objects
-        const nearbyObjects = currentAct && currentAct.keyObjects && currentMission.requiredObjects ? currentAct.keyObjects
-            .filter(obj => currentMission.requiredObjects.includes(obj.id))
-            .map(obj => obj.name) : [];
+        const nearbyObjects = currentAct && currentAct.keyObjects && Array.isArray(currentMission.requiredObjects) 
+            ? currentAct.keyObjects
+                .filter(obj => currentMission.requiredObjects.includes(obj.id))
+                .map(obj => obj.name) 
+            : [];
         
         return {
             currentAct: storyPlan.currentAct,
@@ -675,12 +677,16 @@ export class AIContextBuilder {
                 id: currentMission.id,
                 name: currentMission.nameES,
                 type: currentMission.type,
-                objectives: currentMission.objectives
-                    .filter(o => !o.completed)
-                    .map(o => o.descriptionES)
+                objectives: Array.isArray(currentMission.objectives) 
+                    ? currentMission.objectives
+                        .filter(o => !o.completed)
+                        .map(o => o.descriptionES)
+                    : []
             },
             completedObjectives: storyState.completedObjectives ? [...storyState.completedObjectives] : undefined,
-            narrativeHooks: [...currentMission.narrativeHooks],
+            narrativeHooks: Array.isArray(currentMission.narrativeHooks) 
+                ? [...currentMission.narrativeHooks]
+                : [],
             suggestedActions: this.getSuggestedActionsFromMission(currentMission as IMission, state),
             keyCharactersPresent: visibleKeyCharacters,
             importantObjectsNearby: nearbyObjects
@@ -690,7 +696,7 @@ export class AIContextBuilder {
     private getSuggestedActionsFromMission(mission: IMission, state: State): string[] {
         const suggestions: string[] = [];
         
-        if (!mission.objectives) {
+        if (!Array.isArray(mission.objectives)) {
             return suggestions;
         }
         
