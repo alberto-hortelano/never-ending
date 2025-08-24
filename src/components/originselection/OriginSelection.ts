@@ -2,6 +2,8 @@ import { Component } from '../Component';
 import { originStories } from '../../common/data/originStories';
 import type { IOriginStory } from '../../common/interfaces';
 import { ControlsEvent } from '../../common/events';
+import { EnvironmentService } from '../../common/services/EnvironmentService';
+import '../developmentui/DevelopmentUI';
 
 export class OriginSelection extends Component {
     protected override hasHtml = true;
@@ -15,6 +17,7 @@ export class OriginSelection extends Component {
 
         this.renderOrigins(root);
         this.setupEventListeners(root);
+        this.setupDevelopmentUI(root);
 
         return root;
     }
@@ -81,6 +84,18 @@ export class OriginSelection extends Component {
 
         // Hide origin selection
         this.remove();
+    }
+
+    private setupDevelopmentUI(root: ShadowRoot) {
+        // Show development UI in development mode
+        const devControls = root.querySelector('#dev-controls') as HTMLElement;
+        if (devControls) {
+            if (EnvironmentService.isDevelopment()) {
+                devControls.style.display = 'block';
+            } else {
+                devControls.style.display = 'none';
+            }
+        }
     }
 
     private getFactionName(factionId: string): string {

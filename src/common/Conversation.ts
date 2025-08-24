@@ -1,5 +1,6 @@
-import type { ICharacter, IMessage } from "./interfaces";
+import type { ICharacter, IMessage, IStoryState } from "./interfaces";
 import type { DeepReadonly } from "./helpers/types";
+import type { State } from "./State";
 
 import {
     EventBus, StateChangeEvent, StateChangeEventsMap, UpdateStateEvent, UpdateStateEventsMap,
@@ -20,8 +21,9 @@ export class Conversation extends EventBus<
     private readonly retryDelay = 1000;
     private readonly maxMessageLength = 1000;
     private aiService: AIGameEngineService;
+    private storyState?: DeepReadonly<IStoryState>;
 
-    constructor() {
+    constructor(state?: State) {
         super();
         this.aiService = AIGameEngineService.getInstance();
 
@@ -29,6 +31,15 @@ export class Conversation extends EventBus<
         this.listen(StateChangeEvent.messages, (messages) => {
             this.messages = [...messages];
         });
+
+        // Listen for story state changes if state is provided
+        if (state) {
+            this.listen(StateChangeEvent.storyState, (storyState) => {
+                this.storyState = storyState;
+            });
+            // Initialize story state
+            this.storyState = state.story;
+        }
 
         // Listen for conversation start requests
         this.listen(ConversationEvent.start, (data: ConversationStartData) => {
@@ -41,6 +52,46 @@ export class Conversation extends EventBus<
         });
     }
 
+    private buildStoryContext(): string {
+        if (!this.storyState?.selectedOrigin) {
+            return '';
+        }
+        
+        const origin = this.storyState.selectedOrigin;
+        const factionRep = this.storyState.factionReputation || {};
+        
+        // Build a comprehensive story context
+        let context = `\nCurrent Story Context:
+- Origin: ${origin.name}${origin.nameES ? ` (${origin.nameES})` : ''}
+- Starting Location: ${origin.startingLocation}
+- Chapter: ${this.storyState.currentChapter || 1}`;
+        
+        // Add faction reputation if present
+        const factionEntries = Object.entries(factionRep);
+        if (factionEntries.length > 0) {
+            context += `\n- Faction Relations: ${factionEntries
+                .map(([faction, rep]) => `${faction}: ${rep}`)
+                .join(', ')}`;
+        }
+        
+        // Add special traits if present
+        if (origin.specialTraits && origin.specialTraits.length > 0) {
+            context += `\n- Character Traits: ${origin.specialTraits.join(', ')}`;
+        }
+        
+        // Add narrative hooks if present
+        if (origin.narrativeHooks && origin.narrativeHooks.length > 0) {
+            context += `\n- Narrative Elements: ${origin.narrativeHooks.join(', ')}`;
+        }
+        
+        // Add any completed missions
+        if (this.storyState.completedMissions && this.storyState.completedMissions.length > 0) {
+            context += `\n- Completed Missions: ${this.storyState.completedMissions.join(', ')}`;
+        }
+        
+        return context;
+    }
+
     private async startConversation(talkingCharacter: DeepReadonly<ICharacter>, targetCharacter: DeepReadonly<ICharacter>) {
         if (this.isLoading) return;
 
@@ -49,18 +100,31 @@ export class Conversation extends EventBus<
         this.conversationTurnCount = 1; // Reset turn count for new conversation
 
         try {
+            // Build story context
+            const storyContext = this.buildStoryContext();
+            
             // Create context message with turn count for better conversation flow
             const contextMessage: IMessage = {
                 role: 'user',
                 content: characterContext(talkingCharacter.name, targetCharacter.name, this.conversationTurnCount)
             };
 
-            // Include system prompt in the context message if this is the first conversation
+            // Include system prompt and story context in the context message if this is the first conversation
+            let contextContent = contextMessage.content;
+            if (this.messages.length === 0) {
+                contextContent = conversationSystemPrompt;
+                if (storyContext) {
+                    contextContent += '\n' + storyContext;
+                }
+                contextContent += '\n\n' + contextMessage.content;
+            } else if (storyContext) {
+                // Even for ongoing conversations, include story context
+                contextContent = storyContext + '\n\n' + contextMessage.content;
+            }
+
             const fullContextMessage: IMessage = {
                 role: 'user',
-                content: this.messages.length === 0
-                    ? `${conversationSystemPrompt}\n\n${contextMessage.content}`
-                    : contextMessage.content
+                content: contextContent
             };
 
             const messages = [...this.messages, fullContextMessage];
@@ -99,15 +163,24 @@ export class Conversation extends EventBus<
         this.conversationTurnCount++; // Increment turn count
 
         try {
+            // Build story context for continued conversation
+            const storyContext = this.buildStoryContext();
+            
             // Add turn count context to help AI know when to end
             const turnContext = this.conversationTurnCount >= 3 
                 ? '\n[SYSTEM: This is turn ' + this.conversationTurnCount + '. Consider ending the conversation naturally.]'
                 : '';
             
-            // Create player message with turn context
+            // Create player message with story context and turn context
+            let messageContent = answer;
+            if (storyContext) {
+                messageContent = storyContext + '\n\nPlayer response: ' + answer;
+            }
+            messageContent += turnContext;
+            
             const playerMessage: IMessage = {
                 role: 'user',
-                content: answer + turnContext
+                content: messageContent
             };
 
             // Call AI service (will use mock if enabled)

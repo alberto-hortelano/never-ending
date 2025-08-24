@@ -6,6 +6,8 @@ import { OriginSelection } from '../originselection/OriginSelection';
 import { Settings } from '../settings/Settings';
 import { ControlsEvent, StateChangeEvent } from '../../common/events/index';
 import { i18n } from '../../common/i18n/i18n';
+import { EnvironmentService } from '../../common/services/EnvironmentService';
+import '../developmentui/DevelopmentUI';
 
 export class MainMenu extends Component {
     private multiplayerManager: MultiplayerManager;
@@ -62,6 +64,7 @@ export class MainMenu extends Component {
         }
 
         this.setupEventListeners(root);
+        this.setupDevelopmentUI(root);
         this.updateTranslations();
         return root;
     }
@@ -105,6 +108,18 @@ export class MainMenu extends Component {
             });
         } else {
             console.error('Settings button not found');
+        }
+    }
+    
+    private setupDevelopmentUI(root: ShadowRoot) {
+        // Show development UI in development mode
+        const devControls = root.querySelector('#dev-controls') as HTMLElement;
+        if (devControls) {
+            if (EnvironmentService.isDevelopment()) {
+                devControls.style.display = 'block';
+            } else {
+                devControls.style.display = 'none';
+            }
         }
     }
 

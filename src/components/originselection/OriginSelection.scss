@@ -14,11 +14,32 @@
 }
 
 .origin-selection-container {
+    position: relative;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     padding: $spacing-xl;
+    padding-top: 5rem; // Add extra padding to accommodate dev controls
     animation: fadeIn 0.5s ease-out;
+}
+
+.dev-controls {
+    position: fixed; // Changed from absolute to fixed
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    
+    development-ui {
+        display: block;
+        
+        // Override the development UI styles to work in menu context
+        .development-ui {
+            background-color: rgba($color-bg-tertiary, 0.95);
+            border-bottom: 1px solid $color-border-primary;
+            padding: $spacing-sm $spacing-md;
+        }
+    }
 }
 
 @keyframes fadeIn {

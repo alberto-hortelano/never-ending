@@ -76,7 +76,7 @@ const play = (state?: State) => {
         new Shoot(gameState),
         new Overwatch(gameState),
         new Inventory(gameState),
-        new Conversation(),
+        new Conversation(gameState),
         new Action(gameState),
         new AutoSelectCharacter(gameState),
         aiController // Add AI controller to services for cleanup
