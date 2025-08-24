@@ -1,10 +1,10 @@
 import { EventBus } from '../events/EventBus';
 import { UpdateStateEvent, UpdateStateEventsMap } from '../events';
 import type { AICommand, MapCommand, StorylineCommand, CharacterCommand } from './AICommandParser';
-import type { ICharacter, IItem, IWeapon, IRoom, IDoor, Direction, IStoryState, ItemType, Race, Action } from '../interfaces';
+import type { ICharacter, IItem, IWeapon, IRoom, IDoor, Direction, IStoryState, ItemType, ICell } from '../interfaces';
 import { MapGenerator } from '../helpers/MapGenerator';
 import { DoorService } from './DoorService';
-import { weapons as availableWeapons, items as availableItems } from '../../data/state';
+import { weapons as availableWeapons, items as availableItems, baseCharacter } from '../../data/state';
 
 export interface ItemSpawnCommand extends AICommand {
     type: 'item';
@@ -17,24 +17,32 @@ export interface ItemSpawnCommand extends AICommand {
     }>;
 }
 
-interface CharacterData {
+// Extended character data from AI commands with additional fields
+interface ExtendedCharacterData {
     name: string;
-    location?: string;
-    race?: string;
+    race: 'human' | 'alien' | 'robot';
+    description: string;
+    speed: 'slow' | 'medium' | 'fast';
+    orientation: 'top' | 'right' | 'bottom' | 'left';
+    location: string;
+    palette?: {
+        skin: string;
+        helmet: string;
+        suit: string;
+    };
     player?: string;
     team?: string;
     faction?: string;
     personality?: string;
-    [key: string]: unknown;
 }
 
-interface MapCell {
+// Map cell with additional properties for door support
+interface MapCell extends ICell {
     room?: string;
     terrain?: string;
     wall?: boolean;
     door?: boolean;
-    locations?: string[];
-    [key: string]: unknown;
+    doors?: IDoor[];
 }
 
 export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
@@ -52,10 +60,24 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
     }
 
     /**
+     * Creates a character with base stats from data/state.ts
+     */
+    private createCharacterFromBase(overrides: Partial<ICharacter>): ICharacter {
+        // Use Object.assign for better compatibility
+        const base = JSON.parse(JSON.stringify(baseCharacter)) as ICharacter;
+        return Object.assign(base, overrides, {
+            // Ensure required fields are present
+            inventory: overrides.inventory || base.inventory,
+            actions: overrides.actions || base.actions,
+            palette: overrides.palette || base.palette
+        });
+    }
+
+    /**
      * Maps AI direction values to game direction values
      */
-    private mapDirection(direction: string): string {
-        const directionMap: { [key: string]: string } = {
+    private mapDirection(direction: string): Direction {
+        const directionMap: Record<string, Direction> = {
             'top': 'up',
             'bottom': 'down',
             'left': 'left',
@@ -65,7 +87,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
             'bottom-left': 'down-left',
             'bottom-right': 'down-right'
         };
-        return directionMap[direction] || direction;
+        return directionMap[direction] || direction as Direction;
     }
 
     /**
@@ -137,11 +159,15 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                     description: 'The player character',
                     speed: 'medium' as const,
                     orientation: 'bottom' as const,
-                    palette: undefined,
+                    palette: {
+                        skin: '#d7a55f',
+                        helmet: 'white',
+                        suit: 'white'
+                    },
                     player: 'human',  // Mark as human-controlled
                     team: 'player'
                 };
-                command.characters.unshift(playerChar as any);
+                command.characters.unshift(playerChar);
             }
 
             // If Data is not in the AI's character list, add it
@@ -153,21 +179,25 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                     description: 'Your robot companion',
                     speed: 'medium' as const,
                     orientation: 'bottom' as const,
-                    palette: undefined,
+                    palette: {
+                        skin: 'yellow',
+                        helmet: 'gold',
+                        suit: 'gold'
+                    },
                     player: 'human',  // Also controlled by human player
                     team: 'player'
                 };
-                command.characters.unshift(dataChar as any);
+                command.characters.unshift(dataChar);
             }
 
             // Handle door generation if included in map command
             if (command.doors && command.doors.length > 0) {
-                await this.generateDoorsFromMap(command.doors, newMap as unknown as MapCell[][]);
+                await this.generateDoorsFromMap(command.doors, newMap as MapCell[][]);
             }
 
             // Handle character spawning if included in map command
             if (command.characters && command.characters.length > 0) {
-                await this.spawnCharactersFromMap(command.characters, newMap as unknown as MapCell[][]);
+                await this.spawnCharactersFromMap(command.characters as ExtendedCharacterData[], newMap as MapCell[][]);
             }
 
             // Update terrain palette if specified
@@ -177,7 +207,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
 
             // SAFETY CHECK: Ensure player and Data always exist after map generation
             // This is a critical failsafe to prevent them from being lost
-            await this.ensurePlayerAndDataExist(newMap as unknown as MapCell[][]);
+            await this.ensurePlayerAndDataExist(newMap as MapCell[][]);
 
             // Map generation complete
         } catch (error) {
@@ -194,12 +224,12 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
      */
     public async executeStorylineCommand(command: StorylineCommand, storyState?: IStoryState): Promise<void> {
         console.log('[StoryExecutor] Executing storyline command');
-        const storyline = (command as any).storyline;
+        const storyline = (command as StorylineCommand & { storyline?: { title?: string; description?: string; objectives?: unknown[] }; trigger_action?: string }).storyline;
         console.log('[StoryExecutor] Storyline details:', {
             hasTitle: !!storyline?.title,
             hasDescription: !!storyline?.description,
             objectiveCount: storyline?.objectives?.length || 0,
-            triggerAction: (command as any).trigger_action
+            triggerAction: (command as StorylineCommand & { trigger_action?: string }).trigger_action
         });
 
         // Add to journal
@@ -240,7 +270,8 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                 case 'character':
                     // Spawn new characters
                     if (command.actionData?.characters) {
-                        await this.spawnCharactersFromMap((command.actionData as any).characters, [] as unknown as MapCell[][]);
+                        const actionData = command.actionData as { characters: CharacterCommand['characters'] };
+                        await this.spawnCharactersFromMap(actionData.characters, [] as MapCell[][]);
                     }
                     break;
 
@@ -348,9 +379,9 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                         characterName: location.character.name,
                         inventory: {
                             ...currentInventory,
-                            items: [...((currentInventory as any).items || []), item],
-                            maxWeight: (currentInventory as any).maxWeight || 50,
-                            equippedWeapons: (currentInventory as any).equippedWeapons || { primary: null, secondary: null }
+                            items: [...(currentInventory.items || []), item],
+                            maxWeight: currentInventory.maxWeight || 50,
+                            equippedWeapons: currentInventory.equippedWeapons || { primary: null, secondary: null }
                         }
                     });
 
@@ -431,7 +462,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                     if (!map[cellY][cellX].doors) {
                         map[cellY][cellX].doors = [];
                     }
-                    (map[cellY][cellX] as any).doors!.push(door);
+                    map[cellY][cellX].doors!.push(door);
                 }
 
                 console.log(`[StoryExecutor] Generated door ${door.id} at position`, doorData.position);
@@ -449,7 +480,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
     /**
      * Spawn characters as part of map generation
      */
-    private async spawnCharactersFromMap(characters: CharacterCommand['characters'], map: MapCell[][]): Promise<void> {
+    private async spawnCharactersFromMap(characters: ExtendedCharacterData[], map: MapCell[][]): Promise<void> {
         // Track occupied positions to avoid overlapping
         const occupiedPositions = new Set<string>();
 
@@ -475,30 +506,21 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                     }
 
                     // Update the existing character's position
-                    // For now, just dispatch with minimal info - the state handler should handle this
-                    this.dispatch(UpdateStateEvent.characterPosition, {
+                    // Use base character data and only override what's needed
+                    const updateCharacter = this.createCharacterFromBase({
                         name: isPlayer ? 'player' : 'Data',
                         position: position,
-                        race: 'human' as Race,
-                        description: '',
-                        action: 'idle' as Action,
-                        player: isPlayer ? 'human' : 'ai',
-                        direction: 'down' as Direction,
-                        location: '',
-                        path: [],
-                        blocker: true,
-                        palette: { skin: '', helmet: '', suit: '' },
-                        inventory: { items: [], maxWeight: 50, equippedWeapons: { primary: null, secondary: null } },
-                        fromNetwork: true, // Bypass turn validation during story initialization
-                        actions: {
-                            pointsLeft: 0,
-                            general: { move: 0, talk: 0, use: 0, inventory: 0 },
-                            rangedCombat: { shoot: 0, aim: 0, overwatch: 0, cover: 0, throw: 0 },
-                            closeCombat: { powerStrike: 0, slash: 0, fastAttack: 0, feint: 0, breakGuard: 0 }
-                        },
-                        health: 100,
-                        maxHealth: 100
-                    } as ICharacter);
+                        race: isPlayer ? 'human' : 'robot',
+                        player: 'human',
+                        team: 'player',
+                        palette: isPlayer ? 
+                            { skin: '#d7a55f', helmet: 'white', suit: 'white' } :
+                            { skin: 'yellow', helmet: 'gold', suit: 'gold' }
+                    });
+                    // Add fromNetwork as a separate type extension
+                    const updateWithNetwork = updateCharacter as ICharacter & { fromNetwork?: boolean };
+                    updateWithNetwork.fromNetwork = true;
+                    this.dispatch(UpdateStateEvent.characterPosition, updateWithNetwork);
 
                     // Mark position as occupied
                     markPositionOccupied(position.x, position.y);
@@ -546,32 +568,27 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
 
                 console.log(`[Character Position] Spawning ${charData.name} at position (${position.x}, ${position.y})`);
 
-                // Create character
-                const newCharacter: Partial<ICharacter> = {
+                const extendedCharData = charData as ExtendedCharacterData;
+                
+                // Create character using base stats
+                const newCharacter = this.createCharacterFromBase({
                     name: charData.name,
-                    race: (charData.race || 'human') as Race,
+                    race: charData.race || 'human',
                     description: charData.description || '',
                     position: position,
-                    direction: this.mapDirection(charData.orientation || 'down') as Direction,
-                    player: (charData as any).player || 'ai', // Use provided player value or default to AI
-                    team: (charData as any).team || this.determineTeam(charData), // Use provided team or determine it
-                    health: 100,
-                    maxHealth: 100,
+                    direction: this.mapDirection(charData.orientation || 'down'),
+                    player: extendedCharData.player || 'ai',
+                    team: extendedCharData.team || this.determineTeam(extendedCharData),
                     palette: charData.palette || {
                         skin: '#d7a55f',
                         helmet: '#808080',
                         suit: '#404040'
-                    },
-                    inventory: {
-                        items: [],
-                        maxWeight: 50,
-                        equippedWeapons: { primary: null, secondary: null }
                     }
-                };
+                });
 
-                // Add character to game (we know name and position are set)
+                // Add character to game
                 // Note: Character spawning during story initialization doesn't follow turn rules
-                this.dispatch(UpdateStateEvent.addCharacter, newCharacter as Partial<ICharacter> & { name: string; position: { x: number; y: number } });
+                this.dispatch(UpdateStateEvent.addCharacter, newCharacter);
 
                 // Mark position as occupied
                 markPositionOccupied(position.x, position.y);
@@ -584,7 +601,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
     /**
      * Find a safe walkable position in the map
      */
-    private findSafePosition(map: MapCell[][], occupiedPositions?: Set<string>): { x: number, y: number } | null {
+    private findSafePosition(map: MapCell[][], occupiedPositions?: Set<string>): { x: number; y: number } | null {
         // Try center first
         const centerX = Math.floor((map[0]?.length || 50) / 2);
         const centerY = Math.floor(map.length / 2);
@@ -599,7 +616,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                         const cell = map[y]?.[x];
                         const posKey = `${x},${y}`;
                         if (cell && cell.locations && !cell.locations.includes('wall') &&
-                            !(cell as any).content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
+                            !cell.content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
                             return { x, y };
                         }
                     }
@@ -613,7 +630,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
     /**
      * Find a room position by name with fuzzy matching
      */
-    private findRoomPosition(roomName: string, map: MapCell[][], occupiedPositions?: Set<string>): { x: number, y: number } | null {
+    private findRoomPosition(roomName: string, map: MapCell[][], occupiedPositions?: Set<string>): { x: number; y: number } | null {
         const lowerRoomName = roomName.toLowerCase().trim();
         console.log(`[Character Position] Searching for room: "${roomName}" (normalized: "${lowerRoomName}")`);
 
@@ -628,7 +645,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                     loc.toLowerCase() === lowerRoomName
                 )) {
                     const posKey = `${x},${y}`;
-                    if (!(cell as any).content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
+                    if (!cell.content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
                         console.log(`[Character Position] Found exact match for room "${roomName}" at (${x}, ${y})`);
                         return { x, y };
                     }
@@ -647,7 +664,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                     loc.toLowerCase().includes(lowerRoomName) || lowerRoomName.includes(loc.toLowerCase())
                 )) {
                     const posKey = `${x},${y}`;
-                    if (!(cell as any).content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
+                    if (!cell.content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
                         console.log(`[Character Position] Found partial match for room "${roomName}" at (${x}, ${y})`);
                         return { x, y };
                     }
@@ -670,7 +687,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                             loc.toLowerCase().includes(word)
                         )) {
                             const posKey = `${x},${y}`;
-                            if (!(cell as any).content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
+                            if (!cell.content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
                                 console.log(`[Character Position] Found word match for "${word}" from "${roomName}" at (${x}, ${y})`);
                                 return { x, y };
                             }
@@ -687,7 +704,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
     /**
      * Find a suitable spawn position based on location description
      */
-    private findSpawnPosition(location: string, map: MapCell[][], occupiedPositions?: Set<string>): { x: number, y: number } | null {
+    private findSpawnPosition(location: string, map: MapCell[][], occupiedPositions?: Set<string>): { x: number; y: number } | null {
         console.log(`[Character Position] Finding spawn position for location: "${location}"`);
         console.log(`[Character Position] Map dimensions: ${map?.length || 0}x${map?.[0]?.length || 0}`);
 
@@ -732,7 +749,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                         const cell = map[y]?.[x];
                         const posKey = `${x},${y}`;
                         if (cell && cell.locations && !cell.locations.includes('wall') &&
-                            !(cell as any).content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
+                            !cell.content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
                             return { x, y };
                         }
                     }
@@ -758,7 +775,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                             const cell = map[y]?.[x];
                             const posKey = `${x},${y}`;
                             if (cell && cell.locations && !cell.locations.includes('wall') &&
-                                !(cell as any).content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
+                                !cell.content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
                                 console.log(`[Character Position] Found center position at (${x}, ${y})`);
                                 return { x, y };
                             }
@@ -781,7 +798,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                         const cell = map[y]?.[x];
                         const posKey = `${x},${y}`;
                         if (cell && cell.locations && !cell.locations.includes('wall') &&
-                            !(cell as any).content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
+                            !cell.content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
                             return { x, y };
                         }
                     }
@@ -816,7 +833,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                 if (!cell) continue;
                 const posKey = `${x},${y}`;
                 if (cell.locations && !cell.locations.includes('wall') &&
-                    !(cell as any).content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
+                    !cell.content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
                     console.log(`[Character Position] Using fallback position (${x}, ${y}) - first walkable cell found`);
                     return { x, y };
                 }
@@ -833,7 +850,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
     /**
      * Determine team based on character data
      */
-    private determineTeam(charData: CharacterData): string {
+    private determineTeam(charData: ExtendedCharacterData): string {
         // Check faction or alignment
         if (charData.faction) {
             return charData.faction;
@@ -857,9 +874,9 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
      * Resolve item spawn location
      */
     private resolveItemLocation(location: string): {
-        type: 'character' | 'ground',
-        character?: CharacterData,
-        position?: { x: number, y: number }
+        type: 'character' | 'ground';
+        character?: ICharacter;
+        position?: { x: number; y: number };
     } {
         // Check if it's a character name
         // This would need access to current state
@@ -892,7 +909,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
         const occupiedPositions = new Set<string>();
 
         // Find a safe spawn position in the first room or any walkable cell
-        const findSafePosition = (excludePositions?: Set<string>): { x: number, y: number } | null => {
+        const findSafePosition = (excludePositions?: Set<string>): { x: number; y: number } | null => {
             // Try to find a walkable cell near the center
             const centerX = map[0] ? Math.floor(map[0].length / 2) : 25;
             const centerY = Math.floor(map.length / 2) || 25;
@@ -924,54 +941,20 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
             occupiedPositions.add(`${playerPosition.x},${playerPosition.y}`);
             // Try to ensure player exists - this is a safety net
             // The actual state management will prevent duplicates
-            this.dispatch(UpdateStateEvent.addCharacter, {
+            const playerCharacter = this.createCharacterFromBase({
                 name: 'player',
                 race: 'human',
                 description: 'The player character',
                 position: playerPosition,
-                direction: 'down' as Direction,
                 player: 'human',
                 team: 'player',
-                health: 100,
-                maxHealth: 100,
                 palette: {
                     skin: '#d7a55f',
                     helmet: 'white',
                     suit: 'white'
-                },
-                inventory: {
-                    items: [],
-                    maxWeight: 50,
-                    equippedWeapons: { primary: null, secondary: null }
-                },
-                blocker: true,
-                action: 'idle',
-                path: [],
-                location: '',
-                actions: {
-                    pointsLeft: 100,
-                    general: {
-                        move: 20,
-                        talk: 0,
-                        use: 5,
-                        inventory: 20,
-                    },
-                    rangedCombat: {
-                        shoot: 20,
-                        aim: 20,
-                        overwatch: 20,
-                        cover: 20,
-                        throw: 20,
-                    },
-                    closeCombat: {
-                        powerStrike: 25,
-                        slash: 20,
-                        fastAttack: 15,
-                        feint: 20,
-                        breakGuard: 20,
-                    }
                 }
             });
+            this.dispatch(UpdateStateEvent.addCharacter, playerCharacter);
         }
 
         // Try to create Data if missing - find an adjacent position to player
@@ -1002,54 +985,20 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
 
         // Ensure Data exists
         if (dataPosition) {
-            this.dispatch(UpdateStateEvent.addCharacter, {
+            const dataCharacter = this.createCharacterFromBase({
                 name: 'Data',
                 race: 'robot',
                 description: 'An advanced synthetic companion',
                 position: dataPosition,
-                direction: 'down' as Direction,
                 player: 'human',
                 team: 'player',
-                health: 100,
-                maxHealth: 100,
                 palette: {
                     skin: 'yellow',
                     helmet: 'gold',
                     suit: 'gold'
-                },
-                inventory: {
-                    items: [],
-                    maxWeight: 50,
-                    equippedWeapons: { primary: null, secondary: null }
-                },
-                blocker: true,
-                action: 'idle',
-                path: [],
-                location: '',
-                actions: {
-                    pointsLeft: 100,
-                    general: {
-                        move: 20,
-                        talk: 0,
-                        use: 5,
-                        inventory: 20,
-                    },
-                    rangedCombat: {
-                        shoot: 20,
-                        aim: 20,
-                        overwatch: 20,
-                        cover: 20,
-                        throw: 20,
-                    },
-                    closeCombat: {
-                        powerStrike: 25,
-                        slash: 20,
-                        fastAttack: 15,
-                        feint: 20,
-                        breakGuard: 20,
-                    }
                 }
             });
+            this.dispatch(UpdateStateEvent.addCharacter, dataCharacter);
         }
     }
 }

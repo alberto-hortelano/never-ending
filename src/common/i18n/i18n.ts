@@ -1,11 +1,11 @@
 import { translations, Language, TranslationKey } from './translations';
 import { EventBus } from '../events/EventBus';
-import { StateChangeEvent, UpdateStateEvent } from '../events/StateEvents';
+import { StateChangeEvent, StateChangeEventsMap, UpdateStateEvent, UpdateStateEventsMap } from '../events/StateEvents';
 
 export class I18n {
   private static instance: I18n;
   private currentLanguage: Language = 'en';
-  private eventBus = new EventBus<any, any>();
+  private eventBus = new EventBus<StateChangeEventsMap, UpdateStateEventsMap>();
 
   private constructor() {
     this.loadLanguagePreference();
@@ -43,7 +43,7 @@ export class I18n {
       // Default to English in test environment
       this.currentLanguage = 'en';
     }
-    
+
     this.saveLanguagePreference();
   }
 
@@ -72,14 +72,14 @@ export class I18n {
   t(key: TranslationKey, params?: Record<string, string | number>): string {
     const currentTranslations = translations[this.currentLanguage];
     const fallbackTranslations = translations['en'];
-    const translation = (currentTranslations && currentTranslations[key]) || 
-                       (fallbackTranslations && fallbackTranslations[key]) || 
-                       key;
-    
+    const translation = (currentTranslations && currentTranslations[key]) ||
+      (fallbackTranslations && fallbackTranslations[key]) ||
+      key;
+
     if (params) {
       return this.interpolate(translation, params);
     }
-    
+
     return translation;
   }
 
@@ -109,7 +109,7 @@ export class I18n {
     if (language === 'en' || language === 'es') {
       this.currentLanguage = language;
       this.saveLanguagePreference();
-      
+
       // Dispatch state update event to notify all components
       this.eventBus.dispatch(UpdateStateEvent.language, language);
     }

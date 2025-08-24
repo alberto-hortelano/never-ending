@@ -121,7 +121,7 @@ When creating components that receive data via `setOptions` or similar methods:
 
 4. **In the parent component (e.g., Popup):**
    ```typescript
-   private showYourComponent(data: any) {  // NOT async!
+   private showYourComponent(data: Data) {  // NOT async!
        this.clearContent();
        
        const component = document.createElement('your-component') as YourComponent;
@@ -210,7 +210,7 @@ this.listen(StateChangeEvent.characterHealth, (character) => {
 - Never directly modify state - use UpdateStateEvent
 - Components should be self-contained with Shadow DOM
 - System services contain business logic, components handle UI
-- Use TypeScript strict mode - all types must be explicit, don't use any or forced casting except in test files.
+- Use TypeScript strict mode - all types must be explicit, don't use any or forced casting except in test files. I repeat, don't use any
 - Services must NOT use browser APIs (window, document) - pass configuration from components
 - Use EventBus for global application events, CustomEvent for parent-child component communication
 
