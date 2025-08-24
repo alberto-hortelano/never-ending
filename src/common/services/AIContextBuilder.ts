@@ -152,6 +152,14 @@ export class AIContextBuilder {
     constructor(private state: State) {
     }
 
+    /**
+     * Updates the state reference without losing conversation history
+     * This is called when the game state changes but we want to preserve context
+     */
+    public updateState(newState: State): void {
+        this.state = newState;
+    }
+
     public buildTurnContext(character: DeepReadonly<ICharacter>, state: State): GameContext {
         this.state = state;
         const currentChar = this.buildCharacterContext(character, true);
@@ -675,12 +683,12 @@ export class AIContextBuilder {
             currentAct: storyPlan.currentAct,
             currentMission: {
                 id: currentMission.id,
-                name: currentMission.nameES,
+                name: currentMission.nameES || currentMission.name,
                 type: currentMission.type,
                 objectives: Array.isArray(currentMission.objectives) 
                     ? currentMission.objectives
                         .filter(o => !o.completed)
-                        .map(o => o.descriptionES)
+                        .map(o => o.descriptionES || o.description)
                     : []
             },
             completedObjectives: storyState.completedObjectives ? [...storyState.completedObjectives] : undefined,

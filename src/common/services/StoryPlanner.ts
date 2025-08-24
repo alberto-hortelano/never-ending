@@ -13,6 +13,7 @@ import type {
 import { AIGameEngineService } from './AIGameEngineService';
 import { EventBus } from '../events/EventBus';
 import { UpdateStateEvent, UpdateStateEventsMap } from '../events/StateEvents';
+import { StoryPlanValidator } from './StoryPlanValidator';
 
 export interface StoryPlanRequest {
     origin: IOriginStory;
@@ -57,15 +58,32 @@ export class StoryPlanner extends EventBus<{}, UpdateStateEventsMap> {
         });
         
         try {
-            // Request story plan from AI
-            const response = await this.aiService.requestMapGeneration(
+            // Request story plan from AI with validation
+            const response = await this.aiService.requestValidatedStoryPlan(
                 'story_planning',
                 prompt,
                 request.currentState
             );
             
             if (response && typeof response === 'object' && 'storyPlan' in response) {
-                this.currentStoryPlan = response.storyPlan as IStoryPlan;
+                // The story plan has already been validated by requestValidatedStoryPlan
+                // But we'll do an additional check to be safe
+                const validator = new StoryPlanValidator();
+                const storyPlan = response.storyPlan as IStoryPlan;
+                
+                // Auto-fix any remaining issues
+                const fixedPlan = validator.attemptAutoFix(storyPlan as unknown as Record<string, unknown>) as unknown as IStoryPlan;
+                
+                // Validate the fixed plan
+                const validationResult = validator.validate(fixedPlan);
+                
+                if (validationResult.isValid) {
+                    this.currentStoryPlan = fixedPlan;
+                } else {
+                    console.warn('[StoryPlanner] Story plan still has issues after auto-fix:', validationResult.errors);
+                    // Use it anyway but log the issues
+                    this.currentStoryPlan = fixedPlan;
+                }
                 
                 // Dispatch state update with new story plan
                 this.dispatch(UpdateStateEvent.storyState, {
@@ -91,13 +109,29 @@ export class StoryPlanner extends EventBus<{}, UpdateStateEventsMap> {
         visibleCharacters: ICharacter[],
         storyState: IStoryState
     ): Promise<IScreenContext> {
-        if (!this.currentStoryPlan) {
-            // Generate story plan if not exists
-            if (storyState.selectedOrigin) {
-                await this.generateStoryPlan({
-                    origin: storyState.selectedOrigin,
-                    currentState: storyState
-                });
+        // Use existing story plan from state if available
+        if (!this.currentStoryPlan && storyState.storyPlan) {
+            this.currentStoryPlan = storyState.storyPlan;
+        }
+        
+        // Only generate new story plan if none exists anywhere
+        if (!this.currentStoryPlan && !storyState.storyPlan) {
+            // Check if mock mode is enabled
+            const isMockEnabled = localStorage.getItem('ai_mock_enabled') === 'true';
+            
+            if (isMockEnabled) {
+                // Use a default story plan in mock mode
+                if (storyState.selectedOrigin) {
+                    this.currentStoryPlan = this.createDefaultStoryPlan(storyState.selectedOrigin);
+                }
+            } else {
+                // Generate story plan if not exists
+                if (storyState.selectedOrigin) {
+                    await this.generateStoryPlan({
+                        origin: storyState.selectedOrigin,
+                        currentState: storyState
+                    });
+                }
             }
         }
         
@@ -214,7 +248,13 @@ Return updated story plan maintaining consistency with established narrative.`
             return;
         }
         
-        const objective = this.currentMission?.objectives.find(o => o.id === objectiveId);
+        // Ensure objectives is an array before trying to find
+        if (!Array.isArray(this.currentMission.objectives)) {
+            console.warn('[StoryPlanner] Current mission has no objectives array');
+            return;
+        }
+        
+        const objective = this.currentMission.objectives.find(o => o.id === objectiveId);
         if (objective && this.currentMission) {
             objective.completed = true;
             
@@ -240,12 +280,18 @@ Return updated story plan maintaining consistency with established narrative.`
     private buildStoryPlanPrompt(request: StoryPlanRequest): string {
         const origin = request.origin;
         
+        // Use Spanish origin since the game is in Spanish
+        const originName = origin.nameES || origin.name;
+        const originDesc = origin.descriptionES || origin.description;
+        
         return `# STORY PLAN GENERATION REQUEST
+
+Language: Generate all text content in Spanish.
 
 Generate a comprehensive story plan for "Never Ending" based on the following origin:
 
-## Selected Origin: ${origin.nameES}
-- Description: ${origin.descriptionES}
+## Selected Origin: ${originName}
+- Description: ${originDesc}
 - Starting Location: ${origin.startingLocation}
 - Special Traits: ${origin.specialTraits.join(', ')}
 - Faction Relations: ${Object.entries(origin.factionRelations).map(([f, v]) => `${f}: ${v}`).join(', ')}
@@ -259,18 +305,25 @@ Create a multi-act story with the following structure:
    - Thematic elements
 
 2. **Three Acts** each containing:
-   - Act title and description (Spanish and English)
+   - Act title and description
    - 3-5 missions per act
    - Key characters and their roles
    - Important objects and their purposes
    - Climax description
 
-3. **Each Mission** should include:
-   - Mission name and type
-   - Clear objectives (primary and secondary)
-   - Required objects or items
+3. **Each Mission** must include:
+   - name: Mission name (string)
+   - type: EXACTLY one of [combat, exploration, infiltration, diplomacy, survival]
+   - objectives: Array of objectives, each with:
+     * type: EXACTLY one of [primary, secondary, hidden]
+     * description: Clear objective description
+     * conditions: Array with type being EXACTLY one of [kill, reach, collect, talk, survive, escort, destroy]
+   - mapContext object with:
+     * environment: EXACTLY one of [spaceship, station, planet, settlement, ruins, wilderness]
+     * atmosphere: Description of the atmosphere (string)
+     * lightingCondition: EXACTLY one of [bright, normal, dim, dark]
    - NPCs with defined roles
-   - Map context (environment, atmosphere)
+   - Required objects or items
    - Narrative hooks for player engagement
 
 4. **Character Details**:
@@ -283,6 +336,13 @@ Create a multi-act story with the following structure:
    - Explain their purpose and importance
    - Define where they can be found
 
+## CRITICAL ENUM VALUES (use EXACTLY these values):
+- Mission type: combat, exploration, infiltration, diplomacy, survival
+- Objective type: primary, secondary, hidden
+- Condition type: kill, reach, collect, talk, survive, escort, destroy
+- Environment: spaceship, station, planet, settlement, ruins, wilderness
+- Lighting: bright, normal, dim, dark
+
 ## Response Format:
 Return a JSON object with type "storyPlan" containing the full story structure.
 
@@ -291,33 +351,72 @@ Return a JSON object with type "storyPlan" containing the full story structure.
   "storyPlan": {
     "overallNarrative": "...",
     "theme": "...",
-    "acts": [...],
+    "acts": [
+      {
+        "id": "act1",
+        "actNumber": 1,
+        "title": "...",
+        "description": "...",
+        "missions": [
+          {
+            "id": "mission1",
+            "actId": "act1",
+            "name": "...",
+            "description": "...",
+            "type": "combat",
+            "objectives": [
+              {
+                "id": "obj1",
+                "type": "primary",
+                "description": "...",
+                "completed": false,
+                "conditions": [
+                  {"type": "kill", "target": "..."}
+                ]
+              }
+            ],
+            "mapContext": {
+              "environment": "spaceship",
+              "atmosphere": "...",
+              "lightingCondition": "dim"
+            },
+            "requiredObjects": [],
+            "npcs": [],
+            "narrativeHooks": [],
+            "estimatedDuration": 15,
+            "isCompleted": false,
+            "isCurrent": false
+          }
+        ],
+        "keyCharacters": [],
+        "keyObjects": [],
+        "climaxDescription": "..."
+      }
+    ],
     "currentAct": 0,
     "currentScene": 0,
     "totalEstimatedMissions": 12
   }
-}
-
-Remember: All player-facing text should be primarily in Spanish.`;
+}`;
     }
     
     private createDefaultStoryPlan(origin: IOriginStory): IStoryPlan {
+        // Use Spanish text since the game is in Spanish
+        const originName = origin.nameES || origin.name;
         return {
-            overallNarrative: `A story of ${origin.name} struggling to survive in the post-collapse galaxy.`,
-            theme: 'Survival and redemption',
+            overallNarrative: `Una historia de ${originName} luchando por sobrevivir en la galaxia post-colapso.`,
+            theme: 'Supervivencia y redención',
             acts: [
                 {
                     id: 'act1',
                     actNumber: 1,
-                    title: 'The Beginning',
-                    titleES: 'El Comienzo',
-                    description: 'The journey begins with uncertainty and danger.',
-                    descriptionES: 'El viaje comienza con incertidumbre y peligro.',
+                    title: 'El Comienzo',
+                    description: 'El viaje comienza con incertidumbre y peligro.',
                     missions: [],
                     keyCharacters: [],
                     keyObjects: [],
-                    climaxDescription: 'A shocking revelation changes everything.'
-                }
+                    climaxDescription: 'Una revelación impactante lo cambia todo.'
+                } as any // Type assertion needed until interface is updated
             ],
             currentAct: 0,
             currentScene: 0,
@@ -341,7 +440,12 @@ Remember: All player-facing text should be primarily in Spanish.`;
         }
         
         const currentAct = this.currentStoryPlan.acts[this.currentStoryPlan.currentAct];
-        if (!currentAct) {
+        if (!currentAct || !Array.isArray(currentAct.keyObjects)) {
+            return [];
+        }
+        
+        // Ensure requiredObjects is an array before filtering
+        if (!Array.isArray(this.currentMission?.requiredObjects)) {
             return [];
         }
         

@@ -463,9 +463,9 @@ export interface IStoryAct {
     id: string;
     actNumber: number;
     title: string;
-    titleES: string;
+    titleES?: string; // Optional - being phased out
     description: string;
-    descriptionES: string;
+    descriptionES?: string; // Optional - being phased out
     missions: IMission[];
     keyCharacters: IKeyCharacter[];
     keyObjects: IStoryObject[];
@@ -476,9 +476,9 @@ export interface IMission {
     id: string;
     actId: string;
     name: string;
-    nameES: string;
+    nameES?: string; // Optional - being phased out
     description: string;
-    descriptionES: string;
+    descriptionES?: string; // Optional - being phased out
     type: 'combat' | 'exploration' | 'infiltration' | 'diplomacy' | 'survival';
     objectives: IObjective[];
     requiredObjects: string[];
@@ -493,7 +493,7 @@ export interface IMission {
 export interface IObjective {
     id: string;
     description: string;
-    descriptionES: string;
+    descriptionES?: string; // Optional - being phased out
     type: 'primary' | 'secondary' | 'hidden';
     completed: boolean;
     conditions: IObjectiveCondition[];
@@ -555,5 +555,19 @@ export interface INPCWithPurpose extends ICharacter {
     narrativePurpose: string;
     currentObjective: string;
     dialogueTopics: string[];
+}
+
+// Validation interfaces
+export interface IValidationResult {
+    isValid: boolean;
+    errors: string[];
+    fixedObject?: unknown;
+}
+
+export interface IValidationError {
+    field: string;
+    expectedType: string;
+    actualType: string;
+    message: string;
 }
 

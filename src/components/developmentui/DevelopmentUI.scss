@@ -39,6 +39,19 @@
     letter-spacing: 1px;
 }
 
+.ai-mock-section {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding-right: $spacing-md;
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
+    
+    @include sm-down {
+        gap: $spacing-xs;
+        padding-right: $spacing-sm;
+    }
+}
+
 .ai-cache-section {
     display: flex;
     align-items: center;
@@ -71,6 +84,16 @@
     
     &.disabled {
         background: rgba(244, 67, 54, 0.8);
+        color: white;
+    }
+    
+    &.mock {
+        background: rgba(255, 152, 0, 0.8);
+        color: white;
+    }
+    
+    &.real {
+        background: rgba(33, 150, 243, 0.8);
         color: white;
     }
 }

@@ -1,19 +1,25 @@
 import { Component } from "../Component";
 import { AIBrowserCacheService } from "../../common/services/AIBrowserCacheService";
 import type { CacheStats } from "../../common/services/AIBrowserCacheService";
+import { AIMockService } from "../../common/services/AIMockService";
 
 export default class DevelopmentUI extends Component {
     protected override hasCss = true;
     protected override hasHtml = true;
     
     private cacheStats: CacheStats | null = null;
+    private isAIMockEnabled: boolean = false;
     
     override async connectedCallback() {
         const root = await super.connectedCallback();
         if (!root) return root;
         
+        // Load AI mock state from localStorage
+        this.isAIMockEnabled = localStorage.getItem('ai_mock_enabled') === 'true';
+        
         this.setupEventListeners(root);
         this.updateCacheStats(root);
+        this.updateAIMockStatus(root);
         
         setInterval(() => this.updateCacheStats(root), 5000);
         
@@ -21,10 +27,28 @@ export default class DevelopmentUI extends Component {
     }
     
     private setupEventListeners(root: ShadowRoot) {
+        const aiMockToggleBtn = root.querySelector('#ai-mock-toggle-btn') as HTMLButtonElement;
         const cacheToggleBtn = root.querySelector('#cache-toggle-btn') as HTMLButtonElement;
         const cacheClearBtn = root.querySelector('#cache-clear-btn') as HTMLButtonElement;
         const cacheStatsBtn = root.querySelector('#cache-stats-btn') as HTMLButtonElement;
         const cacheClearProbBtn = root.querySelector('#cache-clear-problematic-btn') as HTMLButtonElement;
+        
+        if (aiMockToggleBtn) {
+            aiMockToggleBtn.addEventListener('click', () => {
+                this.isAIMockEnabled = !this.isAIMockEnabled;
+                localStorage.setItem('ai_mock_enabled', String(this.isAIMockEnabled));
+                
+                if (this.isAIMockEnabled) {
+                    // Reset the mock service when enabling
+                    AIMockService.getInstance().reset();
+                }
+                
+                this.showNotification(root, `AI Mock ${this.isAIMockEnabled ? 'enabled' : 'disabled'}`);
+                this.updateAIMockStatus(root);
+                
+                console.log(`[AI] Mock mode ${this.isAIMockEnabled ? 'ENABLED' : 'DISABLED'}`);
+            });
+        }
         
         if (cacheToggleBtn) {
             cacheToggleBtn.addEventListener('click', () => {
@@ -110,6 +134,20 @@ export default class DevelopmentUI extends Component {
         setTimeout(() => {
             notification.classList.remove('visible');
         }, duration);
+    }
+    
+    private updateAIMockStatus(root: ShadowRoot) {
+        const statusIndicator = root.querySelector('#ai-mode-status') as HTMLElement;
+        const toggleBtn = root.querySelector('#ai-mock-toggle-btn') as HTMLButtonElement;
+        
+        if (statusIndicator) {
+            statusIndicator.textContent = this.isAIMockEnabled ? 'MOCK' : 'REAL';
+            statusIndicator.className = `status-indicator ${this.isAIMockEnabled ? 'mock' : 'real'}`;
+        }
+        
+        if (toggleBtn) {
+            toggleBtn.textContent = this.isAIMockEnabled ? 'Use Real' : 'Use Mock';
+        }
     }
 }
 

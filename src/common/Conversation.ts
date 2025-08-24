@@ -6,6 +6,7 @@ import {
     ConversationEvent, ConversationEventsMap, ConversationStartData, ConversationUpdateData
 } from "./events";
 import { conversationSystemPrompt, characterContext } from "../prompts/conversationPrompts";
+import { AIGameEngineService } from './services/AIGameEngineService';
 
 export class Conversation extends EventBus<
     StateChangeEventsMap & ConversationEventsMap,
@@ -18,9 +19,11 @@ export class Conversation extends EventBus<
     private readonly maxRetries = 3;
     private readonly retryDelay = 1000;
     private readonly maxMessageLength = 1000;
+    private aiService: AIGameEngineService;
 
     constructor() {
         super();
+        this.aiService = AIGameEngineService.getInstance();
 
         // Listen for state changes
         this.listen(StateChangeEvent.messages, (messages) => {
@@ -63,7 +66,7 @@ export class Conversation extends EventBus<
             const messages = [...this.messages, fullContextMessage];
 
             // Call API
-            const response = await this.callGameEngine(messages);
+            const response = await this.callAIService(messages);
 
             // Parse and dispatch update
             const conversationData = this.parseResponse(response.content);
@@ -107,8 +110,8 @@ export class Conversation extends EventBus<
                 content: answer + turnContext
             };
 
-            // Call API
-            const response = await this.callGameEngine([...this.messages, playerMessage]);
+            // Call AI service (will use mock if enabled)
+            const response = await this.callAIService([...this.messages, playerMessage]);
 
             // Parse and dispatch update
             const conversationData = this.parseResponse(response.content);
@@ -142,7 +145,46 @@ export class Conversation extends EventBus<
         }
     }
 
-    private async callGameEngine(messages: IMessage[], retry = 0): Promise<{ messages: IMessage[], content: string }> {
+    private async callAIService(messages: IMessage[], retry = 0): Promise<{ messages: IMessage[], content: string }> {
+        // Check if mock mode is enabled
+        const isMockEnabled = localStorage.getItem('ai_mock_enabled') === 'true';
+        
+        if (isMockEnabled) {
+            // Use mock dialogue response
+            
+            // Extract context from messages
+            const lastUserMessage = messages[messages.length - 1];
+            const playerChoice = lastUserMessage?.content || '';
+            const speaker = 'player';
+            const listener = 'Data';  // Assuming Data is the one responding
+            
+            // Get mock response
+            const mockResponse = await this.aiService.requestDialogueResponse(
+                speaker,
+                listener,
+                playerChoice
+            );
+            
+            if (mockResponse.command) {
+                return {
+                    messages: messages,
+                    content: JSON.stringify(mockResponse.command)
+                };
+            }
+            
+            // Default mock response if no command
+            return {
+                messages: messages,
+                content: JSON.stringify({
+                    type: 'speech',
+                    source: 'Data',
+                    content: 'Entendido, comandante. Procederé según lo indicado.',
+                    answers: []
+                })
+            };
+        }
+        
+        // Original implementation for real API calls
         try {
             const response = await fetch('/gameEngine', {
                 method: 'POST',
@@ -171,7 +213,7 @@ export class Conversation extends EventBus<
         } catch (error) {
             if (retry < this.maxRetries) {
                 await new Promise(resolve => setTimeout(resolve, this.retryDelay));
-                return this.callGameEngine(messages, retry + 1);
+                return this.callAIService(messages, retry + 1);
             }
             throw error;
         }
@@ -216,9 +258,19 @@ export class Conversation extends EventBus<
                         answers: shouldEnd ? [] : (parsed.answers || ['Continuar']),  // Default to 'Continuar' if no answers provided
                         action: parsed.action
                     };
+                } else if (parsed.type === 'map') {
+                    // Map commands should NEVER happen during conversations
+                    console.warn('[Conversation] AI incorrectly returned map command during conversation - ignoring');
+                    return {
+                        type: 'speech',
+                        source: this.currentTarget || 'AI',
+                        content: 'Continuemos con nuestra situación actual.',
+                        answers: [],  // End conversation without map change
+                        action: undefined  // Don't pass map action
+                    };
                 } else if (parsed.type === 'movement' || parsed.type === 'attack' || 
-                          parsed.type === 'character' || parsed.type === 'map' || 
-                          parsed.type === 'item' || parsed.type === 'tactical_directive') {
+                          parsed.type === 'character' || parsed.type === 'item' || 
+                          parsed.type === 'tactical_directive') {
                     // AI is taking a non-conversation action - end the conversation
                     console.log('[Conversation] AI returned non-speech command:', parsed.type);
                     console.log('[Conversation] Ending conversation as AI wants to perform action');
