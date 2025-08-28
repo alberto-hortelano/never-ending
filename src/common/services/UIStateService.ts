@@ -301,17 +301,23 @@ export class UIStateService extends EventBus<UpdateStateEventsMap, StateChangeEv
     ): Set<string> {
         const cellsToKeep = new Set<string>();
 
-        // Add reachable cells
+        // Add reachable cells (with null check)
         const reachableCells = data.reachableCells !== undefined ? data.reachableCells : currentHighlights.reachableCells;
-        reachableCells.forEach(coord => cellsToKeep.add(`${coord.x},${coord.y}`));
+        if (reachableCells && Array.isArray(reachableCells)) {
+            reachableCells.forEach(coord => cellsToKeep.add(`${coord.x},${coord.y}`));
+        }
 
-        // Add path cells
+        // Add path cells (with null check)
         const pathCells = data.pathCells !== undefined ? data.pathCells : currentHighlights.pathCells;
-        pathCells.forEach(coord => cellsToKeep.add(`${coord.x},${coord.y}`));
+        if (pathCells && Array.isArray(pathCells)) {
+            pathCells.forEach(coord => cellsToKeep.add(`${coord.x},${coord.y}`));
+        }
 
-        // Add targetable cells
+        // Add targetable cells (with null check)
         const targetableCells = data.targetableCells !== undefined ? data.targetableCells : currentHighlights.targetableCells;
-        targetableCells.forEach(coord => cellsToKeep.add(`${coord.x},${coord.y}`));
+        if (targetableCells && Array.isArray(targetableCells)) {
+            targetableCells.forEach(coord => cellsToKeep.add(`${coord.x},${coord.y}`));
+        }
 
         return cellsToKeep;
     }

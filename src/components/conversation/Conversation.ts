@@ -155,6 +155,14 @@ export class Conversation extends Component {
         content.textContent = data.content;
         bubble.appendChild(content);
 
+        // Add action indicator if present
+        if (data.action) {
+            const actionInfo = document.createElement('div');
+            actionInfo.className = 'conversation-action-info';
+            actionInfo.textContent = `[Acción requerida: ${data.action}]`;
+            bubble.appendChild(actionInfo);
+        }
+
         this.contentElement.appendChild(bubble);
 
         // Add answer buttons or show selected answer for historical conversations
@@ -173,13 +181,44 @@ export class Conversation extends Component {
         } else if (data.answers && data.answers.length > 0 && this.answersElement && !currentTurn?.selectedAnswer) {
             // Show interactive answers if no answer has been selected yet
             const answersElement = this.answersElement;
-            data.answers.forEach(answer => {
-                const button = document.createElement('button');
-                button.className = 'answer-button';
-                button.textContent = answer;
-                button.addEventListener('click', () => this.handleAnswerClick(answer));
-                answersElement.appendChild(button);
-            });
+            
+            // If there's an action, handle answer buttons specially
+            if (data.action) {
+                data.answers.forEach((answer) => {
+                    const button = document.createElement('button');
+                    button.className = 'answer-button';
+                    button.textContent = answer;
+                    
+                    // Check if this is an accept/decline button for an action
+                    const isAccept = answer.toLowerCase().includes('aceptar') || 
+                                   answer.toLowerCase().includes('continuar') ||
+                                   answer.toLowerCase().includes('sí');
+                    const isDecline = answer.toLowerCase().includes('rechazar') || 
+                                    answer.toLowerCase().includes('no') ||
+                                    answer.toLowerCase().includes('cancelar');
+                    
+                    if (isAccept) {
+                        button.classList.add('action-accept');
+                        button.addEventListener('click', () => this.handleActionAnswer(answer, data.action, true));
+                    } else if (isDecline) {
+                        button.classList.add('action-decline');
+                        button.addEventListener('click', () => this.handleActionAnswer(answer, data.action, false));
+                    } else {
+                        button.addEventListener('click', () => this.handleAnswerClick(answer));
+                    }
+                    
+                    answersElement.appendChild(button);
+                });
+            } else {
+                // Normal conversation answers
+                data.answers.forEach(answer => {
+                    const button = document.createElement('button');
+                    button.className = 'answer-button';
+                    button.textContent = answer;
+                    button.addEventListener('click', () => this.handleAnswerClick(answer));
+                    answersElement.appendChild(button);
+                });
+            }
 
             // Re-enable free text input for new conversation
             if (this.freeTextInput) {
@@ -196,7 +235,16 @@ export class Conversation extends Component {
                 closeButton.innerHTML = `✕ ${i18n.t('common.close')}`;
                 closeButton.title = i18n.t('common.close');
                 closeButton.addEventListener('click', () => {
-                    // Dispatch event to close conversation immediately
+                    // If there's a pending action, execute it before closing
+                    if (data.action) {
+                        console.log('[Conversation] Executing action on close:', data.action);
+                        this.dispatchEvent(new CustomEvent('storyline-action', {
+                            detail: { action: data.action, accepted: true },
+                            bubbles: true
+                        }));
+                    }
+                    
+                    // Dispatch event to close conversation
                     this.dispatchEvent(new CustomEvent('conversation-ended', {
                         bubbles: true
                     }));
@@ -237,6 +285,52 @@ export class Conversation extends Component {
 
         // Show loading state
         this.showLoading();
+    }
+
+    private handleActionAnswer(answer: string, action: string | undefined, accepted: boolean) {
+        console.log('[Conversation] handleActionAnswer:', { answer, action, accepted });
+        
+        // Store the selected answer in the current turn
+        if (this.currentHistoryIndex >= 0 && this.currentHistoryIndex < this.conversationHistory.length) {
+            const currentTurn = this.conversationHistory[this.currentHistoryIndex];
+            if (currentTurn) {
+                currentTurn.selectedAnswer = answer;
+            }
+        }
+
+        // Disable all answer buttons to prevent multiple clicks
+        if (this.answersElement) {
+            const buttons = this.answersElement.querySelectorAll('button');
+            buttons.forEach(button => {
+                if (button instanceof HTMLButtonElement) {
+                    button.disabled = true;
+                    button.classList.add('disabled');
+                }
+            });
+        }
+
+        // If action was accepted, dispatch event to execute it
+        if (accepted && action) {
+            console.log('[Conversation] User accepted action:', action);
+            
+            // Dispatch storyline-action event to parent components
+            this.dispatchEvent(new CustomEvent('storyline-action', {
+                detail: { action, accepted: true },
+                bubbles: true
+            }));
+            
+            // Close the conversation after accepting action
+            setTimeout(() => {
+                this.dispatchEvent(new CustomEvent('conversation-ended', {
+                    bubbles: true
+                }));
+            }, 500);
+        } else {
+            console.log('[Conversation] User declined action:', action);
+            // Continue conversation without executing action
+            this.dispatch(ConversationEvent.continue, answer);
+            this.showLoading();
+        }
     }
 
     private showLoading() {

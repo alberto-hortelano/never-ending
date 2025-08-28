@@ -332,14 +332,14 @@ export class Conversation extends EventBus<
                         action: parsed.action
                     };
                 } else if (parsed.type === 'map') {
-                    // Map commands should NEVER happen during conversations
-                    console.warn('[Conversation] AI incorrectly returned map command during conversation - ignoring');
+                    // Map command from AI - this should be handled as a storyline with map action
+                    console.log('[Conversation] AI returned map command, converting to storyline format');
                     return {
                         type: 'speech',
-                        source: this.currentTarget || 'AI',
-                        content: 'Continuemos con nuestra situación actual.',
-                        answers: [],  // End conversation without map change
-                        action: undefined  // Don't pass map action
+                        source: 'Narrador',
+                        content: parsed.description || 'La escena cambia a una nueva ubicación...',
+                        answers: ['Aceptar', 'Rechazar'],  // Action buttons
+                        action: 'map'  // Pass the map action
                     };
                 } else if (parsed.type === 'movement' || parsed.type === 'attack' || 
                           parsed.type === 'character' || parsed.type === 'item' || 

@@ -6,6 +6,7 @@ export enum ConversationEvent {
     continue = 'ConversationEvent.continue',
     update = 'ConversationEvent.update',
     error = 'ConversationEvent.error',
+    executeAction = 'ConversationEvent.executeAction',
 }
 
 export interface ConversationStartData {
@@ -21,9 +22,14 @@ export interface ConversationUpdateData {
     action?: string;
 }
 
+export interface ConversationActionData {
+    action: string;
+}
+
 export interface ConversationEventsMap {
     [ConversationEvent.start]: ConversationStartData;
     [ConversationEvent.continue]: string; // The answer text
     [ConversationEvent.update]: ConversationUpdateData;
     [ConversationEvent.error]: string;
+    [ConversationEvent.executeAction]: ConversationActionData;
 }

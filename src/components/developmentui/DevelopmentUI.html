@@ -1,16 +1,24 @@
 <div class="development-ui">
-    <div class="dev-label">DEV</div>
-    
-    <div class="ai-mock-section">
-        <span class="section-label">AI Mode:</span>
-        <span id="ai-mode-status" class="status-indicator">REAL</span>
-        <button id="ai-mock-toggle-btn" class="dev-btn toggle-btn">Use Mock</button>
+    <div class="dev-main-bar">
+        <div class="dev-label">DEV</div>
+
+        <div class="ai-mock-section">
+            <span class="section-label">AI:</span>
+            <span id="ai-mode-status" class="status-indicator">REAL</span>
+            <button id="ai-mock-toggle-btn" class="dev-btn toggle-btn compact">Mock</button>
+        </div>
+
+        <div class="bar-toggles">
+            <button id="cache-bar-toggle" class="dev-btn bar-toggle" title="Toggle Cache Controls">
+                <span class="toggle-icon">⚙️</span> Cache
+            </button>
+        </div>
     </div>
-    
-    <div class="ai-cache-section">
-        <span class="section-label">AI Cache:</span>
+
+    <div id="cache-bar" class="dev-sub-bar cache-bar hidden">
+        <span class="section-label">Cache:</span>
         <span id="cache-status" class="status-indicator">OFF</span>
-        
+
         <div class="cache-info">
             <span class="info-badge">
                 <span class="badge-label">Responses:</span>
@@ -21,7 +29,7 @@
                 <span id="cache-size" class="badge-value">0 KB</span>
             </span>
         </div>
-        
+
         <div class="cache-controls">
             <button id="cache-toggle-btn" class="dev-btn toggle-btn">Enable</button>
             <button id="cache-stats-btn" class="dev-btn">Stats</button>
@@ -29,6 +37,6 @@
             <button id="cache-clear-problematic-btn" class="dev-btn" title="Clear problematic entries">Fix</button>
         </div>
     </div>
-    
+
     <div id="notification" class="notification"></div>
 </div>

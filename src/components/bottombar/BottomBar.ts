@@ -219,6 +219,18 @@ export default class BottomBar extends Component {
                 // Close immediately when user clicks close button
                 this.hideConversation();
             });
+
+            // Listen for storyline-action event
+            this.conversationComponent.addEventListener('storyline-action', (event: Event) => {
+                const customEvent = event as CustomEvent;
+                const { action, accepted } = customEvent.detail;
+                console.log('[BottomBar] Received storyline-action event:', { action, accepted });
+                
+                if (accepted) {
+                    // Dispatch event for AIController to handle the action
+                    this.dispatch(ConversationEvent.executeAction, { action });
+                }
+            });
         } else {
             console.log('[BottomBar] Conversation component already exists');
         }

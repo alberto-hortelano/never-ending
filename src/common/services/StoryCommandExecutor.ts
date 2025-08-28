@@ -263,8 +263,10 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
             switch (command.action) {
                 case 'map':
                     // Request new map generation from AI
-                    console.log('[StoryExecutor] Requesting new map generation');
-                    // This would trigger AI to generate a new map based on description
+                    console.log('[StoryExecutor] Requesting new map generation from storyline');
+                    // Note: The actual map generation is now handled by the AIController
+                    // when it receives the executeAction event. This is just logging
+                    // that the storyline requested a map change.
                     break;
 
                 case 'character':

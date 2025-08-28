@@ -1,6 +1,6 @@
 import type { Express } from 'express';
 import type { Server } from 'http';
-import type { IMessage, IOriginStory, IStoryState } from '../common/interfaces';
+import type { IMessage, IOriginStory, IStoryState, ICharacter } from '../common/interfaces';
 
 import express from 'express';
 import { dirname, resolve, extname, join } from 'path';
@@ -8,7 +8,7 @@ import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { initialSetup } from '../prompts/shortPrompts';
 import { WebSocketServer } from './WebSocketServer';
-import { sendMessage } from '../models/claude';
+import { sendMessage, getModelStatus } from '../models/claude';
 
 export class Api {
     private dirname = dirname(fileURLToPath(import.meta.url));
@@ -38,6 +38,7 @@ export class Api {
         this.gameEngine();
         this.storyPlan();
         this.sceneContext();
+        this.modelStatus();
     }
 
     private jsFiles() {
@@ -121,7 +122,7 @@ export class Api {
 
                 // Build story planning prompt
                 const prompt = this.buildStoryPlanPrompt(origin, currentState, playerDecisions);
-                
+
                 const messages: IMessage[] = [{
                     role: 'user',
                     content: prompt
@@ -129,9 +130,9 @@ export class Api {
 
                 // Add small delay to prevent rate limiting
                 await new Promise(r => setTimeout(r, 1000));
-                
+
                 const response = await sendMessage(messages);
-                
+
                 res.json({
                     type: 'storyPlan',
                     content: response
@@ -150,13 +151,13 @@ export class Api {
             try {
                 const { missionId, visibleCharacters, storyState } = req.body as {
                     missionId: string;
-                    visibleCharacters: any[];
+                    visibleCharacters: ICharacter[];
                     storyState: IStoryState;
                 };
 
                 // Build scene context prompt
                 const prompt = this.buildSceneContextPrompt(missionId, visibleCharacters, storyState);
-                
+
                 const messages: IMessage[] = [{
                     role: 'user',
                     content: prompt
@@ -164,9 +165,9 @@ export class Api {
 
                 // Add small delay to prevent rate limiting
                 await new Promise(r => setTimeout(r, 1000));
-                
+
                 const response = await sendMessage(messages);
-                
+
                 res.json({
                     type: 'sceneContext',
                     content: response
@@ -244,7 +245,7 @@ Remember: All player-facing text should be primarily in Spanish.`;
 
     private buildSceneContextPrompt(
         missionId: string,
-        visibleCharacters: any[],
+        visibleCharacters: ICharacter[],
         storyState: IStoryState
     ): string {
         return `# SCENE CONTEXT REQUEST
@@ -267,5 +268,19 @@ Provide:
 
 Return as JSON with scene context details.
 Remember: All text in Spanish.`;
+    }
+
+    private modelStatus() {
+        this.app.get('/modelStatus', (_req, res) => {
+            try {
+                const status = getModelStatus();
+                res.json(status);
+            } catch (error) {
+                console.error('Api - /modelStatus - error:', error);
+                res.status(500).json({
+                    error: error instanceof Error ? error.message : String(error)
+                });
+            }
+        });
     }
 }
