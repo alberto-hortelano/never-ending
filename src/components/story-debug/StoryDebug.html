@@ -1,0 +1,48 @@
+<div class="debug-panel">
+    <button class="toggle-btn">📊 Story Debug</button>
+    
+    <div class="debug-content">
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="overview">Overview</button>
+            <button class="tab-btn" data-tab="threads">Threads</button>
+            <button class="tab-btn" data-tab="characters">Characters</button>
+            <button class="tab-btn" data-tab="events">Events</button>
+            <button class="tab-btn" data-tab="actions">Actions</button>
+        </div>
+        
+        <div class="tab-content" id="overview-content" style="display: block;">
+            <!-- Overview content will be populated dynamically -->
+        </div>
+        
+        <div class="tab-content" id="threads-content" style="display: none;">
+            <!-- Threads content will be populated dynamically -->
+        </div>
+        
+        <div class="tab-content" id="characters-content" style="display: none;">
+            <!-- Characters content will be populated dynamically -->
+        </div>
+        
+        <div class="tab-content" id="events-content" style="display: none;">
+            <!-- Events content will be populated dynamically -->
+        </div>
+        
+        <div class="tab-content" id="actions-content" style="display: none;">
+            <div class="action-buttons">
+                <h4>Test Actions:</h4>
+                <button id="force-minor-update" class="action-btn">Force Minor Update</button>
+                <button id="force-major-update" class="action-btn">Force Major Update</button>
+                <button id="test-combat" class="action-btn">Test Combat</button>
+                <button id="test-conversation" class="action-btn">Test Conversation</button>
+                <button id="test-event" class="action-btn">Test World Event</button>
+            </div>
+            <div class="action-log">
+                <h4>Console Commands:</h4>
+                <code>WorldState.getInstance().getDebugInfo()</code>
+                <code>WorldState.getInstance().getWorldContext()</code>
+                <code>WorldState.getInstance().forceUpdate('major')</code>
+                <code>WorldState.getInstance().testCombat(['char1', 'char2'])</code>
+                <code>WorldState.getInstance().enableDebug(['thread', 'event'])</code>
+            </div>
+        </div>
+    </div>
+</div>

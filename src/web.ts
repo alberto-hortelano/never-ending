@@ -88,6 +88,12 @@ const play = (state?: State) => {
     if (container) container.setAttribute('style', 'display: block;');
     // Turn indicator functionality is now in TopBar, hide the original
     if (turnIndicator) turnIndicator.setAttribute('style', 'display: none;');
+    
+    // Add story debug panel if in development mode or debug is enabled
+    if (!document.querySelector('story-debug')) {
+        const debugPanel = document.createElement('story-debug');
+        document.body.appendChild(debugPanel);
+    }
 }
 
 // Initialize event listeners

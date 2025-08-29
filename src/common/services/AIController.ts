@@ -19,6 +19,7 @@ import { TacticalExecutor, TacticalDirective } from './TacticalExecutor';
 import { CombatStances } from './CombatStances';
 import { StoryCommandExecutor, ItemSpawnCommand } from './StoryCommandExecutor';
 import { StoryPlanner } from './StoryPlanner';
+import { WorldState } from './WorldState';
 import { ICharacter, ICoord, Direction, IOriginStory, IStoryState, IScreenContext } from '../interfaces';
 import { DeepReadonly } from '../helpers/types';
 import { calculatePath } from '../helpers/map';
@@ -142,6 +143,9 @@ export class AIController extends EventBus<
 
         this.isInitialized = true;
 
+        // Initialize world state with story context
+        this.initializeWorldState();
+
         // Listen for turn changes to check if AI player should act
         this.listen(GameEvent.changeTurn, (data: GameEventsMap[GameEvent.changeTurn]) => {
             const currentPlayer = data.turn;
@@ -163,9 +167,8 @@ export class AIController extends EventBus<
 
         // Listen for storyline action execution
         this.listen(ConversationEvent.executeAction, async (data) => {
-            console.log('[AIController] Received executeAction event:', data);
             const { action } = data;
-            
+
             // Handle the action based on its type
             switch (action) {
                 case 'map':
@@ -181,7 +184,7 @@ export class AIController extends EventBus<
                     // TODO: Implement item spawning
                     break;
                 default:
-                    console.warn('[AIController] Unknown storyline action:', action);
+                    throw new Error(`[AIController] Unknown storyline action: ${action}`);
             }
         });
     }
@@ -195,7 +198,7 @@ export class AIController extends EventBus<
         const playerInfo = game.playerInfo?.[playerId];
         // This maintains backward compatibility
         if (!game.playerInfo) {
-            console.log('[AIController] No playerInfo in game state, using fallback check');
+            console.warn('[AIController] No playerInfo in game state, using fallback check');
             return playerId === 'ai';
         }
         return playerInfo?.isAI === true;
@@ -416,7 +419,6 @@ export class AIController extends EventBus<
 
                     // Check if speaker can talk to any human character
                     let canTalkToAnyHuman = false;
-                    // let closestHuman: DeepReadonly<ICharacter> | undefined;
                     let closestDistance = Infinity;
 
                     for (const humanChar of humanCharacters) {
@@ -424,13 +426,10 @@ export class AIController extends EventBus<
                         const viewDistance = 15; // Standard view distance
                         const hasLineOfSight = this.checkLineOfSight(speaker.position, humanChar.position, true);
 
-                        // console.log(`[AI] Final speech check from ${speaker.name} to ${humanChar.name}: distance=${distance.toFixed(2)}, hasLOS=${hasLineOfSight}`);
-
                         if (distance <= 8 && distance <= viewDistance && hasLineOfSight) {
                             canTalkToAnyHuman = true;
                             if (distance < closestDistance) {
                                 closestDistance = distance;
-                                // closestHuman = humanChar;
                             }
                         }
                     }
@@ -458,6 +457,8 @@ export class AIController extends EventBus<
     }
 
     private async processTacticalCharacterTurn(character: DeepReadonly<ICharacter>): Promise<void> {
+        // Trigger world state update for turn
+        this.triggerWorldStateUpdate('turn', [character.name], undefined, undefined);
         if (!this.state || !this.contextBuilder) return;
 
         // Build context
@@ -591,8 +592,12 @@ export class AIController extends EventBus<
                 // Log the AI decision with more context
                 if (validatedCommand.type === 'attack') {
                     const attackCmd = validatedCommand as AttackCommand;
-                    const attackType = attackCmd.characters?.[0]?.attack || 'unknown';
-                    const target = attackCmd.characters?.[0]?.target || 'unknown';
+                    const attackType = attackCmd.characters?.[0]?.attack;
+                    const target = attackCmd.characters?.[0]?.target;
+                    if (!attackType || !target) {
+                        console.warn('[AI] Invalid attack command - missing attack type or target');
+                        return;
+                    }
                     console.log(`[AI] ${character.name}: Attack (${attackType} vs ${target})`);
                 } else if (validatedCommand.type === 'speech') {
                     const speechCmd = validatedCommand as SpeechCommand;
@@ -679,18 +684,17 @@ export class AIController extends EventBus<
     private async executeMovement(command: AICommand, character: DeepReadonly<ICharacter>): Promise<void> {
         // Find target location
         const movementCmd = command as MovementCommand;
-        const chars = movementCmd.characters;
-        if (!chars || !chars[0]) {
-            console.log('[AI] ExecuteMovement - No characters in command');
-            return;
+        const characters = movementCmd.characters;
+        if (!characters || !characters[0]) {
+            throw new Error('[AI] ExecuteMovement - No characters in command');
         }
-        const targetLocationString = chars[0].location;
+        const targetLocationString = characters[0].location;
         const targetLocation = this.resolveLocation(targetLocationString, character);
 
         if (!targetLocation || !isFinite(targetLocation.x) || !isFinite(targetLocation.y) ||
             targetLocation.x < -1000 || targetLocation.x > 1000 ||
             targetLocation.y < -1000 || targetLocation.y > 1000) {
-            console.log('[AI] ExecuteMovement - Invalid location:', targetLocationString, targetLocation);
+            console.warn('[AI] ExecuteMovement - Invalid location:', targetLocationString, targetLocation);
             if (!this.isProcessingMultipleCharacters) {
                 this.endAITurn();
             }
@@ -700,7 +704,6 @@ export class AIController extends EventBus<
         // Check if we're already at the target location (distance 0)
         const currentDistance = this.getDistance(character.position, targetLocation);
         if (currentDistance === 0) {
-            console.log('[AI] ExecuteMovement - Already at target location');
             if (!this.isProcessingMultipleCharacters) {
                 this.endAITurn();
             }
@@ -763,7 +766,7 @@ export class AIController extends EventBus<
         );
 
         if (path.length === 0) {
-            console.log('[AI] No path to target found');
+            console.warn('[AI] No path to target found');
 
             // Detect what's blocking the path
             const blockage = this.detectBlockingEntity(character.position, targetLocation);
@@ -789,7 +792,7 @@ export class AIController extends EventBus<
 
                 // Build special context and request new action from AI
                 if (!this.contextBuilder) {
-                    console.log('[AI] No context builder available');
+                    console.error('[AI] No context builder available');
                     if (!this.isProcessingMultipleCharacters) {
                         this.endAITurn();
                     }
@@ -885,7 +888,6 @@ export class AIController extends EventBus<
                     console.log('[AI] Will continue movement in next action loop');
                     // ongoingMovement is already set, so next loop will continue
                 } else {
-                    console.log('[AI] Reached destination');
                     this.ongoingMovement = undefined;
                 }
             }
@@ -1541,6 +1543,13 @@ export class AIController extends EventBus<
 
             if (response.command && response.command.type === 'speech') {
                 await this.executeSpeech(response.command, {} as DeepReadonly<ICharacter>);
+
+                // Trigger world state update for conversation
+                this.triggerWorldStateUpdate('conversation',
+                    [dialogue.speaker || 'Player', dialogue.targetNPC],
+                    'neutral',
+                    undefined
+                );
             }
         } catch (error) {
             console.error('Error generating AI dialogue response:', error);
@@ -1693,11 +1702,11 @@ export class AIController extends EventBus<
 
     private async executeStorylineMapGeneration(): Promise<void> {
         console.log('[AIController] Executing storyline map generation');
-        
+
         try {
             // Get current story state
             const storyState = this.state?.story;
-            
+
             // Request map generation from AI
             const mapResponse = await this.gameEngineService.requestMapGeneration(
                 'storyline_transition',
@@ -1707,7 +1716,7 @@ export class AIController extends EventBus<
 
             if (mapResponse && typeof mapResponse === 'object' && 'type' in mapResponse) {
                 console.log('[AIController] Generated map command from storyline');
-                
+
                 // Execute the map command
                 const validatedCommand = this.commandParser.validate(mapResponse);
                 if (validatedCommand && validatedCommand.type === 'map') {
@@ -1722,6 +1731,44 @@ export class AIController extends EventBus<
             }
         } catch (error) {
             console.error('[AIController] Error executing storyline map generation:', error);
+        }
+    }
+
+    private initializeWorldState(): void {
+        try {
+            // Get WorldState instance
+            const worldState = WorldState.getInstance();
+
+            // Initialize with current story state if available
+            if (this.state?.story) {
+                worldState.initialize(this.state.story);
+                console.log('[AI] WorldState initialized');
+            }
+        } catch (error) {
+            console.error('[AI] Error initializing WorldState:', error);
+        }
+    }
+
+    private triggerWorldStateUpdate(
+        trigger: 'combat' | 'conversation' | 'discovery' | 'mission' | 'turn' | 'movement',
+        participants?: string[],
+        outcome?: string,
+        location?: string
+    ): void {
+        try {
+            const worldState = WorldState.getInstance();
+
+            worldState.processUpdate({
+                trigger,
+                participants,
+                outcome,
+                location,
+                metadata: {
+                    turn: this.state?.game.turn
+                }
+            });
+        } catch (error) {
+            console.error('[AI] Error updating WorldState:', error);
         }
     }
 
