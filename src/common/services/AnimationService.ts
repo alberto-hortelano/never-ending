@@ -187,7 +187,7 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
 
                     // Get the actual cell position from the path
                     const cellPosition = animState.path[Math.min(currentStepIndex, animState.path.length - 1)];
-                    
+
                     if (cellPosition) {
                         // Update character position in state
                         this.dispatch(UpdateStateEvent.characterPosition, {
@@ -303,7 +303,7 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
             const finalDirection = (animation.path.length > 1 && secondLastPos && finalPosition) ?
                 DirectionsService.calculateDirection(secondLastPos, finalPosition) :
                 (animation.toDirection || animation.fromDirection || 'down');
-            
+
             // Set final position and remove 'walk' class
             this.dispatch(UpdateStateEvent.uiCharacterVisual, {
                 characterId,

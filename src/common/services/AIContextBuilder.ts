@@ -2,6 +2,7 @@ import { State } from '../State';
 import { ICharacter, IGame, ICoord, IMission, IScreenContext } from '../interfaces';
 import { DeepReadonly } from '../helpers/types';
 import { TeamService } from './TeamService';
+import { WorldState } from './WorldState';
 
 export interface GameContext {
     currentCharacter: CharacterContext;
@@ -18,6 +19,7 @@ export interface GameContext {
     };
     tacticalAnalysis?: TacticalAnalysis;  // New tactical assessment
     storyContext?: StoryContextInfo;  // Story planning context
+    worldContext?: WorldContextInfo;  // Living world narrative context
     screenContext?: IScreenContext;  // Current screen context
     [key: string]: unknown;  // Allow additional properties for compatibility
 }
@@ -126,6 +128,33 @@ export interface StoryContextInfo {
     importantObjectsNearby?: string[];
 }
 
+export interface WorldContextInfo {
+    narrativePressure?: string;  // Suggested story direction
+    activeThreads?: Array<{
+        title: string;
+        type: string;
+        status: string;
+        narrative: string;
+        tension: number;
+    }>;
+    characterMotivations?: Array<{
+        character: string;
+        goals: string[];
+    }>;
+    offscreenEvents?: Array<{
+        title: string;
+        description: string;
+        intensity: string;
+    }>;
+    emergingConflicts?: Array<{
+        type: string;
+        participants: string[];
+        stakes: string;
+        escalation: number;
+    }>;
+    worldSummary?: string;  // High-level narrative summary
+}
+
 interface ExtendedGame extends IGame {
     phase?: string;
     currentMission?: string;
@@ -152,6 +181,14 @@ export class AIContextBuilder {
     constructor(private state: State) {
     }
 
+    /**
+     * Updates the state reference without losing conversation history
+     * This is called when the game state changes but we want to preserve context
+     */
+    public updateState(newState: State): void {
+        this.state = newState;
+    }
+
     public buildTurnContext(character: DeepReadonly<ICharacter>, state: State): GameContext {
         this.state = state;
         const currentChar = this.buildCharacterContext(character, true);
@@ -166,6 +203,9 @@ export class AIContextBuilder {
         
         // Build story context if available
         const storyContext = this.buildStoryContext(state);
+        
+        // Build world context for living world narrative
+        const worldContext = this.buildWorldContext(character);
 
         return {
             currentCharacter: currentChar,
@@ -177,7 +217,8 @@ export class AIContextBuilder {
             activeConversations: this.activeConversations,
             gameState: gameState,
             tacticalAnalysis: tacticalAnalysis,
-            storyContext: storyContext
+            storyContext: storyContext,
+            worldContext: worldContext
         };
     }
 
@@ -333,7 +374,7 @@ export class AIContextBuilder {
         // Get current room/location
         const currentCell = (map as Record<string, Record<string, unknown>>)[Math.floor(character.position.y)]?.[Math.floor(character.position.x)];
         const locations = currentCell && typeof currentCell === 'object' && 'locations' in currentCell ? currentCell.locations : undefined;
-        const currentLocation = Array.isArray(locations) ? locations[0] : 'unknown';
+        const currentLocation = Array.isArray(locations) && locations.length > 0 ? locations[0] : 'exploration_area';
         
         // Get nearby rooms and their positions
         const nearbyRooms = this.getNearbyRooms(character);
@@ -675,12 +716,12 @@ export class AIContextBuilder {
             currentAct: storyPlan.currentAct,
             currentMission: {
                 id: currentMission.id,
-                name: currentMission.nameES,
+                name: currentMission.nameES || currentMission.name,
                 type: currentMission.type,
                 objectives: Array.isArray(currentMission.objectives) 
                     ? currentMission.objectives
                         .filter(o => !o.completed)
-                        .map(o => o.descriptionES)
+                        .map(o => o.descriptionES || o.description)
                     : []
             },
             completedObjectives: storyState.completedObjectives ? [...storyState.completedObjectives] : undefined,
@@ -958,6 +999,71 @@ export class AIContextBuilder {
         // Simplified - would need actual map analysis
         // Check if position has adjacent walls or obstacles
         return false;
+    }
+    
+    /**
+     * Build world context from the living world narrative system
+     */
+    private buildWorldContext(character: DeepReadonly<ICharacter>): WorldContextInfo | undefined {
+        try {
+            // Get WorldState instance for living world context
+            const worldState = WorldState.getInstance();
+            
+            // Get world context relevant to current situation
+            const extendedMap = this.state.map as any;
+            const location = extendedMap.currentLocation || `position_${character.position.x}_${character.position.y}`;
+            
+            // Include the current character and nearby characters as participants
+            const nearbyChars = this.state.characters.filter((c: DeepReadonly<ICharacter>) => {
+                const distance = Math.abs(c.position.x - character.position.x) + 
+                                Math.abs(c.position.y - character.position.y);
+                return distance <= 10 && c.health > 0;
+            });
+            const participants = [character.name, ...nearbyChars.map(c => c.name)];
+            const context = worldState.getWorldContext(location, participants);
+            
+            if (!context) {
+                return undefined;
+            }
+            
+            // Transform world context into format for AI
+            const worldContextInfo: WorldContextInfo = {
+                narrativePressure: context.narrativePressure,
+                activeThreads: context.nearbyThreads.map((thread: any) => ({
+                    title: thread.title,
+                    type: thread.type,
+                    status: thread.status,
+                    narrative: thread.currentNarrative,
+                    tension: thread.tension
+                })),
+                characterMotivations: [],
+                offscreenEvents: context.offscreenEvents.map((event: any) => ({
+                    title: event.title,
+                    description: event.description,
+                    intensity: event.intensity
+                })),
+                emergingConflicts: context.emergingConflicts.map((conflict: any) => ({
+                    type: conflict.type,
+                    participants: conflict.instigators.concat(conflict.targets),
+                    stakes: conflict.stakes,
+                    escalation: conflict.escalation
+                })),
+                worldSummary: worldState.generateNarrativeSummary()
+            };
+            
+            // Convert character motivations map to array
+            context.characterMotivations.forEach((goals: any, character: any) => {
+                worldContextInfo.characterMotivations!.push({
+                    character,
+                    goals: goals
+                });
+            });
+            
+            return worldContextInfo;
+        } catch (error) {
+            console.error('[AIContextBuilder] Error building world context:', error);
+            return undefined;
+        }
     }
 
 }

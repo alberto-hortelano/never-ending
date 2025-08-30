@@ -1,6 +1,10 @@
-import type { IMessage, IStoryState, IOriginStory } from '../interfaces';
-import { AICommand } from './AICommandParser';
+import type { IMessage, IStoryState, IOriginStory, IValidationResult } from '../interfaces';
+import { AICommand, SpeechCommand } from './AICommandParser';
 import { AIBrowserCacheService, type AIRequest, type AIResponse } from './AIBrowserCacheService';
+import { ObjectValidator } from './ObjectValidator';
+import { StoryPlanValidator } from './StoryPlanValidator';
+import { AIMockService } from './AIMockService';
+import type { GameContext } from './AIContextBuilder';
 
 export interface AIGameEngineResponse {
     messages: IMessage[];
@@ -59,7 +63,7 @@ interface TacticalAnalysis {
 }
 
 // Main context interface
-interface AIActionContext {
+export interface AIActionContext {
     currentCharacter?: CharacterInfo;
     visibleCharacters?: CharacterInfo[];
     charactersInConversationRange?: CharacterInfo[];
@@ -127,7 +131,14 @@ Response format:
         try {
             // In production, this would be loaded from the server
             // For now, we'll use a simplified version
-            this.narrativeArchitectPrompt = `You are the Narrative Architect for "Never Ending", a turn-based strategy game set in a post-apocalyptic galaxy.
+            this.narrativeArchitectPrompt = `You are the Narrative Architect for "Never Ending", a turn-based tactical strategy game set in a post-apocalyptic galaxy.
+
+## GAME MECHANICS - CRITICAL TO UNDERSTAND
+- **Turn-based tactical combat**: Characters take turns on the CURRENT map
+- **Persistent maps**: Maps stay loaded throughout gameplay sessions
+- **Map transitions are RARE**: Only change maps for major story events (escape, new planet, etc.)
+- **Normal gameplay**: Move, attack, and talk on the EXISTING map
+- **DO NOT** request new maps after conversations or minor events
 
 ## Core Setting
 - Era: Post-empire galactic collapse
@@ -141,6 +152,7 @@ When engaging in dialogue:
 3. Build on the conversation naturally - acknowledge previous statements
 4. If someone mentioned desertion, combat, or specific topics, continue that thread
 5. Remember emotional tone from previous exchanges (hostile, friendly, suspicious)
+6. After conversation ends, continue playing on the SAME MAP
 
 ## DECISION FRAMEWORK - Follow these steps IN ORDER:
 
@@ -258,6 +270,24 @@ Response: {"type": "speech", "source": "enemy", "content": "¡Se acabó el tiemp
 History: Hostile confrontation about desertion
 Response: {"type": "speech", "source": "enemy", "content": "Hola, ¿necesitas ayuda?", "answers": [...]} // WRONG - tone reset!
 
+## MAP COMMAND - USE EXTREMELY RARELY
+
+### When to use MAP command (ONLY these cases):
+1. Player uses a transition door/portal to new location
+2. Story explicitly requires leaving current area (escape pod, ship departure)
+3. Mission completion that narratively moves to new location
+4. Major story act transition
+
+### NEVER use MAP command for:
+- After any normal conversation
+- To "refresh" or "update" the scene
+- When characters just need to move around
+- Minor story beats or encounters
+- Because you think the scene needs variety
+
+### MAP command format (when truly needed):
+{"type": "map", "palette": {...}, "buildings": [...], "characters": [...]}
+
 ## CRITICAL RULES - NEVER VIOLATE THESE
 
 1. NEVER describe characters not in visibleCharacters list
@@ -269,9 +299,11 @@ Response: {"type": "speech", "source": "enemy", "content": "Hola, ¿necesitas ay
 7. ALWAYS end conversation with empty answers: [] when done
 8. ALWAYS check conversation history before speaking
 9. NEVER repeat the same greeting or introduction twice
-10. ONLY spawn characters/maps for major story transitions
+10. ONLY use map command for MAJOR location changes (see MAP COMMAND section)
+11. Continue playing on CURRENT map after conversations end
+12. The game is TURN-BASED TACTICAL - work with existing map
 
-Remember: You can ONLY interact with what's ACTUALLY in the game state, not what you imagine might be there.`;
+Remember: The map persists throughout gameplay. Characters move, fight, and talk on the CURRENT map. Only transition to new maps for major story events.`;
         } catch (error) {
             console.error('Failed to load narrative architect prompt:', error);
         }
@@ -282,14 +314,16 @@ Remember: You can ONLY interact with what's ACTUALLY in the game state, not what
         systemPrompt?: string,
         storyState?: IStoryState
     ): Promise<AIGameEngineResponse> {
+        // Check if mock mode is enabled
+        const isMockEnabled = localStorage.getItem('ai_mock_enabled') === 'true';
+        if (isMockEnabled) {
+            // Convert AIActionContext to GameContext for the mock service
+            const gameContext = context as unknown as GameContext;
+            return AIMockService.getInstance().requestAIAction(gameContext, systemPrompt, storyState);
+        }
+        
         const messages: IMessage[] = [];
         const startTime = Date.now();
-        
-        // Log the request
-        // console.log('[AI GameEngine] === REQUEST START ===');
-        // console.log('[AI GameEngine] Character:', context.currentCharacter?.name);
-        // console.log('[AI GameEngine] Visible characters:', context.visibleCharacters?.map((c) => `${c.name} (health: ${c.health?.current})`).join(', '));
-        // console.log('[AI GameEngine] Characters in conversation range:', context.charactersInConversationRange?.map((c) => c.name).join(', '));
 
         // Add system context as first message
         if (systemPrompt || this.narrativeArchitectPrompt) {
@@ -310,16 +344,12 @@ Remember: You can ONLY interact with what's ACTUALLY in the game state, not what
             const response = await this.callGameEngine(messages);
             const command = this.parseAIResponse(response.content);
             
-            // const duration = Date.now() - startTime;
-            // console.log('[AI GameEngine] === REQUEST SUCCESS ===');
-            // console.log('[AI GameEngine] Duration:', duration, 'ms');
-            // console.log('[AI GameEngine] Command type:', command?.type || 'none');
+            const duration = Date.now() - startTime;
             if (command?.type === 'speech') {
-                // console.log('[AI GameEngine] Speech preview:', command.content?.substring(0, 50) + '...');
-            } else if (command?.type === 'attack') {
-                // console.log('[AI GameEngine] Attack target:', command.characters?.[0]?.target);
-            } else if (command?.type === 'movement') {
-                // console.log('[AI GameEngine] Movement location:', command.characters?.[0]?.location);
+                const speechCmd = command as SpeechCommand;
+                console.log(`[AI] Response (${duration}ms): Speech - "${speechCmd.content?.substring(0, 60)}..."`);
+            } else {
+                console.log(`[AI] Response (${duration}ms): ${command?.type || 'none'}`);
             }
 
             return {
@@ -328,9 +358,7 @@ Remember: You can ONLY interact with what's ACTUALLY in the game state, not what
             };
         } catch (error) {
             const duration = Date.now() - startTime;
-            console.error('[AI GameEngine] === REQUEST FAILED ===');
-            console.error('[AI GameEngine] Duration:', duration, 'ms');
-            console.error('[AI GameEngine] Error:', error);
+            console.error(`[AI] Request failed (${duration}ms):`, error);
             return {
                 messages: messages,
                 command: null
@@ -440,7 +468,14 @@ Companion: ${storyState.selectedOrigin.startingCompanion?.name || 'None'}
 ${context.blockageInfo}
 `;
             } else if (typeof context.blockageInfo === 'object') {
-                const info = context.blockageInfo as any;
+                const info = context.blockageInfo as { 
+                    blockingCharacter?: {
+                        name: string;
+                        isAlly: boolean;
+                        distance: number;
+                    };
+                    originalTarget?: string;
+                };
                 const blocker = info.blockingCharacter;
                 if (blocker) {
                     situationSummary += `
@@ -490,8 +525,6 @@ CRITICAL REMINDERS:
         messages: IMessage[],
         retry = 0
     ): Promise<{ messages: IMessage[], content: string }> {
-        // console.log('[AIGameEngineService] callGameEngine - sending request to /gameEngine');
-        // console.log('[AIGameEngineService] Message count:', messages.length);
         
         // Check cache first
         const cacheKey: GameEngineRequest = { messages, endpoint: '/gameEngine' };
@@ -569,11 +602,8 @@ CRITICAL REMINDERS:
                 const baseDelay = isOverloadError ? 5000 : this.retryDelay;
                 const backoffDelay = baseDelay * Math.pow(2, retry);
                 
-                // console.log(`[AI GameEngine] Retrying... (attempt ${retry + 1}/${this.maxRetries})`);
-                // console.log(`[AI GameEngine] Waiting ${backoffDelay}ms before retry (exponential backoff)`);
-                
                 if (isOverloadError) {
-                    // console.log('[AI GameEngine] Service is overloaded, using longer delay');
+                    console.log(`[AI] Service overloaded, retrying in ${backoffDelay}ms...`);
                 }
                 
                 await new Promise(resolve => setTimeout(resolve, backoffDelay));
@@ -607,13 +637,11 @@ CRITICAL REMINDERS:
         origin: IOriginStory,
         _storyState: IStoryState
     ): Promise<{ commands: AICommand[], narrative?: string }> {
-        // console.log('[AIGameEngineService] requestStoryInitialization called');
-        // console.log('[AIGameEngineService] Origin:', {
-        //     id: origin.id,
-        //     name: origin.name,
-        //     nameES: origin.nameES,
-        //     startingLocation: origin.startingLocation
-        // });
+        // Check if mock mode is enabled
+        const isMockEnabled = localStorage.getItem('ai_mock_enabled') === 'true';
+        if (isMockEnabled) {
+            return AIMockService.getInstance().requestStoryInitialization(origin, _storyState);
+        }
         
         const messages: IMessage[] = [];
         
@@ -797,6 +825,13 @@ Remember: ALL narrative text, descriptions, objectives, and dialogue MUST be in 
         context?: AIActionContext,
         storyState?: IStoryState
     ): Promise<AIGameEngineResponse> {
+        // Check if mock mode is enabled
+        const isMockEnabled = localStorage.getItem('ai_mock_enabled') === 'true';
+        if (isMockEnabled) {
+            // Convert AIActionContext to GameContext for the mock service
+            const gameContext = context as unknown as GameContext;
+            return AIMockService.getInstance().requestDialogueResponse(speaker, listener, playerChoice, gameContext, storyState);
+        }
         const messages: IMessage[] = [];
 
         // Add context
@@ -851,5 +886,75 @@ Response format:
                 command: null
             };
         }
+    }
+
+    /**
+     * Validate and retry AI-generated objects with specific validators
+     */
+    public async validateAndRetry<T>(
+        response: unknown,
+        validator: ObjectValidator<T>,
+        retryCount: number = 2
+    ): Promise<IValidationResult> {
+        const retryCallback = async (fixPrompt: string): Promise<unknown> => {
+            console.log('[AIGameEngineService] Requesting AI to fix validation errors');
+            
+            const messages: IMessage[] = [{
+                role: 'user',
+                content: fixPrompt
+            }];
+
+            try {
+                const retryResponse = await this.callGameEngine(messages);
+                return this.parseAIResponse(retryResponse.content);
+            } catch (error) {
+                console.error('[AIGameEngineService] Retry request failed:', error);
+                throw error;
+            }
+        };
+
+        return validator.validateWithRetry(response, retryCallback, retryCount);
+    }
+
+    /**
+     * Request map generation with validation
+     */
+    public async requestValidatedStoryPlan(
+        missionType: string,
+        narrativeContext: string,
+        storyState?: IStoryState
+    ): Promise<unknown> {
+        // First attempt
+        const response = await this.requestMapGeneration(missionType, narrativeContext, storyState);
+        
+        // Check if it's a story plan response
+        if (response && typeof response === 'object' && 'storyPlan' in response) {
+            const validator = new StoryPlanValidator();
+            const storyPlanResponse = response as { storyPlan: unknown };
+            const validationResult = await this.validateAndRetry(
+                storyPlanResponse.storyPlan,
+                validator,
+                2
+            );
+            
+            if (validationResult.isValid) {
+                return {
+                    ...response,
+                    storyPlan: validationResult.fixedObject
+                };
+            } else {
+                console.error('[AIGameEngineService] Story plan validation failed after retries');
+                console.error('Validation errors:', validationResult.errors);
+                
+                // Return a default story plan if validation fails
+                const defaultPlan = validator.createDefaultStoryPlan();
+                return {
+                    ...response,
+                    storyPlan: defaultPlan
+                };
+            }
+        }
+        
+        return response;
     }
 }

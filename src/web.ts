@@ -1,4 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// Initialize Logger early to intercept all console calls
+import './common/services/LoggerService';
+
 import './components';
 import { Component } from './components/Component';
 import { LoadingScreen } from './components/loadingscreen/LoadingScreen';
@@ -76,7 +79,7 @@ const play = (state?: State) => {
         new Shoot(gameState),
         new Overwatch(gameState),
         new Inventory(gameState),
-        new Conversation(),
+        new Conversation(gameState),
         new Action(gameState),
         new AutoSelectCharacter(gameState),
         aiController // Add AI controller to services for cleanup

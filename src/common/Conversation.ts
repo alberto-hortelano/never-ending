@@ -1,11 +1,13 @@
-import type { ICharacter, IMessage } from "./interfaces";
+import type { ICharacter, IMessage, IStoryState } from "./interfaces";
 import type { DeepReadonly } from "./helpers/types";
+import type { State } from "./State";
 
 import {
     EventBus, StateChangeEvent, StateChangeEventsMap, UpdateStateEvent, UpdateStateEventsMap,
     ConversationEvent, ConversationEventsMap, ConversationStartData, ConversationUpdateData
 } from "./events";
 import { conversationSystemPrompt, characterContext } from "../prompts/conversationPrompts";
+import { AIGameEngineService } from './services/AIGameEngineService';
 
 export class Conversation extends EventBus<
     StateChangeEventsMap & ConversationEventsMap,
@@ -18,14 +20,26 @@ export class Conversation extends EventBus<
     private readonly maxRetries = 3;
     private readonly retryDelay = 1000;
     private readonly maxMessageLength = 1000;
+    private aiService: AIGameEngineService;
+    private storyState?: DeepReadonly<IStoryState>;
 
-    constructor() {
+    constructor(state?: State) {
         super();
+        this.aiService = AIGameEngineService.getInstance();
 
         // Listen for state changes
         this.listen(StateChangeEvent.messages, (messages) => {
             this.messages = [...messages];
         });
+
+        // Listen for story state changes if state is provided
+        if (state) {
+            this.listen(StateChangeEvent.storyState, (storyState) => {
+                this.storyState = storyState;
+            });
+            // Initialize story state
+            this.storyState = state.story;
+        }
 
         // Listen for conversation start requests
         this.listen(ConversationEvent.start, (data: ConversationStartData) => {
@@ -38,6 +52,46 @@ export class Conversation extends EventBus<
         });
     }
 
+    private buildStoryContext(): string {
+        if (!this.storyState?.selectedOrigin) {
+            return '';
+        }
+        
+        const origin = this.storyState.selectedOrigin;
+        const factionRep = this.storyState.factionReputation || {};
+        
+        // Build a comprehensive story context
+        let context = `\nCurrent Story Context:
+- Origin: ${origin.name}${origin.nameES ? ` (${origin.nameES})` : ''}
+- Starting Location: ${origin.startingLocation}
+- Chapter: ${this.storyState.currentChapter || 1}`;
+        
+        // Add faction reputation if present
+        const factionEntries = Object.entries(factionRep);
+        if (factionEntries.length > 0) {
+            context += `\n- Faction Relations: ${factionEntries
+                .map(([faction, rep]) => `${faction}: ${rep}`)
+                .join(', ')}`;
+        }
+        
+        // Add special traits if present
+        if (origin.specialTraits && origin.specialTraits.length > 0) {
+            context += `\n- Character Traits: ${origin.specialTraits.join(', ')}`;
+        }
+        
+        // Add narrative hooks if present
+        if (origin.narrativeHooks && origin.narrativeHooks.length > 0) {
+            context += `\n- Narrative Elements: ${origin.narrativeHooks.join(', ')}`;
+        }
+        
+        // Add any completed missions
+        if (this.storyState.completedMissions && this.storyState.completedMissions.length > 0) {
+            context += `\n- Completed Missions: ${this.storyState.completedMissions.join(', ')}`;
+        }
+        
+        return context;
+    }
+
     private async startConversation(talkingCharacter: DeepReadonly<ICharacter>, targetCharacter: DeepReadonly<ICharacter>) {
         if (this.isLoading) return;
 
@@ -46,24 +100,37 @@ export class Conversation extends EventBus<
         this.conversationTurnCount = 1; // Reset turn count for new conversation
 
         try {
+            // Build story context
+            const storyContext = this.buildStoryContext();
+            
             // Create context message with turn count for better conversation flow
             const contextMessage: IMessage = {
                 role: 'user',
                 content: characterContext(talkingCharacter.name, targetCharacter.name, this.conversationTurnCount)
             };
 
-            // Include system prompt in the context message if this is the first conversation
+            // Include system prompt and story context in the context message if this is the first conversation
+            let contextContent = contextMessage.content;
+            if (this.messages.length === 0) {
+                contextContent = conversationSystemPrompt;
+                if (storyContext) {
+                    contextContent += '\n' + storyContext;
+                }
+                contextContent += '\n\n' + contextMessage.content;
+            } else if (storyContext) {
+                // Even for ongoing conversations, include story context
+                contextContent = storyContext + '\n\n' + contextMessage.content;
+            }
+
             const fullContextMessage: IMessage = {
                 role: 'user',
-                content: this.messages.length === 0
-                    ? `${conversationSystemPrompt}\n\n${contextMessage.content}`
-                    : contextMessage.content
+                content: contextContent
             };
 
             const messages = [...this.messages, fullContextMessage];
 
             // Call API
-            const response = await this.callGameEngine(messages);
+            const response = await this.callAIService(messages);
 
             // Parse and dispatch update
             const conversationData = this.parseResponse(response.content);
@@ -96,19 +163,28 @@ export class Conversation extends EventBus<
         this.conversationTurnCount++; // Increment turn count
 
         try {
+            // Build story context for continued conversation
+            const storyContext = this.buildStoryContext();
+            
             // Add turn count context to help AI know when to end
             const turnContext = this.conversationTurnCount >= 3 
                 ? '\n[SYSTEM: This is turn ' + this.conversationTurnCount + '. Consider ending the conversation naturally.]'
                 : '';
             
-            // Create player message with turn context
+            // Create player message with story context and turn context
+            let messageContent = answer;
+            if (storyContext) {
+                messageContent = storyContext + '\n\nPlayer response: ' + answer;
+            }
+            messageContent += turnContext;
+            
             const playerMessage: IMessage = {
                 role: 'user',
-                content: answer + turnContext
+                content: messageContent
             };
 
-            // Call API
-            const response = await this.callGameEngine([...this.messages, playerMessage]);
+            // Call AI service (will use mock if enabled)
+            const response = await this.callAIService([...this.messages, playerMessage]);
 
             // Parse and dispatch update
             const conversationData = this.parseResponse(response.content);
@@ -142,7 +218,46 @@ export class Conversation extends EventBus<
         }
     }
 
-    private async callGameEngine(messages: IMessage[], retry = 0): Promise<{ messages: IMessage[], content: string }> {
+    private async callAIService(messages: IMessage[], retry = 0): Promise<{ messages: IMessage[], content: string }> {
+        // Check if mock mode is enabled
+        const isMockEnabled = localStorage.getItem('ai_mock_enabled') === 'true';
+        
+        if (isMockEnabled) {
+            // Use mock dialogue response
+            
+            // Extract context from messages
+            const lastUserMessage = messages[messages.length - 1];
+            const playerChoice = lastUserMessage?.content || '';
+            const speaker = 'player';
+            const listener = 'Data';  // Assuming Data is the one responding
+            
+            // Get mock response
+            const mockResponse = await this.aiService.requestDialogueResponse(
+                speaker,
+                listener,
+                playerChoice
+            );
+            
+            if (mockResponse.command) {
+                return {
+                    messages: messages,
+                    content: JSON.stringify(mockResponse.command)
+                };
+            }
+            
+            // Default mock response if no command
+            return {
+                messages: messages,
+                content: JSON.stringify({
+                    type: 'speech',
+                    source: 'Data',
+                    content: 'Entendido, comandante. Procederé según lo indicado.',
+                    answers: []
+                })
+            };
+        }
+        
+        // Original implementation for real API calls
         try {
             const response = await fetch('/gameEngine', {
                 method: 'POST',
@@ -171,7 +286,7 @@ export class Conversation extends EventBus<
         } catch (error) {
             if (retry < this.maxRetries) {
                 await new Promise(resolve => setTimeout(resolve, this.retryDelay));
-                return this.callGameEngine(messages, retry + 1);
+                return this.callAIService(messages, retry + 1);
             }
             throw error;
         }
@@ -216,9 +331,19 @@ export class Conversation extends EventBus<
                         answers: shouldEnd ? [] : (parsed.answers || ['Continuar']),  // Default to 'Continuar' if no answers provided
                         action: parsed.action
                     };
+                } else if (parsed.type === 'map') {
+                    // Map command from AI - this should be handled as a storyline with map action
+                    console.log('[Conversation] AI returned map command, converting to storyline format');
+                    return {
+                        type: 'speech',
+                        source: 'Narrador',
+                        content: parsed.description || 'La escena cambia a una nueva ubicación...',
+                        answers: ['Aceptar', 'Rechazar'],  // Action buttons
+                        action: 'map'  // Pass the map action
+                    };
                 } else if (parsed.type === 'movement' || parsed.type === 'attack' || 
-                          parsed.type === 'character' || parsed.type === 'map' || 
-                          parsed.type === 'item' || parsed.type === 'tactical_directive') {
+                          parsed.type === 'character' || parsed.type === 'item' || 
+                          parsed.type === 'tactical_directive') {
                     // AI is taking a non-conversation action - end the conversation
                     console.log('[Conversation] AI returned non-speech command:', parsed.type);
                     console.log('[Conversation] Ending conversation as AI wants to perform action');

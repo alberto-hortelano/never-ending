@@ -14,8 +14,35 @@
 }
 
 .menu-container {
+    position: relative;
     text-align: center;
     padding: $spacing-2xl;
+    padding-top: 5rem; // Add extra padding to accommodate dev controls
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.dev-controls {
+    position: fixed; // Changed from absolute to fixed
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    
+    development-ui {
+        display: block;
+        
+        // Override the development UI styles to work in menu context
+        .development-ui {
+            background-color: rgba($color-bg-tertiary, 0.9);
+            border-bottom: 1px solid $color-border-primary;
+            padding: $spacing-sm $spacing-md;
+        }
+    }
 }
 
 .game-title {

@@ -16,7 +16,7 @@ import { UIStateService } from './services/UIStateService';
 
 export class State extends EventBus<UpdateStateEventsMap & GameEventsMap & StateChangeEventsMap, StateChangeEventsMap & ControlsEventsMap> {
     private readonly storageName = 'state';
-    
+
     // Sub-state modules
     private gameState: GameState;
     private mapState: MapState;
@@ -31,7 +31,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap & State
 
     constructor(initialState?: IState, isPreview = false) {
         super();
-        
+
         // Initialize sub-state modules
         // For preview states, skip event dispatching to avoid affecting the main game
         this.gameState = new GameState(isPreview ? undefined : () => this.save(), isPreview);
@@ -55,49 +55,49 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap & State
                 map: [],
                 characters: [],
                 messages: [],
-                ui: { 
-                    animations: { characters: {} }, 
-                    visualStates: { characters: {}, cells: {}, board: { mapWidth: 0, mapHeight: 0, hasPopupActive: false } }, 
-                    transientUI: { 
-                        highlights: { reachableCells: [], pathCells: [], targetableCells: [] }, 
-                        popups: {}, 
-                        projectiles: [] 
-                    }, 
-                    interactionMode: { type: 'normal' } 
+                ui: {
+                    animations: { characters: {} },
+                    visualStates: { characters: {}, cells: {}, board: { mapWidth: 0, mapHeight: 0, hasPopupActive: false } },
+                    transientUI: {
+                        highlights: { reachableCells: [], pathCells: [], targetableCells: [] },
+                        popups: {},
+                        projectiles: []
+                    },
+                    interactionMode: { type: 'normal' }
                 },
                 overwatchData: {}
             };
             this.uiStateService = new UIStateService(
                 () => noOpState,
                 () => noOpState.ui,
-                () => {}
+                () => { }
             );
         }
         this.overwatchState = new OverwatchState(() => this.save());
         this.storyState = new StoryState(isPreview ? undefined : () => this.save(), isPreview);
         this.languageState = new LanguageState(isPreview ? undefined : () => this.save(), isPreview);
-        
+
         // Load initial state
         this.load(initialState);
-        
+
         // Handle turn changes - coordinate between sub-states
         this.listen(GameEvent.changeTurn, (data) => {
             // Clear UI state for turn change
             this.uiStateService.clearTurnBasedUI();
-            
+
             // Reset action points for the new turn
             this.characterState.resetActionPointsForTurn(data.turn);
-            
+
             // Save state after turn change
             this.save();
         });
-        
+
         // Handle character defeat - coordinate between character and UI state
         // Since all EventBus instances share listeners, we can listen on 'this'
         this.listen(StateChangeEvent.characterDefeated, (character) => {
             this.uiStateService.updateCharacterDefeated(character.name);
         });
-        
+
         // Listen for door updates
         this.listen(UpdateStateEvent.doors, (newDoors) => {
             this.#doors = newDoors;
@@ -130,11 +130,11 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap & State
     get overwatchData(): DeepReadonly<IState['overwatchData']> {
         return this.overwatchState.overwatchData;
     }
-    
+
     get story(): DeepReadonly<IState['story']> {
         return this.storyState.story;
     }
-    
+
     get language(): DeepReadonly<IState['language']> {
         return this.languageState.language;
     }
@@ -192,37 +192,37 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap & State
             }
         }
         state ||= getBaseState();
-        
+
         // Initialize sub-states with loaded data
         this.gameState.game = state.game;
         this.mapState.map = state.map;
         this.characterState.characters = state.characters;
         this.messageState.messages = state.messages;
         this.uiState.ui = state.ui || this.uiState.ui;
-        
+
         // Initialize overwatch data if present
         if (state.overwatchData) {
             this.overwatchState.overwatchData = state.overwatchData;
         }
-        
+
         // Initialize doors if present
         if (state.doors) {
             this.#doors = state.doors;
             // Dispatch initial doors state so components can render them
             this.dispatch(StateChangeEvent.doors, structuredClone(this.#doors));
         }
-        
+
         // Initialize language if present
         if (state.language) {
             this.languageState.deserialize(state.language);
         }
-        
+
         // Initialize story state if present
         if (state.story) {
             console.log('[State] Loading story state:', state.story);
             this.storyState.story = state.story;
         }
-        
+
         // No need to complete initialization anymore since we handle events differently
     }
 }

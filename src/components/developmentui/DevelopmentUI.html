@@ -1,10 +1,30 @@
 <div class="development-ui">
-    <div class="dev-label">DEV</div>
-    
-    <div class="ai-cache-section">
-        <span class="section-label">AI Cache:</span>
+    <div class="dev-main-bar">
+        <div class="dev-label">DEV</div>
+
+        <div class="ai-mock-section">
+            <span class="section-label">AI:</span>
+            <span id="ai-mode-status" class="status-indicator">REAL</span>
+            <button id="ai-mock-toggle-btn" class="dev-btn toggle-btn compact">Mock</button>
+        </div>
+
+        <div class="bar-toggles">
+            <button id="cache-bar-toggle" class="dev-btn bar-toggle" title="Toggle Cache Controls">
+                <span class="toggle-icon">⚙️</span> Cache
+            </button>
+            <button id="logs-bar-toggle" class="dev-btn bar-toggle" title="Toggle Logging Controls">
+                <span class="toggle-icon">📋</span> Logs
+            </button>
+            <button id="story-bar-toggle" class="dev-btn bar-toggle" title="Toggle Story Debug">
+                <span class="toggle-icon">📊</span> Story
+            </button>
+        </div>
+    </div>
+
+    <div id="cache-bar" class="dev-sub-bar cache-bar hidden">
+        <span class="section-label">Cache:</span>
         <span id="cache-status" class="status-indicator">OFF</span>
-        
+
         <div class="cache-info">
             <span class="info-badge">
                 <span class="badge-label">Responses:</span>
@@ -15,7 +35,7 @@
                 <span id="cache-size" class="badge-value">0 KB</span>
             </span>
         </div>
-        
+
         <div class="cache-controls">
             <button id="cache-toggle-btn" class="dev-btn toggle-btn">Enable</button>
             <button id="cache-stats-btn" class="dev-btn">Stats</button>
@@ -23,6 +43,78 @@
             <button id="cache-clear-problematic-btn" class="dev-btn" title="Clear problematic entries">Fix</button>
         </div>
     </div>
-    
+
+    <div id="logs-bar" class="dev-sub-bar logs-bar hidden">
+        <div class="logs-header">
+            <span class="section-label">Logging:</span>
+            <span id="logs-status" class="status-indicator">ON</span>
+            
+            <div class="logs-info">
+                <span class="info-badge">
+                    <span class="badge-label">Total:</span>
+                    <span id="logs-total" class="badge-value">0</span>
+                </span>
+                <span class="info-badge error-badge">
+                    <span class="badge-label">Errors:</span>
+                    <span id="logs-errors" class="badge-value">0</span>
+                </span>
+                <span class="info-badge warn-badge">
+                    <span class="badge-label">Warns:</span>
+                    <span id="logs-warnings" class="badge-value">0</span>
+                </span>
+            </div>
+        </div>
+
+        <div class="logs-content">
+            <div class="logs-themes">
+                <div class="themes-header">
+                    <span class="subsection-label">Themes:</span>
+                    <button id="logs-themes-all" class="dev-btn mini">All</button>
+                    <button id="logs-themes-none" class="dev-btn mini">None</button>
+                </div>
+                <div class="themes-grid" id="themes-grid">
+                    <!-- Theme checkboxes will be generated dynamically -->
+                </div>
+            </div>
+
+            <div class="logs-bottom-row">
+                <div class="logs-level">
+                    <span class="subsection-label">Level:</span>
+                    <div class="level-selector">
+                        <select id="log-level-select" class="dev-select">
+                            <option value="0">ERROR</option>
+                            <option value="1">WARN</option>
+                            <option value="2" selected>INFO</option>
+                            <option value="3">DEBUG</option>
+                            <option value="4">TRACE</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="logs-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="logs-timestamp" checked>
+                        <span>Timestamp</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="logs-prefix" checked>
+                        <span>Theme Prefix</span>
+                    </label>
+                </div>
+
+                <div class="logs-controls">
+                    <button id="logs-clear-btn" class="dev-btn">Clear</button>
+                    <button id="logs-export-json-btn" class="dev-btn">Export JSON</button>
+                    <button id="logs-export-text-btn" class="dev-btn">Export Text</button>
+                    <button id="logs-stats-btn" class="dev-btn">Stats</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="story-bar" class="dev-sub-bar story-bar hidden">
+        <!-- StoryDebug component will be inserted here -->
+    </div>
+
     <div id="notification" class="notification"></div>
 </div>

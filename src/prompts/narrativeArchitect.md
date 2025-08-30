@@ -134,6 +134,7 @@ Transition doors should trigger narrative events:
 ### 1. Storyline Transition
 Used for scene transitions, travel sequences, or major plot developments.
 **IMPORTANT: Every storyline MUST have an action that changes the game state.**
+**CRITICAL: When presented in conversation UI, storyline actions show as "Aceptar"/"Rechazar" buttons**
 ```json
 {
   "type": "storyline",
@@ -264,6 +265,12 @@ Manages conversations and player decision points.
   ],
   "action": "storyline|character|movement|attack|map" // Optional follow-up
 }
+```
+
+**Note about actions in speech:**
+- If `action` is present, the first answer should be "Aceptar" to accept the action
+- The second answer should be "Rechazar" to decline the action
+- When action is accepted, it will execute immediately (e.g., map change, character spawn)
 ```
 
 ## Character Palettes
