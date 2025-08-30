@@ -12,7 +12,6 @@ const CLAUDE_MODELS = [
     'claude-opus-4-0', // First fallback
     'claude-sonnet-4-0', // Second fallback
     'claude-3-7-sonnet-latest',     // Third fallback
-    'claude-3-5-haiku-latest'    // Fourth fallback
 ] as const;
 
 type ClaudeModel = typeof CLAUDE_MODELS[number];
@@ -187,12 +186,16 @@ async function callClaudeWithModel(
     console.log(`[Claude] Attempting with model: ${model}`);
 
     try {
-        const msg = await anthropic.messages.create({
+        // Use streaming for better handling of long-running requests
+        const stream = await anthropic.messages.stream({
             model: model as Anthropic.Messages.MessageCreateParams['model'],
-            max_tokens: 8192,
+            max_tokens: 32000,
             system: narrativeArchitect,
             messages: messages,
         });
+
+        // Wait for the complete message using the helper
+        const msg = await stream.finalMessage();
 
         // Success - clear any fallback for this model
         fallbackManager.clearFallback(model);
@@ -201,7 +204,7 @@ async function callClaudeWithModel(
         return msg;
     } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        const statusCode = (error as {status?: number})?.status || (error as {response?: {status?: number}})?.response?.status;
+        const statusCode = (error as { status?: number })?.status || (error as { response?: { status?: number } })?.response?.status;
 
         // Check if this is an overload error
         const isOverload = statusCode === 529 ||

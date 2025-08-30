@@ -19,6 +19,7 @@ Return ONLY valid JSON, no markdown, no extra text:
 }
 
 NEVER return "type": "map" or any other command type during conversations!
+ONLY use existing characters. There is already a command to introduce new characters. A character has to be generated and added to the game before any interaction with it.
 
 ### Conversation Flow Management
 
@@ -130,19 +131,19 @@ NEVER:
 - Return any command type other than "speech"`;
 
 export const characterContext = (speakingCharacter: string, targetCharacter: string, turnCount?: number) => {
-    // Track conversation state
-    const conversationTurn = turnCount || 1;
-    let stateGuidance = '';
-    
-    if (conversationTurn === 1) {
-        stateGuidance = 'This is the OPENING of the conversation. Greet or acknowledge the other character.';
-    } else if (conversationTurn >= 3) {
-        stateGuidance = 'This is turn ' + conversationTurn + ' of the conversation. Consider ending naturally soon.';
-    } else {
-        stateGuidance = 'This is turn ' + conversationTurn + ' of the conversation. Provide new information.';
-    }
-    
-    return `${speakingCharacter} is talking with ${targetCharacter}.
+  // Track conversation state
+  const conversationTurn = turnCount || 1;
+  let stateGuidance = '';
+
+  if (conversationTurn === 1) {
+    stateGuidance = 'This is the OPENING of the conversation. Greet or acknowledge the other character.';
+  } else if (conversationTurn >= 3) {
+    stateGuidance = 'This is turn ' + conversationTurn + ' of the conversation. Consider ending naturally soon.';
+  } else {
+    stateGuidance = 'This is turn ' + conversationTurn + ' of the conversation. Provide new information.';
+  }
+
+  return `${speakingCharacter} is talking with ${targetCharacter}.
 
 ${stateGuidance}
 
