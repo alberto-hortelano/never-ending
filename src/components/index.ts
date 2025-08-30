@@ -19,4 +19,4 @@ export * from './defensewheel/DefenseWheel';
 export * from './originselection/OriginSelection';
 export * from './storyjournal/StoryJournal';
 export * from './loadingscreen/LoadingScreen';
-export * from './story-debug/StoryDebug';
+export * from './storydebug/StoryDebug';

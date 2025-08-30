@@ -1,50 +1,15 @@
 @use '../variables' as *;
 
 .debug-panel {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: rgba($gray-900, 0.95);
-    border: 1px solid $color-border-primary;
-    border-radius: $border-radius-lg;
     color: $color-text-primary;
     font-size: $font-size-sm;
-    z-index: 10000;
-    max-width: 400px;
-    backdrop-filter: blur(10px);
-    box-shadow: $shadow-lg;
     transition: $transition-all;
-    
-    &.expanded {
-        max-width: 600px;
-        max-height: 80vh;
-        
-        .debug-content {
-            display: block;
-        }
-    }
-}
-
-.toggle-btn {
-    width: 100%;
-    padding: $spacing-sm $spacing-md;
-    background: $color-bg-secondary;
-    border: none;
-    color: $color-text-primary;
-    cursor: pointer;
-    font-weight: $font-weight-medium;
-    border-radius: $border-radius-lg $border-radius-lg 0 0;
-    transition: $transition-all;
-    
-    &:hover {
-        background: $color-bg-tertiary;
-    }
 }
 
 .debug-content {
-    display: none;
-    padding: $spacing-md;
-    max-height: 70vh;
+    display: block;
+    padding: $spacing-sm;
+    max-height: 300px;
     overflow-y: auto;
 }
 

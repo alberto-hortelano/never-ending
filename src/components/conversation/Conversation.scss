@@ -1,4 +1,5 @@
 @use '../variables' as *;
+@use 'sass:color';
 
 :host {
     display: block;
@@ -202,14 +203,14 @@
         
         &:hover:not(:disabled) {
             background: rgba($color-info, 0.2);
-            border-color: darken($color-info, 10%);
+            border-color: color.adjust($color-info, $lightness: -10%);
         }
     }
 
     &.action-decline {
         background: rgba($color-danger, 0.05);
         border-color: rgba($color-danger, 0.5);
-        color: darken($color-text-primary, 10%);
+        color: color.adjust($color-text-primary, $lightness: -10%);
         
         &::before {
             content: '✕';

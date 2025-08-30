@@ -7,7 +7,6 @@ export class StoryDebug extends Component {
     
     private worldState: WorldState;
     private updateInterval?: number;
-    private isExpanded = false;
     
     constructor() {
         super();
@@ -35,15 +34,6 @@ export class StoryDebug extends Component {
     }
     
     private setupEventListeners(root: ShadowRoot): void {
-        // Toggle button
-        const toggleBtn = root.querySelector('.toggle-btn');
-        toggleBtn?.addEventListener('click', () => {
-            this.isExpanded = !this.isExpanded;
-            const panel = root.querySelector('.debug-panel');
-            panel?.classList.toggle('expanded', this.isExpanded);
-            toggleBtn.textContent = this.isExpanded ? '📊 Hide Debug' : '📊 Story Debug';
-        });
-        
         // Tab buttons
         const tabBtns = root.querySelectorAll('.tab-btn');
         tabBtns.forEach(btn => {
@@ -100,7 +90,7 @@ export class StoryDebug extends Component {
     private startAutoUpdate(): void {
         // Update every 2 seconds
         this.updateInterval = window.setInterval(() => {
-            if (this.isExpanded && this.shadowRoot) {
+            if (this.shadowRoot) {
                 this.updateContent(this.shadowRoot);
             }
         }, 2000);

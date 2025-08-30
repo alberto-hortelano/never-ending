@@ -1,4 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// Initialize Logger early to intercept all console calls
+import './common/services/LoggerService';
+
 import './components';
 import { Component } from './components/Component';
 import { LoadingScreen } from './components/loadingscreen/LoadingScreen';
@@ -88,12 +91,6 @@ const play = (state?: State) => {
     if (container) container.setAttribute('style', 'display: block;');
     // Turn indicator functionality is now in TopBar, hide the original
     if (turnIndicator) turnIndicator.setAttribute('style', 'display: none;');
-    
-    // Add story debug panel if in development mode or debug is enabled
-    if (!document.querySelector('story-debug')) {
-        const debugPanel = document.createElement('story-debug');
-        document.body.appendChild(debugPanel);
-    }
 }
 
 // Initialize event listeners

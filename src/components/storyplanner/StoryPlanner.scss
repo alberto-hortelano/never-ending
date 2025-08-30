@@ -69,7 +69,7 @@
             margin: 0 0 $spacing-sm 0;
             font-size: $font-size-base;
             color: $color-text-primary;
-            font-weight: $font-weight-semibold;
+            font-weight: $font-weight-medium;
         }
         
         h4 {
@@ -85,7 +85,7 @@
             margin: 0 0 $spacing-sm 0;
             color: $color-text-secondary;
             font-size: $font-size-sm;
-            line-height: $line-height-relaxed;
+            line-height: $line-height-normal;
         }
         
         .theme-tag {
