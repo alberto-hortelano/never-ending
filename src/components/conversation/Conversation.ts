@@ -1,4 +1,4 @@
-import type { ConversationUpdateData } from "../../common/events/ConversationEvents";
+import type { ConversationUpdateData, AIExchangeData } from "../../common/events/ConversationEvents";
 
 import { Component } from "../Component";
 import { ConversationEvent, ConversationEventsMap, StateChangeEvent } from "../../common/events";
@@ -22,6 +22,8 @@ export class Conversation extends Component {
     // Conversation history tracking
     private conversationHistory: ConversationTurn[] = [];
     private currentHistoryIndex = -1;
+    private isAIToAIMode = false;
+    private aiExchangeIndicator?: HTMLElement;
 
     constructor() {
         super();
@@ -100,6 +102,12 @@ export class Conversation extends Component {
         this.listen(ConversationEvent.error, (error: ConversationEventsMap[ConversationEvent.error]) => {
             console.log('[Conversation] Received error event:', error);
             this.showError(error);
+        });
+
+        // Listen for AI-to-AI exchanges
+        this.listen(ConversationEvent.aiExchange, (data: AIExchangeData) => {
+            console.log('[Conversation] Received AI exchange:', data);
+            this.handleAIExchange(data);
         });
 
         console.log('[Conversation] Event listeners setup complete');
@@ -261,6 +269,28 @@ export class Conversation extends Component {
     }
 
     private handleAnswerClick(answer: string) {
+        // Check for special AI-to-AI control answers
+        if (this.isAIToAIMode) {
+            if (answer === 'Continue' || answer === 'Continue Listening') {
+                // Continue the AI-to-AI conversation
+                this.dispatch(ConversationEvent.continue, answer);
+                this.showLoading();
+                return;
+            } else if (answer === 'Interrupt') {
+                // Player interrupts the conversation
+                this.isAIToAIMode = false;
+                this.dispatch(ConversationEvent.playerInterrupt, undefined);
+                this.hideAIExchangeIndicator();
+                return;
+            } else if (answer === 'Skip') {
+                // Skip the rest of the conversation
+                this.isAIToAIMode = false;
+                this.dispatch(ConversationEvent.skipConversation, undefined);
+                this.hideAIExchangeIndicator();
+                return;
+            }
+        }
+
         // Store the selected answer in the current turn
         if (this.currentHistoryIndex >= 0 && this.currentHistoryIndex < this.conversationHistory.length) {
             const currentTurn = this.conversationHistory[this.currentHistoryIndex];
@@ -489,6 +519,45 @@ export class Conversation extends Component {
         const endedMessage = root.querySelector('.conversation-ended');
         if (endedMessage) {
             endedMessage.textContent = i18n.t('conversation.ended');
+        }
+    }
+
+    private handleAIExchange(data: AIExchangeData) {
+        console.log('[Conversation] Handling AI exchange:', data);
+        
+        // Set AI-to-AI mode
+        this.isAIToAIMode = true;
+        
+        // Show AI exchange indicator
+        this.showAIExchangeIndicator(data);
+        
+        // The actual conversation update will come through the regular update event
+        // This event just provides additional context about the AI exchange
+    }
+    
+    private showAIExchangeIndicator(data: AIExchangeData) {
+        if (!this.contentElement) return;
+        
+        // Remove existing indicator if any
+        this.hideAIExchangeIndicator();
+        
+        // Create new indicator
+        this.aiExchangeIndicator = document.createElement('div');
+        this.aiExchangeIndicator.className = 'ai-exchange-indicator';
+        this.aiExchangeIndicator.innerHTML = `
+            <span class="ai-icon">🤖🔄🤖</span>
+            <span class="ai-text">AI Conversation - Exchange ${data.exchangeNumber}/${data.maxExchanges}</span>
+            <span class="eavesdrop-text">(You are observing)</span>
+        `;
+        
+        // Insert at the top of content
+        this.contentElement.insertBefore(this.aiExchangeIndicator, this.contentElement.firstChild);
+    }
+    
+    private hideAIExchangeIndicator() {
+        if (this.aiExchangeIndicator && this.aiExchangeIndicator.parentNode) {
+            this.aiExchangeIndicator.parentNode.removeChild(this.aiExchangeIndicator);
+            this.aiExchangeIndicator = undefined;
         }
     }
 

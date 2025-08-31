@@ -18,6 +18,7 @@ import { AIGameEngineService, type AIActionContext } from './AIGameEngineService
 import { TacticalExecutor, TacticalDirective } from './TacticalExecutor';
 import { CombatStances } from './CombatStances';
 import { StoryCommandExecutor, ItemSpawnCommand } from './StoryCommandExecutor';
+import { CharacterPositioningError } from '../errors/CharacterPositioningError';
 import { StoryPlanner } from './StoryPlanner';
 import { WorldState } from './WorldState';
 import { ICharacter, ICoord, Direction, IOriginStory, IStoryState, IScreenContext } from '../interfaces';
@@ -660,20 +661,61 @@ export class AIController extends EventBus<
                 await this.executeSpeech(validatedCommand, character);
                 break;
             case 'character':
-                await this.spawnCharacters(validatedCommand);
+                try {
+                    await this.spawnCharacters(validatedCommand);
+                } catch (error) {
+                    if (error instanceof CharacterPositioningError) {
+                        console.error('[AI] Character spawn positioning failed:', error.message);
+                        await this.handlePositioningError(error, validatedCommand as CharacterCommand);
+                    } else {
+                        throw error;
+                    }
+                }
                 break;
             case 'map':
                 // Convert DeepReadonly<IStoryState> to IStoryState for story executor
                 const storyStateForMap = storyState ? JSON.parse(JSON.stringify(storyState)) as IStoryState : undefined;
-                await this.storyExecutor.executeMapCommand(validatedCommand as MapCommand, storyStateForMap);
+                try {
+                    await this.storyExecutor.executeMapCommand(validatedCommand as MapCommand, storyStateForMap);
+                } catch (error) {
+                    if (error instanceof CharacterPositioningError) {
+                        console.error('[AI] Character positioning failed:', error.message);
+                        // Send error feedback to AI and request correction
+                        await this.handlePositioningError(error, validatedCommand as MapCommand);
+                    } else {
+                        throw error;
+                    }
+                }
                 break;
             case 'storyline':
                 // Convert DeepReadonly<IStoryState> to IStoryState for story executor
                 const storyStateForStoryline = storyState ? JSON.parse(JSON.stringify(storyState)) as IStoryState : undefined;
-                await this.storyExecutor.executeStorylineCommand(validatedCommand as StorylineCommand, storyStateForStoryline);
+                try {
+                    await this.storyExecutor.executeStorylineCommand(validatedCommand as StorylineCommand, storyStateForStoryline);
+                } catch (error) {
+                    if (error instanceof CharacterPositioningError) {
+                        console.error('[AI] Character positioning failed in storyline:', error.message);
+                        // For storyline errors, we may need to regenerate the entire scene
+                        await this.handlePositioningError(error, validatedCommand as StorylineCommand);
+                    } else {
+                        throw error;
+                    }
+                }
                 break;
             case 'item':
                 await this.storyExecutor.executeItemSpawnCommand(validatedCommand as ItemSpawnCommand);
+                break;
+            case 'character':
+                try {
+                    await this.spawnCharacters(validatedCommand);
+                } catch (error) {
+                    if (error instanceof CharacterPositioningError) {
+                        console.error('[AI] Character spawn positioning failed:', error.message);
+                        await this.handlePositioningError(error, validatedCommand as CharacterCommand);
+                    } else {
+                        throw error;
+                    }
+                }
                 break;
             default:
                 console.warn('[AI] Unknown command type:', validatedCommand.type);
@@ -1284,6 +1326,73 @@ export class AIController extends EventBus<
             c.name.toLowerCase() === (source || '').toLowerCase()
         );
 
+        // Check if the target is specified and is another AI character
+        const targetCharName = speechCmd.target || speechCmd.listener;
+        if (targetCharName && speaker) {
+            const targetChar = this.state.characters.find((c: DeepReadonly<ICharacter>) =>
+                c.name.toLowerCase() === targetCharName.toLowerCase() && c.health > 0
+            );
+            
+            if (targetChar && targetChar.player !== 'human') {
+                // This is an AI-to-AI conversation
+                const distance = this.getDistance(speaker.position, targetChar.position);
+                const hasLineOfSight = this.checkLineOfSight(speaker.position, targetChar.position, true);
+                
+                if (distance <= 8 && hasLineOfSight) {
+                    // Check if human player is nearby to observe
+                    const humanCharacters = this.state.characters.filter((c: DeepReadonly<ICharacter>) =>
+                        c.player === 'human' && c.health > 0
+                    );
+                    
+                    let isEavesdropping = false;
+                    for (const human of humanCharacters) {
+                        const distToConversation = Math.min(
+                            this.getDistance(human.position, speaker.position),
+                            this.getDistance(human.position, targetChar.position)
+                        );
+                        if (distToConversation <= 15) {
+                            isEavesdropping = true;
+                            break;
+                        }
+                    }
+                    
+                    // Start AI-to-AI conversation
+                    console.log(`[AI] Starting AI-to-AI conversation between ${speaker.name} and ${targetChar.name}`);
+                    
+                    // Show the popup for the conversation
+                    this.dispatch(UpdateStateEvent.uiPopup, {
+                        popupId: 'main-popup',
+                        popupState: {
+                            type: 'conversation',
+                            visible: true,
+                            position: undefined,
+                            data: {
+                                title: `${speaker.name} y ${targetChar.name} - Conversación AI`
+                            }
+                        }
+                    });
+                    
+                    // Wait for popup to be ready
+                    setTimeout(() => {
+                        // Dispatch AI-to-AI conversation start event
+                        this.dispatch(ConversationEvent.startAIToAI, {
+                            speaker: speaker,
+                            listener: targetChar,
+                            isEavesdropping: isEavesdropping
+                        });
+                        
+                        // End the AI turn
+                        this.isForcedTurnEnd = true;
+                        this.isProcessingTurn = true;
+                        this.isProcessingMultipleCharacters = false;
+                        this.endAITurn(true);
+                    }, 200);
+                    
+                    return;
+                }
+            }
+        }
+
         // Find any human-controlled character that's in conversation range
         const humanCharacters = this.state.characters.filter((c: DeepReadonly<ICharacter>) =>
             c.player === 'human' && c.health > 0
@@ -1769,6 +1878,72 @@ export class AIController extends EventBus<
             });
         } catch (error) {
             console.error('[AI] Error updating WorldState:', error);
+        }
+    }
+
+    private async handlePositioningError(error: CharacterPositioningError, originalCommand: AICommand): Promise<void> {
+        console.error('[AI] Handling positioning error for character:', error.characterName);
+        console.error('[AI] Available rooms:', error.availableRooms);
+        
+        // Build error context for the AI
+        const errorContext = {
+            error: 'CHARACTER_POSITIONING_FAILED',
+            failedCommand: originalCommand,
+            characterName: error.characterName,
+            requestedLocation: error.requestedLocation,
+            availableRooms: error.availableRooms,
+            mapBounds: error.mapBounds,
+            instructions: [
+                'The character location you specified is invalid.',
+                'Please use one of these exact room names:',
+                ...error.availableRooms.slice(0, 5).map(room => `  - "${room}"`),
+                'Or use coordinates within bounds: 0-' + (error.mapBounds.width - 1) + ' x 0-' + (error.mapBounds.height - 1),
+                'IMPORTANT: Use hyphen (-) separator for room names, not slash (/)'
+            ].join('\n')
+        };
+        
+        // Request correction from AI
+        try {
+            if (this.state && this.contextBuilder) {
+                // Use first character or create dummy for context
+                const contextCharacter = this.state.characters[0] || {
+                    name: 'system',
+                    position: { x: 0, y: 0 },
+                    health: 100,
+                    actions: { pointsLeft: 100 }
+                } as DeepReadonly<ICharacter>;
+                const context = this.contextBuilder.buildTurnContext(contextCharacter, this.state);
+                // Add error context to the AI request
+                const contextWithError = {
+                    ...context,
+                    positioningError: errorContext
+                } as unknown as GameContext;
+                
+                console.log('[AI] Requesting corrected command after positioning error');
+                const response = await this.gameEngineService.requestAIAction(contextWithError as unknown as AIActionContext);
+                
+                if (response.command) {
+                    const validatedCommand = this.commandParser.validate(response.command);
+                    if (validatedCommand) {
+                        console.log('[AI] Retrying with corrected command:', validatedCommand.type);
+                        // Get a dummy character for the retry
+                        const dummyCharacter = (this.state?.characters[0] || {
+                            name: 'system',
+                            position: { x: 0, y: 0 }
+                        }) as DeepReadonly<ICharacter>;
+                        await this.executeAICommand(validatedCommand, dummyCharacter);
+                    } else {
+                        console.error('[AI] Failed to get valid corrected command');
+                    }
+                } else {
+                    console.error('[AI] No corrected command received from AI');
+                }
+            } else {
+                console.error('[AI] Cannot handle positioning error - no state or context builder');
+            }
+        } catch (retryError) {
+            console.error('[AI] Failed to recover from positioning error:', retryError);
+            // Continue game despite error to avoid complete failure
         }
     }
 

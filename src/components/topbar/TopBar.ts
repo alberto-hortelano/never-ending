@@ -6,6 +6,7 @@ import { NetworkService } from "../../common/services/NetworkService";
 import { i18n } from "../../common/i18n/i18n";
 import { EnvironmentService } from "../../common/services/EnvironmentService";
 import "../developmentui/DevelopmentUI";
+import "../tooltip/Tooltip";
 
 export default class TopBar extends Component {
     protected override hasCss = true;

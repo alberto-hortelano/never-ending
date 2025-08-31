@@ -205,6 +205,8 @@ export default class DevelopmentUI extends Component {
             if (toggleBtn) {
                 toggleBtn.classList.toggle('active', this.cacheBarVisible);
             }
+            
+            this.updateBarPositions(root);
         }
     }
 
@@ -355,6 +357,8 @@ export default class DevelopmentUI extends Component {
             if (toggleBtn) {
                 toggleBtn.classList.toggle('active', this.logsBarVisible);
             }
+            
+            this.updateBarPositions(root);
         }
     }
 
@@ -423,6 +427,36 @@ export default class DevelopmentUI extends Component {
             if (toggleBtn) {
                 toggleBtn.classList.toggle('active', this.storyBarVisible);
             }
+            
+            this.updateBarPositions(root);
+        }
+    }
+    
+    private updateBarPositions(root: ShadowRoot) {
+        const mainBarHeight = 28; // Height of main bar
+        const subBarHeight = 32; // Height of each sub bar
+        
+        const cacheBar = root.querySelector('#cache-bar') as HTMLElement;
+        const logsBar = root.querySelector('#logs-bar') as HTMLElement;
+        const storyBar = root.querySelector('#story-bar') as HTMLElement;
+        
+        let currentTop = mainBarHeight;
+        
+        // Position cache bar
+        if (cacheBar && !cacheBar.classList.contains('hidden')) {
+            cacheBar.style.top = `${currentTop}px`;
+            currentTop += subBarHeight;
+        }
+        
+        // Position logs bar
+        if (logsBar && !logsBar.classList.contains('hidden')) {
+            logsBar.style.top = `${currentTop}px`;
+            currentTop += subBarHeight;
+        }
+        
+        // Position story bar
+        if (storyBar && !storyBar.classList.contains('hidden')) {
+            storyBar.style.top = `${currentTop}px`;
         }
     }
 }

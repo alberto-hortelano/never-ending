@@ -4,9 +4,10 @@ import type { State } from "./State";
 
 import {
     EventBus, StateChangeEvent, StateChangeEventsMap, UpdateStateEvent, UpdateStateEventsMap,
-    ConversationEvent, ConversationEventsMap, ConversationStartData, ConversationUpdateData
+    ConversationEvent, ConversationEventsMap, ConversationStartData, ConversationUpdateData,
+    AIToAIConversationData
 } from "./events";
-import { conversationSystemPrompt, characterContext } from "../prompts/conversationPrompts";
+import { conversationSystemPrompt, characterContext, aiToAIConversationPrompt, getAIToAIContext } from "../prompts/conversationPrompts";
 import { AIGameEngineService } from './services/AIGameEngineService';
 
 export class Conversation extends EventBus<
@@ -22,6 +23,11 @@ export class Conversation extends EventBus<
     private readonly maxMessageLength = 1000;
     private aiService: AIGameEngineService;
     private storyState?: DeepReadonly<IStoryState>;
+    private isAIToAIConversation = false;
+    private aiToAIExchangeCount = 0;
+    private maxAIToAIExchanges = 4;
+    private currentAISpeaker?: DeepReadonly<ICharacter>;
+    private currentAIListener?: DeepReadonly<ICharacter>;
 
     constructor(state?: State) {
         super();
@@ -46,9 +52,28 @@ export class Conversation extends EventBus<
             this.startConversation(data.talkingCharacter, data.targetCharacter);
         });
 
+        // Listen for AI-to-AI conversation start
+        this.listen(ConversationEvent.startAIToAI, (data: AIToAIConversationData) => {
+            this.startAIToAIConversation(data.speaker, data.listener, data.isEavesdropping);
+        });
+
         // Listen for continue conversation
         this.listen(ConversationEvent.continue, (answer: string) => {
-            this.continueConversation(answer);
+            if (this.isAIToAIConversation) {
+                this.continueAIToAIConversation();
+            } else {
+                this.continueConversation(answer);
+            }
+        });
+
+        // Listen for player interrupt in AI-to-AI conversation
+        this.listen(ConversationEvent.playerInterrupt, () => {
+            this.handlePlayerInterrupt();
+        });
+
+        // Listen for skip conversation
+        this.listen(ConversationEvent.skipConversation, () => {
+            this.skipAIToAIConversation();
         });
     }
 
@@ -414,6 +439,183 @@ export class Conversation extends EventBus<
                 answers: ['Está bien', 'Toma tu tiempo', 'Intentemos de nuevo']
             };
         }
+    }
+
+    private async startAIToAIConversation(speaker: DeepReadonly<ICharacter>, listener: DeepReadonly<ICharacter>, isEavesdropping: boolean) {
+        if (this.isLoading) return;
+
+        this.isLoading = true;
+        this.isAIToAIConversation = true;
+        this.aiToAIExchangeCount = 1;
+        this.currentAISpeaker = speaker;
+        this.currentAIListener = listener;
+
+        try {
+            // Build story context
+            const storyContext = this.buildStoryContext();
+            
+            // Create context for AI-to-AI conversation
+            const aiContext = getAIToAIContext(speaker.name, listener.name, this.aiToAIExchangeCount, this.maxAIToAIExchanges);
+            const contextMessage: IMessage = {
+                role: 'user',
+                content: aiContext
+            };
+
+            let contextContent = aiToAIConversationPrompt;
+            if (storyContext) {
+                contextContent += '\n' + storyContext;
+            }
+            contextContent += '\n\n' + contextMessage.content;
+
+            const fullContextMessage: IMessage = {
+                role: 'user',
+                content: contextContent
+            };
+
+            const messages = [...this.messages, fullContextMessage];
+
+            // Call API for first AI speaker
+            const response = await this.callAIService(messages);
+
+            // Parse and dispatch AI exchange
+            const conversationData = this.parseResponse(response.content);
+            
+            // Dispatch as AI exchange event
+            this.dispatch(ConversationEvent.aiExchange, {
+                speaker: speaker.name,
+                listener: listener.name,
+                content: conversationData.content,
+                exchangeNumber: this.aiToAIExchangeCount,
+                maxExchanges: this.maxAIToAIExchanges,
+                isLastExchange: false
+            });
+
+            // Update messages state
+            this.dispatch(UpdateStateEvent.updateMessages, response.messages);
+
+            // Also update the conversation UI
+            this.dispatch(ConversationEvent.update, {
+                ...conversationData,
+                source: speaker.name,
+                // For AI-to-AI, provide control options to the player
+                answers: isEavesdropping ? ['Continue', 'Interrupt', 'Skip'] : ['Continue Listening', 'Skip']
+            });
+
+        } catch (error) {
+            console.error('Error starting AI-to-AI conversation:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Failed to start AI-to-AI conversation';
+            this.dispatch(ConversationEvent.error, errorMessage);
+            this.isAIToAIConversation = false;
+        } finally {
+            this.isLoading = false;
+        }
+    }
+
+    private async continueAIToAIConversation() {
+        if (this.isLoading || !this.currentAISpeaker || !this.currentAIListener) return;
+
+        this.isLoading = true;
+        this.aiToAIExchangeCount++;
+
+        // Swap speaker and listener for the response
+        const tempSpeaker = this.currentAISpeaker;
+        this.currentAISpeaker = this.currentAIListener;
+        this.currentAIListener = tempSpeaker;
+
+        try {
+            const storyContext = this.buildStoryContext();
+            const isLastExchange = this.aiToAIExchangeCount >= this.maxAIToAIExchanges;
+            
+            // Create context for the response
+            const aiContext = getAIToAIContext(this.currentAISpeaker.name, this.currentAIListener.name, this.aiToAIExchangeCount, this.maxAIToAIExchanges);
+            const contextMessage: IMessage = {
+                role: 'user',
+                content: aiContext
+            };
+
+            let messageContent = contextMessage.content;
+            if (storyContext) {
+                messageContent = storyContext + '\n\n' + messageContent;
+            }
+            
+            const playerMessage: IMessage = {
+                role: 'user',
+                content: messageContent
+            };
+
+            // Call AI service for response
+            const response = await this.callAIService([...this.messages, playerMessage]);
+
+            // Parse and dispatch
+            const conversationData = this.parseResponse(response.content);
+            
+            // Dispatch AI exchange event
+            this.dispatch(ConversationEvent.aiExchange, {
+                speaker: this.currentAISpeaker.name,
+                listener: this.currentAIListener.name,
+                content: conversationData.content,
+                exchangeNumber: this.aiToAIExchangeCount,
+                maxExchanges: this.maxAIToAIExchanges,
+                isLastExchange: isLastExchange
+            });
+
+            // Update messages state
+            this.dispatch(UpdateStateEvent.updateMessages, response.messages);
+
+            // Update conversation UI
+            let answers: string[];
+            if (isLastExchange || conversationData.answers?.length === 0) {
+                // Conversation is ending
+                answers = [];
+                this.isAIToAIConversation = false;
+            } else {
+                // Continue with control options
+                answers = ['Continue', 'Interrupt', 'Skip'];
+            }
+
+            this.dispatch(ConversationEvent.update, {
+                ...conversationData,
+                source: this.currentAISpeaker.name,
+                answers: answers
+            });
+
+        } catch (error) {
+            console.error('Error continuing AI-to-AI conversation:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Failed to continue AI-to-AI conversation';
+            this.dispatch(ConversationEvent.error, errorMessage);
+            this.isAIToAIConversation = false;
+        } finally {
+            this.isLoading = false;
+        }
+    }
+
+    private handlePlayerInterrupt() {
+        // Player interrupts the AI-to-AI conversation
+        this.isAIToAIConversation = false;
+        this.aiToAIExchangeCount = 0;
+
+        // Convert to normal conversation mode with the player
+        // The player character now joins the conversation
+        this.dispatch(ConversationEvent.update, {
+            type: 'speech',
+            source: 'Player',
+            content: 'Disculpen la interrupción...',
+            answers: ['¿De qué están hablando?', 'Necesito hablar con ustedes', 'Continúen, solo escucho']
+        });
+    }
+
+    private async skipAIToAIConversation() {
+        // Skip to the end of the AI-to-AI conversation
+        this.isAIToAIConversation = false;
+        this.aiToAIExchangeCount = 0;
+
+        // Show a summary or final state
+        this.dispatch(ConversationEvent.update, {
+            type: 'speech',
+            source: 'Narrador',
+            content: 'La conversación entre los personajes continúa en segundo plano...',
+            answers: []
+        });
     }
 
 }

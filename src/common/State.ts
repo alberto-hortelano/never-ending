@@ -36,7 +36,12 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap & State
         // For preview states, skip event dispatching to avoid affecting the main game
         this.gameState = new GameState(isPreview ? undefined : () => this.save(), isPreview);
         this.mapState = new MapState(isPreview ? undefined : () => this.save(), isPreview);
-        this.characterState = new CharacterState(() => this.gameState.getCurrentTurn(), isPreview ? undefined : () => this.save(), isPreview);
+        this.characterState = new CharacterState(
+            () => this.gameState.getCurrentTurn(),
+            isPreview ? undefined : () => this.save(),
+            isPreview,
+            () => this.mapState.getMapBounds()
+        );
         this.messageState = new MessageState(isPreview ? undefined : () => this.save());
         this.uiState = new UIState();
         // Only set up UIStateService for non-preview states

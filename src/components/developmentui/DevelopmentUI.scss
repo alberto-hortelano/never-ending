@@ -1,18 +1,18 @@
 @use '../variables' as *;
 
 :host {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 10000;
+    display: block;
+    width: 100%;
     font-family: monospace;
+    position: relative;
+    z-index: 10000;
 }
 
 .development-ui {
     display: flex;
     flex-direction: column;
     font-size: $font-size-xs;
+    position: relative;
 }
 
 // Main dev bar - always visible, minimal height
@@ -56,8 +56,12 @@
     }
 }
 
-// Sub bars - toggleable, displayed below main bar
+// Sub bars - toggleable, floating overlays
 .dev-sub-bar {
+    position: fixed;
+    top: 28px; // Height of main bar
+    left: 0;
+    right: 0;
     display: flex;
     align-items: center;
     gap: $spacing-md;
@@ -67,6 +71,7 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     transition: all $transition-duration-base ease-in-out;
     min-height: 32px;
+    z-index: 9999;
 
     &.hidden {
         display: none;
@@ -78,7 +83,7 @@
     }
 }
 
-// Cache bar specific styles
+// Cache bar specific styles - second floating bar
 .cache-bar {
     .cache-info {
         display: flex;
@@ -234,7 +239,7 @@
     }
 }
 
-// Story bar specific styles
+// Story bar specific styles - third floating bar
 .story-bar {
     padding: $spacing-sm $spacing-md;
     
@@ -244,7 +249,7 @@
     }
 }
 
-// Logs bar specific styles
+// Logs bar specific styles - can be second or third floating bar
 .logs-bar {
     padding: $spacing-sm $spacing-md;
     flex-direction: column;

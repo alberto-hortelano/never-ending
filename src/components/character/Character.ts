@@ -1,10 +1,10 @@
-import { ControlsEvent, StateChangeEvent, UpdateStateEvent } from "../../common/events";
+import { ControlsEvent, StateChangeEvent, UpdateStateEvent, GUIEvent } from "../../common/events";
 import { Component } from "../Component";
 import type Movable from "../movable/Movable";
 import "../movable/Movable";
 import { CharacterService } from "../../common/services/CharacterService";
 import { NetworkService } from "../../common/services/NetworkService";
-import type { ICharacterVisualState, Direction, ICharacter } from "../../common/interfaces";
+import type { ICharacterVisualState, Direction, ICharacter, TooltipData } from "../../common/interfaces";
 import type { DeepReadonly } from "../../common/helpers/types";
 
 export default class Character extends Component {
@@ -178,6 +178,62 @@ export default class Character extends Component {
             e.preventDefault(); // Prevent default touch behavior
             handleInteraction();
         }, { passive: false }); // Mark as non-passive since we call preventDefault
+        
+        // Add hover listeners for tooltip
+        this.addEventListener('mouseenter', () => {
+            const tooltipData: TooltipData = {
+                text: stateCharacter.name || this.id,
+                type: this.getTooltipType(stateCharacter),
+                details: []
+            };
+            
+            // Add player info
+            if (stateCharacter.player) {
+                tooltipData.details?.push({
+                    label: 'Player',
+                    value: stateCharacter.player
+                });
+            }
+            
+            // Add health info
+            tooltipData.details?.push({
+                label: 'Health',
+                value: `${stateCharacter.health}/${stateCharacter.maxHealth}`,
+                color: CharacterService.calculateHealthColor((stateCharacter.health / stateCharacter.maxHealth) * 100)
+            });
+            
+            // Add race info
+            if (stateCharacter.race) {
+                tooltipData.details?.push({
+                    label: 'Race',
+                    value: stateCharacter.race
+                });
+            }
+            
+            this.dispatch(GUIEvent.tooltipShow, tooltipData);
+        });
+        
+        this.addEventListener('mouseleave', () => {
+            this.dispatch(GUIEvent.tooltipHide, undefined);
+        });
+        
+        // Add touch handler for tooltip on mobile
+        this.addEventListener('touchstart', () => {
+            const tooltipData: TooltipData = {
+                text: stateCharacter.name || this.id,
+                type: this.getTooltipType(stateCharacter),
+                details: [],
+                autoHide: true // Auto-hide on mobile
+            };
+            
+            // Add simplified details for mobile
+            tooltipData.details?.push({
+                value: `HP: ${stateCharacter.health}/${stateCharacter.maxHealth}`,
+                color: CharacterService.calculateHealthColor((stateCharacter.health / stateCharacter.maxHealth) * 100)
+            });
+            
+            this.dispatch(GUIEvent.tooltipShow, tooltipData);
+        }, { passive: true });
 
         // Get initial turn from state
         const gameState = this.getState();
@@ -454,6 +510,25 @@ export default class Character extends Component {
         });
     }
 
+    private getTooltipType(character: DeepReadonly<ICharacter>): 'character' | 'enemy' | 'ally' {
+        const currentPlayer = this.getState()?.game.turn;
+        
+        if (character.player === currentPlayer) {
+            return 'ally';
+        }
+        
+        // Check if character is on a hostile team
+        const teams = this.getState()?.game.teams;
+        if (teams && currentPlayer) {
+            const playerTeam = teams[currentPlayer];
+            if (playerTeam && playerTeam.hostile.includes(character.player)) {
+                return 'enemy';
+            }
+        }
+        
+        return 'character';
+    }
+    
     private canControlThisCharacter(): boolean {
         // In multiplayer, check if this character belongs to the current network player
         // and it's their turn

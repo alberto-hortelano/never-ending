@@ -1,5 +1,5 @@
-import { ControlsEvent, StateChangeEvent } from "../../common/events";
-import { ICoord, ICellVisualState, IDoor } from "../../common/interfaces";
+import { ControlsEvent, StateChangeEvent, GUIEvent } from "../../common/events";
+import { ICoord, ICellVisualState, IDoor, TooltipData } from "../../common/interfaces";
 import { Component } from "../Component";
 import "../door/Door";
 
@@ -95,9 +95,56 @@ export default class Cell extends Component {
     }
     private onMouseEnter() {
         this.dispatch(ControlsEvent.cellMouseEnter, this.coords);
+        
+        // Show tooltip with cell coordinates
+        const tooltipData: TooltipData = {
+            text: `Cell (${this.coords.x}, ${this.coords.y})`,
+            type: 'cell',
+            details: []
+        };
+        
+        const state = this.getState();
+        
+        // Check for character at this position
+        if (state?.characters) {
+            const characterAtCell = state.characters.find(
+                char => char.position.x === this.coords.x && char.position.y === this.coords.y
+            );
+            if (characterAtCell) {
+                tooltipData.text = characterAtCell.name || `Cell (${this.coords.x}, ${this.coords.y})`;
+                tooltipData.type = 'character';
+                tooltipData.details?.push({
+                    label: 'Health',
+                    value: `${characterAtCell.health}/${characterAtCell.maxHealth}`
+                });
+            }
+        }
+        
+        // Get room name from cell locations (only if not showing character)
+        if (tooltipData.type === 'cell' && state?.map) {
+            const cell = state.map[this.coords.y]?.[this.coords.x];
+            if (cell?.locations && cell.locations.length > 0) {
+                // Use the first location as the room name
+                tooltipData.subtext = cell.locations[0];
+            }
+        }
+        
+        // Override with terrain info if cell has special content
+        if (this.classList.contains('wall')) {
+            tooltipData.subtext = 'Wall';
+            tooltipData.type = 'cell';
+            tooltipData.details = [];
+        } else if (this.classList.contains('door')) {
+            tooltipData.subtext = 'Door';
+            tooltipData.type = 'door';
+            tooltipData.details = [];
+        }
+        
+        this.dispatch(GUIEvent.tooltipShow, tooltipData);
     }
     private onMouseLeave() {
         this.dispatch(ControlsEvent.cellMouseLeave, this.coords);
+        this.dispatch(GUIEvent.tooltipHide, undefined);
     }
     private onTouchStart(e: TouchEvent) {
         // Prevent default to avoid scrolling
@@ -105,6 +152,37 @@ export default class Cell extends Component {
         
         // Dispatch touch enter event for path preview
         this.dispatch(ControlsEvent.cellMouseEnter, this.coords);
+        
+        // Show brief tooltip on mobile
+        const tooltipData: TooltipData = {
+            text: `(${this.coords.x}, ${this.coords.y})`,
+            type: 'cell',
+            autoHide: true
+        };
+        
+        const state = this.getState();
+        
+        // Check for character at this position on mobile
+        if (state?.characters) {
+            const characterAtCell = state.characters.find(
+                char => char.position.x === this.coords.x && char.position.y === this.coords.y
+            );
+            if (characterAtCell) {
+                tooltipData.text = characterAtCell.name || tooltipData.text;
+                tooltipData.type = 'character';
+                tooltipData.subtext = `HP: ${characterAtCell.health}/${characterAtCell.maxHealth}`;
+            }
+        }
+        
+        // Get room name from cell locations for mobile (only if not showing character)
+        if (tooltipData.type === 'cell' && state?.map) {
+            const cell = state.map[this.coords.y]?.[this.coords.x];
+            if (cell?.locations && cell.locations.length > 0) {
+                tooltipData.subtext = cell.locations[0];
+            }
+        }
+        
+        this.dispatch(GUIEvent.tooltipShow, tooltipData);
         
         // Dispatch click for all interaction modes on mobile
         // This enables: movement (tap to preview, tap to confirm), 

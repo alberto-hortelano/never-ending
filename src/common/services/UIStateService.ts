@@ -332,7 +332,7 @@ export class UIStateService extends EventBus<UpdateStateEventsMap, StateChangeEv
         if (highlightType === 'path') {
             const hasPathHighlight = existingCell?.highlightTypes?.includes('path');
             const hasCorrectClass = existingCell?.classList?.includes('path');
-            
+
             if (overwatchCell) {
                 const mergedTypes = this.mergeHighlightTypes(overwatchCell.highlightTypes, 'path');
                 if (!existingCell || JSON.stringify(existingCell.highlightTypes) !== JSON.stringify(mergedTypes) || !hasCorrectClass) {
@@ -358,7 +358,7 @@ export class UIStateService extends EventBus<UpdateStateEventsMap, StateChangeEv
             }
         } else if (highlightType === 'movement') {
             const hasMovementHighlight = existingCell?.highlightTypes?.includes('movement');
-            
+
             if (overwatchCell) {
                 const mergedTypes = this.mergeHighlightTypes(overwatchCell.highlightTypes, 'movement');
                 if (!existingCell || JSON.stringify(existingCell.highlightTypes) !== JSON.stringify(mergedTypes)) {
@@ -411,7 +411,7 @@ export class UIStateService extends EventBus<UpdateStateEventsMap, StateChangeEv
     private onUIHighlights(data: UpdateStateEventsMap[UpdateStateEvent.uiHighlights]) {
         const startTime = performance.now();
         const uiState = this.getUIState();
-        
+
         // Categorize existing highlighted cells
         const { previouslyHighlighted, overwatchCells } = this.categorizeHighlightedCells(uiState.visualStates.cells);
 
@@ -440,11 +440,9 @@ export class UIStateService extends EventBus<UpdateStateEventsMap, StateChangeEv
         const cellsToKeep = this.collectCellsToKeep(data, uiState.transientUI.highlights);
 
         // Only clear cells that are no longer needed (but not overwatch cells)
-        let clearedCount = 0;
         previouslyHighlighted.forEach(cellKey => {
             if (!cellsToKeep.has(cellKey)) {
                 cellUpdates.push({ cellKey, visualState: null });
-                clearedCount++;
             }
         });
 
@@ -487,11 +485,6 @@ export class UIStateService extends EventBus<UpdateStateEventsMap, StateChangeEv
                     }
                 }
             });
-        }
-
-        // Only log significant changes
-        if (clearedCount > 10 || cellUpdates.length > 30) {
-            console.log(`[UIStateService] Large update: cleared=${clearedCount}, updates=${cellUpdates.length}`);
         }
 
         // Process reachable cells
