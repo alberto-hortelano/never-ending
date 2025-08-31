@@ -49,4 +49,15 @@ export class MapState extends EventBus<UpdateStateEventsMap, StateChangeEventsMa
     getCellMap(): Map<ICoord, ICell> {
         return this.cellMap;
     }
+
+    getMapBounds(): { width: number; height: number } | null {
+        if (!this.#map || this.#map.length === 0) {
+            return null;
+        }
+        
+        const height = this.#map.length;
+        const width = this.#map[0]?.length || 0;
+        
+        return { width, height };
+    }
 }

@@ -158,6 +158,13 @@ Used for scene transitions, travel sequences, or major plot developments.
 
 ### 2. Map Definition
 Generates new playable areas with buildings, terrain, initial character positions, and doors.
+
+**CRITICAL - Character Location Format:**
+- **MUST USE**: "Building Name - Room Name" (with hyphen separator)
+- **DO NOT USE**: "Building Name/Room Name" (slash will cause positioning errors)
+- **Alternative**: Use coordinates "x,y" within map bounds
+- **Special values**: "center" for map center
+
 ```json
 {
   "type": "map",
@@ -183,7 +190,7 @@ Generates new playable areas with buildings, terrain, initial character position
     "description": "Character background and personality",
     "speed": "slow|medium|fast",
     "orientation": "top|right|bottom|left",
-    "location": "building/room/character name to spawn near",
+    "location": "Building Name - Room Name",
     "palette": {
       "skin": "css-color",
       "helmet": "css-color",
@@ -206,6 +213,12 @@ Generates new playable areas with buildings, terrain, initial character position
 
 ### 3. Character Spawn
 Introduces new characters during gameplay.
+
+**IMPORTANT - Location Format:**
+- Use exact room names from the generated map: "Building Name - Room Name"
+- Or use coordinates: "25,30" (must be within map bounds)
+- NEVER use slash separator ("/") - it will cause positioning errors
+
 ```json
 {
   "type": "character",
@@ -215,7 +228,7 @@ Introduces new characters during gameplay.
     "description": "Character details",
     "speed": "slow|medium|fast",
     "orientation": "top|right|bottom|left",
-    "location": "spawn location reference"
+    "location": "Building Name - Room Name"
   }]
 }
 ```
@@ -324,6 +337,7 @@ Manages conversations and player decision points.
 6. **Evolve the story:** Each scene should advance plot or character development
 7. **Spanish only:** All player-visible text must be in Spanish
 8. **ALWAYS INCLUDE ACTION:** Every storyline message must include an action field that triggers gameplay (map, character, movement, or attack). Pure narrative without action is forbidden.
+9. **CHARACTER POSITIONING:** Always use exact room names with hyphen separator ("Building - Room") or valid coordinates. Invalid positions will cause game errors and break immersion.
 
 ## Example Scenarios
 

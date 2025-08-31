@@ -1,5 +1,5 @@
 import type { DeepReadonly } from "../helpers/types";
-import type { ICharacter, ICoord } from "../interfaces";
+import type { ICharacter, ICoord, TooltipData } from "../interfaces";
 
 /** Events to communicate with UI */
 export enum GUIEvent {
@@ -13,6 +13,9 @@ export enum GUIEvent {
     shootingModeStart = 'GUIEvent.shootingModeStart',
     shootingModeEnd = 'GUIEvent.shootingModeEnd',
     damageNumber = 'GUIEvent.damageNumber',
+    tooltipShow = 'GUIEvent.tooltipShow',
+    tooltipHide = 'GUIEvent.tooltipHide',
+    tooltipUpdate = 'GUIEvent.tooltipUpdate',
 }
 
 export interface GUIEventsMap {
@@ -34,4 +37,7 @@ export interface GUIEventsMap {
         damage: number;
         isCritical: boolean;
     }>;
+    [GUIEvent.tooltipShow]: TooltipData;
+    [GUIEvent.tooltipHide]: void;
+    [GUIEvent.tooltipUpdate]: TooltipData;
 }

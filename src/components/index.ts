@@ -20,3 +20,4 @@ export * from './originselection/OriginSelection';
 export * from './storyjournal/StoryJournal';
 export * from './loadingscreen/LoadingScreen';
 export * from './storydebug/StoryDebug';
+export { default as Tooltip } from './tooltip/Tooltip';

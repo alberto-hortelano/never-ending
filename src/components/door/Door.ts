@@ -1,6 +1,6 @@
 import { Component } from "../Component";
-import { IDoor } from "../../common/interfaces";
-import { ControlsEvent, StateChangeEvent } from "../../common/events";
+import { IDoor, TooltipData } from "../../common/interfaces";
+import { ControlsEvent, StateChangeEvent, GUIEvent } from "../../common/events";
 import { DeepReadonly } from "../../common/helpers/types";
 
 export default class Door extends Component {
@@ -14,6 +14,9 @@ export default class Door extends Component {
     constructor() {
         super();
         this.addEventListener('click', this.onClick.bind(this));
+        this.addEventListener('mouseenter', this.onMouseEnter.bind(this));
+        this.addEventListener('mouseleave', this.onMouseLeave.bind(this));
+        this.addEventListener('touchstart', this.onTouchStart.bind(this), { passive: true });
     }
 
     override async connectedCallback(): Promise<ShadowRoot | undefined> {
@@ -104,6 +107,75 @@ export default class Door extends Component {
                 // Toggle regular door
                 console.log('Toggling door:', doorId);
             }
+        }
+    }
+    
+    private onMouseEnter() {
+        const doorType = this.getAttribute('door-type') || 'regular';
+        const isOpen = this.getAttribute('is-open') === 'true';
+        const isLocked = this.getAttribute('is-locked') === 'true';
+        
+        const tooltipData: TooltipData = {
+            text: this.getDoorTypeLabel(doorType),
+            type: 'door',
+            details: []
+        };
+        
+        // Add state info
+        if (doorType === 'transition') {
+            const title = this.title;
+            if (title && title !== 'Transition door') {
+                tooltipData.subtext = title;
+            }
+        } else {
+            let state = isOpen ? 'Open' : 'Closed';
+            if (isLocked) state = 'Locked';
+            tooltipData.details?.push({
+                label: 'State',
+                value: state,
+                color: isLocked ? '#ff6464' : (isOpen ? '#64ff64' : '#ffaa64')
+            });
+        }
+        
+        this.dispatch(GUIEvent.tooltipShow, tooltipData);
+    }
+    
+    private onMouseLeave() {
+        this.dispatch(GUIEvent.tooltipHide, undefined);
+    }
+    
+    private onTouchStart() {
+        const doorType = this.getAttribute('door-type') || 'regular';
+        const isOpen = this.getAttribute('is-open') === 'true';
+        const isLocked = this.getAttribute('is-locked') === 'true';
+        
+        const tooltipData: TooltipData = {
+            text: this.getDoorTypeLabel(doorType),
+            type: 'door',
+            autoHide: true
+        };
+        
+        if (doorType === 'transition') {
+            const title = this.title;
+            if (title && title !== 'Transition door') {
+                tooltipData.subtext = title;
+            }
+        } else {
+            let state = isLocked ? '🔒' : (isOpen ? '📂' : '📁');
+            tooltipData.subtext = state;
+        }
+        
+        this.dispatch(GUIEvent.tooltipShow, tooltipData);
+    }
+    
+    private getDoorTypeLabel(type: string): string {
+        switch (type) {
+            case 'transition':
+                return 'Exit';
+            case 'locked':
+                return 'Locked Door';
+            default:
+                return 'Door';
         }
     }
 }

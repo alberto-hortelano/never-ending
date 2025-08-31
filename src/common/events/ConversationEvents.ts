@@ -7,6 +7,10 @@ export enum ConversationEvent {
     update = 'ConversationEvent.update',
     error = 'ConversationEvent.error',
     executeAction = 'ConversationEvent.executeAction',
+    startAIToAI = 'ConversationEvent.startAIToAI',
+    aiExchange = 'ConversationEvent.aiExchange',
+    playerInterrupt = 'ConversationEvent.playerInterrupt',
+    skipConversation = 'ConversationEvent.skipConversation',
 }
 
 export interface ConversationStartData {
@@ -26,10 +30,29 @@ export interface ConversationActionData {
     action: string;
 }
 
+export interface AIToAIConversationData {
+    speaker: DeepReadonly<ICharacter>;
+    listener: DeepReadonly<ICharacter>;
+    isEavesdropping: boolean; // Whether player is observing
+}
+
+export interface AIExchangeData {
+    speaker: string;
+    listener: string;
+    content: string;
+    exchangeNumber: number;
+    maxExchanges: number;
+    isLastExchange: boolean;
+}
+
 export interface ConversationEventsMap {
     [ConversationEvent.start]: ConversationStartData;
     [ConversationEvent.continue]: string; // The answer text
     [ConversationEvent.update]: ConversationUpdateData;
     [ConversationEvent.error]: string;
     [ConversationEvent.executeAction]: ConversationActionData;
+    [ConversationEvent.startAIToAI]: AIToAIConversationData;
+    [ConversationEvent.aiExchange]: AIExchangeData;
+    [ConversationEvent.playerInterrupt]: void;
+    [ConversationEvent.skipConversation]: void;
 }

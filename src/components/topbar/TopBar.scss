@@ -22,7 +22,12 @@
     width: 100%;
     
     development-ui {
+        display: block;
         width: 100%;
+    }
+    
+    &:not([style*="display: none"]) {
+        display: block;
     }
 }
 
@@ -123,6 +128,18 @@
 .center-section {
     flex: 1 1 auto;
     justify-content: center;
+    position: relative;
+    
+    tooltip-display {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        margin-bottom: $spacing-xs;
+        min-width: 150px;
+        max-width: 300px;
+        z-index: $z-index-tooltip;
+    }
 }
 
 .right-section {

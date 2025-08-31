@@ -376,6 +376,49 @@
     }
 }
 
+// AI-to-AI conversation indicator
+.ai-exchange-indicator {
+    background: linear-gradient(135deg, rgba($color-info, 0.1), rgba($color-primary, 0.1));
+    border: $border-width solid rgba($color-info, 0.3);
+    border-radius: $border-radius-md;
+    padding: $spacing-md;
+    margin-bottom: $spacing-md;
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    animation: fadeIn $transition-duration-base ease-out;
+    
+    .ai-icon {
+        font-size: $font-size-lg;
+        animation: aiRotate 3s linear infinite;
+    }
+    
+    .ai-text {
+        flex: 1;
+        color: $color-info;
+        font-weight: $font-weight-medium;
+        font-size: $font-size-base;
+    }
+    
+    .eavesdrop-text {
+        color: $color-text-secondary;
+        font-size: $font-size-sm;
+        font-style: italic;
+    }
+}
+
+@keyframes aiRotate {
+    0% {
+        transform: rotate(0deg);
+    }
+    50% {
+        transform: rotate(180deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
 // Mobile adjustments
 .conversation-container {
     padding: $spacing-md;

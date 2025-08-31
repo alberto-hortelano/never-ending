@@ -28,6 +28,8 @@ export interface SpeechCommand extends AICommand {
     content: string;
     answers?: string[];
     action?: string;
+    target?: string;  // Target of the speech (for AI-to-AI conversations)
+    listener?: string; // Alternative field name for target
 }
 
 export interface CharacterCommand extends AICommand {

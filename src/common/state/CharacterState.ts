@@ -9,18 +9,26 @@ import {
     toAction,
     hasProperty
 } from "../helpers/typeGuards";
+import { CharacterPositioningError } from "../errors/CharacterPositioningError";
 
 export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEventsMap> {
     #characters: IState['characters'] = [];
     private getCurrentTurn: () => string;
     private onSave?: () => void;
     private skipEvents = false;
+    private getMapBounds?: () => { width: number; height: number } | null;
 
-    constructor(getCurrentTurn: () => string, onSave?: () => void, skipEvents = false) {
+    constructor(
+        getCurrentTurn: () => string,
+        onSave?: () => void,
+        skipEvents = false,
+        getMapBounds?: () => { width: number; height: number } | null
+    ) {
         super();
         this.getCurrentTurn = getCurrentTurn;
         this.onSave = onSave;
         this.skipEvents = skipEvents;
+        this.getMapBounds = getMapBounds;
 
         // Don't listen to events if this is a preview state
         if (!skipEvents) {
@@ -48,6 +56,24 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
         return character.player === this.getCurrentTurn();
     }
 
+    private validatePosition(position: { x: number; y: number }, characterName: string): void {
+        const mapBounds = this.getMapBounds?.();
+        
+        // If we don't have map bounds, use default 50x50
+        const maxX = mapBounds?.width || 50;
+        const maxY = mapBounds?.height || 50;
+        
+        // Check if position is outside bounds
+        if (position.x < 0 || position.x >= maxX || position.y < 0 || position.y >= maxY) {
+            throw new CharacterPositioningError(
+                characterName,
+                `${position.x},${position.y}`,
+                [], // No room info at this level
+                { width: maxX, height: maxY }
+            );
+        }
+    }
+
     private onCharacterPosition(characterData: UpdateStateEventsMap[UpdateStateEvent.characterPosition]) {
         const character = this.#characters.find(c => c.name === characterData.name);
         if (!character) {
@@ -60,12 +86,9 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
             return;
         }
 
-        // Check if position might be outside typical map bounds
-        if (characterData.position.x < 0 || characterData.position.y < 0 ||
-            characterData.position.x >= 50 || characterData.position.y >= 50) {
-            console.warn(`[Character Position] WARNING: ${characterData.name} positioned outside typical map bounds at (${characterData.position.x}, ${characterData.position.y})`);
-        }
-
+        // Validate position - throw error if invalid
+        this.validatePosition(characterData.position, characterData.name);
+        
         character.position = characterData.position;
         character.direction = characterData.direction;
 
@@ -86,6 +109,16 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
             return;
         }
 
+        // Validate all positions in the path
+        characterData.path.forEach((pos, index) => {
+            try {
+                this.validatePosition(pos, `${characterData.name} (path point ${index})`);
+            } catch (error) {
+                console.error(`[CharacterState] Invalid path point ${index} for ${characterData.name}:`, pos);
+                throw error;
+            }
+        });
+        
         character.path = [...characterData.path];
         const eventData = { ...structuredClone(character), fromNetwork };
         this.dispatch(StateChangeEvent.characterPath, eventData);
@@ -252,14 +285,11 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
             return;
         }
 
-        // Log character spawning to track positions
-        console.log(`[Character Position] Adding new character ${data.name} at position (${data.position.x}, ${data.position.y})`);
-
-        // Check if spawn position might be outside typical map bounds
-        if (data.position.x < 0 || data.position.y < 0 ||
-            data.position.x >= 50 || data.position.y >= 50) {
-            console.warn(`[Character Position] WARNING: ${data.name} being added outside typical map bounds at (${data.position.x}, ${data.position.y})`);
-        }
+        // Validate spawn position - throw error if invalid
+        this.validatePosition(data.position, data.name);
+        
+        // Log character spawning
+        console.log(`[Character Position] Adding new character ${data.name} at position (${data.position.x}, ${data.position.y})`)
 
         // Create full character object with defaults
         const newCharacter: ICharacter = {

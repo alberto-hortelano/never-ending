@@ -5,6 +5,7 @@ import type { ICharacter, IItem, IWeapon, IRoom, IDoor, Direction, IStoryState, 
 import { MapGenerator } from '../helpers/MapGenerator';
 import { DoorService } from './DoorService';
 import { weapons as availableWeapons, items as availableItems, baseCharacter } from '../../data/state';
+import { CharacterPositioningError } from '../errors/CharacterPositioningError';
 
 export interface ItemSpawnCommand extends AICommand {
     type: 'item';
@@ -490,6 +491,9 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
         const markPositionOccupied = (x: number, y: number): void => {
             occupiedPositions.add(`${x},${y}`);
         };
+        
+        // Collect available rooms for error reporting
+        const availableRooms = this.getAvailableRooms(map);
 
         // First, handle player and Data specially - they exist from getEmptyState()
         // We just need to update their positions
@@ -503,8 +507,13 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                     const position = this.findSpawnPosition(charData.location, map, occupiedPositions);
 
                     if (!position) {
-                        console.warn(`[StoryExecutor] Could not find spawn position for ${charData.name}`);
-                        continue;
+                        // Player and Data are critical - they must be positioned
+                        throw new CharacterPositioningError(
+                            charData.name,
+                            charData.location,
+                            availableRooms,
+                            { width: map[0]?.length || 50, height: map.length || 50 }
+                        );
                     }
 
                     // Update the existing character's position
@@ -547,15 +556,23 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                 const position = this.findSpawnPosition(charData.location, map, occupiedPositions);
 
                 if (!position) {
-                    console.warn(`[Character Position] ERROR: Could not find spawn position for ${charData.name} at location "${charData.location}"`);
-                    continue;
+                    // This is a critical error - the AI needs to know positioning failed
+                    throw new CharacterPositioningError(
+                        charData.name,
+                        charData.location,
+                        availableRooms,
+                        { width: map[0]?.length || 50, height: map.length || 50 }
+                    );
                 }
 
-                // Validate position is within map bounds
-                if (position.x < 0 || position.x >= (map[0]?.length || 0) ||
-                    position.y < 0 || position.y >= map.length) {
+                // Validate and correct position to be within map bounds
+                const mapWidth = map[0]?.length || 50;
+                const mapHeight = map.length || 50;
+                
+                if (position.x < 0 || position.x >= mapWidth || position.y < 0 || position.y >= mapHeight) {
                     console.error(`[Character Position] ERROR: Position (${position.x}, ${position.y}) is outside map bounds for ${charData.name}!`);
-                    console.error(`[Character Position] Map bounds: 0-${(map[0]?.length || 0) - 1} x 0-${map.length - 1}`);
+                    console.error(`[Character Position] Map bounds: 0-${mapWidth - 1} x 0-${mapHeight - 1}`);
+                    
                     // Try to find a safe fallback position
                     const safePos = this.findSafePosition(map, occupiedPositions);
                     if (safePos) {
@@ -563,8 +580,10 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                         position.x = safePos.x;
                         position.y = safePos.y;
                     } else {
-                        console.error(`[Character Position] No safe position found for ${charData.name}, skipping character`);
-                        continue;
+                        // Force position to nearest valid boundary
+                        position.x = Math.max(0, Math.min(position.x, mapWidth - 1));
+                        position.y = Math.max(0, Math.min(position.y, mapHeight - 1));
+                        console.error(`[Character Position] Forced ${charData.name} to boundary position (${position.x}, ${position.y})`);
                     }
                 }
 
@@ -635,47 +654,88 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
     private findRoomPosition(roomName: string, map: MapCell[][], occupiedPositions?: Set<string>): { x: number; y: number } | null {
         const lowerRoomName = roomName.toLowerCase().trim();
         console.log(`[Character Position] Searching for room: "${roomName}" (normalized: "${lowerRoomName}")`);
+        
+        // Normalize room name by replacing common separators
+        const normalizedSearchName = lowerRoomName.replace(/[\-\/]/g, ' ').replace(/\s+/g, ' ').trim();
 
-        // First try exact match
+        // Try to find matching room cells and collect them
+        const roomCells: Array<{ x: number; y: number }> = [];
+        
         for (let y = 0; y < map.length; y++) {
             const row = map[y];
             if (!row) continue;
             for (let x = 0; x < row.length; x++) {
                 const cell = row[x];
                 if (!cell) continue;
-                if (cell.locations && cell.locations.some((loc: string) =>
-                    loc.toLowerCase() === lowerRoomName
-                )) {
-                    const posKey = `${x},${y}`;
-                    if (!cell.content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
-                        console.log(`[Character Position] Found exact match for room "${roomName}" at (${x}, ${y})`);
-                        return { x, y };
+                
+                if (cell.locations && cell.locations.some((loc: string) => {
+                    const normalizedLoc = loc.toLowerCase().replace(/[\-\/]/g, ' ').replace(/\s+/g, ' ').trim();
+                    // Check if normalized names match or contain each other
+                    return normalizedLoc === normalizedSearchName || 
+                           normalizedLoc.includes(normalizedSearchName) || 
+                           normalizedSearchName.includes(normalizedLoc);
+                })) {
+                    if (!cell.content?.blocker) {
+                        roomCells.push({ x, y });
                     }
                 }
             }
         }
+        
+        // If we found room cells, try to find an unoccupied one
+        if (roomCells.length > 0) {
+            console.log(`[Character Position] Found ${roomCells.length} cells for room "${roomName}"`);
+            
+            // First try to find an unoccupied cell
+            for (const cell of roomCells) {
+                const posKey = `${cell.x},${cell.y}`;
+                if (!occupiedPositions || !occupiedPositions.has(posKey)) {
+                    console.log(`[Character Position] Found unoccupied cell for room "${roomName}" at (${cell.x}, ${cell.y})`);
+                    return cell;
+                }
+            }
+            
+            // If all cells are occupied, try to find the least crowded one
+            // by cycling through available cells
+            const index = Math.floor(Math.random() * roomCells.length);
+            const selectedCell = roomCells[index];
+            if (selectedCell) {
+                console.log(`[Character Position] All ${roomCells.length} cells have characters, distributing to cell ${index} at (${selectedCell.x}, ${selectedCell.y})`);
+                return selectedCell;
+            }
+            // Fallback to first cell if random selection failed
+            return roomCells[0] || null;
+        }
 
-        // Try partial match (room name is contained in cell location)
-        for (let y = 0; y < map.length; y++) {
-            const row = map[y];
-            if (!row) continue;
-            for (let x = 0; x < row.length; x++) {
-                const cell = row[x];
-                if (!cell) continue;
-                if (cell.locations && cell.locations.some((loc: string) =>
-                    loc.toLowerCase().includes(lowerRoomName) || lowerRoomName.includes(loc.toLowerCase())
-                )) {
-                    const posKey = `${x},${y}`;
-                    if (!cell.content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
-                        console.log(`[Character Position] Found partial match for room "${roomName}" at (${x}, ${y})`);
-                        return { x, y };
+        // If no match yet, try matching the last part of the room name (after separator)
+        const roomParts = roomName.split(/[\-\/]/g).map(p => p.trim()).filter(p => p.length > 0);
+        if (roomParts.length > 1) {
+            const lastPart = roomParts[roomParts.length - 1]?.toLowerCase();
+            if (!lastPart) return null;
+            console.log(`[Character Position] Trying to match last part: "${lastPart}"`);
+            
+            for (let y = 0; y < map.length; y++) {
+                const row = map[y];
+                if (!row) continue;
+                for (let x = 0; x < row.length; x++) {
+                    const cell = row[x];
+                    if (!cell) continue;
+                    if (cell.locations && cell.locations.some((loc: string) => {
+                        const locLower = loc.toLowerCase();
+                        return locLower.includes(lastPart);
+                    })) {
+                        const posKey = `${x},${y}`;
+                        if (!cell.content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
+                            console.log(`[Character Position] Found match for room part "${lastPart}" at (${x}, ${y})`);
+                            return { x, y };
+                        }
                     }
                 }
             }
         }
 
         // Try matching individual words
-        const roomWords = lowerRoomName.split(/[\s\-\/]+/);
+        const roomWords = normalizedSearchName.split(/[\s\-\/]+/);
         if (roomWords.length > 1) {
             for (const word of roomWords) {
                 if (word.length < 3) continue; // Skip short words
@@ -701,6 +761,28 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
 
         console.log(`[Character Position] No match found for room "${roomName}"`);
         return null;
+    }
+    
+    /**
+     * Get list of available room names from the map
+     */
+    private getAvailableRooms(map: MapCell[][]): string[] {
+        const rooms = new Set<string>();
+        for (let y = 0; y < map.length; y++) {
+            const row = map[y];
+            if (!row) continue;
+            for (let x = 0; x < row.length; x++) {
+                const cell = row[x];
+                if (cell?.locations) {
+                    cell.locations.forEach((loc: string) => {
+                        if (loc !== 'wall' && loc !== 'floor') {
+                            rooms.add(loc);
+                        }
+                    });
+                }
+            }
+        }
+        return Array.from(rooms);
     }
 
     /**
@@ -731,32 +813,16 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
         // Parse location string
         // Could be: "room name", "near character", "x,y coordinates", "center", "near_player", "room/player", etc.
 
-        // Handle special case: "location/player" means near player in that location
-        if (location.includes('/player')) {
-            console.log(`[Character Position] Location "${location}" appears to be near player format`);
-            // Extract the room name part
-            const roomName = location.replace('/player', '').trim();
-            console.log(`[Character Position] Looking for room: "${roomName}" to place near player`);
+        // Handle special case: "location/something" - extract just the location part
+        if (location.includes('/')) {
+            const parts = location.split('/');
+            const roomName = parts[0]?.trim() || location;
+            console.log(`[Character Position] Location "${location}" contains '/', extracting room: "${roomName}"`);
 
-            // Try to find the room first
+            // Try to find the room
             const roomPos = this.findRoomPosition(roomName, map, occupiedPositions);
             if (roomPos) {
-                console.log(`[Character Position] Found room "${roomName}" at (${roomPos.x}, ${roomPos.y}), placing near player`);
-                // Try to find a position adjacent to this room position
-                const offsets: [number, number][] = [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, -1], [1, -1], [-1, 1]];
-                for (const [dx, dy] of offsets) {
-                    const x = roomPos.x + dx;
-                    const y = roomPos.y + dy;
-                    if (y >= 0 && y < map.length && map[0] && x >= 0 && x < map[0].length) {
-                        const cell = map[y]?.[x];
-                        const posKey = `${x},${y}`;
-                        if (cell && cell.locations && !cell.locations.includes('wall') &&
-                            !cell.content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {
-                            return { x, y };
-                        }
-                    }
-                }
-                // If no adjacent position found, return the room position itself
+                console.log(`[Character Position] Found room "${roomName}" at (${roomPos.x}, ${roomPos.y})`);
                 return roomPos;
             }
         }
@@ -764,7 +830,9 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
         // Handle special cases
         if (location === 'center') {
             // Find a walkable position near the center of the map
-            const centerX = map[0] ? Math.floor(map[0].length / 2) : Math.floor(map.length / 2);
+            const firstRow = map[0];
+            const mapWidth = firstRow?.length || 50;
+            const centerX = Math.floor(mapWidth / 2);
             const centerY = Math.floor(map.length / 2);
 
             // Search in expanding circles from center
@@ -773,8 +841,9 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                     for (let dx = -radius; dx <= radius; dx++) {
                         const y = centerY + dy;
                         const x = centerX + dx;
-                        if (y >= 0 && y < map.length && map[0] && x >= 0 && x < map[0].length) {
-                            const cell = map[y]?.[x];
+                        const row = map[y];
+                        if (y >= 0 && y < map.length && row && x >= 0 && x < row.length) {
+                            const cell = row[x];
                             const posKey = `${x},${y}`;
                             if (cell && cell.locations && !cell.locations.includes('wall') &&
                                 !cell.content?.blocker && (!occupiedPositions || !occupiedPositions.has(posKey))) {

@@ -571,3 +571,16 @@ export interface IValidationError {
     message: string;
 }
 
+// Tooltip interface
+export interface TooltipData {
+    text: string;
+    subtext?: string;
+    type?: 'character' | 'item' | 'door' | 'cell' | 'enemy' | 'ally' | 'default';
+    details?: Array<{
+        label?: string;
+        value: string;
+        color?: string;
+    }>;
+    autoHide?: boolean;
+}
+
