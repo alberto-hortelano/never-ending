@@ -1,6 +1,6 @@
 <div class="character-creator">
   <div class="creator-header">
-    <h2>Create Your Character</h2>
+    <h2></h2>
     <button class="close-btn" id="closeBtn">&times;</button>
   </div>
 
@@ -9,7 +9,7 @@
     <div class="row row-name">
       <div class="form-group">
         <label for="characterName">Name</label>
-        <input type="text" id="characterName" placeholder="Enter character name" maxlength="20">
+        <input type="text" id="characterName" placeholder="" maxlength="20">
         <span class="error-msg" id="nameError"></span>
       </div>
     </div>
@@ -21,15 +21,15 @@
         <div class="race-selector-vertical">
           <button class="race-btn active" data-race="human">
             <span class="race-icon">👤</span>
-            <span>Human</span>
+            <span></span>
           </button>
           <button class="race-btn" data-race="alien">
             <span class="race-icon">👽</span>
-            <span>Alien</span>
+            <span></span>
           </button>
           <button class="race-btn" data-race="robot">
             <span class="race-icon">🤖</span>
-            <span>Robot</span>
+            <span></span>
           </button>
         </div>
       </div>
@@ -39,7 +39,7 @@
         </div>
         <div class="rotation-controls">
           <button class="rotate-btn" id="rotateLeft">↺</button>
-          <span class="rotation-label">Rotate</span>
+          <span class="rotation-label"></span>
           <button class="rotate-btn" id="rotateRight">↻</button>
         </div>
       </div>
@@ -84,7 +84,7 @@
       </div>
 
       <div class="preset-colors">
-        <h3>Presets</h3>
+        <h3></h3>
         <div class="preset-grid" id="presetGrid">
           <!-- Preset buttons will be added dynamically -->
         </div>
@@ -107,7 +107,7 @@
           <span class="budget-current" id="budgetUsed">0</span>
           <span>/</span>
           <span class="budget-total" id="budgetTotal">1000</span>
-          <span>credits</span>
+          <span></span>
         </div>
       </div>
 
@@ -118,14 +118,14 @@
             <div class="slot-item">
               <label>Primary</label>
               <select id="primaryWeapon">
-                <option value="">None</option>
+                <option value=""></option>
                 <!-- Options will be added dynamically -->
               </select>
             </div>
             <div class="slot-item">
               <label>Secondary</label>
               <select id="secondaryWeapon">
-                <option value="">None</option>
+                <option value=""></option>
                 <!-- Options will be added dynamically -->
               </select>
             </div>
@@ -149,7 +149,7 @@
           <span class="points-used" id="pointsUsed">0</span>
           <span>/</span>
           <span class="points-total" id="pointsTotal">10</span>
-          <span> points</span>
+          <span></span>
         </div>
       </div>
 
@@ -204,7 +204,7 @@
       </div>
 
       <div class="abilities-note">
-        <small>Lower costs mean better abilities. Distribute points wisely!</small>
+        <small></small>
       </div>
     </div>
 
@@ -212,13 +212,13 @@
     <div class="row row-description">
       <div class="form-group">
         <label for="characterDesc">Description</label>
-        <textarea id="characterDesc" placeholder="Describe your character..." rows="4"></textarea>
+        <textarea id="characterDesc" placeholder="" rows="4"></textarea>
       </div>
     </div>
   </div>
 
   <div class="creator-footer">
-    <button class="btn-secondary" id="cancelBtn">Cancel</button>
-    <button class="btn-primary" id="createBtn" disabled>Create Character</button>
+    <button class="btn-secondary" id="cancelBtn"></button>
+    <button class="btn-primary" id="createBtn" disabled></button>
   </div>
 </div>

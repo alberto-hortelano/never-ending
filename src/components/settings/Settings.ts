@@ -55,6 +55,10 @@ export class Settings extends Component {
         // Update back button
         const backBtn = root.querySelector('.back-button');
         if (backBtn) backBtn.textContent = i18n.t('common.back');
+        
+        // Update placeholder text
+        const placeholderText = root.querySelector('.placeholder-section p');
+        if (placeholderText) placeholderText.textContent = i18n.t('settings.comingSoon');
     }
     
     public show() {

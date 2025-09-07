@@ -525,8 +525,8 @@ export default class CharacterCreator extends Component {
     if (!root) return;
     
     // Update title
-    const title = root.querySelector('h2');
-    if (title) title.textContent = i18n.t('character.create');
+    const title = root.querySelector('.creator-header h2');
+    if (title) title.textContent = i18n.t('character.createTitle');
     
     // Update section headers
     const sectionHeaders = root.querySelectorAll('h3');
@@ -606,6 +606,51 @@ export default class CharacterCreator extends Component {
     const createBtn = root.querySelector('#createBtn');
     if (cancelBtn) cancelBtn.textContent = i18n.t('character.cancel');
     if (createBtn) createBtn.textContent = i18n.t('character.confirm');
+    
+    // Update race button labels
+    const raceButtons = root.querySelectorAll('.race-btn');
+    raceButtons.forEach(btn => {
+      const race = btn.getAttribute('data-race');
+      const textSpan = btn.querySelector('span:last-child');
+      if (textSpan && race) {
+        if (race === 'human') textSpan.textContent = i18n.t('character.races.human');
+        else if (race === 'alien') textSpan.textContent = i18n.t('character.races.alien');
+        else if (race === 'robot') textSpan.textContent = i18n.t('character.races.robot');
+      }
+    });
+    
+    // Update rotate label
+    const rotateLabel = root.querySelector('.rotation-label');
+    if (rotateLabel) rotateLabel.textContent = i18n.t('character.rotate');
+    
+    // Update presets header
+    const presetsHeader = root.querySelector('.preset-colors h3');
+    if (presetsHeader) presetsHeader.textContent = i18n.t('character.presets');
+    
+    // Update "None" option in weapon selects
+    const noneOptions = root.querySelectorAll('select option[value=""]');
+    noneOptions.forEach(option => {
+      option.textContent = i18n.t('character.none');
+    });
+    
+    // Update credits label
+    const creditsSpan = root.querySelector('.equipment-budget span:nth-child(5)');
+    if (creditsSpan) creditsSpan.textContent = i18n.t('character.credits');
+    
+    // Update points label
+    const pointsSpan = root.querySelector('.points-display > span:last-child');
+    if (pointsSpan) pointsSpan.textContent = ' ' + i18n.t('character.pointsLabel');
+    
+    // Update placeholders
+    const nameInput = root.querySelector('#characterName') as HTMLInputElement;
+    if (nameInput) nameInput.placeholder = i18n.t('character.namePlaceholder');
+    
+    const descTextarea = root.querySelector('#characterDesc') as HTMLTextAreaElement;
+    if (descTextarea) descTextarea.placeholder = i18n.t('character.descriptionPlaceholder');
+    
+    // Update abilities note
+    const abilitiesNote = root.querySelector('.abilities-note small');
+    if (abilitiesNote) abilitiesNote.textContent = i18n.t('character.abilitiesNote');
   }
 }
 

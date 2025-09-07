@@ -7,8 +7,12 @@ export interface TranslationKeys {
   
   // Character Creator
   'character.create': string;
+  'character.createTitle': string;
   'character.name': string;
   'character.race': string;
+  'character.races.human': string;
+  'character.races.alien': string;
+  'character.races.robot': string;
   'character.actions': string;
   'character.colors': string;
   'character.equipment': string;
@@ -40,6 +44,14 @@ export interface TranslationKeys {
   'character.armor': string;
   'character.cancel': string;
   'character.confirm': string;
+  'character.rotate': string;
+  'character.presets': string;
+  'character.none': string;
+  'character.credits': string;
+  'character.namePlaceholder': string;
+  'character.descriptionPlaceholder': string;
+  'character.abilitiesNote': string;
+  'character.pointsLabel': string;
   
   // Conversation
   'conversation.loading': string;
@@ -141,6 +153,7 @@ export interface TranslationKeys {
   'settings.language': string;
   'settings.sound': string;
   'settings.music': string;
+  'settings.comingSoon': string;
   'settings.effects': string;
   'settings.graphics': string;
   'settings.quality': string;
@@ -245,8 +258,12 @@ export const translations: Record<string, TranslationKeys> = {
     
     // Character Creator
     'character.create': 'Create Your Character',
+    'character.createTitle': 'Create Your Character',
     'character.name': 'Name',
     'character.race': 'Race',
+    'character.races.human': 'Human',
+    'character.races.alien': 'Alien',
+    'character.races.robot': 'Robot',
     'character.actions': 'Actions',
     'character.colors': 'Colors',
     'character.equipment': 'Equipment',
@@ -278,6 +295,14 @@ export const translations: Record<string, TranslationKeys> = {
     'character.armor': 'Armor',
     'character.cancel': 'Cancel',
     'character.confirm': 'Create Character',
+    'character.rotate': 'Rotate',
+    'character.presets': 'Presets',
+    'character.none': 'None',
+    'character.credits': 'credits',
+    'character.namePlaceholder': 'Enter character name',
+    'character.descriptionPlaceholder': 'Describe your character...',
+    'character.abilitiesNote': 'Lower costs mean better abilities. Distribute points wisely!',
+    'character.pointsLabel': 'points',
     
     // Conversation
     'conversation.loading': 'Loading conversation...',
@@ -379,6 +404,7 @@ export const translations: Record<string, TranslationKeys> = {
     'settings.language': 'Language',
     'settings.sound': 'Sound',
     'settings.music': 'Music',
+    'settings.comingSoon': 'More settings coming soon...',
     'settings.effects': 'Effects',
     'settings.graphics': 'Graphics',
     'settings.quality': 'Quality',
@@ -482,8 +508,12 @@ export const translations: Record<string, TranslationKeys> = {
     
     // Character Creator
     'character.create': 'Crea Tu Personaje',
+    'character.createTitle': 'Crea Tu Personaje',
     'character.name': 'Nombre',
     'character.race': 'Raza',
+    'character.races.human': 'Humano',
+    'character.races.alien': 'Alienígena',
+    'character.races.robot': 'Robot',
     'character.actions': 'Acciones',
     'character.colors': 'Colores',
     'character.equipment': 'Equipamiento',
@@ -515,6 +545,14 @@ export const translations: Record<string, TranslationKeys> = {
     'character.armor': 'Armadura',
     'character.cancel': 'Cancelar',
     'character.confirm': 'Crear Personaje',
+    'character.rotate': 'Rotar',
+    'character.presets': 'Preestablecidos',
+    'character.none': 'Ninguno',
+    'character.credits': 'créditos',
+    'character.namePlaceholder': 'Ingresa el nombre del personaje',
+    'character.descriptionPlaceholder': 'Describe tu personaje...',
+    'character.abilitiesNote': 'Costos más bajos significan mejores habilidades. ¡Distribuye los puntos sabiamente!',
+    'character.pointsLabel': 'puntos',
     
     // Conversation
     'conversation.loading': 'Cargando conversación...',
@@ -616,6 +654,7 @@ export const translations: Record<string, TranslationKeys> = {
     'settings.language': 'Idioma',
     'settings.sound': 'Sonido',
     'settings.music': 'Música',
+    'settings.comingSoon': 'Más configuraciones próximamente...',
     'settings.effects': 'Efectos',
     'settings.graphics': 'Gráficos',
     'settings.quality': 'Calidad',
