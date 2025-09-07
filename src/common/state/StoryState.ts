@@ -53,6 +53,27 @@ export class StoryState extends EventBus<UpdateStateEventsMap, StateChangeEvents
         };
     }
     
+    // Serialization methods for time machine support
+    serialize(): IStoryState {
+        return {
+            ...this._story,
+            // Convert Set to Array for JSON serialization
+            storyFlags: Array.from(this._story.storyFlags) as any
+        };
+    }
+    
+    deserialize(storyData: any): void {
+        if (!storyData) return;
+        
+        this._story = {
+            ...storyData,
+            // Convert Array back to Set if needed
+            storyFlags: storyData.storyFlags instanceof Set 
+                ? storyData.storyFlags 
+                : new Set(storyData.storyFlags || [])
+        };
+    }
+    
     private updateStoryState(update: Partial<IStoryState>) {
         // Update selected origin
         if (update.selectedOrigin !== undefined) {

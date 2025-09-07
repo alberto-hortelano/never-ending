@@ -223,12 +223,12 @@ export default class BottomBar extends Component {
             // Listen for storyline-action event
             this.conversationComponent.addEventListener('storyline-action', (event: Event) => {
                 const customEvent = event as CustomEvent;
-                const { action, accepted } = customEvent.detail;
-                console.log('[BottomBar] Received storyline-action event:', { action, accepted });
+                const { action, actionData, accepted } = customEvent.detail;
+                console.log('[BottomBar] Received storyline-action event:', { action, actionData, accepted });
 
                 if (accepted) {
                     // Dispatch event for AIController to handle the action
-                    this.dispatch(ConversationEvent.executeAction, { action });
+                    this.dispatch(ConversationEvent.executeAction, { action, actionData });
                 }
             });
         } else {

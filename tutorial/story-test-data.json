@@ -1,0 +1,278 @@
+{
+  "storyName": "The Resistance Infiltration",
+  "origin": "rebel",
+  "language": "es",
+  "acts": [
+    {
+      "actNumber": 1,
+      "name": "The Abandoned Market",
+      "scenes": [
+        {
+          "sceneNumber": 1,
+          "name": "Initial Setup",
+          "commands": [
+            {
+              "type": "map",
+              "expectedMap": {
+                "name": "Mercado Abandonado",
+                "roomCount": 3,
+                "characterCount": 4,
+                "rooms": ["Entrada Principal", "Almacén", "Oficina del Jefe"]
+              }
+            },
+            {
+              "type": "character",
+              "expectedCharacters": [
+                { "name": "Jim", "faction": "Rebels" },
+                { "name": "Data", "faction": "Rebels" },
+                { "name": "Marcus", "faction": "Contrabandistas" },
+                { "name": "Elena", "faction": "Contrabandistas" }
+              ]
+            }
+          ]
+        },
+        {
+          "sceneNumber": 2,
+          "name": "First Contact with Marcus",
+          "playerAction": {
+            "type": "movement",
+            "character": "Jim",
+            "targetArea": "Almacén"
+          },
+          "expectedAIResponse": {
+            "type": "speech",
+            "speaker": "Marcus",
+            "hasOptions": true,
+            "minOptions": 2
+          },
+          "playerChoice": {
+            "optionIndex": 1,
+            "text": "Estamos de paso. Buscamos el Distrito Industrial."
+          }
+        },
+        {
+          "sceneNumber": 3,
+          "name": "Victor Introduction",
+          "trigger": "time_based",
+          "expectedCommands": [
+            {
+              "type": "character",
+              "character": {
+                "name": "Víctor",
+                "faction": "Neutral",
+                "hasItem": true
+              }
+            },
+            {
+              "type": "item",
+              "item": {
+                "name": "Tarjeta de Acceso NeoCorp",
+                "type": "key"
+              }
+            }
+          ]
+        },
+        {
+          "sceneNumber": 4,
+          "name": "Combat Encounter",
+          "trigger": "story_flag",
+          "expectedCommands": [
+            {
+              "type": "character",
+              "character": {
+                "name": "Guardia NeoCorp",
+                "faction": "NeoCorp",
+                "hostile": true
+              }
+            },
+            {
+              "type": "attack",
+              "attacker": "Guardia NeoCorp",
+              "targetType": "player_ally"
+            }
+          ],
+          "playerDecision": {
+            "type": "storyline",
+            "hasConsequences": true,
+            "affectsReputation": true
+          }
+        }
+      ]
+    },
+    {
+      "actNumber": 2,
+      "name": "Industrial District",
+      "scenes": [
+        {
+          "sceneNumber": 5,
+          "name": "Map Transition",
+          "trigger": {
+            "type": "storyline",
+            "action": "map",
+            "requiresAcceptance": true
+          },
+          "expectedTransition": {
+            "from": "Mercado Abandonado",
+            "to": "Distrito Industrial",
+            "preservesCharacters": ["Jim", "Data"],
+            "preservesInventory": true
+          }
+        },
+        {
+          "sceneNumber": 6,
+          "name": "New Map Exploration",
+          "expectedMap": {
+            "name": "Distrito Industrial",
+            "roomCount": 4,
+            "rooms": ["Puerta de Seguridad", "Patio Central", "Laboratorio", "Almacén de Armas"],
+            "hasLockedDoors": true,
+            "keyRequired": "Tarjeta de Acceso NeoCorp"
+          },
+          "newCharacters": [
+            { "name": "Capitán Torres", "faction": "NeoCorp" },
+            { "name": "Dr. Chen", "faction": "NeoCorp" }
+          ]
+        },
+        {
+          "sceneNumber": 7,
+          "name": "AI-to-AI Conversation",
+          "trigger": "proximity",
+          "expectedBehavior": {
+            "type": "ai_conversation",
+            "participants": ["Capitán Torres", "Dr. Chen"],
+            "playerCanObserve": true,
+            "minExchanges": 2
+          }
+        },
+        {
+          "sceneNumber": 8,
+          "name": "Item Discovery",
+          "location": "Almacén de Armas",
+          "expectedItem": {
+            "type": "weapon",
+            "name": "Rifle de Plasma",
+            "stats": {
+              "damage": 45,
+              "range": 15
+            }
+          }
+        },
+        {
+          "sceneNumber": 9,
+          "name": "Final Decision",
+          "location": "Laboratorio",
+          "decisionPoint": {
+            "type": "storyline",
+            "title": "El Momento de la Verdad",
+            "options": [
+              {
+                "id": "stealth_escape",
+                "text": "Robar los datos y escapar silenciosamente",
+                "expectedOutcome": "mission_complete_stealth"
+              },
+              {
+                "id": "confrontation",
+                "text": "Confrontar al Dr. Chen y exigir cooperación",
+                "expectedOutcome": "combat_sequence"
+              },
+              {
+                "id": "recruitment",
+                "text": "Intentar reclutar al Dr. Chen para la resistencia",
+                "expectedOutcome": "new_ally"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "testValidations": {
+    "mapGeneration": {
+      "verifyRoomConnections": true,
+      "verifyDoorTypes": true,
+      "verifyCharacterPlacement": true,
+      "verifyBounds": true
+    },
+    "characterBehavior": {
+      "verifyMovement": true,
+      "verifyPathfinding": true,
+      "verifyLineOfSight": true,
+      "verifyCombatRange": true,
+      "verifyConversationRange": true
+    },
+    "storyProgression": {
+      "verifyStatePreservation": true,
+      "verifyReputationChanges": true,
+      "verifyInventoryPersistence": true,
+      "verifyFlagTracking": true
+    },
+    "aiIntegration": {
+      "verifyCommandParsing": true,
+      "verifyResponseValidation": true,
+      "verifyContextContinuity": true,
+      "verifyLanguageConsistency": true
+    }
+  },
+  "screenshotPoints": [
+    {
+      "id": "initial_map",
+      "description": "Initial map view with all characters visible",
+      "act": 1,
+      "scene": 1
+    },
+    {
+      "id": "first_conversation",
+      "description": "Conversation UI with Marcus showing options",
+      "act": 1,
+      "scene": 2
+    },
+    {
+      "id": "character_spawn",
+      "description": "Victor appearing mid-game",
+      "act": 1,
+      "scene": 3
+    },
+    {
+      "id": "combat_encounter",
+      "description": "Combat with NeoCorp guard",
+      "act": 1,
+      "scene": 4
+    },
+    {
+      "id": "map_transition_prompt",
+      "description": "Storyline prompt for map transition",
+      "act": 2,
+      "scene": 5
+    },
+    {
+      "id": "industrial_district",
+      "description": "New map after transition",
+      "act": 2,
+      "scene": 6
+    },
+    {
+      "id": "ai_conversation",
+      "description": "NPCs talking to each other",
+      "act": 2,
+      "scene": 7
+    },
+    {
+      "id": "item_discovery",
+      "description": "Finding the Plasma Rifle",
+      "act": 2,
+      "scene": 8
+    },
+    {
+      "id": "final_decision",
+      "description": "Critical story decision in laboratory",
+      "act": 2,
+      "scene": 9
+    }
+  ],
+  "performanceMetrics": {
+    "expectedLoadTime": 3000,
+    "maxMapGenerationTime": 5000,
+    "maxAIResponseTime": 2000,
+    "maxPathfindingTime": 500
+  }
+}

@@ -25,6 +25,7 @@ import { ICharacter, ICoord, Direction, IOriginStory, IStoryState, IScreenContex
 import { DeepReadonly } from '../helpers/types';
 import { calculatePath } from '../helpers/map';
 import { TeamService } from './TeamService';
+import { MAIN_CHARACTER_NAME, type LanguageCode } from '../constants';
 
 interface DialogueData {
     speaker?: string;
@@ -168,24 +169,100 @@ export class AIController extends EventBus<
 
         // Listen for storyline action execution
         this.listen(ConversationEvent.executeAction, async (data) => {
-            const { action } = data;
+            const { action, actionData } = data;
+
+            console.log('[AIController] Executing storyline action:', action);
 
             // Handle the action based on its type
             switch (action) {
                 case 'map':
-                    console.log('[AIController] Executing map generation from storyline');
+                    console.log('[AIController] Generating new map from storyline');
                     await this.executeStorylineMapGeneration();
                     break;
+                    
                 case 'character':
-                    console.log('[AIController] Executing character spawn from storyline');
-                    // TODO: Implement character spawning
+                    console.log('[AIController] Spawning characters from storyline');
+                    if (actionData?.characters) {
+                        const charCommand: CharacterCommand = {
+                            type: 'character',
+                            characters: actionData.characters
+                        };
+                        try {
+                            await this.spawnCharacters(charCommand);
+                        } catch (error) {
+                            console.error('[AIController] Error spawning characters:', error);
+                        }
+                    } else {
+                        console.warn('[AIController] Character action missing character data');
+                    }
                     break;
+                    
+                case 'movement':
+                    console.log('[AIController] Executing movement from storyline');
+                    if (actionData?.movements && this.state) {
+                        // Execute movements for specified characters
+                        for (const movement of actionData.movements) {
+                            const character = this.state.characters.find(c => 
+                                c.name.toLowerCase() === movement.name.toLowerCase()
+                            );
+                            if (character) {
+                                const moveCommand: MovementCommand = {
+                                    type: 'movement',
+                                    characters: [{
+                                        name: movement.name,
+                                        location: movement.location
+                                    }]
+                                };
+                                await this.executeMovement(moveCommand, character);
+                            }
+                        }
+                    } else {
+                        console.warn('[AIController] Movement action missing movement data');
+                    }
+                    break;
+                    
+                case 'attack':
+                    console.log('[AIController] Initiating combat from storyline');
+                    if (actionData?.combatants && this.state) {
+                        // Initiate combat between specified characters
+                        for (const combatant of actionData.combatants) {
+                            const character = this.state.characters.find(c => 
+                                c.name.toLowerCase() === combatant.attacker.toLowerCase()
+                            );
+                            if (character) {
+                                const attackCommand: AttackCommand = {
+                                    type: 'attack',
+                                    characters: [{
+                                        name: combatant.attacker,
+                                        target: combatant.target,
+                                        attack: combatant.attackType || 'kill'
+                                    }]
+                                };
+                                await this.executeAttack(attackCommand, character);
+                            }
+                        }
+                    } else {
+                        console.warn('[AIController] Attack action missing combatant data');
+                    }
+                    break;
+                    
                 case 'item':
-                    console.log('[AIController] Executing item spawn from storyline');
-                    // TODO: Implement item spawning
+                    console.log('[AIController] Spawning items from storyline');
+                    if (actionData?.items) {
+                        const itemCommand: ItemSpawnCommand = {
+                            type: 'item',
+                            items: actionData.items
+                        };
+                        await this.storyExecutor.executeItemSpawnCommand(itemCommand);
+                    } else {
+                        console.warn('[AIController] Item action missing item data');
+                    }
                     break;
+                    
                 default:
-                    throw new Error(`[AIController] Unknown storyline action: ${action}`);
+                    console.warn(`[AIController] Unknown storyline action: ${action}. Ignoring.`);
+                    // Don't throw an error - just log and continue
+                    // This allows for future action types without breaking the game
             }
         });
     }
@@ -571,7 +648,8 @@ export class AIController extends EventBus<
 
 
         // Get AI decision from game engine with story context
-        const response = await this.gameEngineService.requestAIAction(context, undefined, storyStateForPlanner);
+        const language = this.state?.language || 'es';
+        const response = await this.gameEngineService.requestAIAction(context, undefined, storyStateForPlanner, language as LanguageCode);
 
         // Check if response contains tactical directive
         if (response.command?.type === 'tactical_directive') {
@@ -782,7 +860,7 @@ export class AIController extends EventBus<
                 c.position.x === targetLocation.x && c.position.y === targetLocation.y
             );
 
-            if (targetChar && targetChar.player !== character.player && targetChar.name === 'player') {
+            if (targetChar && targetChar.player !== character.player && targetChar.name === MAIN_CHARACTER_NAME) {
                 // Create a speech command
                 const speechCommand: AICommand = {
                     type: 'speech',
@@ -849,7 +927,8 @@ export class AIController extends EventBus<
                 } as unknown as GameContext;
 
                 console.log('[AI] Requesting new instructions due to blocked path');
-                const response = await this.gameEngineService.requestAIAction(contextWithBlockage as unknown as AIActionContext);
+                const language = this.state?.language || 'es';
+                const response = await this.gameEngineService.requestAIAction(contextWithBlockage as unknown as AIActionContext, undefined, undefined, language as LanguageCode);
 
                 if (response.command) {
                     const validatedCommand = this.commandParser.validate(response.command);
@@ -1643,11 +1722,14 @@ export class AIController extends EventBus<
         const context = this.contextBuilder.buildDialogueContext(dialogue, this.state);
 
         try {
+            const language = this.state?.language || 'es';
             const response = await this.gameEngineService.requestDialogueResponse(
                 dialogue.speaker || 'Player',
                 dialogue.targetNPC,
                 dialogue.playerChoice,
-                context
+                context,
+                undefined,
+                language as LanguageCode
             );
 
             if (response.command && response.command.type === 'speech') {
@@ -1920,7 +2002,8 @@ export class AIController extends EventBus<
                 } as unknown as GameContext;
                 
                 console.log('[AI] Requesting corrected command after positioning error');
-                const response = await this.gameEngineService.requestAIAction(contextWithError as unknown as AIActionContext);
+                const language = this.state?.language || 'es';
+                const response = await this.gameEngineService.requestAIAction(contextWithError as unknown as AIActionContext, undefined, undefined, language as LanguageCode);
                 
                 if (response.command) {
                     const validatedCommand = this.commandParser.validate(response.command);
@@ -2083,9 +2166,11 @@ export class AIController extends EventBus<
 
             // Request story initialization from AI
             console.log('[AI] Calling AIGameEngineService.requestStoryInitialization...');
+            const language = this.state?.language || 'es';
             const response = await this.gameEngineService.requestStoryInitialization(
                 originCopy,
-                storyStateCopy
+                storyStateCopy,
+                language as LanguageCode
             );
 
             console.log('[AI] Response received:', {

@@ -1,11 +1,12 @@
 import { EventBus } from '../events/EventBus';
-import { UpdateStateEvent, UpdateStateEventsMap } from '../events';
-import type { AICommand, MapCommand, StorylineCommand, CharacterCommand } from './AICommandParser';
+import { UpdateStateEvent, UpdateStateEventsMap, ConversationEvent, ConversationEventsMap } from '../events';
+import type { AICommand, MapCommand, StorylineCommand } from './AICommandParser';
 import type { ICharacter, IItem, IWeapon, IRoom, IDoor, Direction, IStoryState, ItemType, ICell } from '../interfaces';
 import { MapGenerator } from '../helpers/MapGenerator';
 import { DoorService } from './DoorService';
 import { weapons as availableWeapons, items as availableItems, baseCharacter } from '../../data/state';
 import { CharacterPositioningError } from '../errors/CharacterPositioningError';
+import { MAIN_CHARACTER_NAME, COMPANION_DROID_NAME, PLAYER_TEAM, HUMAN_PLAYER } from '../constants';
 
 export interface ItemSpawnCommand extends AICommand {
     type: 'item';
@@ -46,7 +47,7 @@ interface MapCell extends ICell {
     doors?: IDoor[];
 }
 
-export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
+export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap & ConversationEventsMap> {
     private static instance: StoryCommandExecutor;
 
     private constructor() {
@@ -142,10 +143,10 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
 
             // Check if AI already included player and Data in the character list
             const hasPlayer = command.characters.some((c) =>
-                c.name?.toLowerCase() === 'player'
+                c.name?.toLowerCase() === MAIN_CHARACTER_NAME.toLowerCase()
             );
             const hasData = command.characters.some((c) =>
-                c.name?.toLowerCase() === 'data' || c.name === 'Data'
+                c.name?.toLowerCase() === COMPANION_DROID_NAME.toLowerCase() || c.name === COMPANION_DROID_NAME
             );
 
             // Get first room name for spawning
@@ -154,7 +155,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
             // If player is not in the AI's character list, add it
             if (!hasPlayer) {
                 const playerChar = {
-                    name: 'player',
+                    name: MAIN_CHARACTER_NAME,
                     location: firstRoomName,
                     race: 'human' as const,
                     description: 'The player character',
@@ -165,8 +166,8 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                         helmet: 'white',
                         suit: 'white'
                     },
-                    player: 'human',  // Mark as human-controlled
-                    team: 'player'
+                    player: HUMAN_PLAYER,  // Mark as human-controlled
+                    team: PLAYER_TEAM
                 };
                 command.characters.unshift(playerChar);
             }
@@ -251,54 +252,62 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
             });
         }
 
-        // Display as message
-        this.dispatch(UpdateStateEvent.updateMessages, [{
-            role: 'assistant',
-            content: command.content
-        }]);
-
-        // Execute the required action
+        // If storyline has an action, display it through the conversation UI
+        // so the user can accept or reject it
         if (command.action) {
-            console.log(`[StoryExecutor] Triggering action: ${command.action}`);
+            console.log(`[StoryExecutor] Storyline with action: ${command.action}`);
+            
+            // Show the popup for the storyline
+            this.dispatch(UpdateStateEvent.uiPopup, {
+                popupId: 'main-popup',
+                popupState: {
+                    type: 'conversation',
+                    visible: true,
+                    position: undefined,
+                    data: {
+                        title: 'Historia'
+                    }
+                }
+            });
 
+            // Wait for popup to be ready, then dispatch conversation update
+            setTimeout(() => {
+                // Dispatch conversation update with the storyline content and action
+                // The conversation UI will show "Aceptar"/"Rechazar" buttons
+                this.dispatch(ConversationEvent.update, {
+                    type: 'storyline',
+                    source: 'Narrador',
+                    content: command.content,
+                    answers: ['Aceptar', 'Rechazar'],
+                    action: command.action,
+                    actionData: command.actionData
+                });
+            }, 200);
+            
+            // Log what action will be triggered
             switch (command.action) {
                 case 'map':
-                    // Request new map generation from AI
-                    console.log('[StoryExecutor] Requesting new map generation from storyline');
-                    // Note: The actual map generation is now handled by the AIController
-                    // when it receives the executeAction event. This is just logging
-                    // that the storyline requested a map change.
+                    console.log('[StoryExecutor] Will generate new map when accepted');
                     break;
-
                 case 'character':
-                    // Spawn new characters
-                    if (command.actionData?.characters) {
-                        const actionData = command.actionData as { characters: CharacterCommand['characters'] };
-                        await this.spawnCharactersFromMap(actionData.characters, [] as MapCell[][]);
-                    }
+                    console.log('[StoryExecutor] Will spawn characters when accepted');
                     break;
-
                 case 'movement':
-                    // Move existing characters
-                    if (command.actionData?.movements) {
-                        // Handle character movements
-                        console.log('[StoryExecutor] Processing character movements');
-                    }
+                    console.log('[StoryExecutor] Will move characters when accepted');
                     break;
-
                 case 'attack':
-                    // Initiate combat
-                    if (command.actionData?.combatants) {
-                        // Trigger combat between specified characters
-                        console.log('[StoryExecutor] Initiating combat');
-                    }
+                    console.log('[StoryExecutor] Will initiate combat when accepted');
                     break;
-
                 default:
                     console.warn(`[StoryExecutor] Unknown action type: ${command.action}`);
             }
         } else {
+            // No action, just display as a simple message
             console.warn('[StoryExecutor] Storyline command missing required action!');
+            this.dispatch(UpdateStateEvent.updateMessages, [{
+                role: 'assistant',
+                content: command.content
+            }]);
         }
 
         // Check for chapter transitions
@@ -498,8 +507,8 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
         // First, handle player and Data specially - they exist from getEmptyState()
         // We just need to update their positions
         for (const charData of characters) {
-            const isPlayer = charData.name?.toLowerCase() === 'player';
-            const isData = charData.name === 'Data' || charData.name?.toLowerCase() === 'data';
+            const isPlayer = charData.name?.toLowerCase() === MAIN_CHARACTER_NAME.toLowerCase();
+            const isData = charData.name === COMPANION_DROID_NAME || charData.name?.toLowerCase() === COMPANION_DROID_NAME.toLowerCase();
 
             if (isPlayer || isData) {
                 try {
@@ -508,6 +517,8 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
 
                     if (!position) {
                         // Player and Data are critical - they must be positioned
+                        console.error(`[CRITICAL] Failed to find position for ${charData.name} at location '${charData.location}'`);
+                        console.error(`[CRITICAL] Available rooms:`, availableRooms);
                         throw new CharacterPositioningError(
                             charData.name,
                             charData.location,
@@ -519,11 +530,11 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                     // Update the existing character's position
                     // Use base character data and only override what's needed
                     const updateCharacter = this.createCharacterFromBase({
-                        name: isPlayer ? 'player' : 'Data',
+                        name: isPlayer ? MAIN_CHARACTER_NAME : COMPANION_DROID_NAME,
                         position: position,
                         race: isPlayer ? 'human' : 'robot',
-                        player: 'human',
-                        team: 'player',
+                        player: HUMAN_PLAYER,
+                        team: PLAYER_TEAM,
                         palette: isPlayer ? 
                             { skin: '#d7a55f', helmet: 'white', suit: 'white' } :
                             { skin: 'yellow', helmet: 'gold', suit: 'gold' }
@@ -544,10 +555,10 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
 
         // Now spawn all other characters
         for (const charData of characters) {
-            // Skip player and Data as they were handled above
-            if (charData.name?.toLowerCase() === 'player' ||
-                charData.name === 'Data' ||
-                charData.name?.toLowerCase() === 'data') {
+            // Skip Jim and Data as they were handled above
+            if (charData.name?.toLowerCase() === MAIN_CHARACTER_NAME.toLowerCase() ||
+                charData.name === COMPANION_DROID_NAME ||
+                charData.name?.toLowerCase() === COMPANION_DROID_NAME.toLowerCase()) {
                 continue;
             }
 
@@ -565,26 +576,21 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
                     );
                 }
 
-                // Validate and correct position to be within map bounds
+                // Validate position is within map bounds - CRITICAL for main character
                 const mapWidth = map[0]?.length || 50;
                 const mapHeight = map.length || 50;
                 
                 if (position.x < 0 || position.x >= mapWidth || position.y < 0 || position.y >= mapHeight) {
-                    console.error(`[Character Position] ERROR: Position (${position.x}, ${position.y}) is outside map bounds for ${charData.name}!`);
-                    console.error(`[Character Position] Map bounds: 0-${mapWidth - 1} x 0-${mapHeight - 1}`);
+                    console.error(`[CRITICAL] Position (${position.x}, ${position.y}) is outside map bounds for ${charData.name}!`);
+                    console.error(`[CRITICAL] Map bounds: 0-${mapWidth - 1} x 0-${mapHeight - 1}`);
                     
-                    // Try to find a safe fallback position
-                    const safePos = this.findSafePosition(map, occupiedPositions);
-                    if (safePos) {
-                        console.log(`[Character Position] Using safe fallback position (${safePos.x}, ${safePos.y}) for ${charData.name}`);
-                        position.x = safePos.x;
-                        position.y = safePos.y;
-                    } else {
-                        // Force position to nearest valid boundary
-                        position.x = Math.max(0, Math.min(position.x, mapWidth - 1));
-                        position.y = Math.max(0, Math.min(position.y, mapHeight - 1));
-                        console.error(`[Character Position] Forced ${charData.name} to boundary position (${position.x}, ${position.y})`);
-                    }
+                    // For critical characters, throw an error instead of trying to fix
+                    throw new CharacterPositioningError(
+                        charData.name,
+                        `Invalid position (${position.x}, ${position.y}) - outside map bounds`,
+                        availableRooms,
+                        { width: mapWidth, height: mapHeight }
+                    );
                 }
 
                 console.log(`[Character Position] Spawning ${charData.name} at position (${position.x}, ${position.y})`);
@@ -979,54 +985,38 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
         // Track occupied positions
         const occupiedPositions = new Set<string>();
 
-        // Find a safe spawn position in the first room or any walkable cell
-        const findSafePosition = (excludePositions?: Set<string>): { x: number; y: number } | null => {
-            // Try to find a walkable cell near the center
-            const centerX = map[0] ? Math.floor(map[0].length / 2) : 25;
-            const centerY = Math.floor(map.length / 2) || 25;
-
-            for (let radius = 0; radius < 15; radius++) {
-                for (let dy = -radius; dy <= radius; dy++) {
-                    for (let dx = -radius; dx <= radius; dx++) {
-                        const y = centerY + dy;
-                        const x = centerX + dx;
-                        if (y >= 0 && y < map.length && x >= 0 && x < (map[0]?.length || 0)) {
-                            const cell = map[y]?.[x];
-                            const posKey = `${x},${y}`;
-                            if (cell && cell.locations && !cell.locations.includes('wall') &&
-                                (!excludePositions || !excludePositions.has(posKey))) {
-                                return { x, y };
-                            }
-                        }
-                    }
-                }
-            }
-            return null; // No valid position found
-        };
-
         // Try to create player if missing
         // Note: We can't directly check state from here, so we'll use a try-add approach
         // The UpdateStateEvent.addCharacter already handles duplicates gracefully (warns and skips)
-        const playerPosition = findSafePosition(occupiedPositions);
-        if (playerPosition) {
-            occupiedPositions.add(`${playerPosition.x},${playerPosition.y}`);
-            // Try to ensure player exists - this is a safety net
-            // The actual state management will prevent duplicates
-            const playerCharacter = this.createCharacterFromBase({
-                name: 'player',
-                race: 'human',
-                description: 'The player character',
-                position: playerPosition,
-                player: 'human',
-                team: 'player',
-                palette: {
-                    skin: '#d7a55f',
-                    helmet: 'white',
-                    suit: 'white'
-                }
-            });
-            this.dispatch(UpdateStateEvent.addCharacter, playerCharacter);
+        const playerPosition = this.findSafePosition(map, occupiedPositions);
+        if (!playerPosition) {
+            // CRITICAL ERROR: Cannot place main character
+            console.error(`[CRITICAL] Cannot find valid position for ${MAIN_CHARACTER_NAME} on the map!`);
+            throw new CharacterPositioningError(
+                MAIN_CHARACTER_NAME,
+                'No valid position found on map',
+                [], // No rooms info at this level
+                { width: map[0]?.length || 50, height: map.length || 50 }
+            );
         }
+        
+        occupiedPositions.add(`${playerPosition.x},${playerPosition.y}`);
+        // Try to ensure player exists - this is a safety net
+        // The actual state management will prevent duplicates
+        const playerCharacter = this.createCharacterFromBase({
+            name: MAIN_CHARACTER_NAME,
+            race: 'human',
+            description: 'The player character',
+            position: playerPosition,
+            player: HUMAN_PLAYER,
+            team: PLAYER_TEAM,
+            palette: {
+                skin: '#d7a55f',
+                helmet: 'white',
+                suit: 'white'
+            }
+        });
+        this.dispatch(UpdateStateEvent.addCharacter, playerCharacter);
 
         // Try to create Data if missing - find an adjacent position to player
         let dataPosition: { x: number, y: number } | null = null;
@@ -1051,18 +1041,18 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap> {
 
         // If no adjacent position found, find any safe position
         if (!dataPosition) {
-            dataPosition = findSafePosition(occupiedPositions);
+            dataPosition = this.findSafePosition(map, occupiedPositions);
         }
 
         // Ensure Data exists
         if (dataPosition) {
             const dataCharacter = this.createCharacterFromBase({
-                name: 'Data',
+                name: COMPANION_DROID_NAME,
                 race: 'robot',
                 description: 'An advanced synthetic companion',
                 position: dataPosition,
-                player: 'human',
-                team: 'player',
+                player: HUMAN_PLAYER,
+                team: PLAYER_TEAM,
                 palette: {
                     skin: 'yellow',
                     helmet: 'gold',

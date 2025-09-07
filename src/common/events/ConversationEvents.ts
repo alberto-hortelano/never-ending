@@ -24,10 +24,12 @@ export interface ConversationUpdateData {
     content: string;
     answers?: string[];
     action?: string;
+    actionData?: any; // Data specific to the action type (characters, movements, items, etc.)
 }
 
 export interface ConversationActionData {
     action: string;
+    actionData?: any; // Data specific to the action type (characters, movements, items, etc.)
 }
 
 export interface AIToAIConversationData {

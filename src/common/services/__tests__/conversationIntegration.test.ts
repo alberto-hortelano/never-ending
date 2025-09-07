@@ -42,7 +42,7 @@ describe('AI Conversation Integration', () => {
             ) as any,
             characters: [
                 {
-                    name: 'player',
+                    name: 'Jim',
                     race: 'human',
                     description: 'The player character',
                     player: 'human',

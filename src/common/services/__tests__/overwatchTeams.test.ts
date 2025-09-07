@@ -29,11 +29,11 @@ describe('Overwatch Team-based Targeting', () => {
 
     test('Player overwatch should NOT shoot at Data (same team)', () => {
         // Setup: Player in overwatch mode
-        const player = state.characters.find((c: any) => c.name === 'player')!;
+        const player = state.characters.find((c: any) => c.name === 'Jim')!;
         const data = state.characters.find((c: any) => c.name === 'Data')!;
         
         // Activate overwatch for player
-        state.overwatchData['player'] = {
+        state.overwatchData['Jim'] = {
             active: true,
             direction: player.direction,
             position: player.position,
@@ -55,14 +55,14 @@ describe('Overwatch Team-based Targeting', () => {
 
     test('Player overwatch SHOULD shoot at enemy (different team)', () => {
         // Setup: Player in overwatch mode
-        const player = state.characters.find((c: any) => c.name === 'player')!;
+        const player = state.characters.find((c: any) => c.name === 'Jim')!;
         const enemy = state.characters.find((c: any) => c.name === 'enemy')!;
         
         // Position enemy near player for line of sight
         enemy.position = { x: player.position.x + 2, y: player.position.y };
         
         // Activate overwatch for player
-        state.overwatchData['player'] = {
+        state.overwatchData['Jim'] = {
             active: true,
             direction: 'right',
             position: player.position,
@@ -95,7 +95,7 @@ describe('Overwatch Team-based Targeting', () => {
     test('Data overwatch should NOT shoot at player (same team)', () => {
         // Setup: Data in overwatch mode
         const data = state.characters.find((c: any) => c.name === 'Data')!;
-        const player = state.characters.find((c: any) => c.name === 'player')!;
+        const player = state.characters.find((c: any) => c.name === 'Jim')!;
         
         // Activate overwatch for Data
         state.overwatchData['Data'] = {
@@ -160,7 +160,7 @@ describe('Overwatch Team-based Targeting', () => {
     test('Enemy overwatch SHOULD shoot at both player and Data (both on player team)', () => {
         // Setup: Enemy in overwatch mode
         const enemy = state.characters.find((c: any) => c.name === 'enemy')!;
-        const player = state.characters.find((c: any) => c.name === 'player')!;
+        const player = state.characters.find((c: any) => c.name === 'Jim')!;
         const data = state.characters.find((c: any) => c.name === 'Data')!;
         
         // Position player and Data near enemy

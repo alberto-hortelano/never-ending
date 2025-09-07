@@ -5,6 +5,7 @@ import { ObjectValidator } from './ObjectValidator';
 import { StoryPlanValidator } from './StoryPlanValidator';
 import { AIMockService } from './AIMockService';
 import type { GameContext } from './AIContextBuilder';
+import { MAIN_CHARACTER_NAME, COMPANION_DROID_NAME, LANGUAGE_NAMES, LANGUAGE_INSTRUCTIONS, type LanguageCode } from '../constants';
 
 export interface AIGameEngineResponse {
     messages: IMessage[];
@@ -81,10 +82,9 @@ export class AIGameEngineService {
     private static instance: AIGameEngineService;
     private readonly maxRetries = 3;
     private readonly retryDelay = 1000;
-    private narrativeArchitectPrompt: string | null = null;
 
     private constructor() {
-        this.loadNarrativeArchitectPrompt();
+        // Narrative prompt is now generated dynamically based on language
     }
 
     public static getInstance(): AIGameEngineService {
@@ -100,11 +100,11 @@ export class AIGameEngineService {
         storyState?: IStoryState
     ): Promise<unknown> {
         const messages: IMessage[] = [];
-        
+
         // Build map generation prompt
-        const originContext = storyState?.selectedOrigin ? 
+        const originContext = storyState?.selectedOrigin ?
             `Origin: ${storyState.selectedOrigin.name}\nLocation Type: ${storyState.selectedOrigin.startingLocation}` : '';
-        
+
         messages.push({
             role: 'user',
             content: `Generate a map for:
@@ -117,7 +117,7 @@ Generate a tactical map with buildings, rooms, and initial character positions.
 Response format:
 {"type": "map", "palette": {...}, "buildings": [...], "characters": [...]}`
         });
-        
+
         try {
             const response = await this.callGameEngine(messages);
             return this.parseAIResponse(response.content);
@@ -126,12 +126,9 @@ Response format:
             return null;
         }
     }
-    
-    private async loadNarrativeArchitectPrompt(): Promise<void> {
-        try {
-            // In production, this would be loaded from the server
-            // For now, we'll use a simplified version
-            this.narrativeArchitectPrompt = `You are the Narrative Architect for "Never Ending", a turn-based tactical strategy game set in a post-apocalyptic galaxy.
+
+    private generateNarrativePrompt(language: LanguageCode): string {
+        return `You are the Narrative Architect for "Never Ending", a turn-based tactical strategy game set in a post-apocalyptic galaxy.
 
 ## GAME MECHANICS - CRITICAL TO UNDERSTAND
 - **Turn-based tactical combat**: Characters take turns on the CURRENT map
@@ -143,7 +140,7 @@ Response format:
 ## Core Setting
 - Era: Post-empire galactic collapse
 - Theme: Survival, exploration, and finding purpose
-- Language: ALL dialogue and narration MUST be in Spanish
+- Language: ${LANGUAGE_INSTRUCTIONS[language]}
 
 ## CONVERSATION CONTINUITY - CRITICAL
 When engaging in dialogue:
@@ -192,12 +189,12 @@ Before responding, check:
 - Speech: Analytical, precise, technical vocabulary
 - Behavior: Protective of humans, logical, efficient
 - Never: Shows emotion, uses colloquialisms, acts irrationally
-- Spanish style: Formal, uses "usted", technical terms
+- Language style: Formal, technical terms
 
 ### Enemy Soldiers
 - Speech: Military, aggressive when hostile, cautious when outnumbered
 - Behavior: Tactical, team-oriented, follows orders
-- Spanish style: Commands, military terminology
+- Language style: Commands, military terminology
 
 ## ACTION FORMATS WITH EXAMPLES
 
@@ -293,7 +290,7 @@ Response: {"type": "speech", "source": "enemy", "content": "Hola, ¿necesitas ay
 1. NEVER describe characters not in visibleCharacters list
 2. NEVER move toward a character already in conversation range
 3. NEVER continue conversation beyond 3-4 exchanges
-4. NEVER use English in dialogue (always Spanish)
+4. ONLY use ${LANGUAGE_NAMES[language]} in dialogue (never other languages)
 5. NEVER suggest impossible tactics (flanking, cover system, etc.)
 6. ALWAYS check canConverse flag before attempting speech
 7. ALWAYS end conversation with empty answers: [] when done
@@ -304,32 +301,31 @@ Response: {"type": "speech", "source": "enemy", "content": "Hola, ¿necesitas ay
 12. The game is TURN-BASED TACTICAL - work with existing map
 
 Remember: The map persists throughout gameplay. Characters move, fight, and talk on the CURRENT map. Only transition to new maps for major story events.`;
-        } catch (error) {
-            console.error('Failed to load narrative architect prompt:', error);
-        }
     }
 
     public async requestAIAction(
         context: AIActionContext,
         systemPrompt?: string,
-        storyState?: IStoryState
+        storyState?: IStoryState,
+        language: LanguageCode = 'es'
     ): Promise<AIGameEngineResponse> {
         // Check if mock mode is enabled
         const isMockEnabled = localStorage.getItem('ai_mock_enabled') === 'true';
         if (isMockEnabled) {
             // Convert AIActionContext to GameContext for the mock service
             const gameContext = context as unknown as GameContext;
-            return AIMockService.getInstance().requestAIAction(gameContext, systemPrompt, storyState);
+            return AIMockService.getInstance().requestAIAction(gameContext);
         }
-        
+
         const messages: IMessage[] = [];
         const startTime = Date.now();
 
         // Add system context as first message
-        if (systemPrompt || this.narrativeArchitectPrompt) {
+        const narrativePrompt = this.generateNarrativePrompt(language);
+        if (systemPrompt || narrativePrompt) {
             messages.push({
                 role: 'user',
-                content: systemPrompt || this.narrativeArchitectPrompt || ''
+                content: systemPrompt || narrativePrompt
             });
         }
 
@@ -343,7 +339,7 @@ Remember: The map persists throughout gameplay. Characters move, fight, and talk
         try {
             const response = await this.callGameEngine(messages);
             const command = this.parseAIResponse(response.content);
-            
+
             const duration = Date.now() - startTime;
             if (command?.type === 'speech') {
                 const speechCmd = command as SpeechCommand;
@@ -370,7 +366,7 @@ Remember: The map persists throughout gameplay. Characters move, fight, and talk
         const current = context.currentCharacter;
         const visibleChars = context.visibleCharacters || [];
         const conversableChars = context.charactersInConversationRange || [];
-        
+
         // Build character descriptions with clear status
         const characterDescriptions = visibleChars.map((char) => {
             const status = [];
@@ -378,10 +374,10 @@ Remember: The map persists throughout gameplay. Characters move, fight, and talk
             if (char.isEnemy) status.push('ENEMY');
             if (char.canConverse) status.push('CAN TALK');
             if (char.isAdjacent) status.push('ADJACENT');
-            
+
             return `  - ${char.name}: ${Math.round(char.distanceFromCurrent || 0)} cells away [${status.join(', ')}] Health: ${char.health?.current}/${char.health?.max}`;
         }).join('\n');
-        
+
         // Create natural language situation summary
         let situationSummary = `## CURRENT SITUATION
 
@@ -395,11 +391,11 @@ Your personality: ${current?.personality || 'standard'}
 ${characterDescriptions || '  None visible'}
 
 ## CONVERSATION OPTIONS (within 8 cells)
-${conversableChars.length > 0 
-    ? conversableChars.map((c) => `  - ${c.name} (${Math.round(c.distanceFromCurrent || 0)}m) - Ready to talk`).join('\n')
-    : '  No characters in conversation range - need to move closer'}
+${conversableChars.length > 0
+                ? conversableChars.map((c) => `  - ${c.name} (${Math.round(c.distanceFromCurrent || 0)}m) - Ready to talk`).join('\n')
+                : '  No characters in conversation range - need to move closer'}
 `;
-        
+
         // Add recent events if available
         if (context.recentEvents && context.recentEvents.length > 0) {
             situationSummary += `
@@ -407,17 +403,17 @@ ${conversableChars.length > 0
 ${context.recentEvents.map((e) => `  - ${e.description}`).join('\n')}
 `;
         }
-        
+
         // Add conversation history if available
         if (context.conversationHistory && context.conversationHistory.length > 0) {
             situationSummary += `
 ## RECENT CONVERSATION HISTORY
-${context.conversationHistory.map((exchange) => 
-    `  - ${exchange.speaker}: "${exchange.content}"`
-).join('\n')}
+${context.conversationHistory.map((exchange) =>
+                `  - ${exchange.speaker}: "${exchange.content}"`
+            ).join('\n')}
 `;
         }
-        
+
         // Add active conversations if any
         if (context.activeConversations && context.activeConversations.size > 0) {
             const activeConvos: string[] = [];
@@ -436,7 +432,7 @@ ${activeConvos.join('\n')}
 `;
             }
         }
-        
+
         // Add tactical analysis if in combat
         if (context.tacticalAnalysis) {
             const threats = context.tacticalAnalysis.threats || [];
@@ -449,7 +445,7 @@ Recommended stance: ${context.tacticalAnalysis.suggestedStance}
 `;
             }
         }
-        
+
         // Add story context if available
         if (storyState?.selectedOrigin) {
             situationSummary += `
@@ -459,7 +455,7 @@ Chapter: ${storyState.currentChapter || 1}
 Companion: ${storyState.selectedOrigin.startingCompanion?.name || 'None'}
 `;
         }
-        
+
         // Handle blockage situations
         if (context.blockageInfo) {
             if (typeof context.blockageInfo === 'string') {
@@ -468,7 +464,7 @@ Companion: ${storyState.selectedOrigin.startingCompanion?.name || 'None'}
 ${context.blockageInfo}
 `;
             } else if (typeof context.blockageInfo === 'object') {
-                const info = context.blockageInfo as { 
+                const info = context.blockageInfo as {
                     blockingCharacter?: {
                         name: string;
                         isAlly: boolean;
@@ -487,13 +483,13 @@ ${blocker.distance <= 8 ? '✓ Can talk to resolve' : '✗ Too far to talk - mov
                 }
             }
         }
-        
+
         // Clear action reminders based on situation
         let actionGuidance = `
 ## DECISION GUIDANCE
 
 `;
-        
+
         // Priority guidance based on situation
         if (conversableChars.some((c) => c.isAlly)) {
             actionGuidance += `📢 PRIORITY: You have allies in conversation range! Consider speaking first.\n`;
@@ -507,7 +503,7 @@ ${blocker.distance <= 8 ? '✓ Can talk to resolve' : '✗ Too far to talk - mov
         if (visibleChars.length === 0) {
             actionGuidance += `🔍 EXPLORING: No one visible. Move to explore the area.\n`;
         }
-        
+
         return situationSummary + actionGuidance + `
 ## YOUR RESPONSE
 Based on the above situation, choose ONE action following the JSON format.
@@ -525,7 +521,7 @@ CRITICAL REMINDERS:
         messages: IMessage[],
         retry = 0
     ): Promise<{ messages: IMessage[], content: string }> {
-        
+
         // Check cache first
         const cacheKey: GameEngineRequest = { messages, endpoint: '/gameEngine' };
         const cachedResponse = AIBrowserCacheService.getCachedResponse<GameEngineRequest, GameEngineResponse>(cacheKey);
@@ -533,7 +529,7 @@ CRITICAL REMINDERS:
             console.log('[AIGameEngineService] Using cached response');
             return cachedResponse;
         }
-        
+
         try {
             const response = await fetch('/gameEngine', {
                 method: 'POST',
@@ -544,7 +540,7 @@ CRITICAL REMINDERS:
             });
 
             // console.log('[AIGameEngineService] Response status:', response.status, response.statusText);
-            
+
             if (!response.ok) {
                 const errorData = await response.json();
                 console.error('[AIGameEngineService] Server error:', errorData);
@@ -567,7 +563,7 @@ CRITICAL REMINDERS:
                 AIBrowserCacheService.cacheResponse<GameEngineRequest, GameEngineResponse>(cacheKey, result);
                 return result;
             }
-            
+
             // Otherwise treat as message array
             const updatedMessages: IMessage[] = responseData;
             const lastMessage = updatedMessages[updatedMessages.length - 1];
@@ -591,21 +587,21 @@ CRITICAL REMINDERS:
             return result;
         } catch (error) {
             console.error('[AI GameEngine] Error in callGameEngine:', error);
-            
+
             // Check if it's an overload error (529)
             const errorMessage = (error as Error).message || '';
             const isOverloadError = errorMessage.includes('529') || errorMessage.includes('overloaded');
-            
+
             if (retry < this.maxRetries) {
                 // Calculate exponential backoff delay
                 // For overload errors, use longer delays
                 const baseDelay = isOverloadError ? 5000 : this.retryDelay;
                 const backoffDelay = baseDelay * Math.pow(2, retry);
-                
+
                 if (isOverloadError) {
                     console.log(`[AI] Service overloaded, retrying in ${backoffDelay}ms...`);
                 }
-                
+
                 await new Promise(resolve => setTimeout(resolve, backoffDelay));
                 return this.callGameEngine(messages, retry + 1);
             }
@@ -632,32 +628,34 @@ CRITICAL REMINDERS:
             return null;
         }
     }
-    
+
     public async requestStoryInitialization(
         origin: IOriginStory,
-        _storyState: IStoryState
+        _storyState: IStoryState,
+        language: LanguageCode = 'es'
     ): Promise<{ commands: AICommand[], narrative?: string }> {
         // Check if mock mode is enabled
         const isMockEnabled = localStorage.getItem('ai_mock_enabled') === 'true';
         if (isMockEnabled) {
-            return AIMockService.getInstance().requestStoryInitialization(origin, _storyState);
+            return AIMockService.getInstance().requestStoryInitialization();
         }
-        
+
         const messages: IMessage[] = [];
-        
+
         // Add the narrative architect prompt as a user message with context
         // Note: The IMessage interface only supports 'user' | 'assistant' roles
-        if (this.narrativeArchitectPrompt) {
+        const narrativePrompt = this.generateNarrativePrompt(language);
+        if (narrativePrompt) {
             messages.push({
                 role: 'user',
                 content: `SYSTEM CONTEXT:
-${this.narrativeArchitectPrompt}
+${narrativePrompt}
 
 ---
 `
             });
         }
-        
+
         // Build the initialization request
         const initRequest = `
 # STORY INITIALIZATION REQUEST
@@ -683,15 +681,17 @@ Generate the following in order:
    - The map should support the narrative of ${origin.nameES}
 
 2. **CHARACTER PLACEMENT**
-   - Player character "player" and companion "Data" are already present
-   ${origin.startingCompanion ? `- Also place companion "${origin.startingCompanion.name}" near the player` : ''}
-   - Generate 2-4 initial NPCs or enemies appropriate to the origin story
-   - Place them strategically on the map
+   - You MUST include the main character "${MAIN_CHARACTER_NAME}" in your character list
+   - You MUST include the companion "${COMPANION_DROID_NAME}" in your character list
+   - Place ${MAIN_CHARACTER_NAME} and ${COMPANION_DROID_NAME} in logical starting positions
+   ${origin.startingCompanion ? `- Also place companion "${origin.startingCompanion.name}" near ${MAIN_CHARACTER_NAME}` : ''}
+   - Generate 2-4 additional NPCs or enemies appropriate to the origin story
+   - Place all characters strategically on the map with valid positions
 
 3. **INITIAL NARRATIVE**
    - Create an opening scenario that reflects the origin's theme
    - Set up an immediate objective or situation for the player
-   - All text must be in Spanish
+   - ${LANGUAGE_INSTRUCTIONS[language]}
 
 ## RESPONSE FORMAT
 
@@ -702,7 +702,7 @@ Return a JSON object with:
     {"type": "character", "characters": [...]},
     {"type": "storyline", "storyline": {...}}
   ],
-  "narrative": "Initial story text in Spanish to display to the player"
+  "narrative": "Initial story text in ${LANGUAGE_NAMES[language]} to display to the player"
 }
 
 ## MAP COMMAND FORMAT
@@ -740,10 +740,34 @@ Return a JSON object with:
   "type": "character",
   "characters": [
     {
-      "name": "Character Name",
+      "name": "Jim",  // REQUIRED - main character (must be exactly "Jim")
+      "race": "human",
+      "description": "The main protagonist",
+      "location": "room_name or x,y coordinates",
+      "player": "human",
+      "palette": {
+        "skin": "#d7a55f",
+        "helmet": "white",
+        "suit": "white"
+      }
+    },
+    {
+      "name": "Data",  // REQUIRED - companion (must be exactly "Data")
+      "race": "robot",
+      "description": "Loyal companion droid",
+      "location": "room_name or x,y coordinates",
+      "player": "ai",
+      "palette": {
+        "skin": "yellow",
+        "helmet": "gold",
+        "suit": "gold"
+      }
+    },
+    {
+      "name": "NPC Name",
       "race": "human/robot/alien",
       "description": "Brief description",
-      "location": "10,10",
+      "location": "room_name or x,y",
       "player": "ai",
       "personality": "aggressive/defensive/neutral",
       "palette": {
@@ -759,30 +783,30 @@ Return a JSON object with:
 {
   "type": "storyline",
   "storyline": {
-    "title": "Mission Title in Spanish",
-    "description": "Mission description in Spanish",
+    "title": "Mission Title in ${LANGUAGE_NAMES[language]}",
+    "description": "Mission description in ${LANGUAGE_NAMES[language]}",
     "objectives": [
-      {"id": "obj1", "description": "Objective in Spanish", "completed": false}
+      {"id": "obj1", "description": "Objective in ${LANGUAGE_NAMES[language]}", "completed": false}
     ]
   }
 }
 
-Remember: ALL narrative text, descriptions, objectives, and dialogue MUST be in Spanish.`;
+Remember: ALL narrative text, descriptions, objectives, and dialogue MUST be in ${LANGUAGE_NAMES[language]}.`;
 
         messages.push({
             role: 'user',
             content: initRequest
         });
-        
+
         // console.log('[AIGameEngineService] Sending initialization request to /gameEngine endpoint');
         // console.log('[AIGameEngineService] Request length:', initRequest.length, 'characters');
-        
+
         try {
             // console.log('[AIGameEngineService] Calling game engine API...');
             const response = await this.callGameEngine(messages);
             // console.log('[AIGameEngineService] API response received');
             // console.log('[AIGameEngineService] Response content length:', response.content?.length || 0);
-            
+
             const parsedResponse = this.parseAIResponse(response.content);
             // console.log('[AIGameEngineService] Parsed response:', {
             //     hasParsedResponse: !!parsedResponse,
@@ -790,11 +814,11 @@ Remember: ALL narrative text, descriptions, objectives, and dialogue MUST be in 
             //     hasCommands: !!parsedResponse?.commands,
             //     commandCount: parsedResponse?.commands?.length || 0
             // });
-            
+
             // Handle both single command and array of commands
             let commands: AICommand[] = [];
             let narrative: string | undefined;
-            
+
             if (parsedResponse) {
                 // Check if response has commands array
                 if ('commands' in parsedResponse && Array.isArray(parsedResponse.commands)) {
@@ -805,7 +829,7 @@ Remember: ALL narrative text, descriptions, objectives, and dialogue MUST be in 
                     commands = [parsedResponse];
                 }
             }
-            
+
             // console.log('[AIGameEngineService] Returning commands:', commands.length, 'narrative:', !!narrative);
             return { commands, narrative };
         } catch (error) {
@@ -823,14 +847,14 @@ Remember: ALL narrative text, descriptions, objectives, and dialogue MUST be in 
         listener: string,
         playerChoice: string,
         context?: AIActionContext,
-        storyState?: IStoryState
+        storyState?: IStoryState,
+        language: LanguageCode = 'es'
     ): Promise<AIGameEngineResponse> {
         // Check if mock mode is enabled
         const isMockEnabled = localStorage.getItem('ai_mock_enabled') === 'true';
         if (isMockEnabled) {
             // Convert AIActionContext to GameContext for the mock service
-            const gameContext = context as unknown as GameContext;
-            return AIMockService.getInstance().requestDialogueResponse(speaker, listener, playerChoice, gameContext, storyState);
+            return AIMockService.getInstance().requestDialogueResponse(speaker, listener, playerChoice);
         }
         const messages: IMessage[] = [];
 
@@ -847,7 +871,7 @@ Story Context:
 - Story Flags: ${Array.from(storyState.storyFlags || []).join(', ')}
 `;
         }
-        
+
         // Build conversation history context
         let conversationContext = '';
         if (context?.recentConversation && context.recentConversation.length > 0) {
@@ -856,19 +880,19 @@ Previous conversation exchanges:
 ${context.recentConversation.join('\n')}
 `;
         }
-        
+
         messages.push({
             role: 'user',
             content: `${speaker} is talking to ${listener}. The player (${speaker}) said: "${playerChoice}"
 ${storyContext}
 ${conversationContext}
-Respond as ${listener} with a speech message in Spanish. Remember the conversation context and maintain continuity.
+Respond as ${listener} with a speech message in ${LANGUAGE_NAMES[language]}. Remember the conversation context and maintain continuity.
 
 Context:
 ${context ? JSON.stringify(context, null, 2) : 'No additional context'}
 
 Response format:
-{"type": "speech", "source": "${listener}", "content": "response in Spanish", "answers": ["option 1", "option 2", "option 3"]}`
+{"type": "speech", "source": "${listener}", "content": "response in ${LANGUAGE_NAMES[language]}", "answers": ["option 1", "option 2", "option 3"]}`
         });
 
         try {
@@ -898,7 +922,7 @@ Response format:
     ): Promise<IValidationResult> {
         const retryCallback = async (fixPrompt: string): Promise<unknown> => {
             console.log('[AIGameEngineService] Requesting AI to fix validation errors');
-            
+
             const messages: IMessage[] = [{
                 role: 'user',
                 content: fixPrompt
@@ -926,7 +950,7 @@ Response format:
     ): Promise<unknown> {
         // First attempt
         const response = await this.requestMapGeneration(missionType, narrativeContext, storyState);
-        
+
         // Check if it's a story plan response
         if (response && typeof response === 'object' && 'storyPlan' in response) {
             const validator = new StoryPlanValidator();
@@ -936,7 +960,7 @@ Response format:
                 validator,
                 2
             );
-            
+
             if (validationResult.isValid) {
                 return {
                     ...response,
@@ -945,7 +969,7 @@ Response format:
             } else {
                 console.error('[AIGameEngineService] Story plan validation failed after retries');
                 console.error('Validation errors:', validationResult.errors);
-                
+
                 // Return a default story plan if validation fails
                 const defaultPlan = validator.createDefaultStoryPlan();
                 return {
@@ -954,7 +978,7 @@ Response format:
                 };
             }
         }
-        
+
         return response;
     }
 }

@@ -9,6 +9,7 @@ import {
 } from "./events";
 import { conversationSystemPrompt, characterContext, aiToAIConversationPrompt, getAIToAIContext } from "../prompts/conversationPrompts";
 import { AIGameEngineService } from './services/AIGameEngineService';
+import { MAIN_CHARACTER_NAME, COMPANION_DROID_NAME } from './constants';
 
 export class Conversation extends EventBus<
     StateChangeEventsMap & ConversationEventsMap,
@@ -253,8 +254,8 @@ export class Conversation extends EventBus<
             // Extract context from messages
             const lastUserMessage = messages[messages.length - 1];
             const playerChoice = lastUserMessage?.content || '';
-            const speaker = 'player';
-            const listener = 'Data';  // Assuming Data is the one responding
+            const speaker = MAIN_CHARACTER_NAME;
+            const listener = COMPANION_DROID_NAME;  // Assuming Data is the one responding
             
             // Get mock response
             const mockResponse = await this.aiService.requestDialogueResponse(
@@ -598,7 +599,7 @@ export class Conversation extends EventBus<
         // The player character now joins the conversation
         this.dispatch(ConversationEvent.update, {
             type: 'speech',
-            source: 'Player',
+            source: MAIN_CHARACTER_NAME,
             content: 'Disculpen la interrupción...',
             answers: ['¿De qué están hablando?', 'Necesito hablar con ustedes', 'Continúen, solo escucho']
         });

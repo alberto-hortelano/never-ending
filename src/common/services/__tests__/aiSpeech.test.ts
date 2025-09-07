@@ -43,7 +43,7 @@ describe('AI Speech System', () => {
             ) as any,
             characters: [
                 {
-                    name: 'player',
+                    name: 'Jim',
                     race: 'human',
                     description: 'The player character',
                     player: 'human',
@@ -196,7 +196,7 @@ describe('AI Speech System', () => {
         
         it('should show conversation when characters are adjacent', async () => {
             // Verify characters are adjacent (distance = 1)
-            const player = state.characters.find(c => c.name === 'player');
+            const player = state.characters.find(c => c.name === 'Jim');
             const data = state.characters.find(c => c.name === 'data');
             expect(player).toBeDefined();
             expect(data).toBeDefined();

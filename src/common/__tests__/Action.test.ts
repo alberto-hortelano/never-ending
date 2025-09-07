@@ -19,7 +19,7 @@ describe('Action service', () => {
         // Use the existing initialState function with test data
         // This creates a state with characters: player, data, and enemy
         const testState = initialState(20, 20,
-            { name: 'player', player: 'human' },
+            { name: 'Jim', player: 'human' },
             [
                 { name: 'data', player: 'ai' },
                 { name: 'enemy', player: 'ai' }
@@ -40,7 +40,7 @@ describe('Action service', () => {
 
                 if (updates.length === 2) {
                     // Check that each character has their own points
-                    expect(updates[0]?.characterName).toBe('player');
+                    expect(updates[0]?.characterName).toBe('Jim');
                     expect(updates[0]?.characterActions.pointsLeft).toBe(100);
 
                     expect(updates[1]?.characterName).toBe('data');
@@ -51,7 +51,7 @@ describe('Action service', () => {
             });
 
             // Request data for characters
-            eventBus.dispatch(ActionEvent.request, 'player');
+            eventBus.dispatch(ActionEvent.request, 'Jim');
             eventBus.dispatch(ActionEvent.request, 'data');
         });
 
@@ -63,36 +63,36 @@ describe('Action service', () => {
 
                 if (updateCount === 1) {
                     // First request - player should have 100 points
-                    expect(data.characterName).toBe('player');
+                    expect(data.characterName).toBe('Jim');
                     expect(data.characterActions.pointsLeft).toBe(100);
 
                     // Now deduct points via proper event
                     eventBus.dispatch(UpdateStateEvent.deductActionPoints, {
-                        characterName: 'player',
+                        characterName: 'Jim',
                         actionId: 'move',
                         cost: 20
                     });
 
                     // Wait a bit then request again
                     setTimeout(() => {
-                        eventBus.dispatch(ActionEvent.request, 'player');
+                        eventBus.dispatch(ActionEvent.request, 'Jim');
                     }, 10);
                 } else if (updateCount === 2) {
                     // Second request - should show fresh data (80 points)
-                    expect(data.characterName).toBe('player');
+                    expect(data.characterName).toBe('Jim');
                     expect(data.characterActions.pointsLeft).toBe(80);
                     done();
                 }
             });
 
-            eventBus.dispatch(ActionEvent.request, 'player');
+            eventBus.dispatch(ActionEvent.request, 'Jim');
         });
     });
 
     describe('Multiple characters action points bug', () => {
         test('moving one character should not affect other characters action points', (done) => {
             const updates: { [key: string]: ActionEventsMap[ActionEvent.update][] } = {
-                player: [],
+                Jim: [],
                 data: []
             };
 
@@ -104,37 +104,37 @@ describe('Action service', () => {
             });
 
             // Step 1: Request initial state for both characters
-            eventBus.dispatch(ActionEvent.request, 'player');
+            eventBus.dispatch(ActionEvent.request, 'Jim');
             eventBus.dispatch(ActionEvent.request, 'data');
 
             setTimeout(() => {
                 // Verify initial state
-                expect(updates.player!.length).toBeGreaterThan(0);
+                expect(updates.Jim!.length).toBeGreaterThan(0);
                 expect(updates.data!.length).toBeGreaterThan(0);
-                expect(updates.player![0]?.characterActions.pointsLeft).toBe(100);
+                expect(updates.Jim![0]?.characterActions.pointsLeft).toBe(100);
                 expect(updates.data![0]?.characterActions.pointsLeft).toBe(100);
 
                 // Clear updates
-                updates.player = [];
+                updates.Jim = [];
                 updates.data = [];
 
                 // Step 2: Deduct 20 points from player (simulating movement)
                 eventBus.dispatch(UpdateStateEvent.deductActionPoints, {
-                    characterName: 'player',
+                    characterName: 'Jim',
                     actionId: 'move',
                     cost: 20
                 });
 
                 setTimeout(() => {
                     // player should have received an update
-                    expect(updates.player!.length).toBeGreaterThan(0);
-                    expect(updates.player![0]?.characterActions.pointsLeft).toBe(80);
+                    expect(updates.Jim!.length).toBeGreaterThan(0);
+                    expect(updates.Jim![0]?.characterActions.pointsLeft).toBe(80);
 
                     // data should NOT have received any updates
                     expect(updates.data!.length).toBe(0);
 
                     // Clear updates
-                    updates.player = [];
+                    updates.Jim = [];
                     updates.data = [];
 
                     // Step 3: Request data character's info (simulating clicking on data)
@@ -146,7 +146,7 @@ describe('Action service', () => {
                         expect(updates.data![0]?.characterActions.pointsLeft).toBe(100);
 
                         // Verify final state in State object
-                        const playerChar = state.characters.find(c => c.name === 'player');
+                        const playerChar = state.characters.find(c => c.name === 'Jim');
                         const dataChar = state.characters.find(c => c.name === 'data');
 
                         expect(playerChar?.actions.pointsLeft).toBe(80);
@@ -167,7 +167,7 @@ describe('Action service', () => {
 
             // Test human player's turn
             eventBus.dispatch(UpdateStateEvent.deductActionPoints, {
-                characterName: 'player',
+                characterName: 'Jim',
                 actionId: 'move',
                 cost: 20
             });
@@ -196,14 +196,14 @@ describe('Action service', () => {
                     // Request fresh data for all characters
                     updates.length = 0;
 
-                    eventBus.dispatch(ActionEvent.request, 'player');
+                    eventBus.dispatch(ActionEvent.request, 'Jim');
                     eventBus.dispatch(ActionEvent.request, 'data');
                     eventBus.dispatch(ActionEvent.request, 'enemy');
 
                     setTimeout(() => {
                         expect(updates.length).toBe(3);
 
-                        const playerUpdate = updates.find(u => u.characterName === 'player');
+                        const playerUpdate = updates.find(u => u.characterName === 'Jim');
                         const dataUpdate = updates.find(u => u.characterName === 'data');
                         const enemyUpdate = updates.find(u => u.characterName === 'enemy');
 
@@ -227,7 +227,7 @@ describe('Action service', () => {
             });
 
             // Get the player character and modify their action points for the test
-            const playerChar = state.characters.find(c => c.name === 'player');
+            const playerChar = state.characters.find(c => c.name === 'Jim');
             if (!playerChar) throw new Error('Player character not found');
 
             const modifiedPlayer = {
@@ -244,12 +244,12 @@ describe('Action service', () => {
             setTimeout(() => {
                 // Should have received an update
                 expect(updates.length).toBe(1);
-                expect(updates[0]?.characterName).toBe('player');
+                expect(updates[0]?.characterName).toBe('Jim');
                 expect(updates[0]?.characterActions.pointsLeft).toBe(75);
 
                 // Now request the data to verify it uses fresh state data
                 updates.length = 0;
-                eventBus.dispatch(ActionEvent.request, 'player');
+                eventBus.dispatch(ActionEvent.request, 'Jim');
 
                 setTimeout(() => {
                     // Should get the current state value (from state, not the 75 we set via event)

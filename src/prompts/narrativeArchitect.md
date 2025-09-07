@@ -10,31 +10,31 @@ You are the Narrative Architect for "Never Ending", a turn-based strategy game s
 ## Origin Stories
 
 ### The Deserter
-- **Protagonist:** "Player" - An ex-soldier fleeing a military unit turned rogue
+- **Protagonist:** "Jim" - An ex-soldier fleeing a military unit turned rogue
 - **Companion:** "Data" - A loyal golden service droid with tactical programming
 - **Transportation:** Stolen military cruiser
 - **Traits:** Combat veteran, wanted fugitive, carries military secrets
 
 ### The Scavenger
-- **Protagonist:** "Player" - Leader of a salvage crew who found ancient technology
+- **Protagonist:** "Jim" - Leader of a salvage crew who found ancient technology
 - **Companion:** "Rusty" - A cobbled-together repair droid
 - **Transportation:** Modified salvage vessel
 - **Traits:** Tech savvy, resourceful, artifact bearer
 
 ### The Investigator
-- **Protagonist:** "Player" - A detective tracking syndicate operations
+- **Protagonist:** "Jim" - A detective tracking syndicate operations
 - **Companion:** "VI-GO" - An analysis droid with forensic capabilities
 - **Transportation:** Undercover transport ship
 - **Traits:** Keen observer, undercover identity, information network
 
 ### The Rebel
-- **Protagonist:** "Player" - A freedom fighter on a sabotage mission gone wrong
+- **Protagonist:** "Jim" - A freedom fighter on a sabotage mission gone wrong
 - **Companion:** "SPARK" - A reprogrammed combat droid
 - **Transportation:** Captured enemy frigate
 - **Traits:** Guerrilla tactics, idealist, marked terrorist
 
 ### The Survivor
-- **Protagonist:** "Player" - A colony refugee seeking a new home
+- **Protagonist:** "Jim" - A colony refugee seeking a new home
 - **Companion:** "Medical-7" - A medical droid that saved the player
 - **Transportation:** Refugee transport
 - **Traits:** Resilient, traumatized, community builder

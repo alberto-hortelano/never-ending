@@ -46,7 +46,7 @@ describe('AIController', () => {
             ) as any,
             characters: [
                 {
-                    name: 'player',
+                    name: 'Jim',
                     race: 'human',
                     description: 'The player character',
                     player: 'human',
@@ -199,7 +199,7 @@ describe('AIController', () => {
     
     describe('Location Resolution', () => {
         it('should resolve character names to positions', () => {
-            const location = (aiController as any).resolveLocation('player');
+            const location = (aiController as any).resolveLocation('Jim');
             expect(location).toEqual({ x: 5, y: 5 });
         });
         
@@ -209,7 +209,7 @@ describe('AIController', () => {
         });
         
         it('should handle case-insensitive character names', () => {
-            const location = (aiController as any).resolveLocation('PLAYER');
+            const location = (aiController as any).resolveLocation('JIM');
             expect(location).toEqual({ x: 5, y: 5 });
         });
     });
@@ -301,7 +301,7 @@ describe('AIController', () => {
                 type: 'attack',
                 characters: [{
                     name: 'data',
-                    target: 'player',
+                    target: 'Jim',
                     attack: 'ranged'
                 }]
             };
@@ -320,7 +320,7 @@ describe('AIController', () => {
             expect(dispatchSpy).toHaveBeenCalledWith(
                 ControlsEvent.characterClick,
                 { 
-                    characterName: 'player',
+                    characterName: 'Jim',
                     position: { x: 5, y: 5 }
                 }
             );
@@ -331,7 +331,7 @@ describe('AIController', () => {
                 type: 'attack',
                 characters: [{
                     name: 'data',
-                    target: 'player',
+                    target: 'Jim',
                     attack: 'hold'
                 }]
             };

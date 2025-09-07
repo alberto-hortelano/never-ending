@@ -257,6 +257,8 @@ export const sendMessage: SendMessage = async (messages: IMessage[]) => {
     }
 
     try {
+        console.log('PROMPT ###############');
+        console.log('CLAUDE:\n', messages[messages.length - 1]);
         const msg = await callClaudeWithModel(currentModel, messages, narrativeArchitect);
 
         const response = msg.content[0];
@@ -266,7 +268,8 @@ export const sendMessage: SendMessage = async (messages: IMessage[]) => {
 
         // Extract JSON from markdown code blocks if present
         const text = response.text;
-        console.log(text);
+        console.log('RESPONSE ###############');
+        console.log('CLAUDE:\n', text);
         const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
 
         if (jsonMatch && jsonMatch[1]) {

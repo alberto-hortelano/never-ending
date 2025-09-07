@@ -343,9 +343,13 @@ export class Conversation extends Component {
         if (accepted && action) {
             console.log('[Conversation] User accepted action:', action);
             
+            // Get the current conversation data to include actionData
+            const currentData = this.conversationHistory[this.currentHistoryIndex]?.data;
+            const actionData = currentData?.actionData;
+            
             // Dispatch storyline-action event to parent components
             this.dispatchEvent(new CustomEvent('storyline-action', {
-                detail: { action, accepted: true },
+                detail: { action, actionData, accepted: true },
                 bubbles: true
             }));
             

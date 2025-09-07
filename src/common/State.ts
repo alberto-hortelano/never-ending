@@ -174,16 +174,6 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap & State
 
     // Storage methods
     private save() {
-        // TODO: Implement if needed
-        // const state: IState = {
-        //     game: this.gameState.game,
-        //     map: this.mapState.map,
-        //     characters: this.characterState.characters,
-        //     messages: this.messageState.messages,
-        //     ui: this.uiState.ui,
-        //     overwatchData: this.overwatchState.overwatchData
-        // };
-        // localStorage.setItem(this.storageName, JSON.stringify(state));
     }
 
     private load(initialState?: IState) {
@@ -225,7 +215,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap & State
         // Initialize story state if present
         if (state.story) {
             console.log('[State] Loading story state:', state.story);
-            this.storyState.story = state.story;
+            this.storyState.deserialize(state.story);
         }
 
         // No need to complete initialization anymore since we handle events differently

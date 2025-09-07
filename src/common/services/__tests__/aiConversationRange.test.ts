@@ -72,7 +72,7 @@ describe('AI Conversation Range', () => {
                 } as unknown as ICharacter,
                 // Player - within conversation range (2 cells away)
                 {
-                    name: 'player',
+                    name: 'Jim',
                     race: 'human',
                     description: 'The player character',
                     player: 'human',
@@ -243,7 +243,7 @@ describe('AI Conversation Range', () => {
             
             // With conversation range of 8: Should include player (2), ally (3), and enemy (4), but not distant (10)
             const conversableNames = context.charactersInConversationRange.map(c => c.name);
-            expect(conversableNames).toContain('player');
+            expect(conversableNames).toContain('Jim');
             expect(conversableNames).toContain('ally');
             expect(conversableNames).toContain('enemy');  // Now in range at 4 cells
             expect(conversableNames).not.toContain('distant');
@@ -254,7 +254,7 @@ describe('AI Conversation Range', () => {
             const context = contextBuilder.buildTurnContext(dataCharacter!, state);
             
             // Check visible characters have correct canConverse flags
-            const playerContext = context.visibleCharacters.find(c => c.name === 'player');
+            const playerContext = context.visibleCharacters.find(c => c.name === 'Jim');
             const allyContext = context.visibleCharacters.find(c => c.name === 'ally');
             const enemyContext = context.visibleCharacters.find(c => c.name === 'enemy');
             const distantContext = context.visibleCharacters.find(c => c.name === 'distant');
@@ -269,7 +269,7 @@ describe('AI Conversation Range', () => {
             const dataCharacter = state.characters.find(c => c.name === 'data');
             const context = contextBuilder.buildTurnContext(dataCharacter!, state);
             
-            const playerContext = context.visibleCharacters.find(c => c.name === 'player');
+            const playerContext = context.visibleCharacters.find(c => c.name === 'Jim');
             const allyContext = context.visibleCharacters.find(c => c.name === 'ally');
             const enemyContext = context.visibleCharacters.find(c => c.name === 'enemy');
             
@@ -320,7 +320,7 @@ describe('AI Conversation Range', () => {
             const adjacentState = {
                 ...testState,
                 characters: testState.characters.map(c => 
-                    c.name === 'player' 
+                    c.name === 'Jim' 
                         ? { ...c, position: { x: 16, y: 15 } } // 1 cell away
                         : c
                 )
@@ -332,13 +332,13 @@ describe('AI Conversation Range', () => {
             
             const context = newContextBuilder.buildTurnContext(dataCharacter!, newState);
             
-            const playerContext = context.visibleCharacters.find(c => c.name === 'player');
+            const playerContext = context.visibleCharacters.find(c => c.name === 'Jim');
             expect(playerContext?.isAdjacent).toBe(true);
             expect(playerContext?.canConverse).toBe(true);
             expect(playerContext?.distanceFromCurrent).toBe(1);
             
             // Adjacent character should also be in conversation range
-            expect(context.charactersInConversationRange.some(c => c.name === 'player')).toBe(true);
+            expect(context.charactersInConversationRange.some(c => c.name === 'Jim')).toBe(true);
         });
     });
 });

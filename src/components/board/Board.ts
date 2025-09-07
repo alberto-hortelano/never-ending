@@ -3,7 +3,7 @@ import { Component } from "../Component";
 import { DragScroll } from "../../common/helpers/DragScroll";
 import { ICoord, IProjectileState, IInteractionMode } from "../../common/interfaces";
 import { BoardService } from "../../common/services/BoardService";
-import { ANIMATION_DURATIONS } from "../../common/constants";
+import { ANIMATION_DURATIONS, MAIN_CHARACTER_NAME } from "../../common/constants";
 import "../projectile/Projectile";
 
 export default class Board extends Component {
@@ -19,7 +19,7 @@ export default class Board extends Component {
     this.dragger = new DragScroll(this);
     this.listen(StateChangeEvent.map, (newMap) => this.updateMap(newMap));
     this.listen(StateChangeEvent.characters, (characters) => {
-      const player = characters.find(c => c.name === 'player');
+      const player = characters.find(c => c.name === MAIN_CHARACTER_NAME);
       if (player) {
         this.centerScreen(player.position);
       }
@@ -67,7 +67,7 @@ export default class Board extends Component {
       this.updateMap(state.map);
       
       // Also center on player if available
-      const player = state.findCharacter('player');
+      const player = state.findCharacter(MAIN_CHARACTER_NAME);
       if (player) {
         this.centerScreen(player.position);
       }

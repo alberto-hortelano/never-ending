@@ -2,6 +2,7 @@ import { IState, ICharacter, IMessage, IItem, IWeapon, IInventory, IGame, IDoor,
 import { MapGenerator } from "../common/helpers/MapGenerator";
 import { positionCharacters } from "../common/helpers/map";
 import { TeamService } from "../common/services/TeamService";
+import { MAIN_CHARACTER_NAME, COMPANION_DROID_NAME, PLAYER_TEAM, ENEMY_TEAM, HUMAN_PLAYER, AI_PLAYER } from "../common/constants";
 
 // Example weapons
 export const weapons: IWeapon[] = [
@@ -188,10 +189,10 @@ export const baseCharacter: ICharacter = {
 const createCharacter = (character?: Partial<ICharacter>): ICharacter => ({ ...structuredClone(baseCharacter), ...character });
 
 const data: Partial<ICharacter> = {
-    name: 'Data',
+    name: COMPANION_DROID_NAME,
     race: 'robot',
-    player: 'ai',
-    team: 'player', // Data is on the player's team
+    player: AI_PLAYER,
+    team: PLAYER_TEAM, // Data is on the player's team
     location: 'room4',
     position: { x: 25, y: 25 },
     palette: {
@@ -213,10 +214,10 @@ const data: Partial<ICharacter> = {
     },
 };
 const player: Partial<ICharacter> = {
-    name: 'player',
+    name: MAIN_CHARACTER_NAME,
     race: 'human',
-    player: 'human',
-    team: 'player', // Player's team
+    player: HUMAN_PLAYER,
+    team: PLAYER_TEAM, // Player's team
     location: 'room2',
     position: { x: 24, y: 25 },
     palette: {
@@ -241,8 +242,8 @@ const player: Partial<ICharacter> = {
 const enemy: Partial<ICharacter> = {
     name: 'enemy',
     race: 'robot',
-    player: 'ai',
-    team: 'enemy', // Enemy team
+    player: AI_PLAYER,
+    team: ENEMY_TEAM, // Enemy team
     location: 'room3',
     position: { x: 23, y: 25 },
     palette: {
@@ -266,11 +267,11 @@ const enemy: Partial<ICharacter> = {
 export const initialState = (x: number, y: number, playerData: Partial<ICharacter> = player, charactersData: Partial<ICharacter>[] = [data, enemy]): IState => {
     // State
     const game: IGame = {
-        turn: 'human',
-        players: ['human', 'ai'],
+        turn: HUMAN_PLAYER,
+        players: [HUMAN_PLAYER, AI_PLAYER],
         playerInfo: {
-            'human': { name: 'Player', isAI: false },
-            'ai': { name: 'AI', isAI: true }
+            [HUMAN_PLAYER]: { name: 'Player', isAI: false },
+            [AI_PLAYER]: { name: 'AI', isAI: true }
         },
         teams: TeamService.createSinglePlayerTeams()
     }
@@ -409,27 +410,27 @@ export const getBaseState = () => initialState(40, 50, player, [data, enemy]);
  */
 export const getEmptyState = (): IState => {
     const game: IGame = {
-        turn: 'human',
-        players: ['human', 'ai'],
+        turn: HUMAN_PLAYER,
+        players: [HUMAN_PLAYER, AI_PLAYER],
         playerInfo: {
-            'human': { name: 'Player', isAI: false },
-            'ai': { name: 'AI', isAI: true }
+            [HUMAN_PLAYER]: { name: 'Player', isAI: false },
+            [AI_PLAYER]: { name: 'AI', isAI: true }
         },
         teams: TeamService.createSinglePlayerTeams()
     };
     
-    // Create minimal characters - just player and Data
+    // Create minimal characters - just Jim and Data
     const minimalPlayer: ICharacter = {
         ...baseCharacter,
         ...player,
-        name: 'player',
+        name: MAIN_CHARACTER_NAME,
         position: { x: 10, y: 10 }, // Start position that will likely be in a room
     } as ICharacter;
     
     const minimalData: ICharacter = {
         ...baseCharacter,
         ...data,
-        name: 'Data',
+        name: COMPANION_DROID_NAME,
         position: { x: 11, y: 10 }, // Next to player
     } as ICharacter;
     
