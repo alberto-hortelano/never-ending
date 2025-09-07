@@ -17,15 +17,15 @@ export class StoryState extends EventBus<UpdateStateEventsMap, StateChangeEvents
         currentMissionId: undefined,
         completedObjectives: []
     };
-    
+
     private saveCallback?: () => void;
     private isPreview: boolean;
-    
+
     constructor(saveCallback?: () => void, isPreview = false) {
         super();
         this.saveCallback = saveCallback;
         this.isPreview = isPreview;
-        
+
         // Listen for story state updates
         if (!isPreview) {
             this.listen(UpdateStateEvent.storyState, (storyUpdate) => {
@@ -33,7 +33,7 @@ export class StoryState extends EventBus<UpdateStateEventsMap, StateChangeEvents
             });
         }
     }
-    
+
     get story(): DeepReadonly<IStoryState> {
         return {
             ...this._story,
@@ -45,15 +45,15 @@ export class StoryState extends EventBus<UpdateStateEventsMap, StateChangeEvents
     getInternalStory(): IStoryState {
         return this._story;
     }
-    
+
     set story(newStory: IStoryState) {
         this._story = {
             ...newStory,
             storyFlags: new Set(newStory.storyFlags) // Ensure it's a Set
         };
     }
-    
-    // Serialization methods for time machine support
+
+    // Serialization methods
     serialize(): IStoryState {
         return {
             ...this._story,
@@ -61,65 +61,65 @@ export class StoryState extends EventBus<UpdateStateEventsMap, StateChangeEvents
             storyFlags: Array.from(this._story.storyFlags) as any
         };
     }
-    
+
     deserialize(storyData: any): void {
         if (!storyData) return;
-        
+
         this._story = {
             ...storyData,
             // Convert Array back to Set if needed
-            storyFlags: storyData.storyFlags instanceof Set 
-                ? storyData.storyFlags 
+            storyFlags: storyData.storyFlags instanceof Set
+                ? storyData.storyFlags
                 : new Set(storyData.storyFlags || [])
         };
     }
-    
+
     private updateStoryState(update: Partial<IStoryState>) {
         // Update selected origin
         if (update.selectedOrigin !== undefined) {
             this._story.selectedOrigin = update.selectedOrigin;
         }
-        
+
         // Update chapter
         if (update.currentChapter !== undefined) {
             this._story.currentChapter = update.currentChapter;
         }
-        
+
         // Update completed missions
         if (update.completedMissions) {
             this._story.completedMissions = [...update.completedMissions];
         }
-        
+
         // Update major decisions
         if (update.majorDecisions) {
             this._story.majorDecisions = [...update.majorDecisions];
         }
-        
+
         // Update faction reputation
         if (update.factionReputation) {
             this._story.factionReputation = { ...update.factionReputation };
         }
-        
+
         // Update story flags
         if (update.storyFlags) {
             this._story.storyFlags = new Set(update.storyFlags);
         }
-        
+
         // Update journal entries
         if (update.journalEntries) {
             this._story.journalEntries = [...update.journalEntries];
         }
-        
+
         // Update story plan
         if (update.storyPlan !== undefined) {
             this._story.storyPlan = update.storyPlan;
         }
-        
+
         // Update current mission ID
         if (update.currentMissionId !== undefined) {
             this._story.currentMissionId = update.currentMissionId;
         }
-        
+
         // Update completed objectives
         if (update.completedObjectives) {
             if (!this._story.completedObjectives) {
@@ -132,83 +132,83 @@ export class StoryState extends EventBus<UpdateStateEventsMap, StateChangeEvents
                 }
             }
         }
-        
+
         // Dispatch state change event
         if (!this.isPreview) {
             this.dispatch(StateChangeEvent.storyState, this.story);
         }
-        
+
         // Save state
         if (this.saveCallback) {
             this.saveCallback();
         }
     }
-    
+
     // Helper methods
     public hasStoryFlag(flag: string): boolean {
         return this._story.storyFlags.has(flag);
     }
-    
+
     public addStoryFlag(flag: string) {
         const newFlags = new Set(this._story.storyFlags);
         newFlags.add(flag);
         this.updateStoryState({ storyFlags: newFlags });
     }
-    
+
     public removeStoryFlag(flag: string) {
         const newFlags = new Set(this._story.storyFlags);
         newFlags.delete(flag);
         this.updateStoryState({ storyFlags: newFlags });
     }
-    
+
     public getFactionReputation(faction: string): number {
         return this._story.factionReputation[faction] || 0;
     }
-    
+
     public addJournalEntry(entry: IStoryState['journalEntries'][0]) {
         const newEntries = [...this._story.journalEntries, entry];
         this.updateStoryState({ journalEntries: newEntries });
     }
-    
+
     public markJournalAsRead(entryId: string) {
         const newEntries = this._story.journalEntries.map(entry =>
             entry.id === entryId ? { ...entry, isRead: true } : entry
         );
         this.updateStoryState({ journalEntries: newEntries });
     }
-    
+
     // Story plan methods
     public getStoryPlan(): IStoryPlan | undefined {
         return this._story.storyPlan;
     }
-    
+
     public setStoryPlan(plan: IStoryPlan) {
         this.updateStoryState({ storyPlan: plan });
     }
-    
+
     public getCurrentMissionId(): string | undefined {
         return this._story.currentMissionId;
     }
-    
+
     public getCurrentMission(): IMission | undefined {
         if (!this._story.storyPlan || !this._story.currentMissionId) {
             return undefined;
         }
-        
+
         for (const act of this._story.storyPlan.acts) {
             const mission = act.missions.find(m => m.id === this._story.currentMissionId);
             if (mission) {
                 return mission;
             }
         }
-        
+
         return undefined;
     }
-    
+
     public isObjectiveCompleted(objectiveId: string): boolean {
         return this._story.completedObjectives?.includes(objectiveId) || false;
     }
-    
+
     public markMissionCompleted(missionId: string) {
         const newMissions = [...this._story.completedMissions];
         if (!newMissions.includes(missionId)) {

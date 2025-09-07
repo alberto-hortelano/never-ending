@@ -17,7 +17,7 @@ export class Popup extends Component {
     private pinButton?: HTMLElement;
     private closeButton?: HTMLElement;
     private popupId = 'main-popup';  // Single main popup for now
-    
+
     constructor() {
         super();
         // Listen for language changes
@@ -59,46 +59,11 @@ export class Popup extends Component {
     }
 
     private setupEventListeners() {
-        let isShowing = false;
-
-        // Actions are now shown in the BottomBar, not in the popup
-        // this.listen(ControlsEvent.showActions, (characterName: ControlsEventsMap[ControlsEvent.showActions]) => {
-        //     isShowing = true;
-        //     this.showActions(characterName);
-
-        //     // Reset the flag after a short delay to allow the click event to finish bubbling
-        //     setTimeout(() => {
-        //         isShowing = false;
-        //     }, 50);
-        // });
-
-        // Talk selection is now handled by the BottomBar component
-        // this.listen(ControlsEvent.showTalk, (data: ControlsEventsMap[ControlsEvent.showTalk]) => {
-        //     isShowing = true;
-        //     this.showTalk(data);
-
-        //     // Reset the flag after a short delay to allow the click event to finish bubbling
-        //     setTimeout(() => {
-        //         isShowing = false;
-        //     }, 50);
-        // });
-
-        // Inventory is now handled by the BottomBar component
-        // this.listen(ControlsEvent.showInventory, (characterName: ControlsEventsMap[ControlsEvent.showInventory]) => {
-        //     isShowing = true;
-        //     this.showInventory(characterName);
-
-        //     // Reset the flag after a short delay to allow the click event to finish bubbling
-        //     setTimeout(() => {
-        //         isShowing = false;
-        //     }, 50);
-        // });
-
         // Conversations are now handled by the BottomBar component
 
         // Close popup when clicking outside (if not pinned)
         document.addEventListener('click', (e) => {
-            if (!isShowing && !this.isPinned && !this.contains(e.target as Node)) {
+            if (!this.isPinned && !this.contains(e.target as Node)) {
                 this.hide();
             }
         });
@@ -116,126 +81,6 @@ export class Popup extends Component {
     private isMobile(): boolean {
         return window.innerWidth <= 768;
     }
-
-    // Currently unused - draggable functionality disabled since popup is not actively used
-    // private setupDraggable() {
-    //     // Ensure the component is positioned absolutely for dragging
-    //     this.style.position = 'absolute';
-
-    //     if (this.headerElement) {
-    //         this.dragHelper = new Draggable(this, this.headerElement);
-
-    //         // Listen for mouseup/touchend to detect drag end and update state
-    //         const updatePositionInState = () => {
-    //             const popupState = this.getPopupStateFromDOM();
-    //             if (popupState && popupState.visible) {
-    //                 this.dispatch(UpdateStateEvent.uiPopup, {
-    //                     popupId: this.popupId,
-    //                     popupState
-    //                 });
-    //             }
-    //         };
-
-    //         document.addEventListener('mouseup', updatePositionInState);
-    //         document.addEventListener('touchend', updatePositionInState);
-    //     }
-    // }
-
-
-    // Talk selection is now handled by the BottomBar component
-    // private showTalk(data: ControlsEventsMap[ControlsEvent.showTalk]) {
-    //     this.clearContent();
-
-    //     // Create and append select character component
-    //     const selectCharacterComponent = document.createElement('select-character') as SelectCharacter;
-    //     this.appendChild(selectCharacterComponent);
-
-    //     this.show(`${data.talkingCharacter.name} - Talk to...`);
-
-    //     // Set options on select character component
-    //     selectCharacterComponent.setOptions({
-    //         characters: [...data.availableCharacters, data.talkingCharacter],
-    //         excludeByName: data.talkingCharacter.name,
-    //         emptyMessage: 'No one else is around to talk to.'
-    //     });
-
-    //     // Listen for character selection and log the conversation
-    //     selectCharacterComponent.addEventListener('character-selected', (e: Event) => {
-    //         const customEvent = e as CustomEvent;
-    //         const { selectedCharacter } = customEvent.detail;
-    //         this.dispatch(ConversationEvent.start, { talkingCharacter: data.talkingCharacter, targetCharacter: selectedCharacter })
-    //     });
-    // }
-
-    // Inventory is now handled by the BottomBar component
-    // private showInventory(characterName: ControlsEventsMap[ControlsEvent.showInventory]) {
-    //     this.clearContent();
-        
-    //     // Update selected character in state
-    //     this.dispatch(UpdateStateEvent.uiSelectedCharacter, characterName);
-
-    //     // Create and append inventory component (no longer needs character-name attribute)
-    //     const inventoryComponent = document.createElement('inventory-component') as Inventory;
-    //     this.appendChild(inventoryComponent);
-
-    //     this.show(`${characterName} - Inventory`);
-    // }
-
-
-    // Currently unused but may be needed if popup is repurposed
-    // private clearContent() {
-    //     // Remove all child components
-    //     while (this.firstChild) {
-    //         this.removeChild(this.firstChild);
-    //     }
-    // }
-
-    // Currently unused but may be needed if popup is repurposed
-    // private show(title: string) {
-    //     // Setup draggable on first show when shadow DOM is ready (desktop only)
-    //     if (!this.dragHelper && !this.isMobile()) {
-    //         this.setupDraggable();
-    //     }
-
-    //     // Calculate position for desktop
-    //     let position = undefined;
-    //     if (!this.isMobile()) {
-    //         // Desktop: center the popup
-    //         const rect = this.getBoundingClientRect();
-    //         const leftPos = Math.max(0, (window.innerWidth - rect.width) / 2);
-    //         const topPos = Math.max(0, (window.innerHeight - rect.height) / 2);
-    //         position = { x: leftPos, y: topPos };
-    //     }
-
-    //     // Get current content type from the first child element
-    //     let contentType: IPopupState['type'] = 'actions';
-    //     const firstChild = this.firstElementChild;
-    //     if (firstChild) {
-    //         if (firstChild.tagName === 'ACTIONS-COMPONENT') contentType = 'actions';
-    //         // SELECT-CHARACTER is now in BottomBar
-    //         // else if (firstChild.tagName === 'SELECT-CHARACTER') contentType = 'actions'; // Talk uses actions type
-    //         else if (firstChild.tagName === 'ROTATE-SELECTOR') contentType = 'rotate';
-    //         // INVENTORY-COMPONENT is now in BottomBar
-    //         // else if (firstChild.tagName === 'INVENTORY-COMPONENT') contentType = 'inventory';
-    //     }
-
-    //     // Update popup state
-    //     this.dispatch(UpdateStateEvent.uiPopup, {
-    //         popupId: this.popupId,
-    //         popupState: {
-    //             type: contentType,
-    //             visible: true,
-    //             position,
-    //             data: { title },
-    //             isPinned: this.isPinned
-    //         }
-    //     });
-
-    //     // Also dispatch the legacy popup show event for Board compatibility
-    //     this.dispatch(UpdateStateEvent.uiBoardVisual, {
-    //         updates: { hasPopupActive: true }
-    //     });
-    // }
 
     private hide() {
         if (!this.isPinned) {
@@ -300,7 +145,7 @@ export class Popup extends Component {
             this.classList.add('hidden');
             return;
         }
-        
+
         // Apply visibility
         if (popupState.visible) {
             this.classList.remove('hidden');
@@ -355,20 +200,20 @@ export class Popup extends Component {
             isPinned: this.isPinned
         };
     }
-    
+
     private updateTranslations() {
         const root = this.shadowRoot;
         if (!root) return;
-        
+
         // Update button tooltips
         if (this.pinButton) {
             this.pinButton.title = this.isPinned ? i18n.t('popup.close') : i18n.t('popup.pin');
         }
-        
+
         if (this.closeButton) {
             this.closeButton.title = i18n.t('popup.close');
         }
-        
+
         // Update title if it's "Actions"
         if (this.titleElement && this.titleElement.textContent === 'Actions') {
             this.titleElement.textContent = i18n.t('popup.actions');

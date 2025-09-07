@@ -6,6 +6,7 @@ import '../languageswitcher/LanguageSwitcher';
 export class Settings extends Component {
     protected override hasCss = true;
     protected override hasHtml = true;
+    private shadowRootRef: ShadowRoot | null = null;
     
     constructor() {
         super();
@@ -20,8 +21,16 @@ export class Settings extends Component {
         const root = await super.connectedCallback();
         if (!root) return root;
         
+        // Store the root reference
+        this.shadowRootRef = root;
+        
         this.setupEventListeners(root);
+        
+        // Update translations immediately and after a frame to ensure DOM is ready
         this.updateTranslations();
+        requestAnimationFrame(() => {
+            this.updateTranslations();
+        });
         
         return root;
     }
@@ -41,7 +50,7 @@ export class Settings extends Component {
     }
     
     private updateTranslations() {
-        const root = this.shadowRoot;
+        const root = this.shadowRootRef;
         if (!root) return;
         
         // Update title

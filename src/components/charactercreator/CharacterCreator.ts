@@ -10,6 +10,7 @@ import { i18n } from '../../common/i18n/i18n.js';
 export default class CharacterCreator extends Component {
   protected override hasCss = true;
   protected override hasHtml = true;
+  private shadowRootRef: ShadowRoot | null = null;
 
   private characterPreview: Character | null = null;
   private currentDirection: Direction = 'down';
@@ -29,6 +30,9 @@ export default class CharacterCreator extends Component {
   override async connectedCallback() {
     const root = await super.connectedCallback();
     if (!root) return root;
+    
+    // Store the root reference
+    this.shadowRootRef = root;
 
     this.setupEventListeners(root);
     this.initializeAppearance(root);
@@ -39,8 +43,11 @@ export default class CharacterCreator extends Component {
     // Create character preview immediately
     this.createCharacterPreview(root);
     
-    // Update translations
+    // Update translations immediately and after a frame to ensure DOM is ready
     this.updateTranslations();
+    requestAnimationFrame(() => {
+      this.updateTranslations();
+    });
 
     return root;
   }
@@ -521,7 +528,7 @@ export default class CharacterCreator extends Component {
   }
   
   private updateTranslations() {
-    const root = this.shadowRoot;
+    const root = this.shadowRootRef;
     if (!root) return;
     
     // Update title

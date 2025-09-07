@@ -12,6 +12,7 @@ interface ConversationTurn {
 export class Conversation extends Component {
     protected override hasCss = true;
     protected override hasHtml = true;
+    private shadowRootRef: ShadowRoot | null = null;
 
     private contentElement?: HTMLElement;
     private answersElement?: HTMLElement;
@@ -40,6 +41,9 @@ export class Conversation extends Component {
             console.error('[Conversation] No shadow root returned from super.connectedCallback');
             return root;
         }
+        
+        // Store the root reference
+        this.shadowRootRef = root;
 
         // Get references to shadow DOM elements
         this.contentElement = root.querySelector('.conversation-content') as HTMLElement;
@@ -63,8 +67,11 @@ export class Conversation extends Component {
         this.setupEventListeners();
         this.setupFreeTextHandlers();
 
-        // Update translations
+        // Update translations immediately and after a frame to ensure DOM is ready
         this.updateTranslations();
+        requestAnimationFrame(() => {
+            this.updateTranslations();
+        });
 
         console.log('[Conversation] Component initialization complete');
         return root;
@@ -501,7 +508,7 @@ export class Conversation extends Component {
     }
 
     private updateTranslations() {
-        const root = this.shadowRoot;
+        const root = this.shadowRootRef;
         if (!root) return;
 
         // Update loading text

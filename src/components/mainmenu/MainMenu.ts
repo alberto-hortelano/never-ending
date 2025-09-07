@@ -15,6 +15,7 @@ export class MainMenu extends Component {
     private characterCreator: CharacterCreator | null = null;
     private originSelection: OriginSelection | null = null;
     private settings: Settings | null = null;
+    private shadowRootRef: ShadowRoot | null = null;
 
     constructor() {
         super();
@@ -63,9 +64,18 @@ export class MainMenu extends Component {
             return root;
         }
 
+        // Store the root reference
+        this.shadowRootRef = root;
+
         this.setupEventListeners(root);
         this.setupDevelopmentUI(root);
+        
+        // Call updateTranslations
         this.updateTranslations();
+        requestAnimationFrame(() => {
+            this.updateTranslations();
+        });
+        
         return root;
     }
 
@@ -185,8 +195,11 @@ export class MainMenu extends Component {
     }
     
     private updateTranslations() {
-        const root = this.shadowRoot;
-        if (!root) return;
+        const root = this.shadowRootRef;
+        if (!root) {
+            console.warn('[MainMenu] No shadowRoot reference available');
+            return;
+        }
         
         const singlePlayerBtn = root.getElementById('singlePlayerBtn');
         const multiplayerBtn = root.getElementById('multiplayerBtn');
