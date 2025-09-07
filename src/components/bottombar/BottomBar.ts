@@ -287,7 +287,7 @@ export default class BottomBar extends Component {
         this.selectCharacterComponent.setOptions({
             characters: [...data.availableCharacters, data.talkingCharacter],
             excludeByName: data.talkingCharacter.name,
-            emptyMessage: 'No one else is around to talk to.'
+            emptyMessage: i18n.t('select.noOneToTalk')
         });
 
         // Listen for character selection

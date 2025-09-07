@@ -48,7 +48,7 @@ export default class TopBar extends Component {
             // Update UI with initial state
             const playerNameElement = root.querySelector('#player-name');
             if (playerNameElement) {
-                const playerName = state.game.playerInfo?.[state.game.turn]?.name || state.game.turn || 'Loading...';
+                const playerName = state.game.playerInfo?.[state.game.turn]?.name || state.game.turn || i18n.t('common.loading');
                 playerNameElement.textContent = playerName;
                 
                 const isAI = state.game.playerInfo?.[state.game.turn]?.isAI;
@@ -110,7 +110,7 @@ export default class TopBar extends Component {
                 
                 // Update the points bar
                 pointsBarElement.style.setProperty('--points-percentage', `${percentage}%`);
-                pointsTextElement.textContent = `Action Points: ${pointsLeft}`;
+                pointsTextElement.textContent = `${i18n.t('topbar.actionPoints')} ${pointsLeft}`;
                 
                 // Update pending cost overlay
                 if (pointsPendingElement && pendingCost > 0) {
@@ -138,7 +138,7 @@ export default class TopBar extends Component {
                 
                 // Update the points bar
                 pointsBarElement.style.setProperty('--points-percentage', `${percentage}%`);
-                pointsTextElement.textContent = `Action Points: ${pointsLeft}`;
+                pointsTextElement.textContent = `${i18n.t('topbar.actionPoints')} ${pointsLeft}`;
                 
                 // Update pending cost overlay
                 if (pointsPendingElement && pendingCost > 0) {
@@ -178,7 +178,7 @@ export default class TopBar extends Component {
                 
                 if (playerNameElement) {
                     // Get the actual player name from playerInfo
-                    const playerName = game.playerInfo?.[game.turn]?.name || game.turn || 'Loading...';
+                    const playerName = game.playerInfo?.[game.turn]?.name || game.turn || i18n.t('common.loading');
                     playerNameElement.textContent = playerName;
                     
                     // Check if the current player is AI
@@ -250,6 +250,18 @@ export default class TopBar extends Component {
         // Update loading text if present
         const loadingText = root.querySelector('.loading-text');
         if (loadingText) loadingText.textContent = i18n.t('topbar.loading');
+        
+        // Set initial player name if empty
+        const playerName = root.querySelector('#player-name');
+        if (playerName && !playerName.textContent) {
+            playerName.textContent = i18n.t('common.loading');
+        }
+        
+        // Set initial action points text if empty
+        const pointsTextEl = root.querySelector('#points-text');
+        if (pointsTextEl && !pointsTextEl.textContent) {
+            pointsTextEl.textContent = `${i18n.t('topbar.actionPoints')} 0`;
+        }
     }
 }
 

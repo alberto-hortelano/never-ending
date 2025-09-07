@@ -26,6 +26,7 @@ import { DeepReadonly } from '../helpers/types';
 import { calculatePath } from '../helpers/map';
 import { TeamService } from './TeamService';
 import { MAIN_CHARACTER_NAME, type LanguageCode } from '../constants';
+import { i18n } from '../i18n/i18n';
 
 interface DialogueData {
     speaker?: string;
@@ -579,6 +580,9 @@ export class AIController extends EventBus<
         const storyState = this.state.story;
         let screenContext: IScreenContext | null = null;
         let storyStateForPlanner: IStoryState | undefined;
+        
+        // Get language early for use in multiple places
+        const language = this.state?.language || 'es';
 
         if (storyState) {
             const currentMission = storyState.storyPlan?.acts[storyState.storyPlan.currentAct]?.missions
@@ -635,7 +639,8 @@ export class AIController extends EventBus<
                 screenContext = await this.storyPlanner.getScreenContext(
                     currentMission ? JSON.parse(JSON.stringify(currentMission)) : null,
                     visibleCharacters.map(c => JSON.parse(JSON.stringify(c))) as ICharacter[],
-                    storyStateForPlanner
+                    storyStateForPlanner,
+                    language as LanguageCode
                 );
             }
 
@@ -648,7 +653,6 @@ export class AIController extends EventBus<
 
 
         // Get AI decision from game engine with story context
-        const language = this.state?.language || 'es';
         const response = await this.gameEngineService.requestAIAction(context, undefined, storyStateForPlanner, language as LanguageCode);
 
         // Check if response contains tactical directive
@@ -865,8 +869,8 @@ export class AIController extends EventBus<
                 const speechCommand: AICommand = {
                     type: 'speech',
                     source: character.name,
-                    content: '¡Hola! ¿Necesitas ayuda?',
-                    answers: ['Sí, gracias', 'No, estoy bien', 'Tal vez más tarde']
+                    content: 'Hello! Do you need help?',
+                    answers: ['Yes, please', 'No, I\'m fine', 'Maybe later']
                 };
                 await this.executeSpeech(speechCommand, character);
                 return;
@@ -2245,7 +2249,7 @@ export class AIController extends EventBus<
                 // Use empty answers array to show close button instead of continue
                 this.dispatch(ConversationEvent.update, {
                     type: 'speech',
-                    source: 'Narrador',
+                    source: i18n.t('conversation.narrator'),
                     content: response.narrative,
                     answers: [],  // Empty array means show close button
                     action: undefined

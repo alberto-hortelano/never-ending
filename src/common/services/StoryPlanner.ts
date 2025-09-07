@@ -14,11 +14,13 @@ import { AIGameEngineService } from './AIGameEngineService';
 import { EventBus } from '../events/EventBus';
 import { UpdateStateEvent, UpdateStateEventsMap } from '../events/StateEvents';
 import { StoryPlanValidator } from './StoryPlanValidator';
+import { LANGUAGE_NAMES, type LanguageCode } from '../constants';
 
 export interface StoryPlanRequest {
     origin: IOriginStory;
     currentState?: IStoryState;
     playerDecisions?: string[];
+    language?: LanguageCode;
 }
 
 export interface StoryPlanResponse {
@@ -107,7 +109,8 @@ export class StoryPlanner extends EventBus<{}, UpdateStateEventsMap> {
     public async getScreenContext(
         currentMission: IMission | null,
         visibleCharacters: ICharacter[],
-        storyState: IStoryState
+        storyState: IStoryState,
+        language: LanguageCode = 'en'
     ): Promise<IScreenContext> {
         // Use existing story plan from state if available
         if (!this.currentStoryPlan && storyState.storyPlan) {
@@ -129,7 +132,8 @@ export class StoryPlanner extends EventBus<{}, UpdateStateEventsMap> {
                 if (storyState.selectedOrigin) {
                     await this.generateStoryPlan({
                         origin: storyState.selectedOrigin,
-                        currentState: storyState
+                        currentState: storyState,
+                        language: language
                     });
                 }
             }
@@ -279,14 +283,15 @@ Return updated story plan maintaining consistency with established narrative.`
     
     private buildStoryPlanPrompt(request: StoryPlanRequest): string {
         const origin = request.origin;
+        const language = request.language || 'en';
         
-        // Use Spanish origin since the game is in Spanish
-        const originName = origin.nameES || origin.name;
-        const originDesc = origin.descriptionES || origin.description;
+        // Use the appropriate language version of origin
+        const originName = language === 'es' ? (origin.nameES || origin.name) : origin.name;
+        const originDesc = language === 'es' ? (origin.descriptionES || origin.description) : origin.description;
         
         return `# STORY PLAN GENERATION REQUEST
 
-Language: Generate all text content in Spanish.
+Language: Generate all text content in ${LANGUAGE_NAMES[language]}.
 
 Generate a comprehensive story plan for "Never Ending" based on the following origin:
 
@@ -401,7 +406,7 @@ Return a JSON object with type "storyPlan" containing the full story structure.
     }
     
     private createDefaultStoryPlan(origin: IOriginStory): IStoryPlan {
-        // Use Spanish text since the game is in Spanish
+        // Use appropriate language based on user preference
         const originName = origin.nameES || origin.name;
         return {
             overallNarrative: `Una historia de ${originName} luchando por sobrevivir en la galaxia post-colapso.`,

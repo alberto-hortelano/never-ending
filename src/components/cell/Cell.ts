@@ -1,6 +1,7 @@
 import { ControlsEvent, StateChangeEvent, GUIEvent } from "../../common/events";
 import { ICoord, ICellVisualState, IDoor, TooltipData } from "../../common/interfaces";
 import { Component } from "../Component";
+import { i18n } from "../../common/i18n/i18n";
 import "../door/Door";
 
 declare global {
@@ -131,11 +132,11 @@ export default class Cell extends Component {
         
         // Override with terrain info if cell has special content
         if (this.classList.contains('wall')) {
-            tooltipData.subtext = 'Wall';
+            tooltipData.subtext = i18n.t('ui.wall');
             tooltipData.type = 'cell';
             tooltipData.details = [];
         } else if (this.classList.contains('door')) {
-            tooltipData.subtext = 'Door';
+            tooltipData.subtext = i18n.t('ui.door');
             tooltipData.type = 'door';
             tooltipData.details = [];
         }
@@ -170,7 +171,7 @@ export default class Cell extends Component {
             if (characterAtCell) {
                 tooltipData.text = characterAtCell.name || tooltipData.text;
                 tooltipData.type = 'character';
-                tooltipData.subtext = `HP: ${characterAtCell.health}/${characterAtCell.maxHealth}`;
+                tooltipData.subtext = `${i18n.t('ui.hp')}: ${characterAtCell.health}/${characterAtCell.maxHealth}`;
             }
         }
         

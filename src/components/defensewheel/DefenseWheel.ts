@@ -2,6 +2,7 @@ import { Component } from '../Component';
 import { ControlsEvent, UpdateStateEvent } from '../../common/events';
 import { MELEE_ATTACKS, type MeleeAttackType } from '../../common/services/MeleeCombatService';
 import { NetworkService } from '../../common/services/NetworkService';
+import { i18n } from '../../common/i18n/i18n';
 
 interface DefenseData {
     attacker: string;
@@ -115,10 +116,10 @@ export class DefenseWheel extends Component {
         const title = document.createElement('div');
         title.className = 'defense-title';
         title.innerHTML = `
-            <h2>Defend Against Attack!</h2>
-            <p class="attacker-info">${this.defenseData.attacker} attacks with ${this.defenseData.weaponInfo.attackerWeapon}</p>
-            <p class="defender-info">${this.defenseData.defender} defends with ${this.defenseData.weaponInfo.defenderWeapon}</p>
-            <p class="instruction">Select your defense:</p>
+            <h2>${i18n.t('defense.title')}</h2>
+            <p class="attacker-info">${this.defenseData.attacker} ${i18n.t('defense.attackerInfo')} ${this.defenseData.weaponInfo.attackerWeapon}</p>
+            <p class="defender-info">${this.defenseData.defender} ${i18n.t('defense.defenderInfo')} ${this.defenseData.weaponInfo.defenderWeapon}</p>
+            <p class="instruction">${i18n.t('defense.selectDefense')}</p>
         `;
         container.appendChild(title);
 
@@ -179,16 +180,16 @@ export class DefenseWheel extends Component {
         infoPanel.innerHTML = `
             <div class="legend">
                 <div class="legend-item">
-                    <span class="indicator block"></span>Perfect Block (0 damage)
+                    <span class="indicator block"></span>${i18n.t('defense.perfectBlock')} (${i18n.t('defense.noDamage')})
                 </div>
                 <div class="legend-item">
-                    <span class="indicator low"></span>Good Defense (33% damage)
+                    <span class="indicator low"></span>${i18n.t('defense.goodDefense')} (${i18n.t('defense.lowDamage')})
                 </div>
                 <div class="legend-item">
-                    <span class="indicator medium"></span>Partial Defense (66% damage)
+                    <span class="indicator medium"></span>${i18n.t('defense.partialDefense')} (${i18n.t('defense.mediumDamage')})
                 </div>
                 <div class="legend-item">
-                    <span class="indicator high"></span>Poor Defense (100% damage)
+                    <span class="indicator high"></span>${i18n.t('defense.poorDefense')} (${i18n.t('defense.highDamage')})
                 </div>
             </div>
         `;

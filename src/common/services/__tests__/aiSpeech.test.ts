@@ -158,8 +158,8 @@ describe('AI Speech System', () => {
             const speechCommand = {
                 type: 'speech' as const,
                 source: 'data',
-                content: '¡Hola amigo! ¿Cómo estás hoy?',
-                answers: ['Bien, gracias', 'No muy bien', 'Prefiero no decir'],
+                content: 'Hello friend! How are you today?',
+                answers: ['Fine, thanks', 'Not very well', 'I prefer not to say'],
                 characters: [] // Speech commands don't need characters array
             };
             
@@ -188,8 +188,8 @@ describe('AI Speech System', () => {
                 expect.objectContaining({
                     type: 'speech',
                     source: 'data',
-                    content: '¡Hola amigo! ¿Cómo estás hoy?',
-                    answers: ['Bien, gracias', 'No muy bien', 'Prefiero no decir']
+                    content: 'Hello friend! How are you today?',
+                    answers: ['Fine, thanks', 'Not very well', 'I prefer not to say']
                 })
             );
         });
@@ -211,8 +211,8 @@ describe('AI Speech System', () => {
             const speechCommand = {
                 type: 'speech' as const,
                 source: 'data',
-                content: '¿Necesitas ayuda con algo?',
-                answers: ['Sí, por favor', 'No, gracias'],
+                content: 'Do you need help with anything?',
+                answers: ['Yes, please', 'No, thanks'],
                 characters: []
             };
             
@@ -253,7 +253,7 @@ describe('AI Speech System', () => {
             const speechCommand = {
                 type: 'speech' as const,
                 source: 'data',
-                content: 'Necesito acercarme para hablar',
+                content: 'I need to get closer to talk',
                 answers: ['OK'],
                 characters: []
             };
@@ -281,12 +281,12 @@ describe('AI Speech System', () => {
             const speechCommand = {
                 type: 'speech' as const,
                 source: 'data',
-                content: '¿Cuál es tu misión aquí?',
+                content: 'What is your mission here?',
                 answers: [
-                    'Busco supervivientes',
-                    'Exploro la zona',
-                    'Intento llegar a la base',
-                    'No es asunto tuyo'
+                    'I\'m looking for survivors',
+                    'I\'m exploring the area',
+                    'I\'m trying to reach the base',
+                    'It\'s none of your business'
                 ],
                 characters: []
             };
@@ -301,10 +301,10 @@ describe('AI Speech System', () => {
             expect(conversationUpdateSpy).toHaveBeenCalledWith(
                 expect.objectContaining({
                     answers: [
-                        'Busco supervivientes',
-                        'Exploro la zona',
-                        'Intento llegar a la base',
-                        'No es asunto tuyo'
+                        'I\'m looking for survivors',
+                        'I\'m exploring the area',
+                        'I\'m trying to reach the base',
+                        'It\'s none of your business'
                     ]
                 })
             );

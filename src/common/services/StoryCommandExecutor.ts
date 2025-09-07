@@ -7,6 +7,7 @@ import { DoorService } from './DoorService';
 import { weapons as availableWeapons, items as availableItems, baseCharacter } from '../../data/state';
 import { CharacterPositioningError } from '../errors/CharacterPositioningError';
 import { MAIN_CHARACTER_NAME, COMPANION_DROID_NAME, PLAYER_TEAM, HUMAN_PLAYER } from '../constants';
+import { i18n } from '../i18n/i18n';
 
 export interface ItemSpawnCommand extends AICommand {
     type: 'item';
@@ -276,9 +277,9 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap & Co
                 // The conversation UI will show "Aceptar"/"Rechazar" buttons
                 this.dispatch(ConversationEvent.update, {
                     type: 'storyline',
-                    source: 'Narrador',
+                    source: i18n.t('conversation.narrator'),
                     content: command.content,
-                    answers: ['Aceptar', 'Rechazar'],
+                    answers: [i18n.t('common.accept'), i18n.t('common.reject')],
                     action: command.action,
                     actionData: command.actionData
                 });

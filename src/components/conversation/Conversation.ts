@@ -167,7 +167,7 @@ export class Conversation extends Component {
         if (data.action) {
             const actionInfo = document.createElement('div');
             actionInfo.className = 'conversation-action-info';
-            actionInfo.textContent = `[Acción requerida: ${data.action}]`;
+            actionInfo.textContent = `[${i18n.t('conversation.actionRequired')}: ${data.action}]`;
             bubble.appendChild(actionInfo);
         }
 
@@ -182,7 +182,7 @@ export class Conversation extends Component {
             const selectedAnswer = document.createElement('div');
             selectedAnswer.className = 'selected-answer';
             selectedAnswer.innerHTML = `
-                <span class="selected-label">Your response:</span>
+                <span class="selected-label">${i18n.t('conversation.yourResponse')}</span>
                 <span class="selected-text">${currentTurn.selectedAnswer}</span>
             `;
             this.answersElement.appendChild(selectedAnswer);
@@ -198,12 +198,11 @@ export class Conversation extends Component {
                     button.textContent = answer;
                     
                     // Check if this is an accept/decline button for an action
-                    const isAccept = answer.toLowerCase().includes('aceptar') || 
-                                   answer.toLowerCase().includes('continuar') ||
-                                   answer.toLowerCase().includes('sí');
-                    const isDecline = answer.toLowerCase().includes('rechazar') || 
-                                    answer.toLowerCase().includes('no') ||
-                                    answer.toLowerCase().includes('cancelar');
+                    const acceptWords = [i18n.t('common.accept').toLowerCase(), i18n.t('common.continue').toLowerCase(), i18n.t('common.yes').toLowerCase()];
+                    const rejectWords = [i18n.t('common.reject').toLowerCase(), i18n.t('common.no').toLowerCase(), i18n.t('common.cancel').toLowerCase()];
+                    
+                    const isAccept = acceptWords.some(word => answer.toLowerCase().includes(word));
+                    const isDecline = rejectWords.some(word => answer.toLowerCase().includes(word));
                     
                     if (isAccept) {
                         button.classList.add('action-accept');
@@ -271,18 +270,18 @@ export class Conversation extends Component {
     private handleAnswerClick(answer: string) {
         // Check for special AI-to-AI control answers
         if (this.isAIToAIMode) {
-            if (answer === 'Continue' || answer === 'Continue Listening') {
+            if (answer === i18n.t('common.continue') || answer === i18n.t('conversation.continueListen')) {
                 // Continue the AI-to-AI conversation
                 this.dispatch(ConversationEvent.continue, answer);
                 this.showLoading();
                 return;
-            } else if (answer === 'Interrupt') {
+            } else if (answer === i18n.t('conversation.interrupt')) {
                 // Player interrupts the conversation
                 this.isAIToAIMode = false;
                 this.dispatch(ConversationEvent.playerInterrupt, undefined);
                 this.hideAIExchangeIndicator();
                 return;
-            } else if (answer === 'Skip') {
+            } else if (answer === i18n.t('common.skip')) {
                 // Skip the rest of the conversation
                 this.isAIToAIMode = false;
                 this.dispatch(ConversationEvent.skipConversation, undefined);
@@ -506,8 +505,15 @@ export class Conversation extends Component {
         if (!root) return;
 
         // Update loading text
-        const loadingText = root.querySelector('.conversation-loading');
+        const loadingText = root.querySelector('.loading-text');
         if (loadingText) loadingText.textContent = i18n.t('conversation.loading');
+
+        // Update navigation buttons
+        const prevText = root.querySelector('.nav-previous .nav-text');
+        if (prevText) prevText.textContent = i18n.t('conversation.previous');
+        
+        const nextText = root.querySelector('.nav-next .nav-text');
+        if (nextText) nextText.textContent = i18n.t('conversation.next');
 
         // Update placeholder text
         if (this.freeTextInput) {
@@ -550,8 +556,8 @@ export class Conversation extends Component {
         this.aiExchangeIndicator.className = 'ai-exchange-indicator';
         this.aiExchangeIndicator.innerHTML = `
             <span class="ai-icon">🤖🔄🤖</span>
-            <span class="ai-text">AI Conversation - Exchange ${data.exchangeNumber}/${data.maxExchanges}</span>
-            <span class="eavesdrop-text">(You are observing)</span>
+            <span class="ai-text">${i18n.t('conversation.aiExchange')} ${data.exchangeNumber}/${data.maxExchanges}</span>
+            <span class="eavesdrop-text">(${i18n.t('conversation.observing')})</span>
         `;
         
         // Insert at the top of content

@@ -344,7 +344,7 @@ export default class CharacterCreator extends Component {
       meleeWeapons.forEach(weapon => {
         const option1 = document.createElement('option');
         option1.value = weapon.id;
-        option1.textContent = `${weapon.name} (dmg: ${weapon.damage}, range: ${weapon.range}, ${weapon.weight}kg, ${weapon.cost}¢)`;
+        option1.textContent = `${weapon.name} (${i18n.t('ui.damage')}: ${weapon.damage}, ${i18n.t('ui.range')}: ${weapon.range}, ${weapon.weight}${i18n.t('ui.weight')}, ${weapon.cost}${i18n.t('ui.cost')})`;
         meleeGroup1.appendChild(option1);
 
         const option2 = option1.cloneNode(true) as HTMLOptionElement;
@@ -365,7 +365,7 @@ export default class CharacterCreator extends Component {
       rangedWeapons.forEach(weapon => {
         const option1 = document.createElement('option');
         option1.value = weapon.id;
-        option1.textContent = `${weapon.name} (dmg: ${weapon.damage}, range: ${weapon.range}, ${weapon.weight}kg, ${weapon.cost}¢)`;
+        option1.textContent = `${weapon.name} (${i18n.t('ui.damage')}: ${weapon.damage}, ${i18n.t('ui.range')}: ${weapon.range}, ${weapon.weight}${i18n.t('ui.weight')}, ${weapon.cost}${i18n.t('ui.cost')})`;
         rangedGroup1.appendChild(option1);
 
         const option2 = option1.cloneNode(true) as HTMLOptionElement;
@@ -411,7 +411,7 @@ export default class CharacterCreator extends Component {
 
         const statsDiv = document.createElement('div');
         statsDiv.className = 'item-stats';
-        statsDiv.innerHTML = `<span>${item.weight}kg</span><span>${item.cost}c</span>`;
+        statsDiv.innerHTML = `<span>${item.weight}${i18n.t('ui.weight')}</span><span>${item.cost}${i18n.t('ui.cost')}</span>`;
 
         infoDiv.appendChild(nameSpan);
         infoDiv.appendChild(statsDiv);

@@ -1,6 +1,7 @@
 import { StateChangeEvent, GameEvent } from "../../common/events";
 import { Component } from "../Component";
 import { NetworkService } from "../../common/services/NetworkService";
+import { i18n } from "../../common/i18n/i18n";
 
 export default class TurnIndicator extends Component {
     protected override hasCss = true;
@@ -23,11 +24,20 @@ export default class TurnIndicator extends Component {
         }
 
         // Get elements from HTML template
+        const turnLabel = root.querySelector('.turn-label') as HTMLSpanElement;
         const playerName = root.getElementById('player-name') as HTMLSpanElement;
         const endTurnButton = root.getElementById('end-turn-button') as HTMLButtonElement;
+        
+        // Set translated labels
+        if (turnLabel) {
+            turnLabel.textContent = i18n.t('topbar.currentTurn');
+        }
+        if (endTurnButton) {
+            endTurnButton.textContent = i18n.t('topbar.endTurn');
+        }
 
         if (playerName) {
-            const displayName = this.playerInfo[this.currentTurn]?.name || this.currentTurn || 'Loading...';
+            const displayName = this.playerInfo[this.currentTurn]?.name || this.currentTurn || i18n.t('common.loading');
             playerName.textContent = displayName;
             if (this.currentTurn) {
                 playerName.className = `player-name ${this.currentTurn}`;

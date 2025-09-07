@@ -263,7 +263,7 @@ export class Popup extends Component {
         this.isPinned = !this.isPinned;
         if (this.pinButton) {
             this.pinButton.textContent = this.isPinned ? '📌' : '📍';
-            this.pinButton.title = this.isPinned ? 'Unpin popup' : 'Pin popup';
+            this.pinButton.title = this.isPinned ? i18n.t('popup.unpin') : i18n.t('popup.pin');
         }
 
         // Update pinned state in UI state
@@ -323,7 +323,7 @@ export class Popup extends Component {
         this.isPinned = popupState.isPinned || false;
         if (this.pinButton) {
             this.pinButton.textContent = this.isPinned ? '📌' : '📍';
-            this.pinButton.title = this.isPinned ? 'Unpin popup' : 'Pin popup';
+            this.pinButton.title = this.isPinned ? i18n.t('popup.unpin') : i18n.t('popup.pin');
         }
     }
 

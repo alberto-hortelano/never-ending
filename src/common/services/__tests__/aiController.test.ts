@@ -187,8 +187,8 @@ describe('AIController', () => {
             const command = {
                 type: 'speech',
                 source: 'data',
-                content: 'Hola, ¿necesitas ayuda?',
-                answers: ['Sí', 'No']
+                content: 'Hello, do you need help?',
+                answers: ['Yes', 'No']
             };
             
             const validated = parser.validate(command);
@@ -351,8 +351,8 @@ describe('AIController', () => {
             const command = {
                 type: 'speech',
                 source: 'data',
-                content: '¿Necesitas ayuda, humano?',
-                answers: ['Sí', 'No', 'Tal vez']
+                content: 'Do you need help, human?',
+                answers: ['Yes', 'No', 'Maybe']
             };
             
             const character = state.characters.find((c: any) => c.name === 'data');

@@ -102,7 +102,7 @@ describe('AI Story Flow Integration', () => {
             const initResponse = await mockGameEngineService.requestStoryInitialization();
             eventBus.dispatch(ConversationEvent.update, {
                 type: 'speech',
-                source: 'Narrador',
+                source: 'Narrator',
                 content: initResponse.narrative,
                 answers: [],
                 action: undefined
@@ -112,7 +112,7 @@ describe('AI Story Flow Integration', () => {
             expect(narrativeUpdateSpy).toHaveBeenCalledWith(
                 expect.objectContaining({
                     type: 'speech',
-                    source: 'Narrador',
+                    source: 'Narrator',
                     content: expect.stringContaining('MISIÓN: INFILTRACIÓN'),
                     answers: [], // Empty array triggers close button
                     action: undefined
@@ -127,7 +127,7 @@ describe('AI Story Flow Integration', () => {
             // Simulate narrative display
             eventBus.dispatch(ConversationEvent.update, {
                 type: 'speech',
-                source: 'Narrador',
+                source: 'Narrator',
                 content: 'Story narrative...',
                 answers: [], // Empty answers = close button
                 action: undefined
@@ -146,7 +146,7 @@ describe('AI Story Flow Integration', () => {
         it('should handle map command returned in conversation response', async () => {
             const conversationData = {
                 type: 'speech',
-                source: 'Narrador',
+                source: 'Narrator',
                 content: 'La nave salta al hiperespacio...',
                 answers: ['Continuar'],
                 action: 'map' // Map command in conversation
@@ -161,7 +161,7 @@ describe('AI Story Flow Integration', () => {
             
             // Should convert to end conversation message with map action
             expect(parsed.type).toBe('speech');
-            expect(parsed.content).toBe('Fin de la conversación.');
+            expect(parsed.content).toBe('End of conversation.');
             expect(parsed.answers).toEqual([]); // Empty for immediate close
             expect(parsed.action).toBe('map');
         });
@@ -207,7 +207,7 @@ describe('AI Story Flow Integration', () => {
             // 1. Initial narrative
             eventBus.dispatch(ConversationEvent.update, {
                 type: 'speech',
-                source: 'Narrador',
+                source: 'Narrator',
                 content: 'Chapter 1 begins...',
                 answers: [],
                 action: undefined
@@ -225,7 +225,7 @@ describe('AI Story Flow Integration', () => {
             // 3. Story progresses with action
             eventBus.dispatch(ConversationEvent.update, {
                 type: 'speech',
-                source: 'Narrador',
+                source: 'Narrator',
                 content: 'The ship jumps to hyperspace...',
                 answers: [],
                 action: 'map'
@@ -233,7 +233,7 @@ describe('AI Story Flow Integration', () => {
             
             // Verify proper event sequence
             expect(events).toHaveLength(3);
-            expect(events[0].data.source).toBe('Narrador');
+            expect(events[0].data.source).toBe('Narrator');
             expect(events[0].data.answers).toEqual([]); // Close button
             expect(events[1].data.source).toBe('VI-GO');
             expect(events[1].data.answers.length).toBeGreaterThan(0); // Has choices
@@ -253,9 +253,9 @@ describe('AI Story Flow Integration', () => {
             
             // Should convert to narrator speech
             expect(result.type).toBe('speech');
-            expect(result.source).toBe('Narrador');
+            expect(result.source).toBe('Narrator');
             expect(result.content).toBe('The investigation continues...');
-            expect(result.answers).toEqual(['Continuar', 'Entendido']);
+            expect(result.answers).toEqual(['Continue', 'Understood']);
             expect(result.action).toBe('character');
         });
     });
@@ -274,7 +274,7 @@ describe('AI Story Flow Integration', () => {
             // Should handle gracefully with defaults
             expect(result).toBeTruthy();
             expect(result.type).toBe('speech');
-            expect(result.source).toBe('Narrador');
+            expect(result.source).toBe('Narrator');
         });
         
         it('should not crash on malformed AI responses', () => {

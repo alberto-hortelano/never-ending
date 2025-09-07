@@ -187,7 +187,7 @@ describe('Complete AI Session Simulation', () => {
             if (initResponse.narrative) {
                 eventBus.dispatch(ConversationEvent.update, {
                     type: 'speech',
-                    source: 'Narrador',
+                    source: 'Narrator',
                     content: initResponse.narrative,
                     answers: [],
                     action: undefined
@@ -204,7 +204,7 @@ describe('Complete AI Session Simulation', () => {
             // Verify narrative was shown with close button
             const narrativeEvent = eventLog.find(e => 
                 e.type === 'conversation.update' && 
-                e.data.source === 'Narrador'
+                e.data.source === 'Narrator'
             );
             expect(narrativeEvent).toBeDefined();
             expect(narrativeEvent?.data.answers).toEqual([]); // Close button
@@ -252,7 +252,7 @@ describe('Complete AI Session Simulation', () => {
             // 4. STORY PROGRESSES WITH MAP CHANGE
             const mapChangeResponse = {
                 type: 'speech',
-                source: 'Narrador',
+                source: 'Narrator',
                 content: 'You decide to approach. The ship docks with the station...',
                 answers: [],
                 action: 'map'
@@ -286,7 +286,7 @@ describe('Complete AI Session Simulation', () => {
             expect(conversationEvents.length).toBeGreaterThanOrEqual(1); // At least the narrative
             
             // Verify narrative came first
-            expect(conversationEvents[0]?.data.source).toBe('Narrador');
+            expect(conversationEvents[0]?.data.source).toBe('Narrator');
             expect(conversationEvents[0]?.data.answers).toEqual([]);
             
             // The test dispatched narrative event only

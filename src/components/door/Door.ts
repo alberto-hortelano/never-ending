@@ -2,6 +2,7 @@ import { Component } from "../Component";
 import { IDoor, TooltipData } from "../../common/interfaces";
 import { ControlsEvent, StateChangeEvent, GUIEvent } from "../../common/events";
 import { DeepReadonly } from "../../common/helpers/types";
+import { i18n } from "../../common/i18n/i18n";
 
 export default class Door extends Component {
     protected override hasCss = true;
@@ -76,9 +77,9 @@ export default class Door extends Component {
         if (door.type === 'transition' && door.transition) {
             this.title = door.transition.description;
         } else if (door.isLocked) {
-            this.title = 'Locked door';
+            this.title = i18n.t('ui.lockedDoor');
         } else {
-            this.title = door.isOpen ? 'Open door' : 'Closed door';
+            this.title = door.isOpen ? i18n.t('ui.openDoor') : i18n.t('ui.closedDoor');
         }
     }
 
@@ -128,10 +129,10 @@ export default class Door extends Component {
                 tooltipData.subtext = title;
             }
         } else {
-            let state = isOpen ? 'Open' : 'Closed';
-            if (isLocked) state = 'Locked';
+            let state = isOpen ? i18n.t('ui.openState') : i18n.t('ui.closedState');
+            if (isLocked) state = i18n.t('ui.lockedState');
             tooltipData.details?.push({
-                label: 'State',
+                label: i18n.t('ui.doorStateLabel'),
                 value: state,
                 color: isLocked ? '#ff6464' : (isOpen ? '#64ff64' : '#ffaa64')
             });
@@ -171,11 +172,11 @@ export default class Door extends Component {
     private getDoorTypeLabel(type: string): string {
         switch (type) {
             case 'transition':
-                return 'Exit';
+                return i18n.t('ui.exitDoor');
             case 'locked':
-                return 'Locked Door';
+                return i18n.t('ui.lockedDoor');
             default:
-                return 'Door';
+                return i18n.t('ui.door');
         }
     }
 }

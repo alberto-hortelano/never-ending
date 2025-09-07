@@ -47,6 +47,16 @@ export interface TranslationKeys {
   'conversation.send': string;
   'conversation.ended': string;
   'conversation.retry': string;
+  'conversation.actionRequired': string;
+  'conversation.yourResponse': string;
+  'conversation.observing': string;
+  'conversation.aiExchange': string;
+  'conversation.previous': string;
+  'conversation.next': string;
+  'conversation.interrupt': string;
+  'conversation.continueListen': string;
+  'conversation.narrator': string;
+  'conversation.storyContinues': string;
   
   // Top Bar
   'topbar.campaign': string;
@@ -64,6 +74,7 @@ export interface TranslationKeys {
   // Popup
   'popup.actions': string;
   'popup.pin': string;
+  'popup.unpin': string;
   'popup.close': string;
   
   // Story Journal
@@ -80,6 +91,7 @@ export interface TranslationKeys {
   // Select Character
   'select.title': string;
   'select.choose': string;
+  'select.noOneToTalk': string;
   
   // Origin Selection
   'origin.title': string;
@@ -98,6 +110,8 @@ export interface TranslationKeys {
   'common.cancel': string;
   'common.yes': string;
   'common.no': string;
+  'common.accept': string;
+  'common.reject': string;
   'common.save': string;
   'common.load': string;
   'common.delete': string;
@@ -177,6 +191,43 @@ export interface TranslationKeys {
   'multiplayer.createGame': string;
   'multiplayer.waiting': string;
   'multiplayer.players': string;
+  'multiplayer.enterName': string;
+  'multiplayer.roomName': string;
+  'multiplayer.roomFull': string;
+  'multiplayer.roomNotFound': string;
+  'multiplayer.connectionFailed': string;
+  
+  // Misc UI
+  'ui.wall': string;
+  'ui.hp': string;
+  'ui.lockedDoor': string;
+  'ui.openDoor': string;
+  'ui.closedDoor': string;
+  'ui.doorStateLabel': string;
+  'ui.openState': string;
+  'ui.closedState': string;
+  'ui.lockedState': string;
+  'ui.door': string;
+  'ui.exitDoor': string;
+  'ui.mission': string;
+  'ui.damage': string;
+  'ui.range': string;
+  'ui.weight': string;
+  'ui.cost': string;
+  
+  // Defense Wheel
+  'defense.title': string;
+  'defense.attackerInfo': string;
+  'defense.defenderInfo': string;
+  'defense.selectDefense': string;
+  'defense.perfectBlock': string;
+  'defense.goodDefense': string;
+  'defense.partialDefense': string;
+  'defense.poorDefense': string;
+  'defense.noDamage': string;
+  'defense.lowDamage': string;
+  'defense.mediumDamage': string;
+  'defense.highDamage': string;
   
   // Loading
   'loading.pleaseWait': string;
@@ -234,6 +285,16 @@ export const translations: Record<string, TranslationKeys> = {
     'conversation.send': 'Send',
     'conversation.ended': 'Conversation ended',
     'conversation.retry': 'Retry',
+    'conversation.actionRequired': 'Action required',
+    'conversation.yourResponse': 'Your response:',
+    'conversation.observing': 'You are observing',
+    'conversation.aiExchange': 'AI Conversation - Exchange',
+    'conversation.previous': 'Previous',
+    'conversation.next': 'Next',
+    'conversation.interrupt': 'Interrupt',
+    'conversation.continueListen': 'Continue Listening',
+    'conversation.narrator': 'Narrator',
+    'conversation.storyContinues': 'The story continues...',
     
     // Top Bar
     'topbar.campaign': 'Campaign',
@@ -251,6 +312,7 @@ export const translations: Record<string, TranslationKeys> = {
     // Popup
     'popup.actions': 'Actions',
     'popup.pin': 'Pin popup',
+    'popup.unpin': 'Unpin popup',
     'popup.close': 'Close popup',
     
     // Story Journal
@@ -267,6 +329,7 @@ export const translations: Record<string, TranslationKeys> = {
     // Select Character
     'select.title': 'Select Your Character',
     'select.choose': 'Choose',
+    'select.noOneToTalk': 'No one else is around to talk to',
     
     // Origin Selection
     'origin.title': 'Choose Your Origin',
@@ -285,6 +348,8 @@ export const translations: Record<string, TranslationKeys> = {
     'common.cancel': 'Cancel',
     'common.yes': 'Yes',
     'common.no': 'No',
+    'common.accept': 'Accept',
+    'common.reject': 'Reject',
     'common.save': 'Save',
     'common.load': 'Load',
     'common.delete': 'Delete',
@@ -364,6 +429,43 @@ export const translations: Record<string, TranslationKeys> = {
     'multiplayer.createGame': 'Create Game',
     'multiplayer.waiting': 'Waiting for players...',
     'multiplayer.players': 'Players',
+    'multiplayer.enterName': 'Enter your name',
+    'multiplayer.roomName': 'Room name',
+    'multiplayer.roomFull': 'Room is full',
+    'multiplayer.roomNotFound': 'Room not found',
+    'multiplayer.connectionFailed': 'Failed to connect to server',
+    
+    // Misc UI
+    'ui.wall': 'Wall',
+    'ui.hp': 'HP',
+    'ui.lockedDoor': 'Locked door',
+    'ui.openDoor': 'Open door',
+    'ui.closedDoor': 'Closed door',
+    'ui.doorStateLabel': 'State',
+    'ui.openState': 'Open',
+    'ui.closedState': 'Closed',
+    'ui.lockedState': 'Locked',
+    'ui.door': 'Door',
+    'ui.exitDoor': 'Exit',
+    'ui.mission': 'Mission',
+    'ui.damage': 'dmg',
+    'ui.range': 'range',
+    'ui.weight': 'kg',
+    'ui.cost': '¢',
+    
+    // Defense Wheel
+    'defense.title': 'Defend Against Attack!',
+    'defense.attackerInfo': 'attacks with',
+    'defense.defenderInfo': 'defends with',
+    'defense.selectDefense': 'Select your defense:',
+    'defense.perfectBlock': 'Perfect Block',
+    'defense.goodDefense': 'Good Defense',
+    'defense.partialDefense': 'Partial Defense',
+    'defense.poorDefense': 'Poor Defense',
+    'defense.noDamage': '0 damage',
+    'defense.lowDamage': '33% damage',
+    'defense.mediumDamage': '66% damage',
+    'defense.highDamage': '100% damage',
     
     // Loading
     'loading.pleaseWait': 'Please wait...',
@@ -420,6 +522,16 @@ export const translations: Record<string, TranslationKeys> = {
     'conversation.send': 'Enviar',
     'conversation.ended': 'Conversación terminada',
     'conversation.retry': 'Reintentar',
+    'conversation.actionRequired': 'Acción requerida',
+    'conversation.yourResponse': 'Tu respuesta:',
+    'conversation.observing': 'Estás observando',
+    'conversation.aiExchange': 'Conversación IA - Intercambio',
+    'conversation.previous': 'Anterior',
+    'conversation.next': 'Siguiente',
+    'conversation.interrupt': 'Interrumpir',
+    'conversation.continueListen': 'Seguir escuchando',
+    'conversation.narrator': 'Narrador',
+    'conversation.storyContinues': 'La historia continúa...',
     
     // Top Bar
     'topbar.campaign': 'Campaña',
@@ -437,6 +549,7 @@ export const translations: Record<string, TranslationKeys> = {
     // Popup
     'popup.actions': 'Acciones',
     'popup.pin': 'Fijar ventana',
+    'popup.unpin': 'Desfijar ventana',
     'popup.close': 'Cerrar ventana',
     
     // Story Journal
@@ -453,6 +566,7 @@ export const translations: Record<string, TranslationKeys> = {
     // Select Character
     'select.title': 'Selecciona Tu Personaje',
     'select.choose': 'Elegir',
+    'select.noOneToTalk': 'No hay nadie más alrededor para hablar',
     
     // Origin Selection
     'origin.title': 'Elige Tu Origen',
@@ -471,6 +585,8 @@ export const translations: Record<string, TranslationKeys> = {
     'common.cancel': 'Cancelar',
     'common.yes': 'Sí',
     'common.no': 'No',
+    'common.accept': 'Aceptar',
+    'common.reject': 'Rechazar',
     'common.save': 'Guardar',
     'common.load': 'Cargar',
     'common.delete': 'Eliminar',
@@ -550,6 +666,43 @@ export const translations: Record<string, TranslationKeys> = {
     'multiplayer.createGame': 'Crear Partida',
     'multiplayer.waiting': 'Esperando jugadores...',
     'multiplayer.players': 'Jugadores',
+    'multiplayer.enterName': 'Ingresa tu nombre',
+    'multiplayer.roomName': 'Nombre de sala',
+    'multiplayer.roomFull': 'La sala está llena',
+    'multiplayer.roomNotFound': 'Sala no encontrada',
+    'multiplayer.connectionFailed': 'Error al conectar con el servidor',
+    
+    // Misc UI
+    'ui.wall': 'Pared',
+    'ui.hp': 'PV',
+    'ui.lockedDoor': 'Puerta cerrada con llave',
+    'ui.openDoor': 'Puerta abierta',
+    'ui.closedDoor': 'Puerta cerrada',
+    'ui.doorStateLabel': 'Estado',
+    'ui.openState': 'Abierta',
+    'ui.closedState': 'Cerrada',
+    'ui.lockedState': 'Cerrada con llave',
+    'ui.door': 'Puerta',
+    'ui.exitDoor': 'Salida',
+    'ui.mission': 'Misión',
+    'ui.damage': 'daño',
+    'ui.range': 'alcance',
+    'ui.weight': 'kg',
+    'ui.cost': '¢',
+    
+    // Defense Wheel
+    'defense.title': '¡Defiéndete del Ataque!',
+    'defense.attackerInfo': 'ataca con',
+    'defense.defenderInfo': 'defiende con',
+    'defense.selectDefense': 'Selecciona tu defensa:',
+    'defense.perfectBlock': 'Bloqueo Perfecto',
+    'defense.goodDefense': 'Buena Defensa',
+    'defense.partialDefense': 'Defensa Parcial',
+    'defense.poorDefense': 'Defensa Pobre',
+    'defense.noDamage': '0 daño',
+    'defense.lowDamage': '33% daño',
+    'defense.mediumDamage': '66% daño',
+    'defense.highDamage': '100% daño',
     
     // Loading
     'loading.pleaseWait': 'Por favor espera...',

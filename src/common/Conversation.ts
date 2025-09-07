@@ -8,6 +8,7 @@ import {
     AIToAIConversationData
 } from "./events";
 import { conversationSystemPrompt, characterContext, aiToAIConversationPrompt, getAIToAIContext } from "../prompts/conversationPrompts";
+import { i18n } from './i18n/i18n';
 import { AIGameEngineService } from './services/AIGameEngineService';
 import { MAIN_CHARACTER_NAME, COMPANION_DROID_NAME } from './constants';
 
@@ -330,9 +331,9 @@ export class Conversation extends EventBus<
                     // Convert storyline to speech format for conversation display
                     return {
                         type: 'speech',
-                        source: 'Narrador',  // Narrator in Spanish
-                        content: parsed.content || 'La historia continúa...',
-                        answers: ['Continuar', 'Entendido'],  // Default options for storyline
+                        source: i18n.t('conversation.narrator'),
+                        content: parsed.content || i18n.t('conversation.storyContinues'),
+                        answers: [i18n.t('common.continue'), i18n.t('common.ok')],  // Default options for storyline
                         action: parsed.action
                     };
                 } else if (parsed.type === 'speech') {
@@ -354,7 +355,7 @@ export class Conversation extends EventBus<
                         type: 'speech',
                         source: parsed.source,
                         content: parsed.content,
-                        answers: shouldEnd ? [] : (parsed.answers || ['Continuar']),  // Default to 'Continuar' if no answers provided
+                        answers: shouldEnd ? [] : (parsed.answers || [i18n.t('common.continue')]),  // Default to 'Continue' if no answers provided
                         action: parsed.action
                     };
                 } else if (parsed.type === 'map') {
@@ -363,8 +364,8 @@ export class Conversation extends EventBus<
                     return {
                         type: 'speech',
                         source: 'Narrador',
-                        content: parsed.description || 'La escena cambia a una nueva ubicación...',
-                        answers: ['Aceptar', 'Rechazar'],  // Action buttons
+                        content: parsed.description || '',  // No default text - let AI provide it
+                        answers: [i18n.t('common.accept'), i18n.t('common.reject')],  // Action buttons
                         action: 'map'  // Pass the map action
                     };
                 } else if (parsed.type === 'movement' || parsed.type === 'attack' || 
@@ -406,9 +407,9 @@ export class Conversation extends EventBus<
                     // It's a narrative response, present it as narrator
                     return {
                         type: 'speech',
-                        source: 'Narrador',
+                        source: i18n.t('conversation.narrator'),
                         content: response.substring(0, this.maxMessageLength),
-                        answers: ['Continuar', 'Explorar', 'Preguntar'],
+                        answers: [i18n.t('common.continue')],  // Simplified default
                         action: undefined
                     };
                 } else {

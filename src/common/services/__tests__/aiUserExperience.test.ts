@@ -43,7 +43,7 @@ describe('AI User Experience', () => {
         it('should show narrative with close button instead of continue options', () => {
             const narrative = {
                 type: 'speech',
-                source: 'Narrador',
+                source: 'Narrator',
                 content: '**CHAPTER 1**\n\nYour story begins...',
                 answers: [] // Empty array for close button
             };
@@ -55,11 +55,11 @@ describe('AI User Experience', () => {
             }));
             
             // Should have narrator as source
-            expect(result.source).toBe('Narrador');
+            expect(result.source).toBe('Narrator');
             // Should have story content
             expect(result.content).toContain('Your story begins');
             // Should have default continue options (for storyline)
-            expect(result.answers).toEqual(['Continuar', 'Entendido']);
+            expect(result.answers).toEqual(['Continue', 'Understood']);
         });
         
         it('should not confuse users with system messages', () => {
@@ -239,7 +239,7 @@ describe('AI User Experience', () => {
         it('should use clear button labels', () => {
             const buttonLabels = {
                 close: '✕ Cerrar',
-                continue: 'Continuar',
+                continue: 'Continue',
                 understand: 'Entendido'
             };
             

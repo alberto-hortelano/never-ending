@@ -2,6 +2,7 @@ import { Component } from '../Component';
 import { MultiplayerManager } from '../../common/services/MultiplayerManager';
 import { NetworkService } from '../../common/services/NetworkService';
 import { ClientNetworkEventMap } from '../../common/events/NetworkEvents';
+import { i18n } from '../../common/i18n/i18n';
 
 interface Room {
     id: string;
@@ -131,9 +132,9 @@ export class MultiplayerLobby extends Component {
         this.listen('networkError', (data: ClientNetworkEventMap['networkError']) => {
             // Could show error message in UI if needed
             if (data.code === 'ROOM_FULL') {
-                alert('Room is full');
+                alert(i18n.t('multiplayer.roomFull'));
             } else if (data.code === 'ROOM_NOT_FOUND') {
-                alert('Room not found');
+                alert(i18n.t('multiplayer.roomNotFound'));
             }
         });
         
@@ -176,7 +177,7 @@ export class MultiplayerLobby extends Component {
                 <div class="connection-form">
                     <input type="text" 
                            id="playerName" 
-                           placeholder="Enter your name" 
+                           placeholder="${i18n.t('multiplayer.enterName')}" 
                            value="${this.playerName}"
                            maxlength="20">
                     <button id="connectBtn">Connect</button>
@@ -201,7 +202,7 @@ export class MultiplayerLobby extends Component {
                     
                     await this.multiplayerManager.connectToServer(this.playerName, serverUrl);
                 } catch (error) {
-                    alert('Failed to connect to server');
+                    alert(i18n.t('multiplayer.connectionFailed'));
                 }
             }
         });
@@ -218,7 +219,7 @@ export class MultiplayerLobby extends Component {
                         <h3>Create New Room</h3>
                         <input type="text" 
                                id="roomName" 
-                               placeholder="Room name"
+                               placeholder="${i18n.t('multiplayer.roomName')}"
                                value="${this.generateRandomRoomName()}"
                                maxlength="30">
                         <select id="maxPlayers">

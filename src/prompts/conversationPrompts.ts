@@ -94,15 +94,15 @@ Speech Pattern:
 {
   "type": "speech",
   "source": "Data",
-  "content": "Sí, comandante.",
-  "answers": ["¿Algo más?", "Continuar", "Seguir hablando"]
+  "content": "Yes, commander.",
+  "answers": ["Anything else?", "Continue", "Keep talking"]
 }
 
 ✅ GOOD - Relevant options:
-"answers": ["¿Qué encontraste?", "¿Hay peligro?", "Vámonos"]
+"answers": ["What did you find?", "Is there danger?", "Let's go"]
 
 ❌ BAD - Generic options:
-"answers": ["Sí", "No", "Tal vez", "Continuar"]
+"answers": ["Yes", "No", "Maybe", "Continue"]
 
 ### CONTEXT AWARENESS
 - Check conversation history (don't repeat topics)

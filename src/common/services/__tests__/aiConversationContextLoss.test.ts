@@ -41,11 +41,11 @@ const createTestFetchMock = () => {
                     type: 'speech',
                     source: 'Sargento Torres',
                     content: 'Tengo autoridad militar del Imperio. Esta es una operación clasificada.',
-                    answers: ['Entendido', 'No reconozco tu autoridad']
+                    answers: ['Understood', 'I don\'t recognize your authority']
                 })
                 : JSON.stringify({
                     type: 'speech',
-                    source: 'Narrador',
+                    source: 'Narrator',
                     content: "I notice you've asked a question, but I don't have the current game context to respond appropriately.",
                     answers: []
                 });

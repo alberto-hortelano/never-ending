@@ -2,6 +2,7 @@ import { Component } from '../Component';
 import { StateChangeEvent } from '../../common/events/StateEvents';
 import { StoryPlanner } from '../../common/services/StoryPlanner';
 import type { IStoryPlan, IMission, IKeyCharacter, IStoryObject, IStoryAct } from '../../common/interfaces';
+import { i18n } from '../../common/i18n/i18n';
 
 export class StoryPlannerComponent extends Component {
     private storyPlanner: StoryPlanner;
@@ -133,7 +134,7 @@ export class StoryPlannerComponent extends Component {
         const actProgressEl = root.querySelector('[data-field="act-progress"]');
         if (actProgressEl) {
             const completedMissions = act.missions.filter((m: IMission) => m.isCompleted).length;
-            actProgressEl.textContent = `Mission ${completedMissions + 1}/${act.missions.length}`;
+            actProgressEl.textContent = `${i18n.t('ui.mission')} ${completedMissions + 1}/${act.missions.length}`;
         }
         
         const actDescEl = root.querySelector('[data-field="act-description"]');
