@@ -18,7 +18,7 @@ import { CharacterService } from "./common/services/CharacterService";
 import { AutoSelectCharacter } from "./common/services/AutoSelectCharacter";
 import { MultiplayerManager } from "./common/services/MultiplayerManager";
 import { AIController } from "./common/services/AIController";
-import { GameEvent, EventBus } from "./common/events";
+import { GameEvent, EventBus, ControlsEvent, ControlsEventsMap } from "./common/events";
 import { initialState, getBaseState } from './data/state';
 import { initializeCSSVariables } from './common/initializeCSSVariables';
 import './common/services/AICacheManager'; // Initialize AI cache
@@ -31,6 +31,23 @@ document.documentElement.style.setProperty('--mobile-popup-height', '50vh');
 
 // Initialize CSS variables from JavaScript constants
 initializeCSSVariables();
+
+// Setup keyboard shortcuts for save/load
+document.addEventListener('keydown', (e) => {
+    const eventBus = new EventBus<never, ControlsEventsMap>();
+    
+    // F5 for quicksave
+    if (e.key === 'F5') {
+        e.preventDefault(); // Prevent browser refresh
+        eventBus.dispatch(ControlsEvent.quickSave, {});
+    }
+    
+    // F9 for quickload
+    if (e.key === 'F9') {
+        e.preventDefault();
+        eventBus.dispatch(ControlsEvent.quickLoad, {});
+    }
+});
 
 let gameState: State | null = null;
 interface GameService {

@@ -1,7 +1,8 @@
 import type { ICell, ICharacter, IState, IDoor } from "./interfaces";
-import { EventBus, UpdateStateEventsMap, StateChangeEventsMap, StateChangeEvent, ControlsEventsMap, GameEvent, GameEventsMap, UpdateStateEvent } from "./events";
+import { EventBus, UpdateStateEventsMap, StateChangeEventsMap, StateChangeEvent, ControlsEventsMap, GameEvent, GameEventsMap, UpdateStateEvent, ControlsEvent } from "./events";
 import { DeepReadonly } from "./helpers/types";
 import { getBaseState } from '../data/state';
+import { getSaveGameService } from './services/SaveGameService';
 
 // Import sub-state modules
 import { GameState } from './state/GameState';
@@ -14,7 +15,7 @@ import { StoryState } from './state/StoryState';
 import { LanguageState } from './state/LanguageState';
 import { UIStateService } from './services/UIStateService';
 
-export class State extends EventBus<UpdateStateEventsMap & GameEventsMap & StateChangeEventsMap, StateChangeEventsMap & ControlsEventsMap> {
+export class State extends EventBus<UpdateStateEventsMap & GameEventsMap & StateChangeEventsMap & ControlsEventsMap, StateChangeEventsMap & ControlsEventsMap> {
     private readonly storageName = 'state';
 
     // Sub-state modules
@@ -109,6 +110,9 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap & State
             this.dispatch(StateChangeEvent.doors, structuredClone(this.#doors));
             this.save();
         });
+
+        // Setup save/load event handlers
+        this.setupSaveLoadHandlers();
     }
 
     // Getters - expose the same interface as before
@@ -172,8 +176,153 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap & State
         return this.mapState.findCell(coord);
     }
 
+    // Setup save/load event handlers
+    private setupSaveLoadHandlers() {
+        const saveService = getSaveGameService();
+
+        // Handle save game
+        this.listen(ControlsEvent.saveGame, ({ slotName }) => {
+            try {
+                const success = saveService.save(slotName, this.getInternalState());
+                this.dispatch(StateChangeEvent.gameSaved, {
+                    slotName,
+                    success,
+                    error: success ? undefined : 'Failed to save game'
+                });
+            } catch (error) {
+                this.dispatch(StateChangeEvent.gameSaved, {
+                    slotName,
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Unknown error'
+                });
+            }
+        });
+
+        // Handle load game
+        this.listen(ControlsEvent.loadGame, ({ slotName }) => {
+            try {
+                const loadedState = saveService.load(slotName);
+                if (loadedState) {
+                    this.loadState(loadedState);
+                    this.dispatch(StateChangeEvent.gameLoaded, {
+                        slotName,
+                        success: true
+                    });
+                } else {
+                    this.dispatch(StateChangeEvent.gameLoaded, {
+                        slotName,
+                        success: false,
+                        error: 'Save not found'
+                    });
+                }
+            } catch (error) {
+                this.dispatch(StateChangeEvent.gameLoaded, {
+                    slotName,
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Unknown error'
+                });
+            }
+        });
+
+        // Handle delete save
+        this.listen(ControlsEvent.deleteSave, ({ slotName }) => {
+            const success = saveService.delete(slotName);
+            this.dispatch(StateChangeEvent.saveDeleted, {
+                slotName,
+                success
+            });
+        });
+
+        // Handle list saves
+        this.listen(ControlsEvent.listSaves, () => {
+            const saves = saveService.listSaves();
+            this.dispatch(StateChangeEvent.savesListed, saves);
+        });
+
+        // Handle quick save
+        this.listen(ControlsEvent.quickSave, () => {
+            try {
+                const success = saveService.save('quicksave', this.getInternalState());
+                this.dispatch(StateChangeEvent.gameSaved, {
+                    slotName: 'quicksave',
+                    success,
+                    error: success ? undefined : 'Failed to quick save'
+                });
+            } catch (error) {
+                this.dispatch(StateChangeEvent.gameSaved, {
+                    slotName: 'quicksave',
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Unknown error'
+                });
+            }
+        });
+
+        // Handle quick load
+        this.listen(ControlsEvent.quickLoad, () => {
+            try {
+                const loadedState = saveService.load('quicksave');
+                if (loadedState) {
+                    this.loadState(loadedState);
+                    this.dispatch(StateChangeEvent.gameLoaded, {
+                        slotName: 'quicksave',
+                        success: true
+                    });
+                } else {
+                    this.dispatch(StateChangeEvent.gameLoaded, {
+                        slotName: 'quicksave',
+                        success: false,
+                        error: 'No quicksave found'
+                    });
+                }
+            } catch (error) {
+                this.dispatch(StateChangeEvent.gameLoaded, {
+                    slotName: 'quicksave',
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Unknown error'
+                });
+            }
+        });
+    }
+
     // Storage methods
     private save() {
+        // This method is currently empty, but could be used for auto-save functionality
+    }
+
+    private loadState(state: IState) {
+        // Update all sub-states with loaded data
+        this.gameState.game = state.game;
+        this.mapState.map = state.map;
+        this.characterState.characters = state.characters;
+        this.messageState.messages = state.messages;
+        this.uiState.ui = state.ui || this.uiState.ui;
+
+        // Update overwatch data if present
+        if (state.overwatchData) {
+            this.overwatchState.overwatchData = state.overwatchData;
+        }
+
+        // Update doors if present
+        if (state.doors) {
+            this.#doors = state.doors;
+            this.dispatch(StateChangeEvent.doors, structuredClone(this.#doors));
+        }
+
+        // Update language if present
+        if (state.language) {
+            this.languageState.deserialize(state.language);
+        }
+
+        // Update story state if present
+        if (state.story) {
+            this.storyState.deserialize(state.story);
+        }
+
+        // Dispatch state change events to update UI
+        this.dispatch(StateChangeEvent.game, this.game);
+        this.dispatch(StateChangeEvent.map, this.map);
+        this.dispatch(StateChangeEvent.characters, this.characters);
+        this.dispatch(StateChangeEvent.messages, this.messages);
     }
 
     private load(initialState?: IState) {

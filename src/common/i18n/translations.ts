@@ -1,6 +1,7 @@
 export interface TranslationKeys {
   // Main Menu
   'menu.singlePlayer': string;
+  'menu.loadGame': string;
   'menu.multiplayer': string;
   'menu.createCharacter': string;
   'menu.settings': string;
@@ -252,6 +253,7 @@ export const translations: Record<string, TranslationKeys> = {
   en: {
     // Main Menu
     'menu.singlePlayer': 'Single Player',
+    'menu.loadGame': 'Load Game',
     'menu.multiplayer': 'Multiplayer',
     'menu.createCharacter': 'Create Character',
     'menu.settings': 'Settings',
@@ -502,6 +504,7 @@ export const translations: Record<string, TranslationKeys> = {
   es: {
     // Main Menu
     'menu.singlePlayer': 'Un Jugador',
+    'menu.loadGame': 'Cargar Partida',
     'menu.multiplayer': 'Multijugador',
     'menu.createCharacter': 'Crear Personaje',
     'menu.settings': 'Configuración',

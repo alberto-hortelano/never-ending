@@ -148,6 +148,22 @@
     align-items: center;
     gap: $spacing-md;
     
+    .save-load-button {
+        padding: $spacing-xs $spacing-sm;
+        background: $color-bg-tertiary;
+        border: 1px solid $color-border-primary;
+        border-radius: $border-radius-sm;
+        color: $color-text-primary;
+        font-size: $font-size-sm;
+        cursor: pointer;
+        transition: $transition-all;
+        
+        &:hover {
+            background: $color-highlight;
+            transform: translateY(-1px);
+        }
+    }
+    
     language-switcher {
         margin-left: $spacing-md;
     }

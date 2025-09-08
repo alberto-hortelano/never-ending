@@ -7,6 +7,7 @@ import { i18n } from "../../common/i18n/i18n";
 import { EnvironmentService } from "../../common/services/EnvironmentService";
 import "../developmentui/DevelopmentUI";
 import "../tooltip/Tooltip";
+import "../saveloadmenu/SaveLoadMenu";
 
 export default class TopBar extends Component {
     protected override hasCss = true;
@@ -83,6 +84,14 @@ export default class TopBar extends Component {
                     turn: nextTurn,
                     previousTurn: this.currentTurn
                 });
+            });
+        }
+        
+        // Setup save/load button
+        const saveLoadButton = root.querySelector('#save-load-button');
+        if (saveLoadButton) {
+            saveLoadButton.addEventListener('click', () => {
+                this.showSaveLoadMenu();
             });
         }
         
@@ -262,6 +271,26 @@ export default class TopBar extends Component {
         if (pointsTextEl && !pointsTextEl.textContent) {
             pointsTextEl.textContent = `${i18n.t('topbar.actionPoints')} 0`;
         }
+    }
+    
+    private showSaveLoadMenu() {
+        // Check if menu already exists
+        let menu = document.querySelector('save-load-menu');
+        if (!menu) {
+            // Create the menu
+            menu = document.createElement('save-load-menu');
+            document.body.appendChild(menu);
+        }
+        // Show the menu
+        (menu as any).show();
+    }
+
+    // Support for Playwright tests
+    public override getTestingShadowRoot() {
+        if ((window as any).__PLAYWRIGHT_TEST__) {
+            return this.shadowRoot;
+        }
+        return null;
     }
 }
 

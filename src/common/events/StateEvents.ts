@@ -229,6 +229,14 @@ export enum StateChangeEvent {
     doors = 'StateChangeEvent.doors',
     /** Bottom bar expanded state changed */
     uiBottomBarExpanded = 'StateChangeEvent.uiBottomBarExpanded',
+    /** Game saved */
+    gameSaved = 'StateChangeEvent.gameSaved',
+    /** Game loaded */
+    gameLoaded = 'StateChangeEvent.gameLoaded',
+    /** Save deleted */
+    saveDeleted = 'StateChangeEvent.saveDeleted',
+    /** Saves listed */
+    savesListed = 'StateChangeEvent.savesListed',
 }
 
 export interface StateChangeEventsMap {
@@ -266,4 +274,24 @@ export interface StateChangeEventsMap {
     [StateChangeEvent.language]: 'en' | 'es';
     [StateChangeEvent.doors]: DeepReadonly<Record<string, IDoor>>;
     [StateChangeEvent.uiBottomBarExpanded]: boolean;
+    [StateChangeEvent.gameSaved]: {
+        slotName: string;
+        success: boolean;
+        error?: string;
+    };
+    [StateChangeEvent.gameLoaded]: {
+        slotName: string;
+        success: boolean;
+        error?: string;
+    };
+    [StateChangeEvent.saveDeleted]: {
+        slotName: string;
+        success: boolean;
+    };
+    [StateChangeEvent.savesListed]: Array<{
+        slotName: string;
+        timestamp: number;
+        turn: string;
+        characterCount: number;
+    }>;
 }

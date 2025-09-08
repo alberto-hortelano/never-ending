@@ -34,6 +34,12 @@ export enum ControlsEvent {
     toggleMelee = 'ControlsEvent.toggleMelee',
     selectOrigin = 'ControlsEvent.selectOrigin',
     doorClick = 'ControlsEvent.doorClick',
+    saveGame = 'ControlsEvent.saveGame',
+    loadGame = 'ControlsEvent.loadGame',
+    deleteSave = 'ControlsEvent.deleteSave',
+    listSaves = 'ControlsEvent.listSaves',
+    quickSave = 'ControlsEvent.quickSave',
+    quickLoad = 'ControlsEvent.quickLoad',
 }
 
 export interface ControlsEventsMap {
@@ -100,4 +106,17 @@ export interface ControlsEventsMap {
     [ControlsEvent.toggleMelee]: ICharacter['name'];
     [ControlsEvent.selectOrigin]: IOriginStory;
     [ControlsEvent.doorClick]: { doorId: string };
+    [ControlsEvent.saveGame]: {
+        slotName: string;
+        description?: string;
+    };
+    [ControlsEvent.loadGame]: {
+        slotName: string;
+    };
+    [ControlsEvent.deleteSave]: {
+        slotName: string;
+    };
+    [ControlsEvent.listSaves]: {};
+    [ControlsEvent.quickSave]: {};
+    [ControlsEvent.quickLoad]: {};
 }

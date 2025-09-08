@@ -8,6 +8,7 @@ import { ControlsEvent, StateChangeEvent } from '../../common/events/index';
 import { i18n } from '../../common/i18n/i18n';
 import { EnvironmentService } from '../../common/services/EnvironmentService';
 import '../developmentui/DevelopmentUI';
+import '../saveloadmenu/SaveLoadMenu';
 
 export class MainMenu extends Component {
     private multiplayerManager: MultiplayerManager;
@@ -31,6 +32,15 @@ export class MainMenu extends Component {
         this.listen(ControlsEvent.createCharacter, (_characterData) => {
             // Here you would typically save the character or start the game with it
             this.show();
+        });
+        
+        // Listen for game loaded event to hide menu and start game
+        this.listen(StateChangeEvent.gameLoaded, (data) => {
+            if (data.success) {
+                // Hide main menu and start the game
+                this.style.display = 'none';
+                this.dispatch('startSinglePlayer', {});
+            }
         });
         
         // Listen for origin selection
@@ -88,6 +98,16 @@ export class MainMenu extends Component {
             });
         } else {
             console.error('Single player button not found');
+        }
+
+        // Load Game button
+        const loadGameBtn = root.getElementById('loadGameBtn');
+        if (loadGameBtn) {
+            loadGameBtn.addEventListener('click', () => {
+                this.showSaveLoadMenu();
+            });
+        } else {
+            console.error('Load Game button not found');
         }
 
         // Multiplayer button
@@ -186,6 +206,35 @@ export class MainMenu extends Component {
         this.style.display = 'none';
     }
     
+    private showSaveLoadMenu() {
+        // Check if menu already exists
+        let menu = document.querySelector('save-load-menu');
+        if (!menu) {
+            // Create the menu
+            menu = document.createElement('save-load-menu');
+            document.body.appendChild(menu);
+        }
+        
+        // Set to load mode and show the menu
+        (menu as any).setInitialMode('load');
+        (menu as any).show();
+        this.style.display = 'none';
+        
+        // Listen for menu close to show main menu again
+        const handleClose = () => {
+            if (this.style.display === 'none' && !document.querySelector('game-component')) {
+                this.show();
+            }
+        };
+        
+        // Add click listener to detect when menu is closed
+        menu.addEventListener('click', (e: Event) => {
+            if (e.target === menu) {
+                handleClose();
+            }
+        });
+    }
+    
     show() {
         this.style.display = 'flex';
     }
@@ -202,11 +251,13 @@ export class MainMenu extends Component {
         }
         
         const singlePlayerBtn = root.getElementById('singlePlayerBtn');
+        const loadGameBtn = root.getElementById('loadGameBtn');
         const multiplayerBtn = root.getElementById('multiplayerBtn');
         const characterCreatorBtn = root.getElementById('characterCreatorBtn');
         const settingsBtn = root.getElementById('settingsBtn');
         
         if (singlePlayerBtn) singlePlayerBtn.textContent = i18n.t('menu.singlePlayer');
+        if (loadGameBtn) loadGameBtn.textContent = i18n.t('menu.loadGame');
         if (multiplayerBtn) multiplayerBtn.textContent = i18n.t('menu.multiplayer');
         if (characterCreatorBtn) characterCreatorBtn.textContent = i18n.t('menu.createCharacter');
         if (settingsBtn) settingsBtn.textContent = i18n.t('menu.settings');
