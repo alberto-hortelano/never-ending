@@ -208,15 +208,11 @@ export default class BottomBar extends Component {
 
         // Create conversation component if it doesn't exist
         if (!this.conversationComponent) {
-            console.log('[BottomBar] Creating conversation-ui component');
             this.conversationComponent = document.createElement('conversation-ui') as Conversation;
             this.conversationSection.appendChild(this.conversationComponent);
-            console.log('[BottomBar] Conversation component created and appended');
 
             // Listen for conversation-ended event
             this.conversationComponent.addEventListener('conversation-ended', () => {
-                console.log('[BottomBar] Received conversation-ended event');
-                // Close immediately when user clicks close button
                 this.hideConversation();
             });
 
@@ -232,13 +228,12 @@ export default class BottomBar extends Component {
                 }
             });
         } else {
-            console.log('[BottomBar] Conversation component already exists');
+            console.error('[BottomBar] Conversation component already exists');
         }
 
         // Show the conversation section
         this.conversationSection.style.display = 'block';
         this.isConversationVisible = true;
-        console.log('[BottomBar] Conversation section shown');
 
         // Notify that bottom bar has expanded
         this.dispatch(UpdateStateEvent.uiBottomBarExpanded, true);
@@ -263,7 +258,6 @@ export default class BottomBar extends Component {
     }
 
     private showTalkSelection(data: ControlsEventsMap[ControlsEvent.showTalk]) {
-        console.log('[BottomBar] showTalkSelection called:', data);
         if (!this.talkSelectionSection) {
             console.error('[BottomBar] No talk selection section found!');
             return;

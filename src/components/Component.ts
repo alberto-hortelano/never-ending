@@ -53,17 +53,14 @@ export abstract class Component extends HTMLElement {
             // Try to load CSS and HTML
             let styleSheet, template;
 
-            try {
-                const styleSheetPromise = this.loadCss();
-                const templatePromise = this.loadHtml();
+            // Load CSS and HTML resources - let errors propagate for critical failures
+            const styleSheetPromise = this.loadCss();
+            const templatePromise = this.loadHtml();
 
-                [styleSheet, template] = await Promise.all([
-                    styleSheetPromise,
-                    templatePromise,
-                ]);
-            } catch (loadError) {
-                // Continue with basic initialization even if resources fail
-            }
+            [styleSheet, template] = await Promise.all([
+                styleSheetPromise,
+                templatePromise,
+            ]);
 
             if (template) {
                 root.append(template.content.cloneNode(true));
@@ -78,8 +75,9 @@ export abstract class Component extends HTMLElement {
 
             return root;
         } catch (error) {
-            // Return null to indicate failure
-            return null;
+            // Component initialization is critical - fail fast with clear error
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            throw new Error(`Failed to initialize component ${this.name}: ${errorMessage}`);
         }
     }
 
@@ -132,7 +130,7 @@ export abstract class Component extends HTMLElement {
     private async createStyleSheet(url: string): Promise<CSSStyleSheet> {
         const res = await fetch(url);
         if (!res.ok) {
-            throw new Error(`Stylesheet load error: ${res.status}`);
+            throw new Error(`Failed to load stylesheet for ${this.name} from ${url}: HTTP ${res.status}`);
         }
         const cssText = await res.text();
         const sheet = new CSSStyleSheet();
@@ -146,7 +144,7 @@ export abstract class Component extends HTMLElement {
         const url = new URL(`./${this.name.toLowerCase()}/${this.name}.html`, import.meta.url).href.replace('/js/components/', '/html/components/');
         const res = await fetch(url);
         if (!res.ok) {
-            throw new Error(`Template load error: ${res.status}`);
+            throw new Error(`Failed to load HTML template for ${this.name} from ${url}: HTTP ${res.status}`);
         }
         const html = await res.text();
         const tmpl = document.createElement('template');

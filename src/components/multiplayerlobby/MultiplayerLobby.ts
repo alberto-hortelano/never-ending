@@ -199,10 +199,19 @@ export class MultiplayerLobby extends Component {
                     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                     const host = window.location.host;
                     const serverUrl = `${protocol}//${host}`;
-                    
+
                     await this.multiplayerManager.connectToServer(this.playerName, serverUrl);
                 } catch (error) {
-                    alert(i18n.t('multiplayer.connectionFailed'));
+                    // Network failures for multiplayer are critical - show detailed error
+                    const errorMessage = error instanceof Error ? error.message : String(error);
+                    console.error('Failed to connect to multiplayer server:', error);
+
+                    // Show localized error with details
+                    const baseMessage = i18n.t('multiplayer.connectionFailed');
+                    alert(`${baseMessage}\n\nDetails: ${errorMessage}`);
+
+                    // Re-throw to prevent further actions
+                    throw new Error(`Multiplayer connection failed: ${errorMessage}`);
                 }
             }
         });

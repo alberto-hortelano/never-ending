@@ -20,9 +20,8 @@ export default class Door extends Component {
         this.addEventListener('touchstart', this.onTouchStart.bind(this), { passive: true });
     }
 
-    override async connectedCallback(): Promise<ShadowRoot | null> {
+    override async connectedCallback(): Promise<ShadowRoot> {
         const root = await super.connectedCallback();
-        if (!root) return null;
 
         // Listen for door state changes
         this.listen(StateChangeEvent.doors, (doors) => {

@@ -61,72 +61,103 @@ let gameServices: GameService[] = [];
 
 // Initialize a minimal state for menu operations (save/load)
 const initializeMenuState = () => {
-    if (!menuState) {
-        // Create a minimal state just for save/load operations
-        menuState = new State(getBaseState());
-        // This state instance will handle save/load events even before game starts
+    try {
+        if (!menuState) {
+            // Create a minimal state just for save/load operations
+            menuState = new State(getBaseState());
+            if (!menuState) {
+                throw new Error('Failed to create menu state');
+            }
+            // This state instance will handle save/load events even before game starts
+        }
+        return menuState;
+    } catch (error) {
+        console.error('Failed to initialize menu state:', error);
+        // Menu state failure is not completely critical - game can still work
+        // but save/load from menu won't work
+        console.warn('Save/load functionality may not work from main menu');
+        return null;
     }
-    return menuState;
 };
 
 const play = (state?: State) => {
-    // Clean up previous game services
-    gameServices.forEach(service => {
-        if (service) {
-            if (typeof service.destroy === 'function') {
-                service.destroy();
-            } else if (typeof service.remove === 'function') {
-                // For EventBus instances, remove listeners
-                service.remove(service);
+    try {
+        // Clean up previous game services
+        gameServices.forEach(service => {
+            if (service) {
+                if (typeof service.destroy === 'function') {
+                    service.destroy();
+                } else if (typeof service.remove === 'function') {
+                    // For EventBus instances, remove listeners
+                    service.remove(service);
+                }
             }
+        });
+        gameServices = [];
+
+        // Clear component state reference
+        Component.setGameState(null);
+
+        // Clean up menu state if we're starting a game
+        if (menuState) {
+            // Remove all event listeners from menu state
+            menuState.remove(menuState);
+            menuState = null;
         }
-    });
-    gameServices = [];
 
-    // Clear component state reference
-    Component.setGameState(null);
+        // Use provided state or create new one
+        gameState = state || new State(initialState(50, 50));
 
-    // Clean up menu state if we're starting a game
-    if (menuState) {
-        // Remove all event listeners from menu state
-        menuState.remove(menuState);
-        menuState = null;
+        if (!gameState) {
+            throw new Error('Failed to initialize game state');
+        }
+
+        // Set state reference for components
+        Component.setGameState(gameState);
+
+        // Initialize singleton services
+        CharacterService.initialize(gameState);
+        MeleeCombat.initialize(gameState);
+
+        // Initialize AI Controller for NPC control
+        const aiController = AIController.getInstance();
+        aiController.setGameState(gameState);
+        aiController.enableAI(); // Enable AI by default
+
+        // Create new game services
+        gameServices.push(
+            new Movement(gameState),
+            new Talk(gameState),
+            new Shoot(gameState),
+            new Overwatch(gameState),
+            new Inventory(gameState),
+            new Conversation(gameState),
+            new Action(gameState),
+            new AutoSelectCharacter(gameState),
+            aiController // Add AI controller to services for cleanup
+        );
+
+        // Show game UI
+        const container = document.querySelector('container-component');
+        const turnIndicator = document.querySelector('turn-indicator');
+        if (container) container.setAttribute('style', 'display: block;');
+        // Turn indicator functionality is now in TopBar, hide the original
+        if (turnIndicator) turnIndicator.setAttribute('style', 'display: none;');
+    } catch (error) {
+        // Game initialization is critical - fail with clear error
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('Critical error: Failed to start game:', error);
+
+        // Try to show error to user
+        const loadingScreen = document.querySelector('loading-screen') as any;
+        if (loadingScreen?.showError) {
+            loadingScreen.showError(`Failed to start game: ${errorMessage}`);
+        } else {
+            alert(`Critical error: Failed to start game\n\n${errorMessage}`);
+        }
+
+        throw new Error(`Game initialization failed: ${errorMessage}`);
     }
-
-    // Use provided state or create new one
-    gameState = state || new State(initialState(50, 50));
-
-    // Set state reference for components
-    Component.setGameState(gameState);
-
-    // Initialize singleton services
-    CharacterService.initialize(gameState);
-    MeleeCombat.initialize(gameState);
-
-    // Initialize AI Controller for NPC control
-    const aiController = AIController.getInstance();
-    aiController.setGameState(gameState);
-    aiController.enableAI(); // Enable AI by default
-
-    // Create new game services
-    gameServices.push(
-        new Movement(gameState),
-        new Talk(gameState),
-        new Shoot(gameState),
-        new Overwatch(gameState),
-        new Inventory(gameState),
-        new Conversation(gameState),
-        new Action(gameState),
-        new AutoSelectCharacter(gameState),
-        aiController // Add AI controller to services for cleanup
-    );
-
-    // Show game UI
-    const container = document.querySelector('container-component');
-    const turnIndicator = document.querySelector('turn-indicator');
-    if (container) container.setAttribute('style', 'display: block;');
-    // Turn indicator functionality is now in TopBar, hide the original
-    if (turnIndicator) turnIndicator.setAttribute('style', 'display: none;');
 }
 
 // Initialize event listeners
@@ -286,11 +317,11 @@ async function initializeAIStory(gameState: State) {
         play(gameState);
         
     } catch (error) {
-        console.error('[Web] AI initialization failed:', error);
-        
-        // Update loading screen to show error
+        // AI initialization failure is critical for single player mode
         const errorMessage = (error as Error).message || 'Error desconocido';
-        
+        console.error('[Web] Critical: AI initialization failed:', error);
+
+        // Update loading screen to show error
         // Check if it's an overload error
         if (errorMessage.includes('overloaded') || errorMessage.includes('529')) {
             loadingScreen?.updateStep('connect', 'error', 'Servicio sobrecargado');
@@ -299,13 +330,16 @@ async function initializeAIStory(gameState: State) {
             loadingScreen?.updateStep('connect', 'error', errorMessage);
             loadingScreen?.showError(`Error al inicializar la historia: ${errorMessage}`);
         }
-        
+
         eventBus.dispatch(GameEvent.aiInitializationFailed, {
             message: errorMessage,
             retryCount: 0,
             maxRetries: 3,
             canRetry: true
         });
+
+        // Re-throw for proper error handling up the chain
+        throw error;
     }
 }
 

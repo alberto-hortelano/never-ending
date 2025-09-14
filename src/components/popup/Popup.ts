@@ -86,8 +86,10 @@ export class Popup extends Component {
         if (!this.isPinned) {
             // Only dispatch UI events if State is initialized
             // During game initialization, State might not be ready yet
-            try {
-                // Update state to hide popup
+            // Update state to hide popup
+            // This is optional - if state isn't ready yet, we can skip it
+            const state = this.getState();
+            if (state) {
                 this.dispatch(UpdateStateEvent.uiPopup, {
                     popupId: this.popupId,
                     popupState: null
@@ -97,9 +99,6 @@ export class Popup extends Component {
                 this.dispatch(UpdateStateEvent.uiBoardVisual, {
                     updates: { hasPopupActive: false }
                 });
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            } catch (e) {
-                // State not initialized yet, ignore
             }
         }
     }

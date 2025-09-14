@@ -41,7 +41,7 @@ export class Conversation extends Component {
             console.error('[Conversation] No shadow root returned from super.connectedCallback');
             return root;
         }
-        
+
         // Store the root reference
         this.shadowRootRef = root;
 
@@ -133,7 +133,6 @@ export class Conversation extends Component {
 
         // Hide loading message
         if (this.loadingElement) {
-            console.log('[Conversation] Hiding loading element');
             this.loadingElement.style.display = 'none';
         } else {
             console.warn('[Conversation] No loading element found');
@@ -196,21 +195,21 @@ export class Conversation extends Component {
         } else if (data.answers && data.answers.length > 0 && this.answersElement && !currentTurn?.selectedAnswer) {
             // Show interactive answers if no answer has been selected yet
             const answersElement = this.answersElement;
-            
+
             // If there's an action, handle answer buttons specially
             if (data.action) {
                 data.answers.forEach((answer) => {
                     const button = document.createElement('button');
                     button.className = 'answer-button';
                     button.textContent = answer;
-                    
+
                     // Check if this is an accept/decline button for an action
                     const acceptWords = [i18n.t('common.accept').toLowerCase(), i18n.t('common.continue').toLowerCase(), i18n.t('common.yes').toLowerCase()];
                     const rejectWords = [i18n.t('common.reject').toLowerCase(), i18n.t('common.no').toLowerCase(), i18n.t('common.cancel').toLowerCase()];
-                    
+
                     const isAccept = acceptWords.some(word => answer.toLowerCase().includes(word));
                     const isDecline = rejectWords.some(word => answer.toLowerCase().includes(word));
-                    
+
                     if (isAccept) {
                         button.classList.add('action-accept');
                         button.addEventListener('click', () => this.handleActionAnswer(answer, data.action, true));
@@ -220,7 +219,7 @@ export class Conversation extends Component {
                     } else {
                         button.addEventListener('click', () => this.handleAnswerClick(answer));
                     }
-                    
+
                     answersElement.appendChild(button);
                 });
             } else {
@@ -257,7 +256,7 @@ export class Conversation extends Component {
                             bubbles: true
                         }));
                     }
-                    
+
                     // Dispatch event to close conversation
                     this.dispatchEvent(new CustomEvent('conversation-ended', {
                         bubbles: true
@@ -325,7 +324,7 @@ export class Conversation extends Component {
 
     private handleActionAnswer(answer: string, action: string | undefined, accepted: boolean) {
         console.log('[Conversation] handleActionAnswer:', { answer, action, accepted });
-        
+
         // Store the selected answer in the current turn
         if (this.currentHistoryIndex >= 0 && this.currentHistoryIndex < this.conversationHistory.length) {
             const currentTurn = this.conversationHistory[this.currentHistoryIndex];
@@ -348,17 +347,17 @@ export class Conversation extends Component {
         // If action was accepted, dispatch event to execute it
         if (accepted && action) {
             console.log('[Conversation] User accepted action:', action);
-            
+
             // Get the current conversation data to include actionData
             const currentData = this.conversationHistory[this.currentHistoryIndex]?.data;
             const actionData = currentData?.actionData;
-            
+
             // Dispatch storyline-action event to parent components
             this.dispatchEvent(new CustomEvent('storyline-action', {
                 detail: { action, actionData, accepted: true },
                 bubbles: true
             }));
-            
+
             // Close the conversation after accepting action
             setTimeout(() => {
                 this.dispatchEvent(new CustomEvent('conversation-ended', {
@@ -518,7 +517,7 @@ export class Conversation extends Component {
         // Update navigation buttons
         const prevText = root.querySelector('.nav-previous .nav-text');
         if (prevText) prevText.textContent = i18n.t('conversation.previous');
-        
+
         const nextText = root.querySelector('.nav-next .nav-text');
         if (nextText) nextText.textContent = i18n.t('conversation.next');
 
@@ -541,23 +540,23 @@ export class Conversation extends Component {
 
     private handleAIExchange(data: AIExchangeData) {
         console.log('[Conversation] Handling AI exchange:', data);
-        
+
         // Set AI-to-AI mode
         this.isAIToAIMode = true;
-        
+
         // Show AI exchange indicator
         this.showAIExchangeIndicator(data);
-        
+
         // The actual conversation update will come through the regular update event
         // This event just provides additional context about the AI exchange
     }
-    
+
     private showAIExchangeIndicator(data: AIExchangeData) {
         if (!this.contentElement) return;
-        
+
         // Remove existing indicator if any
         this.hideAIExchangeIndicator();
-        
+
         // Create new indicator
         this.aiExchangeIndicator = document.createElement('div');
         this.aiExchangeIndicator.className = 'ai-exchange-indicator';
@@ -566,11 +565,11 @@ export class Conversation extends Component {
             <span class="ai-text">${i18n.t('conversation.aiExchange')} ${data.exchangeNumber}/${data.maxExchanges}</span>
             <span class="eavesdrop-text">(${i18n.t('conversation.observing')})</span>
         `;
-        
+
         // Insert at the top of content
         this.contentElement.insertBefore(this.aiExchangeIndicator, this.contentElement.firstChild);
     }
-    
+
     private hideAIExchangeIndicator() {
         if (this.aiExchangeIndicator && this.aiExchangeIndicator.parentNode) {
             this.aiExchangeIndicator.parentNode.removeChild(this.aiExchangeIndicator);

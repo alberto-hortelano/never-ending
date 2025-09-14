@@ -52,8 +52,9 @@ export class SaveGameService {
 
             return true;
         } catch (error) {
-            console.error('Failed to save game:', error);
-            return false;
+            // Save failures are critical - game data could be lost
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            throw new Error(`Failed to save game to slot '${slotName}': ${errorMessage}`);
         }
     }
 
@@ -68,8 +69,14 @@ export class SaveGameService {
             return null;
         }
 
-        // Return a deep clone to prevent modifications to the saved state
-        return structuredClone(saveData.state);
+        try {
+            // Return a deep clone to prevent modifications to the saved state
+            return structuredClone(saveData.state);
+        } catch (error) {
+            // Load failures are critical - corrupted save data
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            throw new Error(`Failed to load game from slot '${slotName}': ${errorMessage}. Save data may be corrupted.`);
+        }
     }
 
     /**
@@ -139,16 +146,18 @@ export class SaveGameService {
      * Save all saves to localStorage
      */
     private saveToLocalStorage(): void {
-        try {
-            if (typeof localStorage === 'undefined') {
-                return; // Not in browser environment
-            }
+        if (typeof localStorage === 'undefined') {
+            return; // Not in browser environment - not an error
+        }
 
+        try {
             const savesArray: Array<[string, ISaveData]> = Array.from(this.saves.entries());
             const serialized = JSON.stringify(savesArray);
             localStorage.setItem(this.STORAGE_KEY, serialized);
         } catch (error) {
-            console.error('Failed to save to localStorage:', error);
+            // LocalStorage failures are critical - user could lose progress
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            throw new Error(`Failed to persist saves to localStorage: ${errorMessage}. Your progress may not be saved.`);
         }
     }
 
@@ -156,28 +165,28 @@ export class SaveGameService {
      * Load saves from localStorage
      */
     private loadFromLocalStorage(): void {
+        if (typeof localStorage === 'undefined') {
+            return; // Not in browser environment - not an error
+        }
+
+        const serialized = localStorage.getItem(this.STORAGE_KEY);
+        if (!serialized) {
+            return; // No saves to load - not an error
+        }
+
         try {
-            if (typeof localStorage === 'undefined') {
-                return; // Not in browser environment
-            }
-
-            const serialized = localStorage.getItem(this.STORAGE_KEY);
-            if (!serialized) {
-                return;
-            }
-
             const savesArray: Array<[string, ISaveData]> = JSON.parse(serialized);
             this.saves.clear();
-            
+
             for (const [slotName, saveData] of savesArray) {
                 this.saves.set(slotName, saveData);
             }
         } catch (error) {
-            console.error('Failed to load from localStorage:', error);
-            // Clear corrupted data
-            if (typeof localStorage !== 'undefined') {
-                localStorage.removeItem(this.STORAGE_KEY);
-            }
+            // Corrupted save data - log warning but don't crash on startup
+            // Clear the corrupted data to allow fresh start
+            console.error('Warning: Failed to load saved games from localStorage. Saves may be corrupted and will be cleared:', error);
+            localStorage.removeItem(this.STORAGE_KEY);
+            this.saves.clear();
         }
     }
 }

@@ -13,9 +13,8 @@ export class StoryDebug extends Component {
         this.worldState = WorldState.getInstance();
     }
     
-    override async connectedCallback(): Promise<ShadowRoot | null> {
+    override async connectedCallback(): Promise<ShadowRoot> {
         const root = await super.connectedCallback();
-        if (!root) return null;
         
         this.setupEventListeners(root);
         this.startAutoUpdate();
