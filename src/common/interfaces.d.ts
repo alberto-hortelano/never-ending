@@ -6,10 +6,12 @@ export interface IState {
     ui: IUIState;
     overwatchData: Record<string, IOverwatchData>;
     story?: IStoryState;
-    language?: 'en' | 'es';
+    language?: Language;
     doors?: Record<string, IDoor>;
     mapSeed?: number;
 }
+
+export type Language = 'en' | 'es';
 
 export interface IOverwatchData {
     active: boolean;
@@ -18,21 +20,28 @@ export interface IOverwatchData {
     range: number;
     shotsRemaining: number;
     watchedCells?: ICoord[];
-    shotCells?: string[]; // Track cells already shot at to prevent duplicate shots
+    shotCells?: string[];
 }
 export interface IGame {
     turn: string;
     players: string[];
-    playerInfo?: Record<string, { name: string; isAI?: boolean }>;
+    playerInfo?: Record<string, IPlayerInfo>;
     teams?: ITeamConfiguration;
 }
 
+export interface IPlayerInfo {
+    name: string;
+    isAI?: boolean;
+}
+
 export interface ITeamConfiguration {
-    [teamId: string]: {
-        name: string;
-        hostile: string[]; // Teams that are hostile to this one
-        allied?: string[]; // Teams that are allied with this one (optional, defaults to empty)
-    };
+    [teamId: string]: ITeamDefinition;
+}
+
+export interface ITeamDefinition {
+    name: string;
+    hostile: string[];
+    allied?: string[];
 }
 export interface ICoord {
     x: number;
@@ -126,17 +135,19 @@ export interface ICharacter extends IMovable {
     race: Race;
     description: string;
     action: Action;
-    player: string; // Who controls this character (human, ai, player1, player2, etc)
-    team?: string; // Which team/faction this character belongs to (player, enemy, neutral, etc)
-    palette: {
-        skin: string;
-        helmet: string;
-        suit: string;
-    };
+    player: string;
+    team?: string;
+    palette: ICharacterPalette;
     inventory: IInventory;
     actions: ICharacterActions;
     health: number;
     maxHealth: number;
+}
+
+export interface ICharacterPalette {
+    skin: string;
+    helmet: string;
+    suit: string;
 }
 export interface IMessage {
     role: 'user' | 'assistant';
@@ -179,23 +190,25 @@ export interface IVisualStates {
 export interface ICharacterVisualState {
     direction: Direction;
     classList: string[];
-    temporaryClasses: string[]; // For transient actions like 'shoot'
-    weaponClass?: string; // Current equipped weapon class
+    temporaryClasses: string[];
+    weaponClass?: string;
     styles: Record<string, string>;
     healthBarPercentage: number;
     healthBarColor: string;
     isDefeated: boolean;
     isCurrentTurn: boolean;
-    isMyCharacter?: boolean; // Multiplayer
-    isOpponentCharacter?: boolean; // Multiplayer
-    equippedWeapon?: string; // Current weapon being displayed
+    isMyCharacter?: boolean;
+    isOpponentCharacter?: boolean;
+    equippedWeapon?: string;
 }
+
+export type HighlightType = 'movement' | 'attack' | 'path' | 'overwatch';
 
 export interface ICellVisualState {
     isHighlighted: boolean;
     highlightIntensity?: number;
-    highlightType?: 'movement' | 'attack' | 'path' | 'overwatch'; // Deprecated, use highlightTypes
-    highlightTypes?: Array<'movement' | 'attack' | 'path' | 'overwatch'>; // New: supports multiple types
+    highlightType?: HighlightType; // Deprecated, use highlightTypes
+    highlightTypes?: HighlightType[];
     classList: string[];
 }
 
@@ -212,10 +225,12 @@ export interface ITransientUI {
     highlights: IHighlightStates;
 }
 
+export type PopupType = 'actions' | 'inventory' | 'conversation' | 'rotate' | 'directions';
+
 export interface IPopupState {
-    type: 'actions' | 'inventory' | 'conversation' | 'rotate' | 'directions';
+    type: PopupType;
     visible: boolean;
-    position?: { x: number; y: number };
+    position?: ICoord;
     data: IPopupData & { title?: string };
     isPinned?: boolean;
 }
@@ -252,9 +267,11 @@ export interface IDirectionsPopupData {
     availableDirections?: Direction[];
 }
 
+export type ProjectileType = 'bullet' | 'laser';
+
 export interface IProjectileState {
     id: string;
-    type: 'bullet' | 'laser';
+    type: ProjectileType;
     from: ICoord;
     to: ICoord;
     startTime: number;
@@ -268,8 +285,10 @@ export interface IHighlightStates {
     meleeTargets?: Array<{ position: ICoord; type: 'melee-target' }>;
 }
 
+export type InteractionModeType = 'normal' | 'moving' | 'shooting' | 'selecting' | 'rotating' | 'overwatch' | 'melee';
+
 export interface IInteractionMode {
-    type: 'normal' | 'moving' | 'shooting' | 'selecting' | 'rotating' | 'overwatch' | 'melee';
+    type: InteractionModeType;
     data?: IInteractionModeData;
 }
 
@@ -473,20 +492,22 @@ export interface IStoryAct {
     climaxDescription: string;
 }
 
+export type MissionType = 'combat' | 'exploration' | 'infiltration' | 'diplomacy' | 'survival';
+
 export interface IMission {
     id: string;
     actId: string;
     name: string;
-    nameES?: string; // Optional - being phased out
+    nameES?: string;
     description: string;
-    descriptionES?: string; // Optional - being phased out
-    type: 'combat' | 'exploration' | 'infiltration' | 'diplomacy' | 'survival';
+    descriptionES?: string;
+    type: MissionType;
     objectives: IObjective[];
     requiredObjects: string[];
     npcs: INPCRole[];
     mapContext: IMapContext;
     narrativeHooks: string[];
-    estimatedDuration: number; // in turns
+    estimatedDuration: number;
     isCompleted: boolean;
     isCurrent: boolean;
 }
@@ -500,8 +521,10 @@ export interface IObjective {
     conditions: IObjectiveCondition[];
 }
 
+export type ObjectiveConditionType = 'kill' | 'reach' | 'collect' | 'talk' | 'survive' | 'escort' | 'destroy';
+
 export interface IObjectiveCondition {
-    type: 'kill' | 'reach' | 'collect' | 'talk' | 'survive' | 'escort' | 'destroy';
+    type: ObjectiveConditionType;
     target?: string;
     count?: number;
     location?: string;
@@ -535,10 +558,13 @@ export interface INPCRole {
     equipment?: string[];
 }
 
+export type EnvironmentType = 'spaceship' | 'station' | 'planet' | 'settlement' | 'ruins' | 'wilderness';
+export type LightingCondition = 'bright' | 'normal' | 'dim' | 'dark';
+
 export interface IMapContext {
-    environment: 'spaceship' | 'station' | 'planet' | 'settlement' | 'ruins' | 'wilderness';
+    environment: EnvironmentType;
     atmosphere: string;
-    lightingCondition: 'bright' | 'normal' | 'dim' | 'dark';
+    lightingCondition: LightingCondition;
     hazards?: string[];
     specialFeatures?: string[];
 }
@@ -573,15 +599,19 @@ export interface IValidationError {
 }
 
 // Tooltip interface
+export type TooltipType = 'character' | 'item' | 'door' | 'cell' | 'enemy' | 'ally' | 'default';
+
 export interface TooltipData {
     text: string;
     subtext?: string;
-    type?: 'character' | 'item' | 'door' | 'cell' | 'enemy' | 'ally' | 'default';
-    details?: Array<{
-        label?: string;
-        value: string;
-        color?: string;
-    }>;
+    type?: TooltipType;
+    details?: TooltipDetail[];
     autoHide?: boolean;
+}
+
+export interface TooltipDetail {
+    label?: string;
+    value: string;
+    color?: string;
 }
 

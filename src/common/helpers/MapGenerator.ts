@@ -3,22 +3,32 @@ import { CorridorGenerator, type CorridorPattern, type Corridor } from "./Corrid
 import { RoomPlacer } from "./RoomPlacer";
 import { SeededRandom } from "./SeededRandom";
 
+const DEFAULT_MAP_WIDTH = 50;
+const DEFAULT_MAP_HEIGHT = 50;
+const DEFAULT_CORRIDOR_PATTERN: CorridorPattern = 'random';
+
+interface PlacedRoom {
+    room: IRoom;
+    position: ICoord;
+    size: number;
+}
+
 export class MapGenerator {
     private map: number[][];
     private corridorGenerator: CorridorGenerator;
     private roomPlacer: RoomPlacer;
     private corridors: Corridor[] = [];
-    private placedRooms: { room: IRoom; position: ICoord; size: number }[] = [];
+    private placedRooms: PlacedRoom[] = [];
     private rng?: SeededRandom;
-    private seed?: number;
+    private readonly seed?: number;
 
     constructor(
-        private width: number = 50,
-        private height: number = 50,
-        private corridorPattern: CorridorPattern = 'random',
+        private readonly width: number = DEFAULT_MAP_WIDTH,
+        private readonly height: number = DEFAULT_MAP_HEIGHT,
+        private readonly corridorPattern: CorridorPattern = DEFAULT_CORRIDOR_PATTERN,
         seed?: number
     ) {
-        this.map = Array(height).fill(null).map(() => Array(width).fill(0));
+        this.map = this.createEmptyMap();
         this.seed = seed;
         if (seed !== undefined) {
             this.rng = new SeededRandom(seed);
@@ -27,44 +37,61 @@ export class MapGenerator {
         this.roomPlacer = new RoomPlacer(width, height, this.corridorGenerator);
     }
 
+    private createEmptyMap(): number[][] {
+        return Array(this.height).fill(null).map(() => Array(this.width).fill(0));
+    }
+
     public getCells(): ICell[][] {
-        // this.printMap(this.map);
-        return this.map.map((row, y) => row.map((cell, x) => {
-            const roomNames = this.getRoomNamesForCell({ x, y });
-            return {
+        return this.map.map((row, y) => row.map((cell, x) =>
+            this.createCell(x, y, cell)
+        ));
+    }
+
+    private createCell(x: number, y: number, cellValue: number): ICell {
+        const roomNames = this.getRoomNamesForCell({ x, y });
+        return {
+            position: { x, y },
+            locations: roomNames,
+            elements: [],
+            content: {
                 position: { x, y },
-                locations: roomNames,
-                elements: [],
-                content: {
-                    position: { x, y },
-                    location: roomNames[0] || '',
-                    blocker: !cell,
-                },
-            };
-        }))
+                location: roomNames[0] || '',
+                blocker: !cellValue,
+            },
+        };
     }
 
     public generateMap(rooms: IRoom[], startingPoint: ICoord): number[][] {
         this.reset();
         if (rooms.length === 0) return this.map;
 
-        this.corridors = this.corridorGenerator.generateCorridors(rooms.length, this.corridorPattern, startingPoint);
+        this.corridors = this.corridorGenerator.generateCorridors(
+            rooms.length,
+            this.corridorPattern,
+            startingPoint
+        );
+
         const roomPlacements = this.roomPlacer.placeAllRooms(rooms, this.corridors);
-        this.placedRooms = roomPlacements.map(placement => ({
-            room: placement.room,
-            position: placement.position,
-            size: placement.room.size
-        }));
+        this.placedRooms = this.createPlacedRooms(roomPlacements);
+
         this.carveEverything();
         this.trimMap();
 
         return this.map;
     }
 
+    private createPlacedRooms(placements: ReturnType<RoomPlacer['placeAllRooms']>): PlacedRoom[] {
+        return placements.map(placement => ({
+            room: placement.room,
+            position: placement.position,
+            size: placement.room.size
+        }));
+    }
+
     private reset(): void {
         this.corridors = [];
         this.placedRooms = [];
-        this.map = Array(this.height).fill(null).map(() => Array(this.width).fill(0));
+        this.map = this.createEmptyMap();
     }
 
     private carveEverything(): void {
@@ -74,10 +101,18 @@ export class MapGenerator {
     }
 
     private trimMap(): void {
-        // Find first and last non-empty rows
+        const bounds = this.findMapBounds();
+        if (!bounds) return;
+
+        const { firstRow, lastRow, firstCol, lastCol } = bounds;
+        this.map = this.extractTrimmedMap(firstRow, lastRow, firstCol, lastCol);
+        this.adjustPlacedRoomPositions(firstCol, firstRow);
+    }
+
+    private findMapBounds(): { firstRow: number; lastRow: number; firstCol: number; lastCol: number } | null {
         let firstRow = -1;
         let lastRow = -1;
-        
+
         for (let y = 0; y < this.map.length; y++) {
             const row = this.map[y];
             if (row && row.some(cell => cell !== 0)) {
@@ -85,36 +120,39 @@ export class MapGenerator {
                 lastRow = y;
             }
         }
-        
-        // Find first and last non-empty columns
+
         let firstCol = -1;
         let lastCol = -1;
-        
+
         for (let x = 0; x < this.width; x++) {
-            let hasNonZero = false;
-            for (let y = 0; y < this.map.length; y++) {
-                const row = this.map[y];
-                if (row && row[x] !== 0) {
-                    hasNonZero = true;
-                    break;
-                }
-            }
-            if (hasNonZero) {
+            if (this.columnHasNonZero(x)) {
                 if (firstCol === -1) firstCol = x;
                 lastCol = x;
             }
         }
-        
-        // If map is all zeros, return as is
-        if (firstRow === -1 || firstCol === -1) return;
-        
-        // Add one row margin on all sides (if possible within original bounds)
-        firstRow = Math.max(0, firstRow - 1);
-        lastRow = Math.min(this.map.length - 1, lastRow + 1);
-        firstCol = Math.max(0, firstCol - 1);
-        lastCol = Math.min(this.width - 1, lastCol + 1);
-        
-        // Create trimmed map
+
+        if (firstRow === -1 || firstCol === -1) return null;
+
+        // Add one row margin on all sides
+        return {
+            firstRow: Math.max(0, firstRow - 1),
+            lastRow: Math.min(this.map.length - 1, lastRow + 1),
+            firstCol: Math.max(0, firstCol - 1),
+            lastCol: Math.min(this.width - 1, lastCol + 1)
+        };
+    }
+
+    private columnHasNonZero(x: number): boolean {
+        for (let y = 0; y < this.map.length; y++) {
+            const row = this.map[y];
+            if (row && row[x] !== 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private extractTrimmedMap(firstRow: number, lastRow: number, firstCol: number, lastCol: number): number[][] {
         const trimmedMap: number[][] = [];
         for (let y = firstRow; y <= lastRow; y++) {
             const row = this.map[y];
@@ -122,15 +160,10 @@ export class MapGenerator {
                 trimmedMap.push(row.slice(firstCol, lastCol + 1));
             }
         }
-        
-        // Update map and dimensions
-        this.map = trimmedMap;
-        this.height = trimmedMap.length;
-        this.width = trimmedMap[0]?.length || 0;
-        
-        // Adjust placed room positions to account for trimming
-        const offsetX = firstCol;
-        const offsetY = firstRow;
+        return trimmedMap;
+    }
+
+    private adjustPlacedRoomPositions(offsetX: number, offsetY: number): void {
         this.placedRooms = this.placedRooms.map(placedRoom => ({
             ...placedRoom,
             position: {
@@ -141,22 +174,19 @@ export class MapGenerator {
     }
 
     private getRoomNamesForCell(coord: ICoord): string[] {
-        const roomNames: string[] = [];
+        return this.placedRooms
+            .filter(placedRoom => this.isCoordInRoom(coord, placedRoom))
+            .map(placedRoom => placedRoom.room.name);
+    }
 
-        for (const placedRoom of this.placedRooms) {
-            const { room, position } = placedRoom;
-            const halfSize = Math.floor(room.size / 2);
+    private isCoordInRoom(coord: ICoord, placedRoom: PlacedRoom): boolean {
+        const { room, position } = placedRoom;
+        const halfSize = Math.floor(room.size / 2);
 
-            // Check if this cell is within the room's bounds
-            if (coord.x >= position.x - halfSize &&
-                coord.x <= position.x + halfSize &&
-                coord.y >= position.y - halfSize &&
-                coord.y <= position.y + halfSize) {
-                roomNames.push(room.name);
-            }
-        }
-
-        return roomNames;
+        return coord.x >= position.x - halfSize &&
+               coord.x <= position.x + halfSize &&
+               coord.y >= position.y - halfSize &&
+               coord.y <= position.y + halfSize;
     }
 
     public getSeed(): number | undefined {

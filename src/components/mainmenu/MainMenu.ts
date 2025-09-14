@@ -36,20 +36,11 @@ export class MainMenu extends Component {
         
         // Listen for origin selection
         this.listen(ControlsEvent.selectOrigin, (origin) => {
-            console.log('[MainMenu] Received origin selection:', origin?.id, origin?.name);
-            console.log('[MainMenu] Origin has story data:', {
-                hasOrigin: !!origin,
-                originName: origin?.nameES,
-                startingLocation: origin?.startingLocation
-            });
-            
-            // Origin selected, start the game with the origin data
-            console.log('[MainMenu] Calling multiplayerManager.switchToSinglePlayer() with origin data');
-            this.multiplayerManager.switchToSinglePlayer(origin);
-            
-            console.log('[MainMenu] Dispatching startSinglePlayer event');
-            this.dispatch('startSinglePlayer', {});
-            this.style.display = 'none';
+            if (origin) {
+                this.multiplayerManager.switchToSinglePlayer(origin);
+                this.dispatch('startSinglePlayer', {});
+                this.style.display = 'none';
+            }
         });
         
         // Listen for language changes
@@ -60,83 +51,44 @@ export class MainMenu extends Component {
 
     override async connectedCallback() {
         const root = await super.connectedCallback();
-        if (!root) {
-            console.error('MainMenu: No root returned from super.connectedCallback');
-            return root;
-        }
+        if (!root) return root;
 
-        // Store the root reference
         this.shadowRootRef = root;
-
         this.setupEventListeners(root);
         this.setupDevelopmentUI(root);
-        
-        // Call updateTranslations
         this.updateTranslations();
+
         requestAnimationFrame(() => {
             this.updateTranslations();
         });
-        
+
         return root;
     }
 
-    private setupEventListeners(root: ShadowRoot) {
-        // Single player button
-        const singlePlayerBtn = root.getElementById('singlePlayerBtn');
-        if (singlePlayerBtn) {
-            singlePlayerBtn.addEventListener('click', () => {
-                this.startSinglePlayer();
-            });
-        } else {
-            console.error('Single player button not found');
-        }
+    private setupEventListeners(root: ShadowRoot): void {
+        const buttons: Array<[string, () => void]> = [
+            ['singlePlayerBtn', () => this.startSinglePlayer()],
+            ['multiplayerBtn', () => this.showMultiplayerLobby()],
+            ['characterCreatorBtn', () => this.showCharacterCreator()],
+            ['settingsBtn', () => this.showSettings()]
+        ];
 
-
-        // Multiplayer button
-        const multiplayerBtn = root.getElementById('multiplayerBtn');
-        if (multiplayerBtn) {
-            multiplayerBtn.addEventListener('click', () => {
-                this.showMultiplayerLobby();
-            });
-        } else {
-            console.error('Multiplayer button not found');
-        }
-
-        // Character Creator button
-        const characterCreatorBtn = root.getElementById('characterCreatorBtn');
-        if (characterCreatorBtn) {
-            characterCreatorBtn.addEventListener('click', () => {
-                this.showCharacterCreator();
-            });
-        } else {
-            console.error('Character Creator button not found');
-        }
-
-        // Settings button (placeholder)
-        const settingsBtn = root.getElementById('settingsBtn');
-        if (settingsBtn) {
-            settingsBtn.addEventListener('click', () => {
-                this.showSettings();
-            });
-        } else {
-            console.error('Settings button not found');
-        }
-    }
-    
-    private setupDevelopmentUI(root: ShadowRoot) {
-        // Show development UI in development mode
-        const devControls = root.querySelector('#dev-controls') as HTMLElement;
-        if (devControls) {
-            if (EnvironmentService.isDevelopment()) {
-                devControls.style.display = 'block';
-            } else {
-                devControls.style.display = 'none';
+        for (const [id, handler] of buttons) {
+            const button = root.getElementById(id);
+            if (button) {
+                button.addEventListener('click', handler);
             }
         }
     }
+    
+    private setupDevelopmentUI(root: ShadowRoot): void {
+        const devControls = root.querySelector('#dev-controls') as HTMLElement;
+        if (devControls) {
+            devControls.style.display = EnvironmentService.isDevelopment() ? 'block' : 'none';
+        }
+    }
 
-    private startSinglePlayer() {
-        // Show origin selection screen
+    private startSinglePlayer(): void {
         if (!this.originSelection) {
             this.originSelection = document.createElement('origin-selection') as OriginSelection;
             document.body.appendChild(this.originSelection);
@@ -144,74 +96,71 @@ export class MainMenu extends Component {
         this.style.display = 'none';
     }
 
-    private showMultiplayerLobby() {
+    private showMultiplayerLobby(): void {
         if (!this.multiplayerLobby) {
             this.multiplayerLobby = document.createElement('multiplayer-lobby') as MultiplayerLobby;
             document.body.appendChild(this.multiplayerLobby);
-
-            // Listen for lobby events
-            this.listen('lobbyGameStarted', () => {
-                this.style.display = 'none';
-                this.dispatch('startMultiplayer', {});
-            });
-
-            this.listen('lobbyClose', () => {
-                this.show();
-            });
+            this.setupLobbyListeners();
         }
 
         this.multiplayerLobby.show();
         this.style.display = 'none';
     }
 
-    private showCharacterCreator() {
+    private setupLobbyListeners(): void {
+        this.listen('lobbyGameStarted', () => {
+            this.style.display = 'none';
+            this.dispatch('startMultiplayer', {});
+        });
+
+        this.listen('lobbyClose', () => {
+            this.show();
+        });
+    }
+
+    private showCharacterCreator(): void {
         if (!this.characterCreator) {
             this.characterCreator = document.createElement('character-creator') as CharacterCreator;
             document.body.appendChild(this.characterCreator);
         }
-        
         this.style.display = 'none';
     }
 
-    private showSettings() {
+    private showSettings(): void {
         if (!this.settings) {
             this.settings = document.createElement('settings-component') as Settings;
             document.body.appendChild(this.settings);
-            
-            // Listen for settings close event
-            this.settings.addEventListener('settingsClosed', () => {
-                this.show();
-            });
+            this.settings.addEventListener('settingsClosed', () => this.show());
         }
-        
         this.settings.show();
         this.style.display = 'none';
     }
-    
-    show() {
+
+    public show(): void {
         this.style.display = 'flex';
     }
 
-    hide() {
+    public hide(): void {
         this.style.display = 'none';
     }
     
-    private updateTranslations() {
+    private updateTranslations(): void {
         const root = this.shadowRootRef;
-        if (!root) {
-            console.warn('[MainMenu] No shadowRoot reference available');
-            return;
+        if (!root) return;
+
+        const translations: Array<[string, string]> = [
+            ['singlePlayerBtn', 'menu.singlePlayer'],
+            ['multiplayerBtn', 'menu.multiplayer'],
+            ['characterCreatorBtn', 'menu.createCharacter'],
+            ['settingsBtn', 'menu.settings']
+        ];
+
+        for (const [id, key] of translations) {
+            const element = root.getElementById(id);
+            if (element) {
+                element.textContent = i18n.t(key as any);
+            }
         }
-        
-        const singlePlayerBtn = root.getElementById('singlePlayerBtn');
-        const multiplayerBtn = root.getElementById('multiplayerBtn');
-        const characterCreatorBtn = root.getElementById('characterCreatorBtn');
-        const settingsBtn = root.getElementById('settingsBtn');
-        
-        if (singlePlayerBtn) singlePlayerBtn.textContent = i18n.t('menu.singlePlayer');
-        if (multiplayerBtn) multiplayerBtn.textContent = i18n.t('menu.multiplayer');
-        if (characterCreatorBtn) characterCreatorBtn.textContent = i18n.t('menu.createCharacter');
-        if (settingsBtn) settingsBtn.textContent = i18n.t('menu.settings');
     }
 }
 

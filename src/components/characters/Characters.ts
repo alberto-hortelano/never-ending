@@ -25,7 +25,7 @@ export default class Characters extends Component {
     private printCharacters(characters: StateChangeEventsMap[StateChangeEvent.characters]) {
         // Clear existing characters first
         this.innerHTML = '';
-        
+
         characters.forEach(characterData => {
             const characterElement = document.createElement('character-component');
             characterElement.id = characterData.name;

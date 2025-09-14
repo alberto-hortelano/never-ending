@@ -3,6 +3,13 @@ import type { SeededRandom } from "./SeededRandom";
 
 export type CorridorPattern = 'random' | 'star' | 'grid' | 'linear';
 
+const CORRIDOR_PADDING = 5;
+const MIN_CORRIDOR_DISTANCE = 3;
+const DEFAULT_CORRIDOR_LENGTH_FACTOR = 0.25;
+const CORRIDOR_LENGTH_VARIANCE = 0.6;
+const CORRIDOR_MID_POINT_MIN = 0.2;
+const CORRIDOR_MID_POINT_MAX = 0.8;
+
 export interface Corridor {
     start: ICoord;
     end: ICoord;
@@ -10,29 +17,67 @@ export interface Corridor {
     cells: ICoord[];
 }
 
+type DirectionMap = Record<BasicDirection, ICoord>;
+
 export class CorridorGenerator {
     private corridors: Corridor[] = [];
-    private readonly directions: BasicDirection[] = ['up', 'right', 'down', 'left'];
-    private rng?: SeededRandom;
+    private readonly directions: readonly BasicDirection[] = ['up', 'right', 'down', 'left'] as const;
+    private readonly directionMoves: DirectionMap = {
+        up: { x: 0, y: -1 },
+        right: { x: 1, y: 0 },
+        down: { x: 0, y: 1 },
+        left: { x: -1, y: 0 }
+    };
+    private readonly oppositeDirections: Record<BasicDirection, BasicDirection> = {
+        up: 'down',
+        down: 'up',
+        left: 'right',
+        right: 'left'
+    };
 
     constructor(
-        private width: number,
-        private height: number,
-        rng?: SeededRandom
-    ) {
-        this.rng = rng;
-    }
+        private readonly width: number,
+        private readonly height: number,
+        private readonly rng?: SeededRandom
+    ) {}
 
     public generateCorridors(
         roomCount: number,
         pattern: CorridorPattern,
-        center: ICoord = { x: Math.floor(this.width / 2), y: Math.floor(this.height / 2) }
+        center: ICoord = this.getMapCenter()
     ): Corridor[] {
         this.corridors = [];
-        const corridorCount = Math.max(2, Math.ceil(roomCount * 0.8));
-        const avgLength = Math.min(this.width, this.height) / 4;
+        const corridorCount = this.calculateCorridorCount(roomCount);
+        const avgLength = this.calculateAverageLength();
 
-        const generators = {
+        this.generateByPattern(pattern, corridorCount, avgLength, center);
+        this.ensureMinimumCorridors(center);
+
+        return [...this.corridors];
+    }
+
+    private getMapCenter(): ICoord {
+        return {
+            x: Math.floor(this.width / 2),
+            y: Math.floor(this.height / 2)
+        };
+    }
+
+    private calculateCorridorCount(roomCount: number): number {
+        return Math.max(2, Math.ceil(roomCount * 0.8));
+    }
+
+    private calculateAverageLength(): number {
+        return Math.min(this.width, this.height) * DEFAULT_CORRIDOR_LENGTH_FACTOR;
+    }
+
+    private generateByPattern(
+        pattern: CorridorPattern,
+        corridorCount: number,
+        avgLength: number,
+        center: ICoord
+    ): void {
+        const generators: Record<CorridorPattern, () => void> = {
             random: () => this.generateRandomCorridors(corridorCount, avgLength, center),
             star: () => this.generateStarCorridors(corridorCount, avgLength, center),
             grid: () => this.generateGridCorridors(avgLength, center),
@@ -40,57 +85,49 @@ export class CorridorGenerator {
         };
 
         generators[pattern]();
-        
-        // Ensure at least one corridor is generated
+    }
+
+    private ensureMinimumCorridors(center: ICoord): void {
         if (this.corridors.length === 0) {
             this.generateFallbackCorridor(center);
         }
-        
-        return [...this.corridors];
     }
 
     public extendCorridor(corridorIndex: number): void {
         const corridor = this.corridors[corridorIndex];
         if (!corridor) return;
 
-        const validDirections = this.directions.filter(dir =>
-            dir !== this.getOppositeDirection(corridor.direction)
-        );
-
+        const validDirections = this.getValidExtensionDirections(corridor);
         if (validDirections.length === 0) return;
 
-        const randomIndex = this.rng ? this.rng.nextInt(validDirections.length) : Math.floor(Math.random() * validDirections.length);
-        const direction = validDirections[randomIndex]!;
+        const direction = this.selectRandomDirection(validDirections);
         this.addCorridor(corridor.end, direction, 15);
     }
 
     public addNewCorridorBranch(): void {
-        const baseCorridor = this.randomCorridor();
+        const baseCorridor = this.selectRandomCorridor();
         if (!baseCorridor) return;
 
-        const branchPoint = this.randomMidPointOnCorridor(baseCorridor);
-        const perpendicularDirections = this.directions.filter(dir =>
-            !this.areDirectionsParallel(dir, baseCorridor.direction)
-        );
+        const branchPoint = this.selectRandomMidPoint(baseCorridor);
+        const perpendicularDirections = this.getPerpendicularDirections(baseCorridor.direction);
 
         if (perpendicularDirections.length === 0) return;
 
-        const randomIndex = this.rng ? this.rng.nextInt(perpendicularDirections.length) : Math.floor(Math.random() * perpendicularDirections.length);
-        const direction = perpendicularDirections[randomIndex]!;
+        const direction = this.selectRandomDirection(perpendicularDirections);
         const length = Math.floor(Math.min(this.width, this.height) / 6) + 10;
         this.addCorridor(branchPoint, direction, length);
     }
 
     public addLongCorridors(): void {
-        for (let i = 0; i < 3; i++) {
+        const maxAttempts = 3;
+        for (let i = 0; i < maxAttempts; i++) {
             const extendableCorridor = this.findExtendableCorridor();
             if (!extendableCorridor) continue;
 
-            const validDirections = this.getValidExtensionDirections(extendableCorridor);
+            const validDirections = this.getValidDirectionsForExtension(extendableCorridor);
             if (validDirections.length === 0) continue;
 
-            const randomIndex = this.rng ? this.rng.nextInt(validDirections.length) : Math.floor(Math.random() * validDirections.length);
-        const direction = validDirections[randomIndex]!;
+            const direction = this.selectRandomDirection(validDirections);
             const length = Math.floor(Math.min(this.width, this.height) / 3);
             this.addCorridor(extendableCorridor.end, direction, length);
         }
@@ -112,12 +149,12 @@ export class CorridorGenerator {
     }
 
     private generateRandomCorridors(count: number, avgLength: number, center: ICoord): void {
-        const firstDirection = this.randomDirection();
+        const firstDirection = this.selectRandomDirection(this.directions);
         const firstLength = this.randomLength(avgLength);
         this.addCorridor(center, firstDirection, firstLength);
 
         for (let i = 1; i < count; i++) {
-            const existingCorridor = this.randomCorridor();
+            const existingCorridor = this.selectRandomCorridor();
             if (!existingCorridor) continue;
 
             const connectionPoint = this.randomPointOnCorridor(existingCorridor);
@@ -210,81 +247,121 @@ export class CorridorGenerator {
     }
 
     private isValidCorridorEnd(end: ICoord): boolean {
-        return end.x >= 5 && end.x < this.width - 5 && end.y >= 5 && end.y < this.height - 5;
+        return end.x >= CORRIDOR_PADDING &&
+               end.x < this.width - CORRIDOR_PADDING &&
+               end.y >= CORRIDOR_PADDING &&
+               end.y < this.height - CORRIDOR_PADDING;
     }
 
     private isValidCorridorPlacement(start: ICoord, end: ICoord, direction: BasicDirection): boolean {
         const proposedCells = this.getCorridorCells(start, end);
-        const minDistance = 3;
 
-        return this.corridors.every(corridor => {
-            if (!this.areDirectionsParallel(direction, corridor.direction)) return true;
-
-            return proposedCells.every(proposedCell =>
-                corridor.cells.every(existingCell => {
-                    const distance = this.getPerpendicularDistance(proposedCell, existingCell, direction);
-                    return distance >= minDistance || !this.areOnSameLine(proposedCell, existingCell, direction);
-                })
-            );
-        });
+        return this.corridors.every(corridor =>
+            this.isCorridorValidAgainstExisting(proposedCells, corridor, direction)
+        );
     }
 
-    private randomDirection(): BasicDirection {
-        const randomIndex = this.rng ? this.rng.nextInt(this.directions.length) : Math.floor(Math.random() * this.directions.length);
-        return this.directions[randomIndex]!;
+    private isCorridorValidAgainstExisting(
+        proposedCells: ICoord[],
+        corridor: Corridor,
+        direction: BasicDirection
+    ): boolean {
+        if (!this.areDirectionsParallel(direction, corridor.direction)) return true;
+
+        return proposedCells.every(proposedCell =>
+            corridor.cells.every(existingCell =>
+                this.cellsHaveMinimumDistance(proposedCell, existingCell, direction)
+            )
+        );
+    }
+
+    private cellsHaveMinimumDistance(
+        cell1: ICoord,
+        cell2: ICoord,
+        direction: BasicDirection
+    ): boolean {
+        const distance = this.getPerpendicularDistance(cell1, cell2, direction);
+        return distance >= MIN_CORRIDOR_DISTANCE ||
+               !this.areOnSameLine(cell1, cell2, direction);
+    }
+
+    private selectRandomDirection(directions: readonly BasicDirection[]): BasicDirection {
+        const index = this.getRandomInt(directions.length);
+        return directions[index] ?? directions[0]!;
+    }
+
+    private selectRandomCorridor(): Corridor | undefined {
+        if (this.corridors.length === 0) return undefined;
+        const index = this.getRandomInt(this.corridors.length);
+        return this.corridors[index];
+    }
+
+    private selectRandomMidPoint(corridor: Corridor): ICoord {
+        const minIndex = Math.floor(corridor.cells.length * CORRIDOR_MID_POINT_MIN);
+        const maxIndex = Math.floor(corridor.cells.length * CORRIDOR_MID_POINT_MAX);
+        const range = maxIndex - minIndex + 1;
+        const branchIndex = this.getRandomInt(range) + minIndex;
+        return corridor.cells[branchIndex] ?? corridor.start;
+    }
+
+    private getRandomInt(max: number): number {
+        return this.rng ? this.rng.nextInt(max) : Math.floor(Math.random() * max);
+    }
+
+    private getRandomFloat(): number {
+        return this.rng ? this.rng.nextFloat() : Math.random();
     }
 
     private randomLength(avgLength: number): number {
-        const randomFactor = this.rng ? this.rng.nextFloat() : Math.random();
-        return Math.floor(avgLength * (0.7 + randomFactor * 0.6));
-    }
-
-    private randomCorridor(): Corridor | undefined {
-        const randomIndex = this.rng ? this.rng.nextInt(this.corridors.length) : Math.floor(Math.random() * this.corridors.length);
-        return this.corridors[randomIndex];
-    }
-
-    private randomMidPointOnCorridor(corridor: Corridor): ICoord {
-        const minIndex = Math.floor(corridor.cells.length * 0.2);
-        const maxIndex = Math.floor(corridor.cells.length * 0.8);
-        const randomRange = this.rng ? this.rng.nextInt(maxIndex - minIndex + 1) : Math.floor(Math.random() * (maxIndex - minIndex + 1));
-        const branchIndex = randomRange + minIndex;
-        return corridor.cells[branchIndex] || corridor.start;
+        const variance = 0.7 + this.getRandomFloat() * CORRIDOR_LENGTH_VARIANCE;
+        return Math.floor(avgLength * variance);
     }
 
     private findExtendableCorridor(): Corridor | undefined {
         return this.corridors.find(corridor =>
-            this.directions.some(dir => {
-                if (dir === this.getOppositeDirection(corridor.direction)) return false;
-                const testEnd = this.moveInDirection(corridor.end, dir, 20);
-                return this.isValidCorridorEnd(testEnd);
-            })
+            this.canExtendCorridor(corridor)
         );
     }
 
-    private getValidExtensionDirections(corridor: Corridor): BasicDirection[] {
-        return this.directions.filter(dir => {
+    private canExtendCorridor(corridor: Corridor): boolean {
+        return this.directions.some(dir => {
             if (dir === this.getOppositeDirection(corridor.direction)) return false;
-            const testEnd = this.moveInDirection(corridor.end, dir, 25);
-            return this.isValidCorridorEnd(testEnd) &&
-                this.isValidCorridorPlacement(corridor.end, testEnd, dir);
+            const testEnd = this.moveInDirection(corridor.end, dir, 20);
+            return this.isValidCorridorEnd(testEnd);
         });
     }
 
+    private getValidExtensionDirections(corridor: Corridor): BasicDirection[] {
+        return Array.from(this.directions).filter(dir =>
+            dir !== this.getOppositeDirection(corridor.direction)
+        );
+    }
+
+    private getValidDirectionsForExtension(corridor: Corridor): BasicDirection[] {
+        return Array.from(this.directions).filter(dir => {
+            if (dir === this.getOppositeDirection(corridor.direction)) return false;
+            const testEnd = this.moveInDirection(corridor.end, dir, 25);
+            return this.isValidCorridorEnd(testEnd) &&
+                   this.isValidCorridorPlacement(corridor.end, testEnd, dir);
+        });
+    }
+
+    private getPerpendicularDirections(direction: BasicDirection): BasicDirection[] {
+        return Array.from(this.directions).filter(dir =>
+            !this.areDirectionsParallel(dir, direction)
+        );
+    }
+
     private moveInDirection(point: ICoord, direction: BasicDirection, distance: number): ICoord {
-        const moves = {
-            up: { x: 0, y: -distance },
-            right: { x: distance, y: 0 },
-            down: { x: 0, y: distance },
-            left: { x: -distance, y: 0 }
+        const move = this.directionMoves[direction];
+        return {
+            x: point.x + move.x * distance,
+            y: point.y + move.y * distance
         };
-        const move = moves[direction];
-        return { x: point.x + move.x, y: point.y + move.y };
     }
 
     private getOppositeDirection(direction: BasicDirection): BasicDirection {
-        const opposites = { up: 'down', down: 'up', left: 'right', right: 'left' } as const;
-        return opposites[direction];
+        return this.oppositeDirections[direction];
     }
 
     private areDirectionsParallel(dir1: BasicDirection, dir2: BasicDirection): boolean {

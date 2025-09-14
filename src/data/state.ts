@@ -404,7 +404,7 @@ export const initialState = (x: number, y: number, playerData: Partial<ICharacte
     return initialState;
 }
 
-export const getBaseState = () => initialState(40, 50, player, [data, enemy]);
+export const getBaseState = () => initialState(40, 50, player, [data]);
 
 /**
  * Creates an empty state for AI-driven games

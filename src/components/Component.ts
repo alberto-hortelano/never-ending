@@ -42,7 +42,6 @@ export abstract class Component extends HTMLElement {
         try {
             // Check if already initialized
             if (this.shadowRoot) {
-                console.log(`[${this.name}] Shadow root already exists`);
                 return this.shadowRoot;
             }
 
@@ -63,27 +62,22 @@ export abstract class Component extends HTMLElement {
                     templatePromise,
                 ]);
             } catch (loadError) {
-                console.error(`[${this.name}] Error loading CSS/HTML:`, loadError);
                 // Continue with basic initialization even if resources fail
             }
 
             if (template) {
                 root.append(template.content.cloneNode(true));
             } else if (this.hasHtml) {
-                console.warn(`[${this.name}] No HTML template loaded, using fallback`);
                 // Add a fallback template
                 root.innerHTML = '<div>Component loading...</div>';
             }
 
             if (styleSheet) {
                 root.adoptedStyleSheets = [styleSheet];
-            } else if (this.hasCss) {
-                console.warn(`[${this.name}] No CSS loaded`);
             }
 
             return root;
         } catch (error) {
-            console.error(`[${this.name}] Fatal error in connectedCallback:`, error);
             // Return null to indicate failure
             return null;
         }
@@ -138,7 +132,6 @@ export abstract class Component extends HTMLElement {
     private async createStyleSheet(url: string): Promise<CSSStyleSheet> {
         const res = await fetch(url);
         if (!res.ok) {
-            console.error(`Failed to load stylesheet ${url}: ${res.statusText}`);
             throw new Error(`Stylesheet load error: ${res.status}`);
         }
         const cssText = await res.text();
@@ -153,7 +146,6 @@ export abstract class Component extends HTMLElement {
         const url = new URL(`./${this.name.toLowerCase()}/${this.name}.html`, import.meta.url).href.replace('/js/components/', '/html/components/');
         const res = await fetch(url);
         if (!res.ok) {
-            console.error(`Failed to load template ${url}: ${res.statusText}`);
             throw new Error(`Template load error: ${res.status}`);
         }
         const html = await res.text();
