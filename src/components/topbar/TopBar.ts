@@ -7,7 +7,6 @@ import { i18n } from "../../common/i18n/i18n";
 import { EnvironmentService } from "../../common/services/EnvironmentService";
 import "../developmentui/DevelopmentUI";
 import "../tooltip/Tooltip";
-import "../saveloadmenu/SaveLoadMenu";
 
 export default class TopBar extends Component {
     protected override hasCss = true;
@@ -87,13 +86,6 @@ export default class TopBar extends Component {
             });
         }
         
-        // Setup save/load button
-        const saveLoadButton = root.querySelector('#save-load-button');
-        if (saveLoadButton) {
-            saveLoadButton.addEventListener('click', () => {
-                this.showSaveLoadMenu();
-            });
-        }
         
         // Listen for character selection
         this.listen(ControlsEvent.showActions, (characterName: string) => {
@@ -273,18 +265,6 @@ export default class TopBar extends Component {
         }
     }
     
-    private showSaveLoadMenu() {
-        // Check if menu already exists
-        let menu = document.querySelector('save-load-menu');
-        if (!menu) {
-            // Create the menu
-            menu = document.createElement('save-load-menu');
-            document.body.appendChild(menu);
-        }
-        // Show the menu
-        (menu as any).show();
-    }
-
     // Support for Playwright tests
     public override getTestingShadowRoot() {
         if ((window as any).__PLAYWRIGHT_TEST__) {

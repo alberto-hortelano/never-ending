@@ -97,7 +97,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap & Co
      * Execute a map generation command from AI
      * This replaces the current map with a new one
      */
-    public async executeMapCommand(command: MapCommand, _storyState?: IStoryState): Promise<void> {
+    public async executeMapCommand(command: MapCommand, _storyState?: IStoryState, seed?: number): Promise<void> {
 
         try {
             // Log the full AI command for debugging
@@ -125,8 +125,10 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap & Co
                 }
             }
 
-            // Generate the new map
-            const mapGen = new MapGenerator(50, 50);
+            // Generate the new map with seed for consistency
+            // Use provided seed or generate new one
+            const mapSeed = seed ?? Math.floor(Math.random() * 2147483647);
+            const mapGen = new MapGenerator(50, 50, 'random', mapSeed);
             const startPos = { x: 25, y: 25 }; // Center of map
             mapGen.generateMap(rooms, startPos);
             const newMap = mapGen.getCells();

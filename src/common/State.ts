@@ -29,6 +29,7 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap & State
     private storyState: StoryState;
     private languageState: LanguageState;
     #doors: Record<string, IDoor> = {};
+    private mapSeed?: number;
 
     constructor(initialState?: IState, isPreview = false) {
         super();
@@ -151,6 +152,10 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap & State
     get doors(): DeepReadonly<Record<string, IDoor>> {
         return this.#doors;
     }
+    
+    get seed(): number | undefined {
+        return this.mapSeed;
+    }
 
     // Method to get mutable state for internal use by trusted services
     getInternalState(): IState {
@@ -163,7 +168,8 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap & State
             overwatchData: this.overwatchState.getInternalOverwatchData(),
             story: this.storyState.getInternalStory(),
             language: this.languageState.getInternalLanguage(),
-            doors: this.#doors
+            doors: this.#doors,
+            mapSeed: this.mapSeed
         };
     }
 
@@ -317,6 +323,9 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap & State
         if (state.story) {
             this.storyState.deserialize(state.story);
         }
+        
+        // Update map seed
+        this.mapSeed = state.mapSeed;
 
         // Dispatch state change events to update UI
         this.dispatch(StateChangeEvent.game, this.game);
@@ -336,6 +345,11 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap & State
             }
         }
         state ||= getBaseState();
+        
+        // Generate a random seed if not present in the state
+        if (!state.mapSeed) {
+            state.mapSeed = Math.floor(Math.random() * 2147483647);
+        }
 
         // Initialize sub-states with loaded data
         this.gameState.game = state.game;
@@ -366,6 +380,9 @@ export class State extends EventBus<UpdateStateEventsMap & GameEventsMap & State
             console.log('[State] Loading story state:', state.story);
             this.storyState.deserialize(state.story);
         }
+        
+        // Store the map seed
+        this.mapSeed = state.mapSeed;
 
         // No need to complete initialization anymore since we handle events differently
     }

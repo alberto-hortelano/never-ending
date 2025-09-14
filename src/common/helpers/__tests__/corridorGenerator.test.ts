@@ -1,4 +1,5 @@
 import { CorridorGenerator, CorridorPattern } from '../CorridorGenerator';
+import { SeededRandom } from '../SeededRandom';
 import type { BasicDirection, ICoord } from '../../interfaces';
 
 describe('CorridorGenerator', () => {
@@ -364,6 +365,80 @@ describe('CorridorGenerator', () => {
                         expect(corridor.cells.length).toBeGreaterThan(0);
                     });
                 });
+            });
+        });
+    });
+    
+    describe('seeded generation', () => {
+        test('should generate identical corridors with same seed', () => {
+            const seed = 12345;
+            const rng1 = new SeededRandom(seed);
+            const rng2 = new SeededRandom(seed);
+            
+            const gen1 = new CorridorGenerator(mapWidth, mapHeight, rng1);
+            const gen2 = new CorridorGenerator(mapWidth, mapHeight, rng2);
+            
+            const corridors1 = gen1.generateCorridors(5, 'random');
+            const corridors2 = gen2.generateCorridors(5, 'random');
+            
+            expect(corridors1.length).toEqual(corridors2.length);
+            
+            corridors1.forEach((corridor, index) => {
+                const corridor2 = corridors2[index];
+                expect(corridor.start).toEqual(corridor2?.start);
+                expect(corridor.end).toEqual(corridor2?.end);
+                expect(corridor.direction).toEqual(corridor2?.direction);
+                expect(corridor.cells).toEqual(corridor2?.cells);
+            });
+        });
+        
+        test('should generate different corridors with different seeds', () => {
+            const rng1 = new SeededRandom(111);
+            const rng2 = new SeededRandom(999);
+            
+            const gen1 = new CorridorGenerator(mapWidth, mapHeight, rng1);
+            const gen2 = new CorridorGenerator(mapWidth, mapHeight, rng2);
+            
+            const corridors1 = gen1.generateCorridors(5, 'random');
+            const corridors2 = gen2.generateCorridors(5, 'random');
+            
+            // At least one corridor should be different
+            const areDifferent = corridors1.some((corridor, index) => {
+                const corridor2 = corridors2[index];
+                return !corridor2 ||
+                    corridor.start.x !== corridor2.start.x ||
+                    corridor.start.y !== corridor2.start.y ||
+                    corridor.end.x !== corridor2.end.x ||
+                    corridor.end.y !== corridor2.end.y;
+            });
+            
+            expect(areDifferent).toBe(true);
+        });
+        
+        test('should generate consistent star pattern with seed', () => {
+            const seed = 77777;
+            const rng1 = new SeededRandom(seed);
+            const rng2 = new SeededRandom(seed);
+            
+            const gen1 = new CorridorGenerator(mapWidth, mapHeight, rng1);
+            const gen2 = new CorridorGenerator(mapWidth, mapHeight, rng2);
+            
+            const corridors1 = gen1.generateCorridors(5, 'star');
+            const corridors2 = gen2.generateCorridors(5, 'star');
+            
+            expect(corridors1).toEqual(corridors2);
+        });
+        
+        test('should work without seed (backward compatibility)', () => {
+            const gen = new CorridorGenerator(mapWidth, mapHeight);
+            const corridors = gen.generateCorridors(5, 'random');
+            
+            expect(corridors.length).toBeGreaterThan(0);
+            corridors.forEach(corridor => {
+                expect(corridor.start).toBeDefined();
+                expect(corridor.end).toBeDefined();
+                expect(corridor.direction).toBeDefined();
+                expect(corridor.cells.length).toBeGreaterThan(0);
             });
         });
     });

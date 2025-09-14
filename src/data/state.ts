@@ -264,7 +264,7 @@ const enemy: Partial<ICharacter> = {
         }
     }
 };
-export const initialState = (x: number, y: number, playerData: Partial<ICharacter> = player, charactersData: Partial<ICharacter>[] = [data, enemy]): IState => {
+export const initialState = (x: number, y: number, playerData: Partial<ICharacter> = player, charactersData: Partial<ICharacter>[] = [data, enemy], mapSeed?: number): IState => {
     // State
     const game: IGame = {
         turn: HUMAN_PLAYER,
@@ -275,7 +275,9 @@ export const initialState = (x: number, y: number, playerData: Partial<ICharacte
         },
         teams: TeamService.createSinglePlayerTeams()
     }
-    const mapGenerator = new MapGenerator(x, y);
+    // Use provided seed or generate a random one
+    const seed = mapSeed ?? Math.floor(Math.random() * 2147483647);
+    const mapGenerator = new MapGenerator(x, y, 'random', seed);
     const player = createCharacter(playerData);
     mapGenerator.generateMap([
         { size: 7, name: 'room1' },
@@ -371,6 +373,7 @@ export const initialState = (x: number, y: number, playerData: Partial<ICharacte
         messages,
         overwatchData: {},
         doors,
+        mapSeed: seed,
         ui: {
             animations: {
                 characters: {}

@@ -31,19 +31,22 @@ export class StoryMapGenerator {
     public async generateStoryMap(
         origin: IOriginStory,
         chapter: number,
-        missionType?: string
-    ): Promise<{ map: number[][], rooms: IRoom[] }> {
+        missionType?: string,
+        seed?: number
+    ): Promise<{ map: number[][], rooms: IRoom[], seed: number }> {
         // Get map template based on origin and chapter
         const template = this.getMapTemplate(origin, chapter, missionType);
         
-        // Generate the physical map
-        const mapGen = new MapGenerator(50, 50);
+        // Generate the physical map with seed for consistency
+        const mapSeed = seed ?? Math.floor(Math.random() * 2147483647);
+        const mapGen = new MapGenerator(50, 50, 'random', mapSeed);
         const startPos = { x: 25, y: 25 };
         mapGen.generateMap(template.rooms, startPos);
         
         return {
             map: mapGen.getCells().map(row => row.map(cell => cell.content?.blocker ? 0 : 1)),
-            rooms: template.rooms
+            rooms: template.rooms,
+            seed: mapSeed
         };
     }
     

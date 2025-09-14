@@ -9,6 +9,8 @@ describe('SaveGameService', () => {
     beforeEach(() => {
         service = new SaveGameService();
         mockState = getBaseState();
+        // Add a specific map seed for testing
+        mockState.mapSeed = 12345;
     });
 
     describe('save', () => {
@@ -195,6 +197,39 @@ describe('SaveGameService', () => {
             const metadata = service.getMetadata('non-existent');
             
             expect(metadata).toBeNull();
+        });
+    });
+    
+    describe('mapSeed persistence', () => {
+        it('should save and load the map seed', () => {
+            const slotName = 'seed-test';
+            const testSeed = 98765;
+            mockState.mapSeed = testSeed;
+            
+            // Save the state with seed
+            const saveResult = service.save(slotName, mockState);
+            expect(saveResult).toBe(true);
+            
+            // Load the state and verify seed is preserved
+            const loaded = service.load(slotName);
+            expect(loaded).toBeDefined();
+            expect(loaded?.mapSeed).toBe(testSeed);
+        });
+        
+        it('should preserve map seed across multiple saves', () => {
+            const slotName = 'multi-seed-test';
+            const testSeed = 55555;
+            mockState.mapSeed = testSeed;
+            
+            // Save multiple times
+            service.save(slotName, mockState);
+            mockState.game.turn = 'player2';
+            service.save(slotName, mockState);
+            
+            // Load and verify seed is still preserved
+            const loaded = service.load(slotName);
+            expect(loaded?.mapSeed).toBe(testSeed);
+            expect(loaded?.game.turn).toBe('player2');
         });
     });
 });

@@ -8,30 +8,30 @@ export abstract class Component extends HTMLElement {
     protected eventBus = new EventBus<EventsMap, EventsMap>();
     protected listen = this.eventBus.listen.bind(this.eventBus);
     protected dispatch = this.eventBus.dispatch.bind(this.eventBus);
-    
+
     // Store shadow root reference for testing purposes
     private _testingShadowRoot?: ShadowRoot;
 
     // Static caches shared by all subclasses
     private static styleSheetCache = new Map<string, Promise<CSSStyleSheet>>();
     private static templateCache = new Map<string, Promise<HTMLTemplateElement>>();
-    
+
     // Static state reference shared by all components
     protected static gameState: State | null = null;
-    
+
     // Instance-specific state (for preview components)
     private instanceState: State | null = null;
-    
+
     // Static method to set the game state (called from web.ts)
     public static setGameState(state: State | null): void {
         Component.gameState = state;
     }
-    
+
     // Method to set instance-specific state (for preview components)
     public setInstanceState(state: State | null): void {
         this.instanceState = state;
     }
-    
+
     // Protected getter for components to access state
     protected getState(): State | null {
         // Instance state takes precedence over global state
@@ -39,33 +39,56 @@ export abstract class Component extends HTMLElement {
     }
 
     async connectedCallback() {
-        if (this.shadowRoot) return;  // already initialized
+        try {
+            // Check if already initialized
+            if (this.shadowRoot) {
+                console.log(`[${this.name}] Shadow root already exists`);
+                return this.shadowRoot;
+            }
 
-        const root = this.attachShadow({ mode: 'closed' });
-        
-        // Store reference for testing if in test environment
-        if (typeof window !== 'undefined' && (window as any).__PLAYWRIGHT_TEST__) {
+            const root = this.attachShadow({ mode: 'closed' });
+
+            // Store reference for testing and internal use
             this._testingShadowRoot = root;
-        }
-        
-        const styleSheetPromise = this.loadCss();
-        const templatePromise = this.loadHtml();
 
-        const [styleSheet, template] = await Promise.all([
-            styleSheetPromise,
-            templatePromise,
-        ]);
-        if (template) {
-            root.append(template.content.cloneNode(true));
-        }
+            // Try to load CSS and HTML
+            let styleSheet, template;
 
-        if (styleSheet) {
-            root.adoptedStyleSheets = [styleSheet];
-        }
+            try {
+                const styleSheetPromise = this.loadCss();
+                const templatePromise = this.loadHtml();
 
-        return root;
+                [styleSheet, template] = await Promise.all([
+                    styleSheetPromise,
+                    templatePromise,
+                ]);
+            } catch (loadError) {
+                console.error(`[${this.name}] Error loading CSS/HTML:`, loadError);
+                // Continue with basic initialization even if resources fail
+            }
+
+            if (template) {
+                root.append(template.content.cloneNode(true));
+            } else if (this.hasHtml) {
+                console.warn(`[${this.name}] No HTML template loaded, using fallback`);
+                // Add a fallback template
+                root.innerHTML = '<div>Component loading...</div>';
+            }
+
+            if (styleSheet) {
+                root.adoptedStyleSheets = [styleSheet];
+            } else if (this.hasCss) {
+                console.warn(`[${this.name}] No CSS loaded`);
+            }
+
+            return root;
+        } catch (error) {
+            console.error(`[${this.name}] Fatal error in connectedCallback:`, error);
+            // Return null to indicate failure
+            return null;
+        }
     }
-    
+
     // Method to access shadow root in tests
     public getTestingShadowRoot(): ShadowRoot | null {
         if (typeof window !== 'undefined' && (window as any).__PLAYWRIGHT_TEST__) {

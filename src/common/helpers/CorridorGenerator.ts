@@ -1,4 +1,5 @@
 import type { BasicDirection, ICoord } from "../interfaces";
+import type { SeededRandom } from "./SeededRandom";
 
 export type CorridorPattern = 'random' | 'star' | 'grid' | 'linear';
 
@@ -12,11 +13,15 @@ export interface Corridor {
 export class CorridorGenerator {
     private corridors: Corridor[] = [];
     private readonly directions: BasicDirection[] = ['up', 'right', 'down', 'left'];
+    private rng?: SeededRandom;
 
     constructor(
         private width: number,
-        private height: number
-    ) { }
+        private height: number,
+        rng?: SeededRandom
+    ) {
+        this.rng = rng;
+    }
 
     public generateCorridors(
         roomCount: number,
@@ -54,7 +59,8 @@ export class CorridorGenerator {
 
         if (validDirections.length === 0) return;
 
-        const direction = validDirections[Math.floor(Math.random() * validDirections.length)]!;
+        const randomIndex = this.rng ? this.rng.nextInt(validDirections.length) : Math.floor(Math.random() * validDirections.length);
+        const direction = validDirections[randomIndex]!;
         this.addCorridor(corridor.end, direction, 15);
     }
 
@@ -69,7 +75,8 @@ export class CorridorGenerator {
 
         if (perpendicularDirections.length === 0) return;
 
-        const direction = perpendicularDirections[Math.floor(Math.random() * perpendicularDirections.length)]!;
+        const randomIndex = this.rng ? this.rng.nextInt(perpendicularDirections.length) : Math.floor(Math.random() * perpendicularDirections.length);
+        const direction = perpendicularDirections[randomIndex]!;
         const length = Math.floor(Math.min(this.width, this.height) / 6) + 10;
         this.addCorridor(branchPoint, direction, length);
     }
@@ -82,7 +89,8 @@ export class CorridorGenerator {
             const validDirections = this.getValidExtensionDirections(extendableCorridor);
             if (validDirections.length === 0) continue;
 
-            const direction = validDirections[Math.floor(Math.random() * validDirections.length)]!;
+            const randomIndex = this.rng ? this.rng.nextInt(validDirections.length) : Math.floor(Math.random() * validDirections.length);
+        const direction = validDirections[randomIndex]!;
             const length = Math.floor(Math.min(this.width, this.height) / 3);
             this.addCorridor(extendableCorridor.end, direction, length);
         }
@@ -99,7 +107,7 @@ export class CorridorGenerator {
     }
 
     private randomPointOnCorridor(corridor: Corridor): ICoord {
-        const randomIndex = Math.floor(Math.random() * corridor.cells.length);
+        const randomIndex = this.rng ? this.rng.nextInt(corridor.cells.length) : Math.floor(Math.random() * corridor.cells.length);
         return corridor.cells[randomIndex] || corridor.start;
     }
 
@@ -120,7 +128,8 @@ export class CorridorGenerator {
 
             if (validDirections.length === 0) continue;
 
-            const newDirection = validDirections[Math.floor(Math.random() * validDirections.length)]!;
+            const randomIndex = this.rng ? this.rng.nextInt(validDirections.length) : Math.floor(Math.random() * validDirections.length);
+            const newDirection = validDirections[randomIndex]!;
             const newLength = this.randomLength(avgLength);
             this.addCorridor(connectionPoint, newDirection, newLength);
         }
@@ -130,7 +139,8 @@ export class CorridorGenerator {
         for (let i = 0; i < Math.min(count, 4); i++) {
             const direction = this.directions[i];
             if (!direction) continue;
-            const length = Math.floor(avgLength * (0.8 + Math.random() * 0.4));
+            const randomFactor = this.rng ? this.rng.nextFloat() : Math.random();
+            const length = Math.floor(avgLength * (0.8 + randomFactor * 0.4));
             this.addCorridor(center, direction, length);
         }
     }
@@ -220,21 +230,25 @@ export class CorridorGenerator {
     }
 
     private randomDirection(): BasicDirection {
-        return this.directions[Math.floor(Math.random() * this.directions.length)]!;
+        const randomIndex = this.rng ? this.rng.nextInt(this.directions.length) : Math.floor(Math.random() * this.directions.length);
+        return this.directions[randomIndex]!;
     }
 
     private randomLength(avgLength: number): number {
-        return Math.floor(avgLength * (0.7 + Math.random() * 0.6));
+        const randomFactor = this.rng ? this.rng.nextFloat() : Math.random();
+        return Math.floor(avgLength * (0.7 + randomFactor * 0.6));
     }
 
     private randomCorridor(): Corridor | undefined {
-        return this.corridors[Math.floor(Math.random() * this.corridors.length)];
+        const randomIndex = this.rng ? this.rng.nextInt(this.corridors.length) : Math.floor(Math.random() * this.corridors.length);
+        return this.corridors[randomIndex];
     }
 
     private randomMidPointOnCorridor(corridor: Corridor): ICoord {
         const minIndex = Math.floor(corridor.cells.length * 0.2);
         const maxIndex = Math.floor(corridor.cells.length * 0.8);
-        const branchIndex = Math.floor(Math.random() * (maxIndex - minIndex + 1)) + minIndex;
+        const randomRange = this.rng ? this.rng.nextInt(maxIndex - minIndex + 1) : Math.floor(Math.random() * (maxIndex - minIndex + 1));
+        const branchIndex = randomRange + minIndex;
         return corridor.cells[branchIndex] || corridor.start;
     }
 

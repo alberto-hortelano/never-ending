@@ -31,8 +31,9 @@ export default class Cell extends Component {
         this.addEventListener('mouseleave', () => this.onMouseLeave());
     }
 
-    override async connectedCallback(): Promise<ShadowRoot | undefined> {
+    override async connectedCallback(): Promise<ShadowRoot | null> {
         const root = await super.connectedCallback();
+        if (!root) return null;
         
         // Parse coordinates from ID (format: "cell-x-y")
         const idParts = this.id.split('-');

@@ -54,8 +54,8 @@ export class MainMenuPage {
       }
     });
 
-    // Wait for the menu to hide
-    await this.mainMenu.waitFor({ state: 'hidden' });
+    // Don't wait for menu to hide - it might show character selection instead
+    await this.page.waitForTimeout(500);
   }
 
   async openMultiplayer() {

@@ -1,6 +1,7 @@
 import type { ICell, ICoord, IRoom } from "../interfaces";
 import { CorridorGenerator, type CorridorPattern, type Corridor } from "./CorridorGenerator";
 import { RoomPlacer } from "./RoomPlacer";
+import { SeededRandom } from "./SeededRandom";
 
 export class MapGenerator {
     private map: number[][];
@@ -8,14 +9,21 @@ export class MapGenerator {
     private roomPlacer: RoomPlacer;
     private corridors: Corridor[] = [];
     private placedRooms: { room: IRoom; position: ICoord; size: number }[] = [];
+    private rng?: SeededRandom;
+    private seed?: number;
 
     constructor(
         private width: number = 50,
         private height: number = 50,
         private corridorPattern: CorridorPattern = 'random',
+        seed?: number
     ) {
         this.map = Array(height).fill(null).map(() => Array(width).fill(0));
-        this.corridorGenerator = new CorridorGenerator(width, height);
+        this.seed = seed;
+        if (seed !== undefined) {
+            this.rng = new SeededRandom(seed);
+        }
+        this.corridorGenerator = new CorridorGenerator(width, height, this.rng);
         this.roomPlacer = new RoomPlacer(width, height, this.corridorGenerator);
     }
 
@@ -151,4 +159,7 @@ export class MapGenerator {
         return roomNames;
     }
 
+    public getSeed(): number | undefined {
+        return this.seed;
+    }
 }

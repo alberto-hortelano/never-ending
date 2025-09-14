@@ -8,6 +8,7 @@ export interface IState {
     story?: IStoryState;
     language?: 'en' | 'es';
     doors?: Record<string, IDoor>;
+    mapSeed?: number;
 }
 
 export interface IOverwatchData {
