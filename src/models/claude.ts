@@ -183,7 +183,18 @@ async function callClaudeWithModel(
     messages: IMessage[],
     narrativeArchitect: string
 ): Promise<Anthropic.Messages.Message> {
-    // DEBUG: console.log(`[Claude] Attempting with model: ${model}`);
+    // Log the AI request
+    console.log('═══════════════════════════════════════════════════════════════');
+    console.log(`[AI REQUEST] Model: ${model}`);
+    console.log(`[AI REQUEST] Prompt (last user message):`);
+    const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
+    if (lastUserMessage) {
+        console.log('---PROMPT START---');
+        console.log(lastUserMessage.content);
+        console.log('---PROMPT END---');
+    }
+
+    const startTime = Date.now();
 
     try {
         // Use streaming for better handling of long-running requests
@@ -197,9 +208,19 @@ async function callClaudeWithModel(
         // Wait for the complete message using the helper
         const msg = await stream.finalMessage();
 
+        // Log the AI response
+        const endTime = Date.now();
+        console.log(`[AI RESPONSE] Model: ${model}`);
+        console.log(`[AI RESPONSE] Response time: ${endTime - startTime}ms`);
+        console.log(`[AI RESPONSE] Response:`);
+        console.log('---RESPONSE START---');
+        const responseText = msg.content[0]?.type === 'text' ? (msg.content[0] as { text: string }).text : JSON.stringify(msg.content[0]);
+        console.log(responseText.substring(0, 1000) + (responseText.length > 1000 ? '... [truncated]' : ''));
+        console.log('---RESPONSE END---');
+        console.log('═══════════════════════════════════════════════════════════════');
+
         // Success - clear any fallback for this model
         fallbackManager.clearFallback(model);
-        // DEBUG: console.log(`[Claude] Success with model: ${model}`);
 
         return msg;
     } catch (error: unknown) {
