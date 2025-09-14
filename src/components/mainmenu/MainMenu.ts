@@ -38,7 +38,7 @@ export class MainMenu extends Component {
         this.listen(ControlsEvent.selectOrigin, (origin) => {
             if (origin) {
                 this.multiplayerManager.switchToSinglePlayer(origin);
-                this.dispatch('startSinglePlayer', {});
+                this.dispatch('startSinglePlayer', undefined as void);
                 this.style.display = 'none';
             }
         });
@@ -110,7 +110,7 @@ export class MainMenu extends Component {
     private setupLobbyListeners(): void {
         this.listen('lobbyGameStarted', () => {
             this.style.display = 'none';
-            this.dispatch('startMultiplayer', {});
+            this.dispatch('startMultiplayer', undefined as void);
         });
 
         this.listen('lobbyClose', () => {
@@ -158,7 +158,8 @@ export class MainMenu extends Component {
         for (const [id, key] of translations) {
             const element = root.getElementById(id);
             if (element) {
-                element.textContent = i18n.t(key as any);
+                // Type assertion needed: key is string but i18n.t expects TranslationKey
+                element.textContent = i18n.t(key as Parameters<typeof i18n.t>[0]);
             }
         }
     }

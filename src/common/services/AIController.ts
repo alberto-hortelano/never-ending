@@ -9,7 +9,11 @@ import {
     StateChangeEventsMap,
     UpdateStateEventsMap,
     ControlsEventsMap,
-    ConversationEventsMap
+    ConversationEventsMap,
+    CharacterActionData,
+    MovementActionData,
+    AttackActionData,
+    ItemActionData
 } from '../events';
 import { State } from '../State';
 import { AIContextBuilder, GameContext } from './AIContextBuilder';
@@ -183,10 +187,12 @@ export class AIController extends EventBus<
                     
                 case 'character':
                     // DEBUG: console.log('[AIController] Spawning characters from storyline');
-                    if (actionData?.characters) {
+                    // Type guard for character action data
+                    const charActionData = actionData as CharacterActionData;
+                    if (charActionData?.characters) {
                         const charCommand: CharacterCommand = {
                             type: 'character',
-                            characters: actionData.characters
+                            characters: charActionData.characters
                         };
                         try {
                             await this.spawnCharacters(charCommand);
@@ -200,10 +206,12 @@ export class AIController extends EventBus<
                     
                 case 'movement':
                     // DEBUG: console.log('[AIController] Executing movement from storyline');
-                    if (actionData?.movements && this.state) {
+                    // Type guard for movement action data
+                    const moveActionData = actionData as MovementActionData;
+                    if (moveActionData?.movements && this.state) {
                         // Execute movements for specified characters
-                        for (const movement of actionData.movements) {
-                            const character = this.state.characters.find(c => 
+                        for (const movement of moveActionData.movements) {
+                            const character = this.state.characters.find(c =>
                                 c.name.toLowerCase() === movement.name.toLowerCase()
                             );
                             if (character) {
@@ -224,10 +232,12 @@ export class AIController extends EventBus<
                     
                 case 'attack':
                     // DEBUG: console.log('[AIController] Initiating combat from storyline');
-                    if (actionData?.combatants && this.state) {
+                    // Type guard for attack action data
+                    const attackActionData = actionData as AttackActionData;
+                    if (attackActionData?.combatants && this.state) {
                         // Initiate combat between specified characters
-                        for (const combatant of actionData.combatants) {
-                            const character = this.state.characters.find(c => 
+                        for (const combatant of attackActionData.combatants) {
+                            const character = this.state.characters.find(c =>
                                 c.name.toLowerCase() === combatant.attacker.toLowerCase()
                             );
                             if (character) {
@@ -236,7 +246,7 @@ export class AIController extends EventBus<
                                     characters: [{
                                         name: combatant.attacker,
                                         target: combatant.target,
-                                        attack: combatant.attackType || 'kill'
+                                        attack: (combatant.attackType as 'melee' | 'hold' | 'kill' | 'retreat') || 'kill'
                                     }]
                                 };
                                 await this.executeAttack(attackCommand, character);
@@ -249,10 +259,12 @@ export class AIController extends EventBus<
                     
                 case 'item':
                     // DEBUG: console.log('[AIController] Spawning items from storyline');
-                    if (actionData?.items) {
+                    // Type guard for item action data
+                    const itemActionData = actionData as ItemActionData;
+                    if (itemActionData?.items) {
                         const itemCommand: ItemSpawnCommand = {
                             type: 'item',
-                            items: actionData.items
+                            items: itemActionData.items
                         };
                         await this.storyExecutor.executeItemSpawnCommand(itemCommand);
                     } else {
@@ -786,18 +798,6 @@ export class AIController extends EventBus<
                 break;
             case 'item':
                 await this.storyExecutor.executeItemSpawnCommand(validatedCommand as ItemSpawnCommand);
-                break;
-            case 'character':
-                try {
-                    await this.spawnCharacters(validatedCommand);
-                } catch (error) {
-                    if (error instanceof CharacterPositioningError) {
-                        console.error('[AI] Character spawn positioning failed:', error.message);
-                        await this.handlePositioningError(error, validatedCommand as CharacterCommand);
-                    } else {
-                        throw error;
-                    }
-                }
                 break;
             default:
                 console.warn('[AI] Unknown command type:', validatedCommand.type);

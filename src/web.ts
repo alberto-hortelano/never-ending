@@ -2,9 +2,11 @@
 // Initialize Logger early to intercept all console calls
 import './common/services/LoggerService';
 
+// Type declarations are automatically available, no need to import
 import './components';
 import { Component } from './components/Component';
 import { LoadingScreen } from './components/loadingscreen/LoadingScreen';
+import type { IOriginStory } from './common/interfaces';
 import { Movement } from "./common/Movement";
 import { Talk } from "./common/Talk";
 import { Shoot } from "./common/Shoot";
@@ -39,13 +41,13 @@ document.addEventListener('keydown', (e) => {
     // F5 for quicksave
     if (e.key === 'F5') {
         e.preventDefault(); // Prevent browser refresh
-        eventBus.dispatch(ControlsEvent.quickSave, {});
+        eventBus.dispatch(ControlsEvent.quickSave, undefined as void);
     }
     
     // F9 for quickload
     if (e.key === 'F9') {
         e.preventDefault();
-        eventBus.dispatch(ControlsEvent.quickLoad, {});
+        eventBus.dispatch(ControlsEvent.quickLoad, undefined as void);
     }
 });
 
@@ -225,7 +227,9 @@ multiplayerManager.listen('switchedToSinglePlayer', async (event) => {
         }
         
         // Set up loading screen
-        loadingScreen.setOriginStory(gameState.story.selectedOrigin);
+        if (gameState.story.selectedOrigin) {
+            loadingScreen.setOriginStory(gameState.story.selectedOrigin as IOriginStory);
+        }
         loadingScreen.setSteps([
             { id: 'connect', label: 'Conectando con IA...', status: 'pending' },
             { id: 'generate_map', label: 'Generando mapa...', status: 'pending' },
@@ -335,7 +339,7 @@ async function initializeAIStory(gameState: State) {
 initializeMenuState();
 
 // Expose save/load functions to window for console testing
-(window as any).saveGame = (slotName?: string) => {
+window.saveGame = (slotName?: string) => {
     const eventBus = new EventBus<never, ControlsEventsMap>();
     if (slotName) {
         eventBus.dispatch(ControlsEvent.saveGame, { slotName });
@@ -345,7 +349,7 @@ initializeMenuState();
     }
 };
 
-(window as any).loadGame = (slotName?: string) => {
+window.loadGame = (slotName?: string) => {
     const eventBus = new EventBus<never, ControlsEventsMap>();
     if (slotName) {
         eventBus.dispatch(ControlsEvent.loadGame, { slotName });
@@ -355,7 +359,7 @@ initializeMenuState();
     }
 };
 
-(window as any).listSaves = () => {
+window.listSaves = () => {
     const eventBus = new EventBus<never, ControlsEventsMap>();
     // Create a promise to wait for the response
     return new Promise((resolve) => {
@@ -377,7 +381,7 @@ initializeMenuState();
         eventBus.listen(StateChangeEvent.savesListed, listener);
         
         // Dispatch the list saves request
-        eventBus.dispatch(ControlsEvent.listSaves, {});
+        eventBus.dispatch(ControlsEvent.listSaves, undefined as void);
         
         // Clean up listener after a timeout
         setTimeout(() => {
@@ -386,19 +390,19 @@ initializeMenuState();
     });
 };
 
-(window as any).quickSave = () => {
+window.quickSave = () => {
     const eventBus = new EventBus<never, ControlsEventsMap>();
-    eventBus.dispatch(ControlsEvent.quickSave, {});
+    eventBus.dispatch(ControlsEvent.quickSave, undefined as void);
     // DEBUG: console.log('Quick save triggered (F5)');
 };
 
-(window as any).quickLoad = () => {
+window.quickLoad = () => {
     const eventBus = new EventBus<never, ControlsEventsMap>();
-    eventBus.dispatch(ControlsEvent.quickLoad, {});
+    eventBus.dispatch(ControlsEvent.quickLoad, undefined as void);
     // DEBUG: console.log('Quick load triggered (F9)');
 };
 
-(window as any).deleteSave = (slotName?: string) => {
+window.deleteSave = (slotName?: string) => {
     const eventBus = new EventBus<never, ControlsEventsMap>();
     if (slotName) {
         eventBus.dispatch(ControlsEvent.deleteSave, { slotName });
@@ -409,23 +413,23 @@ initializeMenuState();
 };
 
 // Expose EventBus to window for testing
-(window as any).EventBus = EventBus;
+window.EventBus = EventBus;
 
 // Expose Component for state access in tests
-(window as any).Component = Component;
+window.Component = Component;
 
 // Expose a way to get the current game state
-(window as any).getCurrentGameState = () => {
+window.getCurrentGameState = () => {
     if (gameState) {
         return gameState.getInternalState();
     } else if (menuState) {
         return menuState.getInternalState();
     }
-    return null;
+    return undefined;
 };
 
 // Add a function to inspect a saved game
-(window as any).inspectSave = async (slotName: string) => {
+window.inspectSave = async (slotName: string) => {
     try {
         // Get the saves from localStorage directly
         const savesJson = localStorage.getItem('neverending_saves');
@@ -489,7 +493,7 @@ initializeMenuState();
 };
 
 // Expose play function for testing game start with loaded state
-(window as any).playWithState = (state?: any) => {
+window.playWithState = (state?: any) => {
     // Hide main menu if visible
     const mainMenu = document.querySelector('main-menu') as HTMLElement;
     if (mainMenu) {
@@ -506,19 +510,19 @@ initializeMenuState();
 };
 
 // Add a simpler helper function to load and start a game
-(window as any).loadAndPlayGame = async (slotName: string) => {
+window.loadAndPlayGame = async (slotName: string) => {
     try {
         // DEBUG: console.log(`Loading game from slot: ${slotName}`);
 
         // First, trigger the load through the window function
         // This will update the state internally
-        (window as any).loadGame(slotName);
+        window.loadGame(slotName);
         
         // Wait a moment for the state to be loaded
         await new Promise(resolve => setTimeout(resolve, 500));
         
         // Get the current state (which should now be the loaded state)
-        const loadedState = (window as any).getCurrentGameState();
+        const loadedState = window.getCurrentGameState();
         
         if (!loadedState) {
             throw new Error('Failed to get loaded state');
@@ -533,7 +537,7 @@ initializeMenuState();
         }
         
         // Start the game with the loaded state
-        (window as any).playWithState(loadedState);
+        window.playWithState(loadedState);
         
         // DEBUG: console.log('Game started successfully');
         return { success: true, message: 'Game loaded and started' };

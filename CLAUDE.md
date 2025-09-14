@@ -17,6 +17,9 @@ This is "Never Ending", a turn-based strategy game with AI integration built usi
 - `npm run serve` - Runs only the server
 - `npm test` - Runs Jest tests
 - `npm run build` - One-time TypeScript compilation
+- `npm run lint` - Run ESLint to check code quality
+- `npm run lint:fix` - Run ESLint and automatically fix issues
+- `npm run lint:strict` - Run ESLint with zero warnings tolerance
 
 ### Testing
 
@@ -307,8 +310,9 @@ The project is configured with strict TypeScript settings to prevent unused code
 
 ### Checking for Unused Code
 - `npm run check:unused` - Find unused exports using ts-prune
-- `npm run check:all` - Build and check for unused code
+- `npm run check:all` - Build, check for unused code, and run linter
 - `npm run build` - TypeScript will report unused locals/parameters
+- `npm run lint` - ESLint will check for code quality issues
 
 ### Best Practices
 1. **Before committing**: Run `npm run check:all` to ensure no unused code

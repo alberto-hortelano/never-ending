@@ -92,7 +92,7 @@ describe('Movement', () => {
                 turn: 'human',
                 players: ['human', 'ai']
             },
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
         } as any;
 
         // Create Movement instance

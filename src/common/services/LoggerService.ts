@@ -60,8 +60,9 @@ export class LoggerService {
 
     private interceptConsoleMethods(): void {
         // Intercept console methods to route through logger
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this;
-        
+
         console.log = function(...args: unknown[]) {
             const theme = self.detectTheme(args);
             self.log(theme, LogLevel.INFO, ...args);
@@ -206,7 +207,7 @@ export class LoggerService {
         }
     }
 
-    private getConsoleMethod(level: LogLevel): Function {
+    private getConsoleMethod(level: LogLevel): (...args: unknown[]) => unknown {
         switch (level) {
             case LogLevel.ERROR:
                 return this.originalConsole.error;

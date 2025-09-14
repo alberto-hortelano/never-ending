@@ -1,5 +1,6 @@
 import { State } from '../State';
-import { ICharacter, IGame, ICoord, IMission, IScreenContext } from '../interfaces';
+import { ICharacter, IGame, ICoord, IMission, IScreenContext, ICell } from '../interfaces';
+import { IStoryThread, IWorldEvent, IEmergingConflict } from '../interfaces/worldState';
 import { DeepReadonly } from '../helpers/types';
 import { TeamService } from './TeamService';
 import { WorldState } from './WorldState';
@@ -1010,7 +1011,7 @@ export class AIContextBuilder {
             const worldState = WorldState.getInstance();
             
             // Get world context relevant to current situation
-            const extendedMap = this.state.map as any;
+            const extendedMap = this.state.map as DeepReadonly<ICell[][]> & { currentLocation?: string };
             const location = extendedMap.currentLocation || `position_${character.position.x}_${character.position.y}`;
             
             // Include the current character and nearby characters as participants
@@ -1029,7 +1030,7 @@ export class AIContextBuilder {
             // Transform world context into format for AI
             const worldContextInfo: WorldContextInfo = {
                 narrativePressure: context.narrativePressure,
-                activeThreads: context.nearbyThreads.map((thread: any) => ({
+                activeThreads: context.nearbyThreads.map((thread: IStoryThread) => ({
                     title: thread.title,
                     type: thread.type,
                     status: thread.status,
@@ -1037,12 +1038,12 @@ export class AIContextBuilder {
                     tension: thread.tension
                 })),
                 characterMotivations: [],
-                offscreenEvents: context.offscreenEvents.map((event: any) => ({
+                offscreenEvents: context.offscreenEvents.map((event: IWorldEvent) => ({
                     title: event.title,
                     description: event.description,
                     intensity: event.intensity
                 })),
-                emergingConflicts: context.emergingConflicts.map((conflict: any) => ({
+                emergingConflicts: context.emergingConflicts.map((conflict: IEmergingConflict) => ({
                     type: conflict.type,
                     participants: conflict.instigators.concat(conflict.targets),
                     stakes: conflict.stakes,
@@ -1052,7 +1053,7 @@ export class AIContextBuilder {
             };
             
             // Convert character motivations map to array
-            context.characterMotivations.forEach((goals: any, character: any) => {
+            context.characterMotivations.forEach((goals: string[], character: string) => {
                 worldContextInfo.characterMotivations!.push({
                     character,
                     goals: goals

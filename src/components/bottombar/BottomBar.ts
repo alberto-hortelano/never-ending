@@ -4,6 +4,8 @@ import type { Actions } from "../actions/Actions";
 import type { Conversation } from "../conversation/Conversation";
 import type { SelectCharacter } from "../selectcharacter/SelectCharacter";
 import type { Inventory } from "../inventory/Inventory";
+import type { IInteractionMode } from '../../common/interfaces';
+import type { DeepReadonly } from '../../common/helpers/types';
 import { i18n } from "../../common/i18n/i18n";
 
 export default class BottomBar extends Component {
@@ -107,7 +109,7 @@ export default class BottomBar extends Component {
         });
     }
 
-    private updateMobileHint(mode: any, root: ShadowRoot) {
+    private updateMobileHint(mode: DeepReadonly<IInteractionMode>, root: ShadowRoot) {
         // Hide all hints first
         const allHints = root.querySelectorAll('.mobile-hint') as NodeListOf<HTMLElement>;
         allHints.forEach(hint => hint.style.display = 'none');

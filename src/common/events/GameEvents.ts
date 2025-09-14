@@ -1,4 +1,4 @@
-import type { IState } from '../interfaces';
+import type { IState, IOriginStory } from '../interfaces';
 import type { DeepReadonly } from "../helpers/types";
 
 export enum GameEvent {
@@ -39,7 +39,7 @@ export interface GameEventsMap {
         turn: string;
         previousTurn?: string;
     };
-    [GameEvent.aiInitializationStarted]: { origin: any };
+    [GameEvent.aiInitializationStarted]: { origin: IOriginStory | null };
     [GameEvent.aiInitializationProgress]: AIInitializationProgress;
     [GameEvent.aiInitializationComplete]: { state: IState };
     [GameEvent.aiInitializationFailed]: AIInitializationError;

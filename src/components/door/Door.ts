@@ -164,7 +164,7 @@ export default class Door extends Component {
                 tooltipData.subtext = title;
             }
         } else {
-            let state = isLocked ? '🔒' : (isOpen ? '📂' : '📁');
+            const state = isLocked ? '🔒' : (isOpen ? '📂' : '📁');
             tooltipData.subtext = state;
         }
         

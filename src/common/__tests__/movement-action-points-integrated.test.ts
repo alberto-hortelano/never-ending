@@ -3,8 +3,7 @@ import { State } from '../State';
 import { EventBus, UpdateStateEvent, StateChangeEvent, ControlsEvent } from '../events';
 import { initialState } from '../../data/state';
 import { InteractionModeManager } from '../InteractionModeManager';
-import { animationService } from '../services/AnimationService';
-import type { ICoord, Direction, ICharacter } from '../interfaces';
+import type { Direction, ICharacter } from '../interfaces';
 
 // Mock animation service to prevent actual animations
 jest.mock('../services/AnimationService', () => ({
@@ -206,7 +205,7 @@ describe('Movement action points - integrated test', () => {
     });
 
     test('should calculate and set pending cost when hovering over cells', () => {
-        let pendingCostEvents: Array<{ characterName: string; cost: number }> = [];
+        const pendingCostEvents: Array<{ characterName: string; cost: number }> = [];
         
         eventBus.listen(UpdateStateEvent.setPendingActionCost, (data) => {
             pendingCostEvents.push(data);

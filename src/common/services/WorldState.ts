@@ -56,7 +56,8 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
             WorldState.instance = new WorldState();
             // Make it available globally for debugging
             if (typeof window !== 'undefined') {
-                (window as any).WorldState = WorldState.instance;
+                // Note: Assigning the class itself, not the instance, for proper debug access
+                (window as Window & { WorldState?: typeof WorldState }).WorldState = WorldState;
                 console.log('[WorldState] Debug console commands available:');
                 console.log('  WorldState.getInstance().getDebugInfo()');
                 console.log('  WorldState.getInstance().getWorldContext()');
@@ -1006,7 +1007,7 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
     /**
      * Get comprehensive debug information about the world state
      */
-    public getDebugInfo(): any {
+    public getDebugInfo(): unknown {
         const info = {
             initialized: this.isInitialized,
             currentTurn: this.currentTurn,
@@ -1173,7 +1174,7 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
     /**
      * Enhanced logging with categories and timestamps
      */
-    private log(category: string, _message: string, _data?: any): void {
+    private log(category: string, _message: string, _data?: unknown): void {
         if (!this.debugMode || !this.logCategories.has(category)) {
             return;
         }

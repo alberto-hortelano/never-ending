@@ -28,7 +28,7 @@ export interface StoryPlanResponse {
     immediateContext: IScreenContext;
 }
 
-export class StoryPlanner extends EventBus<{}, UpdateStateEventsMap> {
+export class StoryPlanner extends EventBus<UpdateStateEventsMap, UpdateStateEventsMap> {
     private static instance: StoryPlanner;
     private aiService: AIGameEngineService;
     private currentStoryPlan: IStoryPlan | null = null;
@@ -421,7 +421,7 @@ Return a JSON object with type "storyPlan" containing the full story structure.
                     keyCharacters: [],
                     keyObjects: [],
                     climaxDescription: 'Una revelación impactante lo cambia todo.'
-                } as any // Type assertion needed until interface is updated
+                }
             ],
             currentAct: 0,
             currentScene: 0,

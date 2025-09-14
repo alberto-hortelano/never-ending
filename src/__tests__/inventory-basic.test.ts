@@ -10,7 +10,7 @@ describe('Inventory Basic Test', () => {
     });
     
     test('characters have inventory items in initial state', () => {
-        const player = state.findCharacter('player');
+        const player = state.findCharacter('Jim');
         expect(player).toBeDefined();
         expect(player?.inventory).toBeDefined();
         expect(player?.inventory.items).toBeDefined();

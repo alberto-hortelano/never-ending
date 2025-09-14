@@ -1,5 +1,6 @@
 import { ControlsEvent, StateChangeEvent, GUIEvent } from "../../common/events";
 import { ICoord, ICellVisualState, IDoor, TooltipData } from "../../common/interfaces";
+import { DeepReadonly } from "../../common/helpers/types";
 import { Component } from "../Component";
 import { i18n } from "../../common/i18n/i18n";
 import "../door/Door";
@@ -46,7 +47,7 @@ export default class Cell extends Component {
 
         // Check for doors at this position
         if (state?.doors) {
-            this.renderDoors(state.doors as any);
+            this.renderDoors(state.doors);
         }
 
         // Listen for targeted cell updates (only for this specific cell)
@@ -60,7 +61,7 @@ export default class Cell extends Component {
 
         // Listen for door state changes
         this.listen(StateChangeEvent.doors, (doors) => {
-            this.renderDoors(doors as any);
+            this.renderDoors(doors);
         });
 
         // Add touch event listener for mobile
@@ -230,7 +231,7 @@ export default class Cell extends Component {
         });
     }
 
-    private renderDoors(doors: Record<string, IDoor>): void {
+    private renderDoors(doors: Record<string, IDoor> | DeepReadonly<Record<string, IDoor>>): void {
         // Remove existing door elements
         const existingDoors = this.querySelectorAll('door-component');
         existingDoors.forEach(door => door.remove());

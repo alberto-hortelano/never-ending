@@ -1,6 +1,6 @@
 import { i18n } from '../../common/i18n/i18n';
-import { EventBus, StateChangeEvent, UpdateStateEvent } from '../../common/events';
 import { LanguageState } from '../../common/state/LanguageState';
+import { EventBus, StateChangeEvent } from '../../common/events';
 
 // Mock localStorage for testing
 const localStorageMock = (() => {
@@ -171,7 +171,7 @@ describe('Component i18n Integration', () => {
     });
     
     describe('Translation Key Coverage', () => {
-        const componentsUsingI18n = [
+        const _componentsUsingI18n = [
             'MainMenu',
             'TopBar',
             'BottomBar',
@@ -200,7 +200,7 @@ describe('Component i18n Integration', () => {
                 'Inventory': ['inventory.']
             };
             
-            Object.entries(requiredKeyPrefixes).forEach(([component, prefixes]) => {
+            Object.entries(requiredKeyPrefixes).forEach(([_component, prefixes]) => {
                 prefixes.forEach(prefix => {
                     const keysWithPrefix = translations.en 
                         ? Object.keys(translations.en).filter(key => key.startsWith(prefix))

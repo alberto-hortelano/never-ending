@@ -1,7 +1,6 @@
 import { MapGenerator } from '../MapGenerator';
 import { SaveGameService } from '../../services/SaveGameService';
 import { initialState } from '../../../data/state';
-import type { IState } from '../../interfaces';
 
 describe('Map Seed Integration', () => {
     it('should generate the same map when using the same seed after save/load', () => {

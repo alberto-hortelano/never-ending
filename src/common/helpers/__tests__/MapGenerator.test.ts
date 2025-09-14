@@ -1,5 +1,4 @@
 import { MapGenerator } from '../MapGenerator';
-import { SeededRandom } from '../SeededRandom';
 import type { IRoom, ICoord } from '../../interfaces';
 
 describe('MapGenerator', () => {

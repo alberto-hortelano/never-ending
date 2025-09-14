@@ -51,13 +51,11 @@ export abstract class Component extends HTMLElement {
             this._testingShadowRoot = root;
 
             // Try to load CSS and HTML
-            let styleSheet, template;
-
             // Load CSS and HTML resources - let errors propagate for critical failures
             const styleSheetPromise = this.loadCss();
             const templatePromise = this.loadHtml();
 
-            [styleSheet, template] = await Promise.all([
+            const [styleSheet, template] = await Promise.all([
                 styleSheetPromise,
                 templatePromise,
             ]);
@@ -83,7 +81,8 @@ export abstract class Component extends HTMLElement {
 
     // Method to access shadow root in tests
     public getTestingShadowRoot(): ShadowRoot | null {
-        if (typeof window !== 'undefined' && (window as any).__PLAYWRIGHT_TEST__) {
+        // Note: Using unknown type for Playwright test flag on window
+        if (typeof window !== 'undefined' && (window as Window & { __PLAYWRIGHT_TEST__?: boolean }).__PLAYWRIGHT_TEST__) {
             return this._testingShadowRoot || null;
         }
         return null;

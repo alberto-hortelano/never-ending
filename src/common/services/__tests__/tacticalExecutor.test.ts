@@ -1,5 +1,5 @@
 import { TacticalExecutor, TacticalDirective } from '../TacticalExecutor';
-import { State } from '../../State';
+import { } from '../../State';
 import { ICharacter } from '../../interfaces';
 import { DeepReadonly } from '../../helpers/types';
 

@@ -119,7 +119,7 @@ export class MultiplayerLobby extends Component {
         this.listen('gameStarted', () => {
             // Hide lobby when game starts
             this.style.display = 'none';
-            this.dispatch('lobbyGameStarted', {});
+            this.dispatch('lobbyGameStarted', undefined as void);
         });
         
         this.listen('roomListUpdate', (data: ClientNetworkEventMap['roomListUpdate']) => {
@@ -298,7 +298,7 @@ export class MultiplayerLobby extends Component {
         backBtn.addEventListener('click', () => {
             this.networkService.disconnect();
             this.style.display = 'none';
-            this.dispatch('lobbyClose', {});
+            this.dispatch('lobbyClose', undefined as void);
         });
     }
 

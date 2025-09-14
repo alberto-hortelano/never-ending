@@ -157,7 +157,7 @@ describe('Save/Load Events Integration', () => {
                 done();
             });
 
-            state.dispatch(ControlsEvent.listSaves, {});
+            state.dispatch(ControlsEvent.listSaves, undefined as void);
         });
     });
 
@@ -209,7 +209,7 @@ describe('Save/Load Events Integration', () => {
                 done();
             });
 
-            state.dispatch(ControlsEvent.quickSave, {});
+            state.dispatch(ControlsEvent.quickSave, undefined as void);
         });
 
         it('should handle quick load', (done) => {
@@ -226,7 +226,7 @@ describe('Save/Load Events Integration', () => {
                 done();
             });
 
-            state.dispatch(ControlsEvent.quickLoad, {});
+            state.dispatch(ControlsEvent.quickLoad, undefined as void);
         });
 
         it('should handle quick load when no quicksave exists', () => {
@@ -235,7 +235,7 @@ describe('Save/Load Events Integration', () => {
             
             // Since State handles the event internally, we just need to verify
             // that the save service doesn't have a quicksave after the event
-            state.dispatch(ControlsEvent.quickLoad, {});
+            state.dispatch(ControlsEvent.quickLoad, undefined as void);
             
             // Verify no quicksave was created
             expect(saveService.exists('quicksave')).toBe(false);

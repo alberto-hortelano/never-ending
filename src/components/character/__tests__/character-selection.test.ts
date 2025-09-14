@@ -60,7 +60,7 @@ describe('Character Selection Restriction', () => {
         expect(state.game.turn).toBe('human');
 
         // Find characters
-        const humanChar = state.findCharacter('player');
+        const humanChar = state.findCharacter('Jim');
         const aiChar = state.findCharacter('enemy');
 
         expect(humanChar).toBeDefined();
@@ -97,7 +97,7 @@ describe('Character Selection Restriction', () => {
         expect(canSelectAI).toBe(true);
 
         // And human should NOT be able to select their character
-        const humanChar = state.findCharacter('player');
+        const humanChar = state.findCharacter('Jim');
         const canSelectHuman = humanChar?.player === state.game.turn;
         expect(canSelectHuman).toBe(false);
     });

@@ -1,5 +1,5 @@
 import { EventBus } from '../events/EventBus';
-import { UpdateStateEvent } from '../events/StateEvents';
+import { UpdateStateEvent, UpdateStateEventsMap } from '../events/StateEvents';
 import type { IStoryState } from '../interfaces';
 import { factions } from '../data/originStories';
 
@@ -19,7 +19,7 @@ export interface ReputationLevel {
 
 export class FactionReputationService {
     private static instance: FactionReputationService;
-    private eventBus: EventBus;
+    private eventBus: EventBus<UpdateStateEventsMap, UpdateStateEventsMap>;
     
     private readonly reputationLevels: ReputationLevel[] = [
         { min: -100, max: -80, name: 'Nemesis', nameES: 'Némesis', hostile: true },
@@ -74,9 +74,11 @@ export class FactionReputationService {
         }
         
         // Update state with new reputation
-        (this.eventBus as any).dispatch(UpdateStateEvent.storyState, {
+        // Note: We're dispatching a partial story state update here
+        // The state handler will merge this with the existing story state
+        this.eventBus.dispatch(UpdateStateEvent.storyState, {
             factionReputation: newReputation
-        });
+        } as Partial<IStoryState>);
         
         return newReputation;
     }
@@ -106,7 +108,8 @@ export class FactionReputationService {
      */
     public getFactionStanding(faction: string, reputation: number): string {
         const level = this.getReputationLevel(reputation);
-        const factionData = faction in factions ? (factions as any)[faction] : null;
+        // Type assertion needed because factions is a const object with known keys
+        const factionData = faction in factions ? (factions as Record<string, {id: string; name: string; nameES: string; description: string}>)[faction] : null;
         
         if (!factionData) return 'Unknown faction';
         
@@ -197,7 +200,8 @@ export class FactionReputationService {
         oldLevel: ReputationLevel,
         newLevel: ReputationLevel
     ): void {
-        const factionData = faction in factions ? (factions as any)[faction] : null;
+        // Type assertion for factions object
+        const factionData = faction in factions ? (factions as Record<string, {id: string; name: string; nameES: string; description: string}>)[faction] : null;
         if (!factionData) return;
         
         // Add journal entry about reputation change

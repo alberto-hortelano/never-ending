@@ -1,5 +1,5 @@
 import { MeleeCombat } from '../MeleeCombat';
-import { MELEE_ATTACKS, MeleeCombatService } from '../services/MeleeCombatService';
+import { MeleeCombatService } from '../services/MeleeCombatService';
 import { State } from '../State';
 import { EventBus, UpdateStateEvent, ControlsEvent, ActionEvent } from '../events';
 import type { ICharacter, IWeapon, IState } from '../interfaces';

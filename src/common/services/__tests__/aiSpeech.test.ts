@@ -1,6 +1,6 @@
 import { AIController } from '../AIController';
 import { State } from '../../State';
-import { EventBus, ConversationEvent, UpdateStateEvent, ControlsEvent } from '../../events';
+import { ConversationEvent, UpdateStateEvent } from '../../events';
 import { ICharacter, IState, Direction } from '../../interfaces';
 
 describe('AI Speech System', () => {

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import type { ICharacter, ICell, ICoord, Direction } from "../interfaces";
 import type { State } from "../State";
 
@@ -28,7 +28,7 @@ jest.mock('../services/ShootingService', () => ({
             }
             return cells;
         }),
-        checkLineOfSight: jest.fn().mockImplementation((map, from, to, characters) => {
+        checkLineOfSight: jest.fn().mockImplementation((map, from, to, _characters) => {
             // Check if there's a blocker between from and to
             const dx = Math.sign(to.x - from.x);
             const dy = Math.sign(to.y - from.y);
@@ -234,7 +234,7 @@ describe('Overwatch', () => {
         mockOverwatchDataMap.clear();
         
         // Clear singleton
-        singletonOverwatch = null;
+        _singletonOverwatch = null;
         
         // Reset InteractionModeManager
         InteractionModeManager.resetInstance();
@@ -249,7 +249,7 @@ describe('Overwatch', () => {
     
     // Track all created overwatch instances for cleanup
     const overwatchInstances: Overwatch[] = [];
-    let singletonOverwatch: Overwatch | null = null;
+    let _singletonOverwatch: Overwatch | null = null;
     
     // Helper to create overwatch instance for tests that need it
     const createOverwatch = () => {

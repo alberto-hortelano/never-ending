@@ -1,7 +1,7 @@
 import type { ICharacter, ICoord, IDoor, ICell, DoorSide, IInventory } from '../interfaces';
 import { EventBus, UpdateStateEventsMap, UpdateStateEvent } from '../events';
 
-export class DoorService extends EventBus<{}, UpdateStateEventsMap> {
+export class DoorService extends EventBus<UpdateStateEventsMap, UpdateStateEventsMap> {
     private static instance: DoorService;
     
     private constructor() {

@@ -1,4 +1,5 @@
-import type { ICharacterAnimation, ICoord, Direction } from '../interfaces';
+import type { ICharacterAnimation, ICoord, Direction, ICharacter } from '../interfaces';
+import type { DeepReadonly } from '../helpers/types';
 import { EventBus, UpdateStateEvent, UpdateStateEventsMap, StateChangeEvent, StateChangeEventsMap } from '../events';
 import { DirectionsService } from './DirectionsService';
 
@@ -190,12 +191,14 @@ export class AnimationService extends EventBus<StateChangeEventsMap, UpdateState
 
                     if (cellPosition) {
                         // Update character position in state
+                        // Note: We're sending partial character data here. The state handler
+                        // should merge this with existing character data to form a complete ICharacter
                         this.dispatch(UpdateStateEvent.characterPosition, {
                             name: update.characterId,
                             position: cellPosition,
                             direction: update.currentDirection,
                             fromNetwork: animState.fromNetwork
-                        } as any);
+                        } as unknown as DeepReadonly<ICharacter>);
                     }
 
                     // Update visual state with new cell position

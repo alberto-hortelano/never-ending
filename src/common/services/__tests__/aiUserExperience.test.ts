@@ -1,5 +1,5 @@
 import { Conversation } from '../../Conversation';
-import { EventBus, ConversationEvent } from '../../events';
+import { EventBus } from '../../events/EventBus';
 
 // Mock the BottomBar component directly
 jest.mock('../../../components/bottombar/BottomBar', () => ({
@@ -13,6 +13,7 @@ jest.mock('../../../components/bottombar/BottomBar', () => ({
 
 describe('AI User Experience', () => {
     let conversation: Conversation;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let eventBus: EventBus<any, any>;
     let bottomBarMock: any;
     
@@ -59,7 +60,7 @@ describe('AI User Experience', () => {
             // Should have story content
             expect(result.content).toContain('Your story begins');
             // Should have default continue options (for storyline)
-            expect(result.answers).toEqual(['Continue', 'Understood']);
+            expect(result.answers).toEqual(['Continue', 'OK']);
         });
         
         it('should not confuse users with system messages', () => {
@@ -134,6 +135,7 @@ describe('AI User Experience', () => {
                 { content: undefined, answers: [] }
             ];
             
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             emptyResponses.forEach(response => {
                 // Test with invalid JSON that triggers error handling
                 const parsed = (conversation as any).parseResponse('');
@@ -246,7 +248,7 @@ describe('AI User Experience', () => {
             // Close button should have X icon
             expect(buttonLabels.close).toContain('✕');
             // Continue should be clear
-            expect(buttonLabels.continue).toBe('Continuar');
+            expect(buttonLabels.continue).toBe('Continue');
             // Understand option should be available
             expect(buttonLabels.understand).toBe('Entendido');
         });

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { MultiplayerManager } from '../MultiplayerManager';
 import { NetworkService } from '../NetworkService';
 import { EventBus } from '../../events/EventBus';

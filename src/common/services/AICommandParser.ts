@@ -49,12 +49,9 @@ export interface CharacterCommand extends AICommand {
     }>;
 }
 
-export type StorylineActionType = 'map' | 'character' | 'movement' | 'attack';
+import type { StorylineActionData } from '../events/ConversationEvents';
 
-export interface StorylineActionData {
-    // Base properties that all action data should have
-    [key: string]: unknown;
-}
+export type StorylineActionType = 'map' | 'character' | 'movement' | 'attack' | 'item';
 
 export interface StorylineCommand extends AICommand {
     type: 'storyline';

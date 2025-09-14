@@ -1,6 +1,72 @@
 import { Component } from '../Component';
 import { WorldState } from '../../common/services/WorldState';
 
+// Define the structure of the debug info returned by WorldState
+interface DebugInfo {
+    initialized: boolean;
+    currentTurn: number;
+    debugMode: string[];
+    threads: {
+        total: number;
+        active: number;
+        building: number;
+        resolved: number;
+        dormant: number;
+        details: Array<{
+            id: string;
+            type: string;
+            title: string;
+            status: string;
+            tension: number;
+            participants: string[];
+            narrative: string;
+        }>;
+    };
+    characters: {
+        total: number;
+        profiles: Array<{
+            id: string;
+            name: string;
+            faction: string;
+            currentActivity: string;
+            goals: number;
+            relationships: number;
+        }>;
+    };
+    worldEvents: {
+        total: number;
+        active: number;
+        recent: Array<{
+            title: string;
+            type: string;
+            intensity: number;
+        }>;
+    };
+    factions: {
+        total: number;
+        activities: Array<{
+            faction: string;
+            operations: string[];
+            goals: string[];
+        }>;
+    };
+    conflicts: {
+        total: number;
+        active: number;
+        highTension: Array<{
+            id: string;
+            factions: string[];
+            escalation: number;
+            state: string;
+        }>;
+    };
+    narrativePressure: {
+        level: number;
+        suggestedFocus: string;
+        potentialEvents: string[];
+    };
+}
+
 export class StoryDebug extends Component {
     override hasCss = true;
     override hasHtml = true;
@@ -96,7 +162,7 @@ export class StoryDebug extends Component {
     }
     
     private updateContent(root: ShadowRoot): void {
-        const debugInfo = this.worldState.getDebugInfo();
+        const debugInfo = this.worldState.getDebugInfo() as DebugInfo;
         const worldContext = this.worldState.getWorldContext();
         const suggestions = this.worldState.getNarrativeSuggestions();
         
@@ -144,7 +210,7 @@ export class StoryDebug extends Component {
         if (threadsContent) {
             threadsContent.innerHTML = `
                 <div class="thread-list">
-                    ${debugInfo.threads.details.map((thread: any) => `
+                    ${debugInfo.threads.details.map((thread: { id: string; type: string; title: string; status: string; tension: number; participants: string[]; narrative: string }) => `
                         <div class="thread-item ${thread.status}">
                             <div class="thread-header">
                                 <span class="thread-title">${thread.title}</span>
@@ -167,7 +233,7 @@ export class StoryDebug extends Component {
         if (charactersContent) {
             charactersContent.innerHTML = `
                 <div class="character-list">
-                    ${debugInfo.characters.profiles.map((char: any) => `
+                    ${debugInfo.characters.profiles.map((char: { id: string; name: string; faction?: string; currentActivity: string; goals: number; relationships: number }) => `
                         <div class="character-item">
                             <div class="character-name">${char.name}</div>
                             <div class="character-info">
@@ -189,8 +255,8 @@ export class StoryDebug extends Component {
             eventsContent.innerHTML = `
                 <div class="event-list">
                     <h4>Recent Events:</h4>
-                    ${recentEvents.map((event: any) => `
-                        <div class="event-item ${event.intensity}">
+                    ${recentEvents.map((event) => `
+                        <div class="event-item intensity-${event.intensity}">
                             <div class="event-title">${event.title}</div>
                             <div class="event-info">
                                 <span>Type: ${event.type}</span>

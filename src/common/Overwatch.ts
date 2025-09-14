@@ -775,7 +775,7 @@ export class Overwatch extends EventBus<
         }
 
         // Process each character's overwatch
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+         
         Object.entries(overwatchData).forEach(([_, data]) => {
             if (!data.active) return;
 

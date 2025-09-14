@@ -1,6 +1,7 @@
 import { Component } from '../Component';
 import { StateChangeEvent } from '../../common/events';
-import type { IJournalEntry } from '../../common/interfaces';
+import type { IJournalEntry, IStoryState } from '../../common/interfaces';
+import type { DeepReadonly } from '../../common/helpers/types';
 import { i18n } from '../../common/i18n/i18n';
 
 export class StoryJournal extends Component {
@@ -23,9 +24,9 @@ export class StoryJournal extends Component {
         if (!root) return root;
         
         // Listen for story state changes
-        this.listen(StateChangeEvent.storyState as any, (storyState: any) => {
+        this.listen(StateChangeEvent.storyState, (storyState: DeepReadonly<IStoryState>) => {
             if (storyState?.journalEntries) {
-                this.entries = storyState.journalEntries;
+                this.entries = storyState.journalEntries as IJournalEntry[];
                 this.renderJournal(root);
             }
         });

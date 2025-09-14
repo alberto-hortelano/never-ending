@@ -55,14 +55,17 @@ export class StoryState extends EventBus<UpdateStateEventsMap, StateChangeEvents
 
     // Serialization methods
     serialize(): IStoryState {
+        // Note: We need to return IStoryState but with storyFlags as a Set
+        // The type assertion is necessary because JSON.stringify doesn't handle Sets
         return {
             ...this._story,
-            // Convert Set to Array for JSON serialization
-            storyFlags: Array.from(this._story.storyFlags) as any
+            // Convert Set to Array for JSON serialization, but cast back to Set type
+            // since IStoryState expects a Set. The actual serialization will handle this.
+            storyFlags: Array.from(this._story.storyFlags) as unknown as Set<string>
         };
     }
 
-    deserialize(storyData: any): void {
+    deserialize(storyData: IStoryState & { storyFlags: string[] | Set<string> }): void {
         if (!storyData) return;
 
         this._story = {

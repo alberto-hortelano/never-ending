@@ -26,7 +26,8 @@
       "Bash(npx playwright test:*)",
       "Bash(node:*)",
       "Bash(curl:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(npx eslint:*)"
     ],
     "deny": []
   }

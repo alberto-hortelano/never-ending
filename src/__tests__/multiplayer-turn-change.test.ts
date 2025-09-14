@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { EventBus, GameEvent, StateChangeEvent } from '../common/events';
 import { MultiplayerManager } from '../common/services/MultiplayerManager';
 import { State } from '../common/State';

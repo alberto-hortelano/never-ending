@@ -103,10 +103,6 @@ export interface RoomListEvent {
     }>;
 }
 
-export interface RequestRoomListEvent {
-    // Empty - just a request to get the room list
-}
-
 export type NetworkEventMap = {
     connect: ConnectEvent;
     disconnect: DisconnectEvent;
@@ -120,7 +116,7 @@ export type NetworkEventMap = {
     startGame: StartGameEvent;
     error: ErrorEvent;
     roomList: RoomListEvent;
-    requestRoomList: RequestRoomListEvent;
+    requestRoomList: void;  // No data needed for this request
 };
 
 // Client-side network events

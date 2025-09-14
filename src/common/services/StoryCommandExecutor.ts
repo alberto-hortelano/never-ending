@@ -30,7 +30,7 @@ interface MapCell extends ICell {
     doors?: IDoor[];
 }
 
-export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap & ConversationEventsMap> {
+export class StoryCommandExecutor extends EventBus<UpdateStateEventsMap & ConversationEventsMap, UpdateStateEventsMap & ConversationEventsMap> {
     private static instance: StoryCommandExecutor;
     private characterSpawningService: CharacterSpawningService;
     private mapGenerationService: MapGenerationService;
@@ -78,12 +78,14 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap & Co
                 );
                 if (!exists) {
                     const firstRoomName = mapResult.rooms.length > 0 ? mapResult.rooms[0]!.name : 'floor';
+                    // Note: Merging CharacterSpawnData with MapCommand character requirements
+                    // This type assertion is safe as we're adding the required fields
                     characters.unshift({
                         ...playerChar,
                         location: firstRoomName,
                         speed: 'medium' as const,
                         orientation: 'bottom' as const
-                    } as any);
+                    } as typeof command.characters[0]);
                 }
             }
 
@@ -189,77 +191,73 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap & Co
     public async executeItemSpawnCommand(command: ItemSpawnCommand): Promise<void> {
 
         for (const itemData of command.items) {
-            try {
-                // Find or create the item
-                let item: IItem | IWeapon | undefined;
+            // Find or create the item
+            let item: IItem | IWeapon | undefined;
 
-                if (itemData.type === 'weapon') {
-                    // Find weapon from available weapons
-                    item = availableWeapons.find(w =>
-                        w.name.toLowerCase().includes(itemData.name.toLowerCase())
-                    );
+            if (itemData.type === 'weapon') {
+                // Find weapon from available weapons
+                item = availableWeapons.find(w =>
+                    w.name.toLowerCase().includes(itemData.name.toLowerCase())
+                );
 
-                    if (!item) {
-                        // Create custom weapon
-                        item = {
-                            id: itemData.id || `weapon_${Date.now()}`,
-                            name: itemData.name,
-                            description: itemData.description || 'A mysterious weapon',
-                            weight: 2,
-                            cost: 100,
-                            icon: '⚔️',
-                            type: 'weapon',
-                            weaponType: 'oneHanded',
-                            category: 'melee',
-                            class: 'sword',
-                            damage: 20,
-                            range: 2
-                        } as IWeapon;
-                    }
-                } else {
-                    // Find or create regular item
-                    item = availableItems.find(i =>
-                        i.name.toLowerCase().includes(itemData.name.toLowerCase())
-                    );
-
-                    if (!item) {
-                        item = {
-                            id: itemData.id || `item_${Date.now()}`,
-                            name: itemData.name,
-                            description: itemData.description || 'A mysterious item',
-                            weight: 1,
-                            cost: 50,
-                            icon: '📦',
-                            type: (['weapon', 'consumable', 'armor'].includes(itemData.type) ?
-                                itemData.type as ItemType : 'misc')
-                        };
-                    }
+                if (!item) {
+                    // Create custom weapon
+                    item = {
+                        id: itemData.id || `weapon_${Date.now()}`,
+                        name: itemData.name,
+                        description: itemData.description || 'A mysterious weapon',
+                        weight: 2,
+                        cost: 100,
+                        icon: '⚔️',
+                        type: 'weapon',
+                        weaponType: 'oneHanded',
+                        category: 'melee',
+                        class: 'sword',
+                        damage: 20,
+                        range: 2
+                    } as IWeapon;
                 }
+            } else {
+                // Find or create regular item
+                item = availableItems.find(i =>
+                    i.name.toLowerCase().includes(itemData.name.toLowerCase())
+                );
 
-                // Determine spawn location
-                const location = this.resolveItemLocation(itemData.location);
-
-                if (location.type === 'character' && location.character) {
-                    // Add to character inventory
-                    const currentInventory = location.character.inventory || {
-                        items: [],
-                        maxWeight: 50,
-                        equippedWeapons: { primary: null, secondary: null }
+                if (!item) {
+                    item = {
+                        id: itemData.id || `item_${Date.now()}`,
+                        name: itemData.name,
+                        description: itemData.description || 'A mysterious item',
+                        weight: 1,
+                        cost: 50,
+                        icon: '📦',
+                        type: (['weapon', 'consumable', 'armor'].includes(itemData.type) ?
+                            itemData.type as ItemType : 'misc')
                     };
-
-                    this.dispatch(UpdateStateEvent.updateInventory, {
-                        characterName: location.character.name,
-                        inventory: {
-                            ...currentInventory,
-                            items: [...(currentInventory.items || []), item],
-                            maxWeight: currentInventory.maxWeight || 50,
-                            equippedWeapons: currentInventory.equippedWeapons || { primary: null, secondary: null }
-                        }
-                    });
-
                 }
-            } catch (error) {
-                // Silently skip failed item spawns
+            }
+
+            // Determine spawn location
+            const location = this.resolveItemLocation(itemData.location);
+
+            if (location.type === 'character' && location.character) {
+                // Add to character inventory
+                const currentInventory = location.character.inventory || {
+                    items: [],
+                    maxWeight: 50,
+                    equippedWeapons: { primary: null, secondary: null }
+                };
+
+                this.dispatch(UpdateStateEvent.updateInventory, {
+                    characterName: location.character.name,
+                    inventory: {
+                        ...currentInventory,
+                        items: [...(currentInventory.items || []), item],
+                        maxWeight: currentInventory.maxWeight || 50,
+                        equippedWeapons: currentInventory.equippedWeapons || { primary: null, secondary: null }
+                    }
+                });
+
             }
         }
     }
@@ -322,7 +320,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap & Co
                     map[cellY][cellX].doors!.push(door);
                 }
 
-            } catch (error) {
+            } catch (_error) {
                 // Skip failed door generation
             }
         }
@@ -344,7 +342,7 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap & Co
         for (const charData of characters) {
             const isPlayer = charData.name?.toLowerCase() === MAIN_CHARACTER_NAME.toLowerCase();
             const isData = charData.name === COMPANION_DROID_NAME ||
-                          charData.name?.toLowerCase() === COMPANION_DROID_NAME.toLowerCase();
+                charData.name?.toLowerCase() === COMPANION_DROID_NAME.toLowerCase();
 
             if (isPlayer || isData) {
                 await this.spawnPlayerCharacter(
@@ -382,42 +380,37 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap & Co
         availableRooms: string[],
         isPlayer: boolean
     ): Promise<void> {
-        try {
-            const position = this.characterSpawningService.findSpawnPosition(
+        const position = this.characterSpawningService.findSpawnPosition(
+            charData.location,
+            map,
+            occupiedPositions
+        );
+
+        if (!position) {
+            throw new CharacterPositioningError(
+                charData.name,
                 charData.location,
-                map,
-                occupiedPositions
+                availableRooms,
+                { width: map[0]?.length || 50, height: map.length || 50 }
             );
-
-            if (!position) {
-                throw new CharacterPositioningError(
-                    charData.name,
-                    charData.location,
-                    availableRooms,
-                    { width: map[0]?.length || 50, height: map.length || 50 }
-                );
-            }
-
-            const character = this.characterSpawningService.createCharacterFromBase({
-                name: isPlayer ? MAIN_CHARACTER_NAME : COMPANION_DROID_NAME,
-                position: position,
-                race: isPlayer ? 'human' : 'robot',
-                player: HUMAN_PLAYER,
-                team: PLAYER_TEAM,
-                palette: isPlayer ?
-                    { skin: '#d7a55f', helmet: 'white', suit: 'white' } :
-                    { skin: 'yellow', helmet: 'gold', suit: 'gold' }
-            });
-
-            const updateWithNetwork = character as ICharacter & { fromNetwork?: boolean };
-            updateWithNetwork.fromNetwork = true;
-            this.dispatch(UpdateStateEvent.characterPosition, updateWithNetwork);
-
-            occupiedPositions.add(`${position.x},${position.y}`);
-        } catch (error) {
-            // Re-throw for critical player characters
-            throw error;
         }
+
+        const character = this.characterSpawningService.createCharacterFromBase({
+            name: isPlayer ? MAIN_CHARACTER_NAME : COMPANION_DROID_NAME,
+            position: position,
+            race: isPlayer ? 'human' : 'robot',
+            player: HUMAN_PLAYER,
+            team: PLAYER_TEAM,
+            palette: isPlayer ?
+                { skin: '#d7a55f', helmet: 'white', suit: 'white' } :
+                { skin: 'yellow', helmet: 'gold', suit: 'gold' }
+        });
+
+        const updateWithNetwork = character as ICharacter & { fromNetwork?: boolean };
+        updateWithNetwork.fromNetwork = true;
+        this.dispatch(UpdateStateEvent.characterPosition, updateWithNetwork);
+
+        occupiedPositions.add(`${position.x},${position.y}`);
     }
 
     private async spawnNonPlayerCharacter(
@@ -426,45 +419,41 @@ export class StoryCommandExecutor extends EventBus<{}, UpdateStateEventsMap & Co
         occupiedPositions: Set<string>,
         availableRooms: string[]
     ): Promise<void> {
-        try {
-            const position = this.characterSpawningService.findSpawnPosition(
+        const position = this.characterSpawningService.findSpawnPosition(
+            charData.location,
+            map,
+            occupiedPositions
+        );
+
+        if (!position) {
+            throw new CharacterPositioningError(
+                charData.name,
                 charData.location,
-                map,
-                occupiedPositions
+                availableRooms,
+                { width: map[0]?.length || 50, height: map.length || 50 }
             );
-
-            if (!position) {
-                throw new CharacterPositioningError(
-                    charData.name,
-                    charData.location,
-                    availableRooms,
-                    { width: map[0]?.length || 50, height: map.length || 50 }
-                );
-            }
-
-            const mapBounds = { width: map[0]?.length || 50, height: map.length || 50 };
-            this.characterSpawningService.validatePosition(position, mapBounds);
-
-            const newCharacter = this.characterSpawningService.createCharacterFromBase({
-                name: charData.name,
-                race: charData.race || 'human',
-                description: charData.description || '',
-                position: position,
-                direction: this.mapDirection(charData.orientation || 'down'),
-                player: charData.player || 'ai',
-                team: charData.team || this.characterSpawningService.determineTeam(charData),
-                palette: charData.palette || {
-                    skin: '#d7a55f',
-                    helmet: '#808080',
-                    suit: '#404040'
-                }
-            });
-
-            this.dispatch(UpdateStateEvent.addCharacter, newCharacter);
-            occupiedPositions.add(`${position.x},${position.y}`);
-        } catch (error) {
-            // Silently skip failed NPC spawns
         }
+
+        const mapBounds = { width: map[0]?.length || 50, height: map.length || 50 };
+        this.characterSpawningService.validatePosition(position, mapBounds);
+
+        const newCharacter = this.characterSpawningService.createCharacterFromBase({
+            name: charData.name,
+            race: charData.race || 'human',
+            description: charData.description || '',
+            position: position,
+            direction: this.mapDirection(charData.orientation || 'down'),
+            player: charData.player || 'ai',
+            team: charData.team || this.characterSpawningService.determineTeam(charData),
+            palette: charData.palette || {
+                skin: '#d7a55f',
+                helmet: '#808080',
+                suit: '#404040'
+            }
+        });
+
+        this.dispatch(UpdateStateEvent.addCharacter, newCharacter);
+        occupiedPositions.add(`${position.x},${position.y}`);
     }
 
 

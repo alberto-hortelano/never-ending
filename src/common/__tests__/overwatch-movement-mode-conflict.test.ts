@@ -1,8 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import type { ICharacter, ICell, Direction } from "../interfaces";
 import type { State } from "../State";
 
-import { superEventBus, ControlsEvent, UpdateStateEvent, StateChangeEvent } from "../events";
+import { superEventBus, ControlsEvent, UpdateStateEvent } from "../events";
 import { Overwatch } from "../Overwatch";
 import { Movement } from "../Movement";
 import { baseCharacter } from "../../data/state";
@@ -342,7 +342,7 @@ describe('Overwatch Movement Mode Conflict', () => {
             superEventBus.dispatch(ControlsEvent.showMovement, testCharacter.name);
 
             // Store movement visual state
-            const movementCellCalls = cellVisualSpy.mock.calls.length;
+            const _movementCellCalls = cellVisualSpy.mock.calls.length;
 
             // Clear spies
             cellVisualSpy.mockClear();

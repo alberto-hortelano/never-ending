@@ -1,7 +1,7 @@
 import { EventBus, EventsMap } from '../events/EventBus';
 import { NetworkService } from './NetworkService';
 import { State } from '../State';
-import { IState, IUIState, ICharacter, IOverwatchData } from '../interfaces';
+import { IState, IUIState, ICharacter, IOverwatchData, IOriginStory } from '../interfaces';
 import { GameEvent, UpdateStateEvent, ControlsEvent } from '../events';
 import { getBaseState, getEmptyState } from '../../data/state';
 import { StateDiffService, StateDiff } from './StateDiffService';
@@ -285,7 +285,7 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
         this.lastSyncedState = currentState;
     }
 
-    switchToSinglePlayer(origin?: any) {
+    switchToSinglePlayer(origin?: IOriginStory | null) {
         // DEBUG: console.log('[MultiplayerManager] Switching to single player mode');
         // DEBUG: console.log('[MultiplayerManager] Received origin:', origin?.id, origin?.name);
         this.isMultiplayer = false;
@@ -487,7 +487,7 @@ this.broadcastAction(UpdateStateEvent.characterPosition, data);
     private stopSyncInterval() {
         if (this.syncTimerCallback) {
             // Dispatch event to request timer cleanup from component layer
-            this.dispatch('cancelSyncTimer', {});
+            this.dispatch('cancelSyncTimer', undefined as void);
             this.syncTimerCallback = null;
         }
     }

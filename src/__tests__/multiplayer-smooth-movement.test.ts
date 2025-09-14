@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { State } from '../common/State';
 import { Movement } from '../common/Movement';
 import { MultiplayerManager } from '../common/services/MultiplayerManager';

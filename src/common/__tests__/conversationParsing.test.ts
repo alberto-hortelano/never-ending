@@ -50,7 +50,7 @@ describe('Conversation Response Parsing', () => {
             expect(result.type).toBe('speech');
             expect(result.source).toBe('Narrator');
             expect(result.content).toBe('Las alarmas de la nave resuenan por los pasillos...');
-            expect(result.answers).toEqual(['Continue', 'Understood']);
+            expect(result.answers).toEqual(['Continue', 'OK']);
         });
         
         it('should handle speech without answers by providing defaults', () => {

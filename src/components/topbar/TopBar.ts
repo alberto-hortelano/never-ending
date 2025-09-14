@@ -267,7 +267,7 @@ export default class TopBar extends Component {
     
     // Support for Playwright tests
     public override getTestingShadowRoot() {
-        if ((window as any).__PLAYWRIGHT_TEST__) {
+        if ((window as Window & { __PLAYWRIGHT_TEST__?: boolean }).__PLAYWRIGHT_TEST__) {
             return this.shadowRoot;
         }
         return null;

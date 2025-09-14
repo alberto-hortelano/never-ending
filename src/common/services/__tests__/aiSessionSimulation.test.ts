@@ -1,6 +1,6 @@
 import { AIController } from '../AIController';
 import { State } from '../../State';
-import { EventBus, ConversationEvent, UpdateStateEvent, GameEvent, StateChangeEvent } from '../../events';
+import { ConversationEvent, GameEvent, EventBus, UpdateStateEvent } from '../../events';
 import { AIGameEngineService } from '../AIGameEngineService';
 import { StoryCommandExecutor } from '../StoryCommandExecutor';
 import { Conversation } from '../../Conversation';
@@ -8,6 +8,7 @@ import { Conversation } from '../../Conversation';
 describe('Complete AI Session Simulation', () => {
     let aiController: any;
     let state: State;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let eventBus: EventBus<any, any>;
     let conversation: Conversation;
     let mockGameEngineService: jest.Mocked<AIGameEngineService>;
@@ -250,7 +251,7 @@ describe('Complete AI Session Simulation', () => {
             eventBus.dispatch(ConversationEvent.continue, playerResponse);
             
             // 4. STORY PROGRESSES WITH MAP CHANGE
-            const mapChangeResponse = {
+            const _mapChangeResponse = {
                 type: 'speech',
                 source: 'Narrator',
                 content: 'You decide to approach. The ship docks with the station...',
@@ -314,8 +315,8 @@ describe('Complete AI Session Simulation', () => {
                 { chapter: 2, event: 'chapter_complete', decision: null }
             ];
             
-            let accumulatedMissions: string[] = [];
-            let accumulatedDecisions: string[] = [];
+            const accumulatedMissions: string[] = [];
+            const accumulatedDecisions: string[] = [];
             
             for (const progress of storyProgression) {
                 if (progress.event) accumulatedMissions.push(progress.event);

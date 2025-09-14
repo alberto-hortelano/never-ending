@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { NetworkService } from '../common/services/NetworkService';
 import { EventBus } from '../common/events/EventBus';
 import { UpdateStateEvent } from '../common/events';

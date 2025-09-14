@@ -1,4 +1,5 @@
 import { Component } from '../Component';
+import type { IOriginStory } from '../../common/interfaces';
 
 export interface LoadingStep {
     id: string;
@@ -12,7 +13,7 @@ export class LoadingScreen extends Component {
     protected override hasCss = true;
     
     private steps: LoadingStep[] = [];
-    private originStory: any = null;
+    private originStory: IOriginStory | null = null;
     private onFallback?: () => void;
     private onRetry?: () => void;
     
@@ -30,7 +31,7 @@ export class LoadingScreen extends Component {
         return root;
     }
     
-    public setOriginStory(origin: any) {
+    public setOriginStory(origin: IOriginStory) {
         this.originStory = origin;
         const root = this.shadowRoot;
         if (root) {
@@ -99,7 +100,7 @@ export class LoadingScreen extends Component {
         
         // Render steps
         const stepsHtml = this.steps.map(step => {
-            let statusClass = step.status;
+            const statusClass = step.status;
             let statusIcon = '';
             
             switch(step.status) {

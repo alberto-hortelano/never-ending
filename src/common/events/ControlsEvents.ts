@@ -116,7 +116,7 @@ export interface ControlsEventsMap {
     [ControlsEvent.deleteSave]: {
         slotName: string;
     };
-    [ControlsEvent.listSaves]: {};
-    [ControlsEvent.quickSave]: {};
-    [ControlsEvent.quickLoad]: {};
+    [ControlsEvent.listSaves]: void;
+    [ControlsEvent.quickSave]: void;
+    [ControlsEvent.quickLoad]: void;
 }

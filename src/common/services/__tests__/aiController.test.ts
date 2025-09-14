@@ -302,13 +302,17 @@ describe('AIController', () => {
                 characters: [{
                     name: 'data',
                     target: 'Jim',
-                    attack: 'ranged'
+                    attack: 'kill'  // 'kill' is the attack type for ranged in AIController
                 }]
             };
-            
+
             const character = state.characters.find((c: any) => c.name === 'data');
+
+            // Mock checkLineOfSight to return true
+            jest.spyOn(aiController as any, 'checkLineOfSight').mockReturnValue(true);
+
             await (aiController as any).executeAttack(command, character);
-            
+
             expect(dispatchSpy).toHaveBeenCalledWith(
                 ControlsEvent.showShooting,
                 'data'

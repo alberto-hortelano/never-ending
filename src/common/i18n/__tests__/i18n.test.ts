@@ -68,8 +68,8 @@ describe('i18n System', () => {
             i18n.setLanguage('es');
             // Assuming a key exists in English but not Spanish (for testing)
             // In reality, all keys should exist in both languages
-            const key = 'test.missing.key' as any;
-            expect(i18n.t(key)).toBe(key); // Should return the key itself as fallback
+            const _key = 'test.missing.key' as any;
+            expect(i18n.t(_key)).toBe(_key); // Should return the key itself as fallback
         });
     });
 
@@ -151,7 +151,7 @@ describe('Translation Completeness', () => {
         
         if (enTranslations) {
             // Check English translations
-            Object.entries(enTranslations).forEach(([key, value]) => {
+            Object.entries(enTranslations).forEach(([_key, value]) => {
                 expect(value).toBeTruthy();
                 expect(typeof value === 'string' ? value.trim() : '').not.toBe('');
             });
@@ -159,7 +159,7 @@ describe('Translation Completeness', () => {
         
         if (esTranslations) {
             // Check Spanish translations
-            Object.entries(esTranslations).forEach(([key, value]) => {
+            Object.entries(esTranslations).forEach(([_key, value]) => {
                 expect(value).toBeTruthy();
                 expect(typeof value === 'string' ? value.trim() : '').not.toBe('');
             });

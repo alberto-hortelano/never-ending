@@ -237,7 +237,7 @@ export class NetworkService extends EventBus<EventsMap, EventsMap> {
     }
 
     requestRoomList(): void {
-        this.send('requestRoomList', {});
+        this.send('requestRoomList', undefined);
     }
 
     disconnect(): void {

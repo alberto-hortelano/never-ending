@@ -7,6 +7,7 @@ import { UpdateStateEvent, GUIEvent } from '../../events';
 describe('Overwatch Team-based Targeting', () => {
     let overwatch: Overwatch;
     let state: any; // Use any for test manipulation
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let eventBus: EventBus<any, any>;
     let dispatchSpy: jest.SpyInstance;
 

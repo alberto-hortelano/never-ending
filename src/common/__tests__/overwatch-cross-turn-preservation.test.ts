@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import type { ICharacter, ICell } from "../interfaces";
 import type { State } from "../State";
 
@@ -225,7 +225,7 @@ describe('Overwatch Cross-Turn Preservation', () => {
             await new Promise(resolve => setTimeout(resolve, 10));
             
             // Find the overwatch cells from the batch updates
-            let overwatchCellKeys: string[] = [];
+            const overwatchCellKeys: string[] = [];
             cellBatchSpy.mock.calls.forEach(call => {
                 const batchData = call[0];
                 if (batchData?.updates) {
@@ -301,7 +301,7 @@ describe('Overwatch Cross-Turn Preservation', () => {
                 let finalOverwatchCells = 0;
                 let movementCells = 0;
                 
-                Object.entries(finalVisualStates.cells || {}).forEach(([cellKey, cellState]: [string, any]) => {
+                Object.entries(finalVisualStates.cells || {}).forEach(([_cellKey, cellState]: [string, any]) => {
                     if (cellState?.highlightTypes?.includes('overwatch')) {
                         finalOverwatchCells++;
                     }

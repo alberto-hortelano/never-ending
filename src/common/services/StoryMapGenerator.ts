@@ -1,5 +1,6 @@
 import type { IRoom, IOriginStory } from '../interfaces';
 import { MapGenerator } from '../helpers/MapGenerator';
+import type { BuildingData } from './MapGenerationService';
 
 interface MapTemplate {
     missionType: 'combat' | 'exploration' | 'infiltration' | 'diplomacy';
@@ -7,7 +8,7 @@ interface MapTemplate {
     rooms: IRoom[];
     palette?: {
         terrain?: string;
-        buildings?: any[];
+        buildings?: BuildingData[];
     };
 }
 

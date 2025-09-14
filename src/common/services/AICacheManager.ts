@@ -5,7 +5,7 @@ import { AIBrowserCacheService } from './AIBrowserCacheService';
 
 // Make cache utilities available globally in development
 if (typeof window !== 'undefined') {
-    (window as any).AICache = {
+    (window as Window & { AICache?: unknown }).AICache = {
         /**
          * Get cache statistics
          */

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import type { ICharacter, ICell } from "../interfaces";
 import type { State } from "../State";
 
