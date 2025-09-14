@@ -46,8 +46,9 @@ export class DefenseWheel extends Component {
 
     private setupEventListeners() {
         this.listen(UpdateStateEvent.uiMeleeDefense, (data) => {
-            console.log('[DefenseWheel] Received melee defense event:', data);
-            console.log('[DefenseWheel] Event data:', JSON.stringify(data));
+            // DEBUG: Melee defense event handling
+            // console.log('[DefenseWheel] Received melee defense event:', data);
+            // console.log('[DefenseWheel] Event data:', JSON.stringify(data));
             
             // In multiplayer mode, only show defense wheel if we are the defender
             const networkPlayerId = this.networkService.getPlayerId();
@@ -56,14 +57,17 @@ export class DefenseWheel extends Component {
                 const state = this.getState();
                 const defenderCharacter = state?.findCharacter(data.defender);
                 
-                console.log('[DefenseWheel] Multiplayer check - Network player:', networkPlayerId);
-                console.log('[DefenseWheel] Defender character:', defenderCharacter?.name, 'Player:', defenderCharacter?.player);
-                
+                // DEBUG: Multiplayer defense wheel filtering
+                // console.log('[DefenseWheel] Multiplayer check - Network player:', networkPlayerId);
+                // console.log('[DefenseWheel] Defender character:', defenderCharacter?.name, 'Player:', defenderCharacter?.player);
+
                 if (!defenderCharacter || defenderCharacter.player !== networkPlayerId) {
-                    console.log('[DefenseWheel] Not the defender in multiplayer, ignoring event');
+                    // DEBUG: Not the defender, ignoring
+                    // console.log('[DefenseWheel] Not the defender in multiplayer, ignoring event');
                     return;
                 }
-                console.log('[DefenseWheel] We are the defender! Showing defense wheel');
+                // DEBUG: We are the defender, showing wheel
+                // console.log('[DefenseWheel] We are the defender! Showing defense wheel');
             }
             // In single player mode, always show the defense wheel
             
@@ -99,7 +103,8 @@ export class DefenseWheel extends Component {
 
     private renderContent() {
         if (!this.root || !this.defenseData) {
-            console.log('[DefenseWheel] Cannot render - root:', !!this.root, 'data:', !!this.defenseData);
+            // DEBUG: Cannot render defense wheel
+            // console.log('[DefenseWheel] Cannot render - root:', !!this.root, 'data:', !!this.defenseData);
             return;
         }
 
@@ -224,7 +229,8 @@ export class DefenseWheel extends Component {
     }
 
     private selectDefense(defenseType: MeleeAttackType) {
-        console.log('[DefenseWheel] Defense selected:', defenseType);
+        // DEBUG: Defense type selection
+        // console.log('[DefenseWheel] Defense selected:', defenseType);
         
         // Dispatch the defense selection
         this.dispatch(ControlsEvent.meleeDefenseSelected, {

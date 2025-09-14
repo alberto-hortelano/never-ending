@@ -76,7 +76,8 @@ export class OriginSelection extends Component {
 
     private startGame() {
         if (!this.selectedOrigin) {
-            console.log('[OriginSelection] No origin selected, cannot start game');
+            // DEBUG: Origin selection validation
+            // console.log('[OriginSelection] No origin selected, cannot start game');
             return;
         }
 

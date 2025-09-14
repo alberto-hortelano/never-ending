@@ -74,7 +74,7 @@ class ModelFallbackManager {
                 errorType: isOverload ? 'overload' : 'error'
             });
 
-            console.log(`[ModelFallback] Model ${model} failed (${isOverload ? 'overload' : 'error'}). Falling back to ${fallbackModel}`);
+            // DEBUG: console.log(`[ModelFallback] Model ${model} failed (${isOverload ? 'overload' : 'error'}). Falling back to ${fallbackModel}`);
         } else {
             console.error(`[ModelFallback] Model ${model} failed with no fallback available`);
         }
@@ -116,7 +116,7 @@ class ModelFallbackManager {
     cleanupExpired(): void {
         for (const [model, state] of this.fallbackStates.entries()) {
             if (this.isExpired(state)) {
-                console.log(`[ModelFallback] Clearing expired fallback for ${model}`);
+                // DEBUG: console.log(`[ModelFallback] Clearing expired fallback for ${model}`);
                 this.fallbackStates.delete(model);
             }
         }
@@ -125,7 +125,7 @@ class ModelFallbackManager {
     // Clear a specific model's fallback (e.g., after successful use)
     clearFallback(model: ClaudeModel): void {
         if (this.fallbackStates.has(model)) {
-            console.log(`[ModelFallback] Clearing fallback for ${model} after successful use`);
+            // DEBUG: console.log(`[ModelFallback] Clearing fallback for ${model} after successful use`);
             this.fallbackStates.delete(model);
         }
     }
@@ -183,7 +183,7 @@ async function callClaudeWithModel(
     messages: IMessage[],
     narrativeArchitect: string
 ): Promise<Anthropic.Messages.Message> {
-    console.log(`[Claude] Attempting with model: ${model}`);
+    // DEBUG: console.log(`[Claude] Attempting with model: ${model}`);
 
     try {
         // Use streaming for better handling of long-running requests
@@ -199,7 +199,7 @@ async function callClaudeWithModel(
 
         // Success - clear any fallback for this model
         fallbackManager.clearFallback(model);
-        console.log(`[Claude] Success with model: ${model}`);
+        // DEBUG: console.log(`[Claude] Success with model: ${model}`);
 
         return msg;
     } catch (error: unknown) {
@@ -248,17 +248,17 @@ export const sendMessage: SendMessage = async (messages: IMessage[]) => {
     // Get the current model (considering active fallbacks)
     const currentModel = fallbackManager.getCurrentModel();
 
-    console.log(`[Claude] Using model: ${currentModel}`);
+    // DEBUG: console.log(`[Claude] Using model: ${currentModel}`);
 
     // Log fallback status if there are active fallbacks
     const status = fallbackManager.getStatus();
     if (status.fallbacks.length > 0) {
-        console.log('[Claude] Active fallbacks:', status);
+        // DEBUG: console.log('[Claude] Active fallbacks:', status);
     }
 
     try {
-        console.log('PROMPT ###############');
-        console.log('CLAUDE:\n', messages[messages.length - 1]);
+        // DEBUG: console.log('PROMPT ###############');
+        // DEBUG: console.log('CLAUDE:\n', messages[messages.length - 1]);
         const msg = await callClaudeWithModel(currentModel, messages, narrativeArchitect);
 
         const response = msg.content[0];
@@ -268,8 +268,8 @@ export const sendMessage: SendMessage = async (messages: IMessage[]) => {
 
         // Extract JSON from markdown code blocks if present
         const text = response.text;
-        console.log('RESPONSE ###############');
-        console.log('CLAUDE:\n', text);
+        // DEBUG: console.log('RESPONSE ###############');
+        // DEBUG: console.log('CLAUDE:\n', text);
         const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
 
         if (jsonMatch && jsonMatch[1]) {

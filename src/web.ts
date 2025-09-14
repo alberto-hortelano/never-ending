@@ -199,16 +199,9 @@ multiplayerManager.listen('stateSynced', () => {
 let loadingScreen: LoadingScreen | null = null;
 
 multiplayerManager.listen('switchedToSinglePlayer', async (event) => {
-    // console.log('[Web] Received switchedToSinglePlayer event');
-    // console.log('[Web] Event state has story:', {
-    //     hasStory: !!event.state?.story,
-    //     hasSelectedOrigin: !!event.state?.story?.selectedOrigin,
-    //     originName: event.state?.story?.selectedOrigin?.name
-    // });
     
     // Create a new game state for single player
     const gameState = new State(event.state);
-    // console.log('[Web] Created new State instance');
     
     // Set the state back to MultiplayerManager
     multiplayerManager.setGameState(gameState);
@@ -219,7 +212,6 @@ multiplayerManager.listen('switchedToSinglePlayer', async (event) => {
     
     // Check if we need AI initialization
     if (gameState.story?.selectedOrigin) {
-        // console.log('[Web] Origin selected, starting AI initialization flow');
         
         // Don't automatically clear cache - let user control this via dev UI
         // AIBrowserCacheService.clearProblematicCache();
@@ -246,7 +238,6 @@ multiplayerManager.listen('switchedToSinglePlayer', async (event) => {
         loadingScreen.setCallbacks(
             // Fallback: use default state
             () => {
-                // console.log('[Web] User selected fallback to default state');
                 loadingScreen?.hide();
                 // Start with default state instead
                 const defaultState = new State(getBaseState());
@@ -255,7 +246,6 @@ multiplayerManager.listen('switchedToSinglePlayer', async (event) => {
             },
             // Retry: try AI initialization again
             () => {
-                // console.log('[Web] User selected retry AI initialization');
                 initializeAIStory(gameState);
             }
         );
@@ -269,7 +259,6 @@ multiplayerManager.listen('switchedToSinglePlayer', async (event) => {
         await initializeAIStory(gameState);
         
     } else {
-        // console.log('[Web] No origin selected, starting game normally');
         play(gameState);
     }
 });
@@ -295,11 +284,9 @@ async function initializeAIStory(gameState: State) {
         loadingScreen?.updateStep('generate_map', 'active');
         
         // Call AI initialization
-        // console.log('[Web] Calling AI story initialization...');
         await aiController.initializeStoryFromOrigin();
         
         // If we get here, initialization succeeded
-        // console.log('[Web] AI initialization completed successfully');
         
         loadingScreen?.updateStep('generate_map', 'completed');
         loadingScreen?.updateStep('place_characters', 'completed');
@@ -352,7 +339,7 @@ initializeMenuState();
     const eventBus = new EventBus<never, ControlsEventsMap>();
     if (slotName) {
         eventBus.dispatch(ControlsEvent.saveGame, { slotName });
-        console.log(`Game saved to slot: ${slotName}`);
+        // DEBUG: console.log(`Game saved to slot: ${slotName}`);
     } else {
         console.error('Please provide a slot name for saveGame(slotName)');
     }
@@ -362,7 +349,7 @@ initializeMenuState();
     const eventBus = new EventBus<never, ControlsEventsMap>();
     if (slotName) {
         eventBus.dispatch(ControlsEvent.loadGame, { slotName });
-        console.log(`Loading game from slot: ${slotName}`);
+        // DEBUG: console.log(`Loading game from slot: ${slotName}`);
     } else {
         console.error('Please provide a slot name for loadGame(slotName)');
     }
@@ -402,20 +389,20 @@ initializeMenuState();
 (window as any).quickSave = () => {
     const eventBus = new EventBus<never, ControlsEventsMap>();
     eventBus.dispatch(ControlsEvent.quickSave, {});
-    console.log('Quick save triggered (F5)');
+    // DEBUG: console.log('Quick save triggered (F5)');
 };
 
 (window as any).quickLoad = () => {
     const eventBus = new EventBus<never, ControlsEventsMap>();
     eventBus.dispatch(ControlsEvent.quickLoad, {});
-    console.log('Quick load triggered (F9)');
+    // DEBUG: console.log('Quick load triggered (F9)');
 };
 
 (window as any).deleteSave = (slotName?: string) => {
     const eventBus = new EventBus<never, ControlsEventsMap>();
     if (slotName) {
         eventBus.dispatch(ControlsEvent.deleteSave, { slotName });
-        console.log(`Deleted save: ${slotName}`);
+        // DEBUG: console.log(`Deleted save: ${slotName}`);
     } else {
         console.error('Please provide a slot name for deleteSave(slotName)');
     }
@@ -521,8 +508,8 @@ initializeMenuState();
 // Add a simpler helper function to load and start a game
 (window as any).loadAndPlayGame = async (slotName: string) => {
     try {
-        console.log(`Loading game from slot: ${slotName}`);
-        
+        // DEBUG: console.log(`Loading game from slot: ${slotName}`);
+
         // First, trigger the load through the window function
         // This will update the state internally
         (window as any).loadGame(slotName);
@@ -537,7 +524,7 @@ initializeMenuState();
             throw new Error('Failed to get loaded state');
         }
         
-        console.log('Starting game with loaded state...');
+        // DEBUG: console.log('Starting game with loaded state...');
         
         // Hide main menu if visible
         const mainMenu = document.querySelector('main-menu') as HTMLElement;
@@ -548,7 +535,7 @@ initializeMenuState();
         // Start the game with the loaded state
         (window as any).playWithState(loadedState);
         
-        console.log('Game started successfully');
+        // DEBUG: console.log('Game started successfully');
         return { success: true, message: 'Game loaded and started' };
         
     } catch (error) {
@@ -557,14 +544,14 @@ initializeMenuState();
     }
 };
 
-// Log available save/load functions
-console.log('%c Save/Load Functions Available:', 'color: #4CAF50; font-weight: bold');
-console.log('  window.saveGame(slotName) - Save game to a named slot');
-console.log('  window.loadGame(slotName) - Load game from a named slot');
-console.log('  window.listSaves() - List all available saves');
-console.log('  window.quickSave() - Quick save (same as F5)');
-console.log('  window.quickLoad() - Quick load (same as F9)');
-console.log('  window.deleteSave(slotName) - Delete a saved game');
-console.log('  window.inspectSave(slotName) - Inspect saved game data');
-console.log('  window.loadAndPlayGame(slotName) - Load and start game');
-console.log('  window.getCurrentGameState() - Get current game state');
+// DEBUG: Log available save/load functions
+// console.log('%c Save/Load Functions Available:', 'color: #4CAF50; font-weight: bold');
+// console.log('  window.saveGame(slotName) - Save game to a named slot');
+// console.log('  window.loadGame(slotName) - Load game from a named slot');
+// console.log('  window.listSaves() - List all available saves');
+// console.log('  window.quickSave() - Quick save (same as F5)');
+// console.log('  window.quickLoad() - Quick load (same as F9)');
+// console.log('  window.deleteSave(slotName) - Delete a saved game');
+// console.log('  window.inspectSave(slotName) - Inspect saved game data');
+// console.log('  window.loadAndPlayGame(slotName) - Load and start game');
+// console.log('  window.getCurrentGameState() - Get current game state');

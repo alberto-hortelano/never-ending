@@ -1,5 +1,5 @@
 import type { IMessage, IStoryState, IOriginStory, IValidationResult } from '../interfaces';
-import { AICommand, SpeechCommand } from './AICommandParser';
+import { AICommand } from './AICommandParser';
 import { AIBrowserCacheService, type AIRequest, type AIResponse } from './AIBrowserCacheService';
 import { ObjectValidator } from './ObjectValidator';
 import { StoryPlanValidator } from './StoryPlanValidator';
@@ -340,12 +340,12 @@ Remember: The map persists throughout gameplay. Characters move, fight, and talk
             const response = await this.callGameEngine(messages);
             const command = this.parseAIResponse(response.content);
 
-            const duration = Date.now() - startTime;
+            // const duration = Date.now() - startTime;
             if (command?.type === 'speech') {
-                const speechCmd = command as SpeechCommand;
-                console.log(`[AI] Response (${duration}ms): Speech - "${speechCmd.content?.substring(0, 60)}..."`);
+                // const speechCmd = command as SpeechCommand;
+                // DEBUG: console.log(`[AI] Response (${duration}ms): Speech - "${speechCmd.content?.substring(0, 60)}..."`);
             } else {
-                console.log(`[AI] Response (${duration}ms): ${command?.type || 'none'}`);
+                // DEBUG: console.log(`[AI] Response (${startTime}ms): ${command?.type || 'none'}`);
             }
 
             return {
@@ -526,7 +526,7 @@ CRITICAL REMINDERS:
         const cacheKey: GameEngineRequest = { messages, endpoint: '/gameEngine' };
         const cachedResponse = AIBrowserCacheService.getCachedResponse<GameEngineRequest, GameEngineResponse>(cacheKey);
         if (cachedResponse) {
-            console.log('[AIGameEngineService] Using cached response');
+            // DEBUG: console.log('[AIGameEngineService] Using cached response');
             return cachedResponse;
         }
 
@@ -599,7 +599,7 @@ CRITICAL REMINDERS:
                 const backoffDelay = baseDelay * Math.pow(2, retry);
 
                 if (isOverloadError) {
-                    console.log(`[AI] Service overloaded, retrying in ${backoffDelay}ms...`);
+                    // DEBUG: console.log(`[AI] Service overloaded, retrying in ${backoffDelay}ms...`);
                 }
 
                 await new Promise(resolve => setTimeout(resolve, backoffDelay));
@@ -798,22 +798,11 @@ Remember: ALL narrative text, descriptions, objectives, and dialogue MUST be in 
             content: initRequest
         });
 
-        // console.log('[AIGameEngineService] Sending initialization request to /gameEngine endpoint');
-        // console.log('[AIGameEngineService] Request length:', initRequest.length, 'characters');
 
         try {
-            // console.log('[AIGameEngineService] Calling game engine API...');
             const response = await this.callGameEngine(messages);
-            // console.log('[AIGameEngineService] API response received');
-            // console.log('[AIGameEngineService] Response content length:', response.content?.length || 0);
 
             const parsedResponse = this.parseAIResponse(response.content);
-            // console.log('[AIGameEngineService] Parsed response:', {
-            //     hasParsedResponse: !!parsedResponse,
-            //     responseType: parsedResponse?.type,
-            //     hasCommands: !!parsedResponse?.commands,
-            //     commandCount: parsedResponse?.commands?.length || 0
-            // });
 
             // Handle both single command and array of commands
             let commands: AICommand[] = [];
@@ -830,7 +819,6 @@ Remember: ALL narrative text, descriptions, objectives, and dialogue MUST be in 
                 }
             }
 
-            // console.log('[AIGameEngineService] Returning commands:', commands.length, 'narrative:', !!narrative);
             return { commands, narrative };
         } catch (error) {
             console.error('[AIGameEngineService] Failed to initialize story:', error);
@@ -921,7 +909,7 @@ Response format:
         retryCount: number = 2
     ): Promise<IValidationResult> {
         const retryCallback = async (fixPrompt: string): Promise<unknown> => {
-            console.log('[AIGameEngineService] Requesting AI to fix validation errors');
+            // DEBUG: console.log('[AIGameEngineService] Requesting AI to fix validation errors');
 
             const messages: IMessage[] = [{
                 role: 'user',

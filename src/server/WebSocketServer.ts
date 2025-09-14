@@ -33,11 +33,11 @@ export class WebSocketServer {
     private rooms = new Map<string, Room>();
 
     constructor(server: Server) {
-        console.log('Initializing WebSocketServer on server:', server.address());
+        // DEBUG: console.log('Initializing WebSocketServer on server:', server.address());
         this.wss = new WSServer({ server });
-        console.log('WebSocket server created');
+        // DEBUG: console.log('WebSocket server created');
         this.setupWebSocketServer();
-        console.log('WebSocket server setup complete');
+        // DEBUG: console.log('WebSocket server setup complete');
     }
 
     private setupWebSocketServer() {
@@ -46,12 +46,12 @@ export class WebSocketServer {
         });
 
         this.wss.on('listening', () => {
-            console.log('WebSocket server is listening');
+            // DEBUG: console.log('WebSocket server is listening');
         });
 
         this.wss.on('connection', (ws: WebSocket) => {
             const playerId = randomUUID();
-            console.log(`New WebSocket connection: ${playerId}`);
+            // DEBUG: console.log(`New WebSocket connection: ${playerId}`);
 
             ws.on('message', (data: Buffer) => {
                 try {
@@ -64,7 +64,7 @@ export class WebSocketServer {
             });
 
             ws.on('close', () => {
-                console.log(`WebSocket disconnected: ${playerId}`);
+                // DEBUG: console.log(`WebSocket disconnected: ${playerId}`);
                 this.handleDisconnect(playerId);
             });
 
@@ -114,7 +114,7 @@ export class WebSocketServer {
         this.players.set(playerId, player);
 
         this.sendToPlayer(playerId, 'connect', { playerId, playerName: data.playerName });
-        console.log(`Player connected: ${playerId} (${data.playerName})`);
+        // DEBUG: console.log(`Player connected: ${playerId} (${data.playerName})`);
     }
 
     private handleCreateRoom(playerId: string, data: CreateRoomEvent) {
@@ -140,7 +140,7 @@ export class WebSocketServer {
             creatorId: playerId 
         });
         this.broadcastRoomState(roomId);
-        console.log(`Room created: ${roomId} by player ${playerId}`);
+        // DEBUG: console.log(`Room created: ${roomId} by player ${playerId}`);
     }
 
     private handleJoinRoom(playerId: string, data: JoinRoomEvent) {
@@ -179,7 +179,7 @@ export class WebSocketServer {
             });
         }
 
-        console.log(`Player ${playerId} joined room ${data.roomId}`);
+        // DEBUG: console.log(`Player ${playerId} joined room ${data.roomId}`);
     }
 
     private handleLeaveRoom(playerId: string) {
@@ -199,23 +199,23 @@ export class WebSocketServer {
         if (room.players.size === 0) {
             this.rooms.delete(roomId);
             this.broadcastRoomList(); // Update room list for all players
-            console.log(`Room ${roomId} deleted (empty)`);
+            // DEBUG: console.log(`Room ${roomId} deleted (empty)`);
         } else {
             this.broadcastRoomState(roomId);
             this.broadcastRoomList(); // Update room list for all players
         }
 
-        console.log(`Player ${playerId} left room ${roomId}`);
+        // DEBUG: console.log(`Player ${playerId} left room ${roomId}`);
     }
 
     private handlePlayerReady(playerId: string, data: PlayerReadyEvent) {
         const player = this.players.get(playerId);
         const room = player?.roomId ? this.rooms.get(player.roomId) : null;
 
-        console.log(`Player ${playerId} ready status: ${data.ready}, room: ${player?.roomId}`);
+        // DEBUG: console.log(`Player ${playerId} ready status: ${data.ready}, room: ${player?.roomId}`);
 
         if (!player || !room) {
-            console.log(`Player or room not found for ready: player=${!!player}, room=${!!room}`);
+            // DEBUG: console.log(`Player or room not found for ready: player=${!!player}, room=${!!room}`);
             return;
         }
 
@@ -225,7 +225,7 @@ export class WebSocketServer {
         this.broadcastRoomState(room.id);
 
         const allReady = Array.from(room.players.values()).every(p => p.ready);
-        console.log(`Room ${room.id}: All ready? ${allReady}, player count: ${room.players.size}`);
+        // DEBUG: console.log(`Room ${room.id}: All ready? ${allReady}, player count: ${room.players.size}`);
         if (allReady && room.players.size >= 2 && room.status === 'waiting') {
             this.startGame(room);
         }
@@ -310,7 +310,7 @@ export class WebSocketServer {
         }
 
         this.players.delete(playerId);
-        console.log(`Player ${playerId} disconnected`);
+        // DEBUG: console.log(`Player ${playerId} disconnected`);
     }
 
     private sendToPlayer(playerId: string, type: keyof NetworkEventMap, data: NetworkEventMap[keyof NetworkEventMap]) {

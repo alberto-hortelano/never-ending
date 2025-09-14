@@ -172,17 +172,17 @@ export class AIController extends EventBus<
         this.listen(ConversationEvent.executeAction, async (data) => {
             const { action, actionData } = data;
 
-            console.log('[AIController] Executing storyline action:', action);
+            // DEBUG: console.log('[AIController] Executing storyline action:', action);
 
             // Handle the action based on its type
             switch (action) {
                 case 'map':
-                    console.log('[AIController] Generating new map from storyline');
+                    // DEBUG: console.log('[AIController] Generating new map from storyline');
                     await this.executeStorylineMapGeneration();
                     break;
                     
                 case 'character':
-                    console.log('[AIController] Spawning characters from storyline');
+                    // DEBUG: console.log('[AIController] Spawning characters from storyline');
                     if (actionData?.characters) {
                         const charCommand: CharacterCommand = {
                             type: 'character',
@@ -199,7 +199,7 @@ export class AIController extends EventBus<
                     break;
                     
                 case 'movement':
-                    console.log('[AIController] Executing movement from storyline');
+                    // DEBUG: console.log('[AIController] Executing movement from storyline');
                     if (actionData?.movements && this.state) {
                         // Execute movements for specified characters
                         for (const movement of actionData.movements) {
@@ -223,7 +223,7 @@ export class AIController extends EventBus<
                     break;
                     
                 case 'attack':
-                    console.log('[AIController] Initiating combat from storyline');
+                    // DEBUG: console.log('[AIController] Initiating combat from storyline');
                     if (actionData?.combatants && this.state) {
                         // Initiate combat between specified characters
                         for (const combatant of actionData.combatants) {
@@ -248,7 +248,7 @@ export class AIController extends EventBus<
                     break;
                     
                 case 'item':
-                    console.log('[AIController] Spawning items from storyline');
+                    // DEBUG: console.log('[AIController] Spawning items from storyline');
                     if (actionData?.items) {
                         const itemCommand: ItemSpawnCommand = {
                             type: 'item',
@@ -559,7 +559,7 @@ export class AIController extends EventBus<
         // Execute the tactical action
         const validatedCommand = this.commandParser.validate(tacticalAction.command);
         if (validatedCommand) {
-            console.log(`[AI-Tactical] ${character.name}: ${tacticalAction.type} - ${tacticalAction.reasoning}`);
+            // DEBUG: console.log(`[AI-Tactical] ${character.name}: ${tacticalAction.type} - ${tacticalAction.reasoning}`);
             await this.executeAICommand(validatedCommand, character);
         } else {
             console.error(`[AI-Tactical] ${character.name}: Invalid command from tactical executor`);
@@ -681,15 +681,15 @@ export class AIController extends EventBus<
                         console.warn('[AI] Invalid attack command - missing attack type or target');
                         return;
                     }
-                    console.log(`[AI] ${character.name}: Attack (${attackType} vs ${target})`);
+                    // DEBUG: console.log(`[AI] ${character.name}: Attack (${attackType} vs ${target})`);
                 } else if (validatedCommand.type === 'speech') {
-                    const speechCmd = validatedCommand as SpeechCommand;
-                    console.log(`[AI] ${character.name}: Speech - "${speechCmd.content?.substring(0, 50)}..."`);
+                    // const speechCmd = validatedCommand as SpeechCommand;
+                    // DEBUG: console.log(`[AI] ${character.name}: Speech - "${speechCmd.content?.substring(0, 50)}..."`);
                 } else if (validatedCommand.type === 'movement') {
-                    const moveCmd = validatedCommand as MovementCommand;
-                    console.log(`[AI] ${character.name}: Move to ${moveCmd.characters?.[0]?.location}`);
+                    // const moveCmd = validatedCommand as MovementCommand;
+                    // DEBUG: console.log(`[AI] ${character.name}: Move to ${moveCmd.characters?.[0]?.location}`);
                 } else {
-                    console.log(`[AI] ${character.name}: ${validatedCommand.type}`);
+                    // DEBUG: console.log(`[AI] ${character.name}: ${validatedCommand.type}`);
                 }
                 await this.executeAICommand(validatedCommand, character);
             } else {
@@ -846,7 +846,7 @@ export class AIController extends EventBus<
                 targetLocation: targetLocation,
                 targetName: targetChar?.name
             };
-            console.log(`[AI] Setting ongoing movement for ${character.name} to ${targetChar?.name || 'location'}`);
+            // DEBUG: console.log(`[AI] Setting ongoing movement for ${character.name} to ${targetChar?.name || 'location'}`);
         }
 
         // If we're already adjacent (within 1.5 cells), switch to appropriate action
@@ -897,7 +897,7 @@ export class AIController extends EventBus<
 
             if (blockage.type === 'character' && blockage.character && this.state) {
                 const isAlly = TeamService.areAllied(character, blockage.character, this.state.game.teams);
-                console.log(`[AI] Path blocked by ${isAlly ? 'ally' : 'enemy'}: ${blockage.character.name} (health: ${blockage.character.health})`);
+                // DEBUG: console.log(`[AI] Path blocked by ${isAlly ? 'ally' : 'enemy'}: ${blockage.character.name} (health: ${blockage.character.health})`);
 
                 // Request new AI instructions with context about the blockage
                 const blockageContext = {
@@ -930,20 +930,20 @@ export class AIController extends EventBus<
                     blockageInfo: JSON.stringify(blockageContext)
                 } as unknown as GameContext;
 
-                console.log('[AI] Requesting new instructions due to blocked path');
+                // DEBUG: console.log('[AI] Requesting new instructions due to blocked path');
                 const language = this.state?.language || 'es';
                 const response = await this.gameEngineService.requestAIAction(contextWithBlockage as unknown as AIActionContext, undefined, undefined, language as LanguageCode);
 
                 if (response.command) {
                     const validatedCommand = this.commandParser.validate(response.command);
                     if (validatedCommand) {
-                        console.log(`[AI] New action after blockage: ${validatedCommand.type}`);
+                        // DEBUG: console.log(`[AI] New action after blockage: ${validatedCommand.type}`);
                         await this.executeAICommand(validatedCommand, character);
                         return;
                     }
                 }
             } else if (blockage.type === 'wall') {
-                console.log('[AI] Path blocked by wall/obstacle');
+                // DEBUG: console.log('[AI] Path blocked by wall/obstacle');
             }
 
             // If no alternative found, end turn
@@ -962,7 +962,7 @@ export class AIController extends EventBus<
         const cellsToMove = Math.min(path.length, maxCellsToMove);
 
         if (cellsToMove === 0) {
-            console.log('[AI] Not enough action points to move');
+            // DEBUG: console.log('[AI] Not enough action points to move');
             if (!this.isProcessingMultipleCharacters) {
                 this.endAITurn();
             }
@@ -973,7 +973,7 @@ export class AIController extends EventBus<
         const moveToIndex = cellsToMove - 1; // -1 because array is 0-indexed
         const moveToDest = path[moveToIndex];
 
-        console.log(`[AI] Moving ${cellsToMove} cells toward target (${path.length} total cells to target)`);
+        // DEBUG: console.log(`[AI] Moving ${cellsToMove} cells toward target (${path.length} total cells to target)`);
 
         // Directly set the character's path to move them
         // This will trigger the animation system to move the character
@@ -1010,7 +1010,7 @@ export class AIController extends EventBus<
 
                 // If we haven't reached the target and still have action points, continue in next loop
                 if (cellsToMove < path.length) {
-                    console.log('[AI] Will continue movement in next action loop');
+                    // DEBUG: console.log('[AI] Will continue movement in next action loop');
                     // ongoingMovement is already set, so next loop will continue
                 } else {
                     this.ongoingMovement = undefined;
@@ -1031,7 +1031,7 @@ export class AIController extends EventBus<
         const attackCmd = command as AttackCommand;
         const chars = attackCmd.characters;
         if (!chars || !chars[0]) {
-            console.log('[AI] ExecuteAttack - No characters in command');
+            // DEBUG: console.log('[AI] ExecuteAttack - No characters in command');
             return;
         }
         const attackData = chars[0];
@@ -1104,7 +1104,7 @@ export class AIController extends EventBus<
                 const hasLineOfSight = this.checkLineOfSight(character.position, targetChar.position);
 
                 if (!hasLineOfSight) {
-                    console.log(`[AI] No line of sight to ${targetChar.name}, moving closer instead`);
+                    // DEBUG: console.log(`[AI] No line of sight to ${targetChar.name}, moving closer instead`);
                     // Move closer to target instead of shooting
                     await this.executeMovement({
                         type: 'movement',
@@ -1440,7 +1440,7 @@ export class AIController extends EventBus<
                     }
                     
                     // Start AI-to-AI conversation
-                    console.log(`[AI] Starting AI-to-AI conversation between ${speaker.name} and ${targetChar.name}`);
+                    // DEBUG: console.log(`[AI] Starting AI-to-AI conversation between ${speaker.name} and ${targetChar.name}`);
                     
                     // Show the popup for the conversation
                     this.dispatch(UpdateStateEvent.uiPopup, {
@@ -1491,13 +1491,12 @@ export class AIController extends EventBus<
                 // For conversations, ignore characters blocking - only walls should block speech
                 const hasLineOfSight = this.checkLineOfSight(speaker.position, humanChar.position, true);
 
-                // Debug logging
-                console.log(`[AI] Line of sight check from ${speaker.name} to ${humanChar.name}:`, {
-                    distance: distance.toFixed(2),
-                    hasLineOfSight,
-                    speakerPos: speaker.position,
-                    humanPos: humanChar.position
-                });
+                // DEBUG: console.log(`[AI] Line of sight check from ${speaker.name} to ${humanChar.name}:`, {
+                //     distance: distance.toFixed(2),
+                //     hasLineOfSight,
+                //     speakerPos: speaker.position,
+                //     humanPos: humanChar.position
+                // });
 
                 if (distance <= 8 && distance <= viewDistance && hasLineOfSight) {
                     canTalkToAnyHuman = true;
@@ -1515,13 +1514,13 @@ export class AIController extends EventBus<
                     return distToHuman < distToNearest ? human : nearest;
                 });
 
-                const distance = this.getDistance(speaker.position, nearestHuman.position);
+                // const distance = this.getDistance(speaker.position, nearestHuman.position);
                 // For conversations, ignore characters blocking - only walls should block speech
                 const hasLineOfSight = this.checkLineOfSight(speaker.position, nearestHuman.position, true);
-                const reason = !hasLineOfSight ? 'no line of sight (wall blocking)' :
-                    distance > 15 ? 'out of view range' :
-                        'too far to speak';
-                console.log(`[AI]   → Cannot speak (${reason}), moving closer`);
+                // const reason = !hasLineOfSight ? 'no line of sight (wall blocking)' :
+                //     distance > 15 ? 'out of view range' :
+                //         'too far to speak';
+                // DEBUG: console.log(`[AI]   → Cannot speak (${reason}), moving closer`);
 
                 // If blocked by walls, find a position with line of sight
                 let targetLocation = nearestHuman.name;
@@ -1537,10 +1536,10 @@ export class AIController extends EventBus<
                         const bestPos = goodPositions[0];
                         if (bestPos) {
                             targetLocation = `${bestPos.x},${bestPos.y}`;
-                            console.log(`[AI]   → Found position with line of sight at ${targetLocation}`);
+                            // DEBUG: console.log(`[AI]   → Found position with line of sight at ${targetLocation}`);
                         }
                     } else {
-                        console.log(`[AI]   → No positions with line of sight found, moving directly toward target`);
+                        // DEBUG: console.log(`[AI]   → No positions with line of sight found, moving directly toward target`);
                     }
                 }
 
@@ -1556,7 +1555,7 @@ export class AIController extends EventBus<
                 // Check if we've already tried to move for this speech too many times
                 const attempts = this.speechMovementAttempts.get(character.name) || 0;
                 if (attempts >= 3) {
-                    console.log(`[AI]   → Gave up trying to speak after ${attempts} movement attempts`);
+                    // DEBUG: console.log(`[AI]   → Gave up trying to speak after ${attempts} movement attempts`);
                     this.speechMovementAttempts.delete(character.name);
                     this.pendingSpeechCommands.delete(character.name);
                     return;
@@ -1641,8 +1640,8 @@ export class AIController extends EventBus<
         }
 
         // If not close enough or can't find characters, just log and end turn
-        console.log('[AI] ExecuteSpeech - Cannot talk, characters too far or not found');
-        console.log(`[AI] ${source} wants to say:`, speechCmd.content);
+        // DEBUG: console.log('[AI] ExecuteSpeech - Cannot talk, characters too far or not found');
+        // DEBUG: console.log(`[AI] ${source} wants to say:`, speechCmd.content);
 
         // Record the attempt
         this.contextBuilder.recordEvent({
@@ -1896,7 +1895,7 @@ export class AIController extends EventBus<
     }
 
     private async executeStorylineMapGeneration(): Promise<void> {
-        console.log('[AIController] Executing storyline map generation');
+        // DEBUG: console.log('[AIController] Executing storyline map generation');
 
         try {
             // Get current story state
@@ -1910,14 +1909,14 @@ export class AIController extends EventBus<
             );
 
             if (mapResponse && typeof mapResponse === 'object' && 'type' in mapResponse) {
-                console.log('[AIController] Generated map command from storyline');
+                // DEBUG: console.log('[AIController] Generated map command from storyline');
 
                 // Execute the map command
                 const validatedCommand = this.commandParser.validate(mapResponse);
                 if (validatedCommand && validatedCommand.type === 'map') {
                     const storyStateForMap = storyState ? JSON.parse(JSON.stringify(storyState)) as IStoryState : undefined;
                     await this.storyExecutor.executeMapCommand(validatedCommand as MapCommand, storyStateForMap);
-                    console.log('[AIController] Map generation complete');
+                    // DEBUG: console.log('[AIController] Map generation complete');
                 } else {
                     console.error('[AIController] Invalid map command generated');
                 }
@@ -1937,7 +1936,7 @@ export class AIController extends EventBus<
             // Initialize with current story state if available
             if (this.state?.story) {
                 worldState.initialize(this.state.story);
-                console.log('[AI] WorldState initialized');
+                // DEBUG: console.log('[AI] WorldState initialized');
             }
         } catch (error) {
             console.error('[AI] Error initializing WorldState:', error);
@@ -2073,13 +2072,13 @@ export class AIController extends EventBus<
     public enableAI(): void {
         // Enable AI processing
         this.aiEnabled = true;
-        console.log('AI Controller enabled');
+        // DEBUG: console.log('AI Controller enabled');
     }
 
     public disableAI(): void {
         // Disable AI processing (for testing or manual control)
         this.aiEnabled = false;
-        console.log('AI Controller disabled');
+        // DEBUG: console.log('AI Controller disabled');
     }
 
     public isAIEnabled(): boolean {
@@ -2088,12 +2087,12 @@ export class AIController extends EventBus<
 
     public enableTacticalSystem(): void {
         this.useTacticalSystem = true;
-        console.log('[AI] Tactical system ENABLED - will use local tactical executor for follow-up combat actions');
+        // DEBUG: console.log('[AI] Tactical system ENABLED - will use local tactical executor for follow-up combat actions');
     }
 
     public disableTacticalSystem(): void {
         this.useTacticalSystem = false;
-        console.log('[AI] Tactical system DISABLED - will always use AI endpoint for all decisions');
+        // DEBUG: console.log('[AI] Tactical system DISABLED - will always use AI endpoint for all decisions');
     }
 
     /**
@@ -2101,20 +2100,20 @@ export class AIController extends EventBus<
      * Requests the AI to generate initial map, characters, and narrative setup
      */
     public async initializeStoryFromOrigin(): Promise<void> {
-        console.log('[AI] initializeStoryFromOrigin called');
+        // DEBUG: console.log('[AI] initializeStoryFromOrigin called');
 
         if (!this.state) {
             console.error('[AI] Cannot initialize story - no state available');
             return;
         }
 
-        console.log('[AI] State exists, checking story...');
+        // DEBUG: console.log('[AI] State exists, checking story...');
         const storyState = this.state.story;
-        console.log('[AI] Story state:', {
-            hasStory: !!storyState,
-            hasSelectedOrigin: !!storyState?.selectedOrigin,
-            originName: storyState?.selectedOrigin?.name
-        });
+        // DEBUG: console.log('[AI] Story state:', {
+        //     hasStory: !!storyState,
+        //     hasSelectedOrigin: !!storyState?.selectedOrigin,
+        //     originName: storyState?.selectedOrigin?.name
+        // });
 
         if (!storyState?.selectedOrigin) {
             console.error('[AI] Cannot initialize story - no origin selected');
@@ -2122,13 +2121,13 @@ export class AIController extends EventBus<
             return;
         }
 
-        console.log('[AI] Initializing story from origin:', storyState.selectedOrigin.name);
-        console.log('[AI] Origin details:', {
-            id: storyState.selectedOrigin.id,
-            nameES: storyState.selectedOrigin.nameES,
-            startingLocation: storyState.selectedOrigin.startingLocation,
-            traits: storyState.selectedOrigin.specialTraits
-        });
+        // DEBUG: console.log('[AI] Initializing story from origin:', storyState.selectedOrigin.name);
+        // DEBUG: console.log('[AI] Origin details:', {
+        //     id: storyState.selectedOrigin.id,
+        //     nameES: storyState.selectedOrigin.nameES,
+        //     startingLocation: storyState.selectedOrigin.startingLocation,
+        //     traits: storyState.selectedOrigin.specialTraits
+        // });
 
         try {
             // Create a non-readonly copy of the origin for the API call
@@ -2169,7 +2168,7 @@ export class AIController extends EventBus<
             };
 
             // Request story initialization from AI
-            console.log('[AI] Calling AIGameEngineService.requestStoryInitialization...');
+            // DEBUG: console.log('[AI] Calling AIGameEngineService.requestStoryInitialization...');
             const language = this.state?.language || 'es';
             const response = await this.gameEngineService.requestStoryInitialization(
                 originCopy,
@@ -2177,12 +2176,12 @@ export class AIController extends EventBus<
                 language as LanguageCode
             );
 
-            console.log('[AI] Response received:', {
-                hasResponse: !!response,
-                hasCommands: !!response?.commands,
-                commandCount: response?.commands?.length || 0,
-                hasNarrative: !!response?.narrative
-            });
+            // DEBUG: console.log('[AI] Response received:', {
+            //     hasResponse: !!response,
+            //     hasCommands: !!response?.commands,
+            //     commandCount: response?.commands?.length || 0,
+            //     hasNarrative: !!response?.narrative
+            // });
 
             if (!response) {
                 console.error('[AI] Failed to get story initialization response');
@@ -2192,12 +2191,12 @@ export class AIController extends EventBus<
             // Execute the initialization commands
             // These should include map generation, character spawning, and initial narrative
             if (response.commands && Array.isArray(response.commands)) {
-                console.log('[AI] Executing story initialization commands:', response.commands.length);
+                // DEBUG: console.log('[AI] Executing story initialization commands:', response.commands.length);
 
                 for (const command of response.commands) {
                     const validatedCommand = this.commandParser.validate(command);
                     if (validatedCommand) {
-                        console.log('[AI] Executing initialization command:', validatedCommand.type);
+                        // DEBUG: console.log('[AI] Executing initialization command:', validatedCommand.type);
 
                         // Execute commands without a specific character context
                         // These are story-level commands like map generation
@@ -2243,7 +2242,7 @@ export class AIController extends EventBus<
 
             // If there's an initial narrative message, display it
             if (response.narrative) {
-                console.log('[AI] Initial narrative received:', response.narrative);
+                // DEBUG: console.log('[AI] Initial narrative received:', response.narrative);
 
                 // Show the narrative as a conversation from the narrator
                 // Use empty answers array to show close button instead of continue
@@ -2255,10 +2254,10 @@ export class AIController extends EventBus<
                     action: undefined
                 });
             } else {
-                console.log('[AI] No narrative text in response');
+                // DEBUG: console.log('[AI] No narrative text in response');
             }
 
-            console.log('[AI] Story initialization complete');
+            // DEBUG: console.log('[AI] Story initialization complete');
 
         } catch (error) {
             console.error('[AI] Error initializing story:', error);

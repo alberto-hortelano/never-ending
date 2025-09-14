@@ -130,7 +130,12 @@ export default class Board extends Component {
     });
     
     const duration = performance.now() - startTime;
-    console.log(`[Board] Created ${totalCells} cells (${dimensions.width}x${dimensions.height}) in ${duration.toFixed(1)}ms`);
+    // DEBUG: Cell creation performance
+    // console.log(`[Board] Created ${totalCells} cells (${dimensions.width}x${dimensions.height}) in ${duration.toFixed(1)}ms`);
+
+    // Prevent unused variable warnings
+    void totalCells;
+    void duration;
   }
 
 

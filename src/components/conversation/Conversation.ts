@@ -35,7 +35,8 @@ export class Conversation extends Component {
     }
 
     override async connectedCallback() {
-        console.log('[Conversation] connectedCallback called');
+        // DEBUG: Component initialization
+        // console.log('[Conversation] connectedCallback called');
         const root = await super.connectedCallback();
         if (!root) {
             console.error('[Conversation] No shadow root returned from super.connectedCallback');
@@ -52,13 +53,14 @@ export class Conversation extends Component {
         this.freeTextInput = root.querySelector('.free-text-input') as HTMLInputElement;
         this.freeTextSubmit = root.querySelector('.free-text-submit') as HTMLButtonElement;
 
-        console.log('[Conversation] DOM elements found:', {
-            contentElement: !!this.contentElement,
-            answersElement: !!this.answersElement,
-            loadingElement: !!this.loadingElement,
-            freeTextInput: !!this.freeTextInput,
-            freeTextSubmit: !!this.freeTextSubmit
-        });
+        // DEBUG: DOM element validation
+        // console.log('[Conversation] DOM elements found:', {
+        //     contentElement: !!this.contentElement,
+        //     answersElement: !!this.answersElement,
+        //     loadingElement: !!this.loadingElement,
+        //     freeTextInput: !!this.freeTextInput,
+        //     freeTextSubmit: !!this.freeTextSubmit
+        // });
 
         // Setup navigation buttons
         this.setupNavigationButtons(root);
@@ -73,7 +75,8 @@ export class Conversation extends Component {
             this.updateTranslations();
         });
 
-        console.log('[Conversation] Component initialization complete');
+        // DEBUG: Component initialization complete
+        // console.log('[Conversation] Component initialization complete');
         return root;
     }
 
@@ -81,47 +84,56 @@ export class Conversation extends Component {
         const prevButton = root.querySelector('.nav-previous') as HTMLButtonElement;
         const nextButton = root.querySelector('.nav-next') as HTMLButtonElement;
 
-        console.log('[Conversation] Setting up navigation buttons:', { prevButton: !!prevButton, nextButton: !!nextButton });
+        // DEBUG: Navigation button setup
+        // console.log('[Conversation] Setting up navigation buttons:', { prevButton: !!prevButton, nextButton: !!nextButton });
 
         if (prevButton) {
             prevButton.addEventListener('click', () => {
-                console.log('[Conversation] Previous button clicked');
+                // DEBUG: Previous button navigation
+                // console.log('[Conversation] Previous button clicked');
                 this.navigateToPrevious();
             });
         }
 
         if (nextButton) {
             nextButton.addEventListener('click', () => {
-                console.log('[Conversation] Next button clicked');
+                // DEBUG: Next button navigation
+                // console.log('[Conversation] Next button clicked');
                 this.navigateToNext();
             });
         }
     }
 
     private setupEventListeners() {
-        console.log('[Conversation] Setting up event listeners');
+        // DEBUG: Event listener setup
+        // console.log('[Conversation] Setting up event listeners');
 
         this.listen(ConversationEvent.update, (data: ConversationEventsMap[ConversationEvent.update]) => {
-            console.log('[Conversation] Received update event:', data);
+            // DEBUG: Conversation update received
+            // console.log('[Conversation] Received update event:', data);
             this.updateConversation(data);
         });
 
         this.listen(ConversationEvent.error, (error: ConversationEventsMap[ConversationEvent.error]) => {
-            console.log('[Conversation] Received error event:', error);
+            // DEBUG: Conversation error received
+            // console.log('[Conversation] Received error event:', error);
             this.showError(error);
         });
 
         // Listen for AI-to-AI exchanges
         this.listen(ConversationEvent.aiExchange, (data: AIExchangeData) => {
-            console.log('[Conversation] Received AI exchange:', data);
+            // DEBUG: AI exchange received
+            // console.log('[Conversation] Received AI exchange:', data);
             this.handleAIExchange(data);
         });
 
-        console.log('[Conversation] Event listeners setup complete');
+        // DEBUG: Event listeners setup complete
+        // console.log('[Conversation] Event listeners setup complete');
     }
 
     private updateConversation(data: ConversationUpdateData, isHistorical = false) {
-        console.log('[Conversation] updateConversation called with:', { data, isHistorical });
+        // DEBUG: Updating conversation display
+        // console.log('[Conversation] updateConversation called with:', { data, isHistorical });
 
         if (!this.contentElement || !this.answersElement) {
             console.error('[Conversation] Missing content or answers element:', {
@@ -135,7 +147,8 @@ export class Conversation extends Component {
         if (this.loadingElement) {
             this.loadingElement.style.display = 'none';
         } else {
-            console.warn('[Conversation] No loading element found');
+            // DEBUG: Missing loading element
+            // console.warn('[Conversation] No loading element found');
         }
 
         // Add to history if this is a new conversation update
@@ -144,7 +157,8 @@ export class Conversation extends Component {
             this.conversationHistory.push(turn);
             this.currentHistoryIndex = this.conversationHistory.length - 1;
             this.updateNavigationButtons();
-            console.log('[Conversation] Added to history, current index:', this.currentHistoryIndex);
+            // DEBUG: Added to conversation history
+            // console.log('[Conversation] Added to history, current index:', this.currentHistoryIndex);
         }
 
         // Clear previous content
@@ -250,7 +264,8 @@ export class Conversation extends Component {
                 closeButton.addEventListener('click', () => {
                     // If there's a pending action, execute it before closing
                     if (data.action) {
-                        console.log('[Conversation] Executing action on close:', data.action);
+                        // DEBUG: Executing action on conversation close
+                        // console.log('[Conversation] Executing action on close:', data.action);
                         this.dispatchEvent(new CustomEvent('storyline-action', {
                             detail: { action: data.action, accepted: true },
                             bubbles: true
@@ -323,7 +338,8 @@ export class Conversation extends Component {
     }
 
     private handleActionAnswer(answer: string, action: string | undefined, accepted: boolean) {
-        console.log('[Conversation] handleActionAnswer:', { answer, action, accepted });
+        // DEBUG: Action answer handling
+        // console.log('[Conversation] handleActionAnswer:', { answer, action, accepted });
 
         // Store the selected answer in the current turn
         if (this.currentHistoryIndex >= 0 && this.currentHistoryIndex < this.conversationHistory.length) {
@@ -346,7 +362,8 @@ export class Conversation extends Component {
 
         // If action was accepted, dispatch event to execute it
         if (accepted && action) {
-            console.log('[Conversation] User accepted action:', action);
+            // DEBUG: User accepted action
+            // console.log('[Conversation] User accepted action:', action);
 
             // Get the current conversation data to include actionData
             const currentData = this.conversationHistory[this.currentHistoryIndex]?.data;
@@ -365,7 +382,8 @@ export class Conversation extends Component {
                 }));
             }, 500);
         } else {
-            console.log('[Conversation] User declined action:', action);
+            // DEBUG: User declined action
+            // console.log('[Conversation] User declined action:', action);
             // Continue conversation without executing action
             this.dispatch(ConversationEvent.continue, answer);
             this.showLoading();
@@ -451,11 +469,13 @@ export class Conversation extends Component {
     }
 
     private navigateToPrevious() {
-        console.log('[Conversation] navigateToPrevious called, currentIndex:', this.currentHistoryIndex, 'historyLength:', this.conversationHistory.length);
+        // DEBUG: Navigate to previous conversation
+        // console.log('[Conversation] navigateToPrevious called, currentIndex:', this.currentHistoryIndex, 'historyLength:', this.conversationHistory.length);
         if (this.currentHistoryIndex > 0) {
             this.currentHistoryIndex--;
             const turn = this.conversationHistory[this.currentHistoryIndex];
-            console.log('[Conversation] Moving to index:', this.currentHistoryIndex, 'turn:', turn);
+            // DEBUG: Moving to previous conversation turn
+            // console.log('[Conversation] Moving to index:', this.currentHistoryIndex, 'turn:', turn);
             if (turn) {
                 // Pass false for isHistorical when navigating to the most recent conversation
                 const isHistorical = this.currentHistoryIndex < this.conversationHistory.length - 1;
@@ -466,11 +486,13 @@ export class Conversation extends Component {
     }
 
     private navigateToNext() {
-        console.log('[Conversation] navigateToNext called, currentIndex:', this.currentHistoryIndex, 'historyLength:', this.conversationHistory.length);
+        // DEBUG: Navigate to next conversation
+        // console.log('[Conversation] navigateToNext called, currentIndex:', this.currentHistoryIndex, 'historyLength:', this.conversationHistory.length);
         if (this.currentHistoryIndex < this.conversationHistory.length - 1) {
             this.currentHistoryIndex++;
             const turn = this.conversationHistory[this.currentHistoryIndex];
-            console.log('[Conversation] Moving to index:', this.currentHistoryIndex, 'turn:', turn);
+            // DEBUG: Moving to next conversation turn
+            // console.log('[Conversation] Moving to index:', this.currentHistoryIndex, 'turn:', turn);
             if (turn) {
                 // Pass false for isHistorical when navigating to the most recent conversation
                 const isHistorical = this.currentHistoryIndex < this.conversationHistory.length - 1;
@@ -539,7 +561,8 @@ export class Conversation extends Component {
     }
 
     private handleAIExchange(data: AIExchangeData) {
-        console.log('[Conversation] Handling AI exchange:', data);
+        // DEBUG: Handling AI exchange
+        // console.log('[Conversation] Handling AI exchange:', data);
 
         // Set AI-to-AI mode
         this.isAIToAIMode = true;

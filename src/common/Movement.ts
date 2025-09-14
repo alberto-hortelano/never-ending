@@ -153,7 +153,7 @@ export class Movement extends EventBus<
             // Only log if very slow
             const duration = performance.now() - start;
             if (duration > 100) {
-                console.log(`[Movement] onCellMouseEnter slow: ${duration.toFixed(1)}ms`);
+                console.warn(`[Movement] onCellMouseEnter slow: ${duration.toFixed(1)}ms`);
             }
         }
     }
@@ -481,7 +481,7 @@ export class Movement extends EventBus<
         // Only log if very slow
         const duration = performance.now() - start;
         if (duration > 100) {
-            console.log(`[Movement] showPathPreview slow: ${duration.toFixed(1)}ms`);
+            console.warn(`[Movement] showPathPreview slow: ${duration.toFixed(1)}ms`);
         }
     }
     private clearPathPreview() {

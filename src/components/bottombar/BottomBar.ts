@@ -75,28 +75,34 @@ export default class BottomBar extends Component {
 
         // Listen for conversation events
         this.listen(ConversationEvent.start, (data: ConversationEventsMap[ConversationEvent.start]) => {
-            console.log('[BottomBar] Received ConversationEvent.start:', data);
+            // DEBUG: Conversation start event
+            // console.log('[BottomBar] Received ConversationEvent.start:', data);
+            void data; // Prevent unused variable warning
             this.showConversation();
         });
 
         this.listen(ConversationEvent.update, (data: ConversationEventsMap[ConversationEvent.update]) => {
-            console.log('[BottomBar] Received ConversationEvent.update:', data);
+            // DEBUG: Conversation update event
+            // console.log('[BottomBar] Received ConversationEvent.update:', data);
             lastConversationData = data;
 
             // If conversation is not visible yet, show it
             if (!this.isConversationVisible) {
-                console.log('[BottomBar] Conversation not visible, showing it now');
+                // DEBUG: Showing conversation for first time
+                // console.log('[BottomBar] Conversation not visible, showing it now');
                 this.showConversation();
 
                 // Re-dispatch the update event after a short delay to ensure the component is ready
                 setTimeout(() => {
                     if (lastConversationData) {
-                        console.log('[BottomBar] Re-dispatching conversation update to newly created component');
+                        // DEBUG: Re-dispatching conversation update
+                        // console.log('[BottomBar] Re-dispatching conversation update to newly created component');
                         this.dispatch(ConversationEvent.update, lastConversationData);
                     }
                 }, 100);
             } else {
-                console.log('[BottomBar] Conversation already visible');
+                // DEBUG: Conversation already visible
+                // console.log('[BottomBar] Conversation already visible');
             }
         });
     }
@@ -196,7 +202,8 @@ export default class BottomBar extends Component {
     }
 
     private showConversation() {
-        console.log('[BottomBar] showConversation called');
+        // DEBUG: Showing conversation section
+        // console.log('[BottomBar] showConversation called');
         if (!this.conversationSection) {
             console.error('[BottomBar] No conversation section found!');
             return;
@@ -220,7 +227,8 @@ export default class BottomBar extends Component {
             this.conversationComponent.addEventListener('storyline-action', (event: Event) => {
                 const customEvent = event as CustomEvent;
                 const { action, actionData, accepted } = customEvent.detail;
-                console.log('[BottomBar] Received storyline-action event:', { action, actionData, accepted });
+                // DEBUG: Storyline action handling
+                // console.log('[BottomBar] Received storyline-action event:', { action, actionData, accepted });
 
                 if (accepted) {
                     // Dispatch event for AIController to handle the action
@@ -228,7 +236,8 @@ export default class BottomBar extends Component {
                 }
             });
         } else {
-            console.error('[BottomBar] Conversation component already exists');
+            // DEBUG: Conversation component already exists
+            // console.error('[BottomBar] Conversation component already exists');
         }
 
         // Show the conversation section
@@ -323,7 +332,8 @@ export default class BottomBar extends Component {
     }
 
     private showInventory(characterName: ControlsEventsMap[ControlsEvent.showInventory]) {
-        console.log('[BottomBar] showInventory called for:', characterName);
+        // DEBUG: Showing inventory section
+        // console.log('[BottomBar] showInventory called for:', characterName);
         if (!this.inventorySection) {
             console.error('[BottomBar] No inventory section found!');
             return;

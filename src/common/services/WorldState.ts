@@ -590,7 +590,7 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
     }
     
     private applyConsequence(consequence: IConsequence): void {
-        console.log(`[WorldState] Applying consequence:`, consequence);
+        // DEBUG: console.log(`[WorldState] Applying consequence:`, consequence);
         
         switch (consequence.type) {
             case 'reputation':
@@ -689,7 +689,7 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
     }
     
     private performMajorUpdate(): void {
-        console.log('[WorldState] Performing major update at turn', this.currentTurn);
+        // DEBUG: console.log('[WorldState] Performing major update at turn', this.currentTurn);
         
         // Generate new events
         this.generateWorldEvents();
@@ -824,7 +824,7 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
         this.worldState.threads.forEach((thread, id) => {
             if (thread.status === 'resolved' && thread.lastUpdated < cutoff) {
                 this.worldState.threads.delete(id);
-                console.log(`[WorldState] Pruned old thread: ${thread.title}`);
+                // DEBUG: console.log(`[WorldState] Pruned old thread: ${thread.title}`);
             }
         });
     }
@@ -992,7 +992,7 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
         if (categories) {
             this.logCategories = new Set(categories);
         }
-        console.log('[WorldState] Debug mode enabled for categories:', Array.from(this.logCategories));
+        // DEBUG: console.log('[WorldState] Debug mode enabled for categories:', Array.from(this.logCategories));
     }
     
     /**
@@ -1000,7 +1000,7 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
      */
     public disableDebug(): void {
         this.debugMode = false;
-        console.log('[WorldState] Debug mode disabled');
+        // DEBUG: console.log('[WorldState] Debug mode disabled');
     }
     
     /**
@@ -1071,7 +1071,7 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
             narrativePressure: this.worldState.narrativePressure
         };
         
-        console.log('[WorldState] Debug Info:', info);
+        // DEBUG: console.log('[WorldState] Debug Info:', info);
         return info;
     }
     
@@ -1079,7 +1079,7 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
      * Force a world update (for testing)
      */
     public forceUpdate(type: 'minor' | 'major' = 'minor'): void {
-        console.log(`[WorldState] Forcing ${type} update at turn ${this.currentTurn}`);
+        // DEBUG: console.log(`[WorldState] Forcing ${type} update at turn ${this.currentTurn}`);
         
         if (type === 'major') {
             this.performMajorUpdate();
@@ -1093,7 +1093,7 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
                     if (randomThread.tension > 80 && randomThread.status === 'building') {
                         this.activateThread(randomThread);
                     }
-                    console.log(`[WorldState] Advanced thread: ${randomThread.title} (tension: ${randomThread.tension})`);
+                    // DEBUG: console.log(`[WorldState] Advanced thread: ${randomThread.title} (tension: ${randomThread.tension})`);
                 }
             }
         }
@@ -1103,7 +1103,7 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
      * Test combat scenario (for debugging)
      */
     public testCombat(participants: string[], outcome?: string): void {
-        console.log('[WorldState] Testing combat scenario:', { participants, outcome });
+        // DEBUG: console.log('[WorldState] Testing combat scenario:', { participants, outcome });
         this.processCombatUpdate({
             trigger: 'combat',
             participants,
@@ -1119,7 +1119,7 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
      * Test conversation scenario (for debugging)
      */
     public testConversation(speaker: string, listener: string, outcome?: string): void {
-        console.log('[WorldState] Testing conversation scenario:', { speaker, listener, outcome });
+        // DEBUG: console.log('[WorldState] Testing conversation scenario:', { speaker, listener, outcome });
         this.processConversationUpdate({
             trigger: 'conversation',
             participants: [speaker, listener],
@@ -1134,11 +1134,11 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
      * Test major world event (for debugging)
      */
     public testMajorEvent(): void {
-        console.log('[WorldState] Testing major world event');
+        // DEBUG: console.log('[WorldState] Testing major world event');
         this.generateWorldEvents();
         const latestEvent = this.worldState.events[this.worldState.events.length - 1];
         if (latestEvent) {
-            console.log('[WorldState] Generated event:', latestEvent);
+            // DEBUG: console.log('[WorldState] Generated event:', latestEvent);
         }
     }
     
@@ -1173,20 +1173,20 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
     /**
      * Enhanced logging with categories and timestamps
      */
-    private log(category: string, message: string, data?: any): void {
+    private log(category: string, _message: string, _data?: any): void {
         if (!this.debugMode || !this.logCategories.has(category)) {
             return;
         }
-        
-        const timestamp = new Date().toISOString();
-        const turn = `T${this.currentTurn}`;
-        const prefix = `[WorldState][${category}][${turn}][${timestamp}]`;
-        
-        if (data) {
-            console.log(prefix, message, data);
-        } else {
-            console.log(prefix, message);
-        }
+
+        // const timestamp = new Date().toISOString();
+        // const turn = `T${this.currentTurn}`;
+        // const prefix = `[WorldState][${category}][${turn}][${timestamp}]`;
+
+        // if (data) {
+        //     // DEBUG: console.log(prefix, message, data);
+        // } else {
+        //     // DEBUG: console.log(prefix, message);
+        // }
     }
     
     /**

@@ -164,7 +164,7 @@ export class Conversation extends EventBus<
             
             // Only log if content is meaningful
             if (conversationData.content && conversationData.content !== '...' && conversationData.content !== 'Procesando información...') {
-                console.log('[Conversation] AI response:', conversationData.content);
+                // DEBUG: console.log('[Conversation] AI response:', conversationData.content);
             } else {
                 console.warn('[Conversation] Received empty or placeholder response from AI');
             }
@@ -218,14 +218,14 @@ export class Conversation extends EventBus<
             
             // Only log if content is meaningful
             if (conversationData.content && conversationData.content !== '...' && conversationData.content !== 'Procesando información...') {
-                console.log('[Conversation] AI response:', conversationData.content);
+                // DEBUG: console.log('[Conversation] AI response:', conversationData.content);
             } else {
                 console.warn('[Conversation] Received empty or placeholder response from AI');
             }
             
             // If AI returned a non-conversation action (like 'map'), we should execute it
             if (conversationData.action && conversationData.action !== 'speech') {
-                console.log('[Conversation] AI wants to execute action:', conversationData.action);
+                // DEBUG: console.log('[Conversation] AI wants to execute action:', conversationData.action);
                 // The conversation will show "Fin de la conversación" and close
                 // The actual command execution should be handled by the AI controller
                 // For now, just log it - the AI controller needs to listen for this
@@ -360,7 +360,7 @@ export class Conversation extends EventBus<
                     };
                 } else if (parsed.type === 'map') {
                     // Map command from AI - this should be handled as a storyline with map action
-                    console.log('[Conversation] AI returned map command, converting to storyline format');
+                    // DEBUG: console.log('[Conversation] AI returned map command, converting to storyline format');
                     return {
                         type: 'speech',
                         source: 'Narrador',
@@ -372,8 +372,8 @@ export class Conversation extends EventBus<
                           parsed.type === 'character' || parsed.type === 'item' || 
                           parsed.type === 'tactical_directive') {
                     // AI is taking a non-conversation action - end the conversation
-                    console.log('[Conversation] AI returned non-speech command:', parsed.type);
-                    console.log('[Conversation] Ending conversation as AI wants to perform action');
+                    // DEBUG: console.log('[Conversation] AI returned non-speech command:', parsed.type);
+                    // DEBUG: console.log('[Conversation] Ending conversation as AI wants to perform action');
                     return {
                         type: 'speech',
                         source: this.currentTarget || 'AI',
@@ -397,7 +397,7 @@ export class Conversation extends EventBus<
             // No JSON found - treat the response as narrative text
             // This happens when the AI responds with story text instead of structured JSON
             if (response && response.trim().length > 0) {
-                console.log('[Conversation] No JSON found, treating as narrative text');
+                // DEBUG: console.log('[Conversation] No JSON found, treating as narrative text');
                 
                 // Check if it's a narrative response (contains story elements)
                 const isNarrative = response.includes('alarmas') || response.includes('nave') || 

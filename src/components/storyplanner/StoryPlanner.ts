@@ -303,8 +303,9 @@ export class StoryPlannerComponent extends Component {
     
     private async refreshStoryPlan() {
         // This would typically call the server to get an updated story plan
-        console.log('[StoryPlanner] Refreshing story plan...');
-        
+        // DEBUG: Story plan refresh
+        // console.log('[StoryPlanner] Refreshing story plan...');
+
         // For now, just re-display current plan
         if (this.currentPlan) {
             this.updateDisplay(this.currentPlan);

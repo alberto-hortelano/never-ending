@@ -98,14 +98,17 @@ export default class Door extends Component {
 
             if (door.type === 'transition' && door.transition) {
                 // Show transition description
-                console.log('Transition door:', door.transition.description);
+                // DEBUG: Transition door activated
+                // console.log('Transition door:', door.transition.description);
                 // This would trigger a storyline event or map transition
             } else if (door.isLocked) {
                 // Show locked message
-                console.log('Door is locked. Requires:', door.keyRequired);
+                // DEBUG: Attempted to open locked door
+                // console.log('Door is locked. Requires:', door.keyRequired);
             } else {
                 // Toggle regular door
-                console.log('Toggling door:', doorId);
+                // DEBUG: Door toggling
+                // console.log('Toggling door:', doorId);
             }
         }
     }
