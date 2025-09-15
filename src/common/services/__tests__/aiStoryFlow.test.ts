@@ -7,7 +7,6 @@ import { StoryCommandExecutor } from '../StoryCommandExecutor';
 describe('AI Story Flow Integration', () => {
     let conversation: Conversation;
     let state: State;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let eventBus: EventBus<any, any>;
     let mockGameEngineService: any;
     let aiController: any;

@@ -18,14 +18,14 @@ export enum GameEvent {
     aiInitializationFailed = 'GameEvent.aiInitializationFailed',
 }
 
-export interface AIInitializationProgress {
+interface AIInitializationProgress {
     stepId: string;
     status: 'pending' | 'active' | 'completed' | 'error';
     message?: string;
     error?: string;
 }
 
-export interface AIInitializationError {
+interface AIInitializationError {
     message: string;
     retryCount: number;
     maxRetries: number;

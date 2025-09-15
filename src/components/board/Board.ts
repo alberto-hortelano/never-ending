@@ -1,7 +1,8 @@
 import { StateChangeEvent, StateChangeEventsMap, GUIEvent, GUIEventsMap, UpdateStateEvent, ControlsEvent } from "../../common/events";
 import { Component } from "../Component";
 import { DragScroll } from "../../common/helpers/DragScroll";
-import { ICoord, IProjectileState, IInteractionMode } from "../../common/interfaces";
+import { ICoord, IProjectileState, IInteractionMode, ICharacter } from "../../common/interfaces";
+import type { DeepReadonly } from "../../common/helpers/types";
 import { BoardService } from "../../common/services/BoardService";
 import { ANIMATION_DURATIONS, MAIN_CHARACTER_NAME } from "../../common/constants";
 import "../projectile/Projectile";
@@ -19,7 +20,7 @@ export default class Board extends Component {
     this.dragger = new DragScroll(this);
     this.listen(StateChangeEvent.map, (newMap) => this.updateMap(newMap));
     this.listen(StateChangeEvent.characters, (characters) => {
-      const player = characters.find(c => c.name === MAIN_CHARACTER_NAME);
+      const player = characters.find((c: DeepReadonly<ICharacter>) => c.name === MAIN_CHARACTER_NAME);
       if (player) {
         this.centerScreen(player.position);
       }

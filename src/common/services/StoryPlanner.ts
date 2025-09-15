@@ -23,11 +23,6 @@ export interface StoryPlanRequest {
     language?: LanguageCode;
 }
 
-export interface StoryPlanResponse {
-    storyPlan: IStoryPlan;
-    immediateContext: IScreenContext;
-}
-
 export class StoryPlanner extends EventBus<UpdateStateEventsMap, UpdateStateEventsMap> {
     private static instance: StoryPlanner;
     private aiService: AIGameEngineService;

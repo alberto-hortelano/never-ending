@@ -60,15 +60,6 @@ export interface ItemActionData {
     }>;
 }
 
-// Map action types to their data
-export type ActionDataMap = {
-    'map': void;  // Map generation doesn't need additional data
-    'character': CharacterActionData;
-    'movement': MovementActionData;
-    'attack': AttackActionData;
-    'item': ItemActionData;
-};
-
 // Union type for all possible action data
 export type StorylineActionData = CharacterActionData | MovementActionData | AttackActionData | ItemActionData | void;
 
@@ -81,7 +72,7 @@ export interface ConversationUpdateData {
     actionData?: StorylineActionData;
 }
 
-export interface ConversationActionData {
+interface ConversationActionData {
     action: string;
     actionData?: StorylineActionData;
 }

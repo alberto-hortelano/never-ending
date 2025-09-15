@@ -1,11 +1,6 @@
 import type { IInteractionMode } from "./interfaces";
 import { EventBus, UpdateStateEvent, UpdateStateEventsMap, StateChangeEventsMap } from "./events";
 
-export interface ModeCleanupHandler {
-    mode: IInteractionMode['type'];
-    cleanup: () => void;
-}
-
 /**
  * Centralized manager for interaction mode transitions.
  * Ensures proper cleanup when switching between modes.

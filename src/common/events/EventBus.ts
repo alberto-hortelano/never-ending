@@ -24,9 +24,6 @@ export type EventsMap =
     MultiplayerEventMap &
     CustomUIEventMap;
 
-export type EventCallback<T extends TypedEvent> = (data: EventsMap[T]) => void;
-export type TypedEvent = keyof EventsMap;
-
 /**
  * A strongly‑typed EventBus.
  *
@@ -118,5 +115,3 @@ export class EventBus<ListenEvents extends Partial<EventsMap> = {}, DispatchEven
     }
 }
 
-// For testing and development only
-export const superEventBus = new EventBus<EventsMap, EventsMap>();

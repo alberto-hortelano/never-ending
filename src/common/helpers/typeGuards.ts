@@ -37,9 +37,6 @@ export function isValidAction(value: unknown): value is Action {
     return value === 'walk' || value === 'idle';
 }
 
-export function isValidLanguage(value: unknown): value is 'en' | 'es' {
-    return value === 'en' || value === 'es';
-}
 
 // Safe enum conversion with validation
 export function toRace(value: unknown): Race {
@@ -63,22 +60,10 @@ export function toAction(value: unknown): Action {
     throw new Error(`Invalid Action value: ${value}`);
 }
 
-export function toLanguage(value: unknown): 'en' | 'es' {
-    if (isValidLanguage(value)) {
-        return value;
-    }
-    throw new Error(`Invalid Language value: ${value}`);
-}
-
 // Type guard for checking if object has a property
 export function hasProperty<T extends object, K extends PropertyKey>(
     obj: T,
     key: K
 ): obj is T & Record<K, unknown> {
     return key in obj;
-}
-
-// Type guard for non-null values
-export function isNotNull<T>(value: T | null | undefined): value is T {
-    return value !== null && value !== undefined;
 }

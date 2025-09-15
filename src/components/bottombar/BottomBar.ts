@@ -8,7 +8,7 @@ import type { IInteractionMode } from '../../common/interfaces';
 import type { DeepReadonly } from '../../common/helpers/types';
 import { i18n } from "../../common/i18n/i18n";
 
-export default class BottomBar extends Component {
+class BottomBar extends Component {
     protected override hasCss = true;
     protected override hasHtml = true;
 

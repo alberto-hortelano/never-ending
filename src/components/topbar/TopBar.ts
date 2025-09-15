@@ -8,7 +8,7 @@ import { EnvironmentService } from "../../common/services/EnvironmentService";
 import "../developmentui/DevelopmentUI";
 import "../tooltip/Tooltip";
 
-export default class TopBar extends Component {
+class TopBar extends Component {
     protected override hasCss = true;
     protected override hasHtml = true;
     

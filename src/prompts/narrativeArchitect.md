@@ -284,7 +284,6 @@ Manages conversations and player decision points.
 - If `action` is present, the UI will show Accept/Reject buttons automatically
 - The application handles the button labels based on the user's language preference
 - When action is accepted, it will execute immediately (e.g., map change, character spawn)
-```
 
 ## Character Palettes
 **Player** (Always):

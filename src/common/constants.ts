@@ -10,7 +10,6 @@ export const COMPANION_DROID_NAME = 'Data';
 // Team Names
 export const PLAYER_TEAM = 'player';
 export const ENEMY_TEAM = 'enemy';
-export const NEUTRAL_TEAM = 'neutral';
 
 // Player Types
 export const HUMAN_PLAYER = 'human';

@@ -96,6 +96,7 @@ export abstract class Component extends HTMLElement {
         if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
             return Promise.resolve(new CSSStyleSheet());
         }
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore - import.meta is available at runtime
         const cssUrl = new URL(`./${this.name.toLowerCase()}/${this.name}.css`, import.meta.url).href.replace('/js/components/', '/css/components/');
         let cssPromise = Component.styleSheetCache.get(this.name);
@@ -139,6 +140,7 @@ export abstract class Component extends HTMLElement {
 
     // Helper to fetch and build an HTMLTemplateElement
     private async createTemplate(): Promise<HTMLTemplateElement> {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore - import.meta is available at runtime
         const url = new URL(`./${this.name.toLowerCase()}/${this.name}.html`, import.meta.url).href.replace('/js/components/', '/html/components/');
         const res = await fetch(url);

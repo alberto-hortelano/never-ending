@@ -176,7 +176,7 @@ export class Action extends EventBus<
 
     private findActionById(actionId: string): ActionItem | undefined {
         for (const category of Action.DEFAULT_ACTIONS) {
-            const action = category.actions.find(a => a.id === actionId);
+            const action = category.actions.find((a: ActionItem) => a.id === actionId);
             if (action) return action;
         }
         return undefined;

@@ -8,7 +8,6 @@ import { Conversation } from '../../Conversation';
 describe('Complete AI Session Simulation', () => {
     let aiController: any;
     let state: State;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let eventBus: EventBus<any, any>;
     let conversation: Conversation;
     let mockGameEngineService: jest.Mocked<AIGameEngineService>;

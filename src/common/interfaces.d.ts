@@ -336,15 +336,6 @@ export interface IMeleeModeData {
 }
 
 // Character Creation Interfaces
-export interface ICharacterCreationState {
-    isOpen: boolean;
-    currentTab: 'appearance' | 'info' | 'abilities' | 'equipment';
-    data: ICreatorData;
-    validation: ICreatorValidation;
-    availableWeapons: ISimplifiedWeapon[];
-    availableItems: ISimplifiedItem[];
-}
-
 export interface ICreatorData {
     name: string;
     race: Race;
@@ -369,7 +360,7 @@ export interface IAbilityCost {
     pickup: number;
 }
 
-export interface ICreatorValidation {
+interface ICreatorValidation {
     nameError: string;
     isWeightValid: boolean;
     isBudgetValid: boolean;
@@ -378,14 +369,14 @@ export interface ICreatorValidation {
     usedAbilityPoints: number;
 }
 
-export interface ISimplifiedWeapon {
+interface ISimplifiedWeapon {
     id: string;
     name: string;
     weight: number;
     cost: number;
 }
 
-export interface ISimplifiedItem {
+interface ISimplifiedItem {
     id: string;
     name: string;
     weight: number;

@@ -1,6 +1,6 @@
 import { ICharacter, IState, ICoord, Direction } from "../interfaces";
 
-export type NetworkEvent = 
+export type NetworkEvent =
     | ConnectEvent
     | DisconnectEvent
     | JoinRoomEvent
@@ -18,7 +18,7 @@ export interface ConnectEvent {
     playerName: string;
 }
 
-export interface DisconnectEvent {
+interface DisconnectEvent {
     playerId: string;
     reason?: string;
 }
@@ -29,7 +29,7 @@ export interface JoinRoomEvent {
     playerName: string;
 }
 
-export interface LeaveRoomEvent {
+interface LeaveRoomEvent {
     roomId: string;
     playerId: string;
 }
@@ -40,7 +40,7 @@ export interface CreateRoomEvent {
     creatorId: string;
 }
 
-export interface RoomStateEvent {
+interface RoomStateEvent {
     roomId: string;
     roomName: string;
     maxPlayers: number;
@@ -60,7 +60,7 @@ export interface PlayerActionEvent {
     timestamp: number;
 }
 
-export type PlayerAction = 
+type PlayerAction =
     | { type: 'move'; data: { characterId: string; position: ICoord; } }
     | { type: 'shoot'; data: { characterId: string; targetPosition: ICoord; weaponId: string; } }
     | { type: 'rotate'; data: { characterId: string; direction: Direction; } }
@@ -68,7 +68,7 @@ export type PlayerAction =
     | { type: 'useItem'; data: { characterId: string; itemId: string; } }
     | { type: 'updateCharacter'; data: { characterId: string; updates: Partial<ICharacter>; } };
 
-export interface SyncStateEvent {
+interface SyncStateEvent {
     roomId: string;
     state: IState;
     timestamp: number;
@@ -86,14 +86,14 @@ export interface StartGameEvent {
     initialState: IState;
 }
 
-export interface ErrorEvent {
+interface ErrorEvent {
     playerId?: string;
     roomId?: string;
     error: string;
     code: 'ROOM_FULL' | 'ROOM_NOT_FOUND' | 'INVALID_ACTION' | 'NOT_YOUR_TURN' | 'DISCONNECTED';
 }
 
-export interface RoomListEvent {
+interface RoomListEvent {
     rooms: Array<{
         id: string;
         name: string;
