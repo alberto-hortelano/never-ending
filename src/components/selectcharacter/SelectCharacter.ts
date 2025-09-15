@@ -6,7 +6,7 @@ import { CharacterService } from "../../common/services/CharacterService";
 import { i18n } from "../../common/i18n/i18n";
 import { StateChangeEvent } from "../../common/events";
 
-export interface SelectCharacterOptions {
+interface SelectCharacterOptions {
     characters: DeepReadonly<ICharacter[]>;
     excludeByName?: string;
     emptyMessage?: string;

@@ -1,7 +1,7 @@
 import { Component } from '../Component';
 import type { IOriginStory } from '../../common/interfaces';
 
-export interface LoadingStep {
+interface LoadingStep {
     id: string;
     label: string;
     status: 'pending' | 'active' | 'completed' | 'error';

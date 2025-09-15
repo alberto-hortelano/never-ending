@@ -360,29 +360,6 @@ export interface IAbilityCost {
     pickup: number;
 }
 
-interface ICreatorValidation {
-    nameError: string;
-    isWeightValid: boolean;
-    isBudgetValid: boolean;
-    currentWeight: number;
-    currentCost: number;
-    usedAbilityPoints: number;
-}
-
-interface ISimplifiedWeapon {
-    id: string;
-    name: string;
-    weight: number;
-    cost: number;
-}
-
-interface ISimplifiedItem {
-    id: string;
-    name: string;
-    weight: number;
-    cost: number;
-}
-
 export type DoorSide = 'north' | 'south' | 'east' | 'west' | 'between';
 export type DoorType = 'regular' | 'transition' | 'locked';
 
