@@ -77,6 +77,7 @@ export interface TacticalDirectiveCommand extends AICommand {
 
 export interface MapCommand extends AICommand {
     type: 'map';
+    seed?: number; // Optional seed for reproducible map generation
     palette: {
         terrain: string;
     };

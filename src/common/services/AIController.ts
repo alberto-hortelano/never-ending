@@ -770,7 +770,8 @@ export class AIController extends EventBus<
                 // Convert DeepReadonly<IStoryState> to IStoryState for story executor
                 const storyStateForMap = storyState ? JSON.parse(JSON.stringify(storyState)) as IStoryState : undefined;
                 try {
-                    await this.storyExecutor.executeMapCommand(validatedCommand as MapCommand, storyStateForMap);
+                    const mapCommand = validatedCommand as MapCommand;
+                    await this.storyExecutor.executeMapCommand(mapCommand, storyStateForMap, mapCommand.seed);
                 } catch (error) {
                     if (error instanceof CharacterPositioningError) {
                         console.error('[AI] Character positioning failed:', error.message);
@@ -1915,7 +1916,8 @@ export class AIController extends EventBus<
                 const validatedCommand = this.commandParser.validate(mapResponse);
                 if (validatedCommand && validatedCommand.type === 'map') {
                     const storyStateForMap = storyState ? JSON.parse(JSON.stringify(storyState)) as IStoryState : undefined;
-                    await this.storyExecutor.executeMapCommand(validatedCommand as MapCommand, storyStateForMap);
+                    const mapCommand = validatedCommand as MapCommand;
+                    await this.storyExecutor.executeMapCommand(mapCommand, storyStateForMap, mapCommand.seed);
                     // DEBUG: console.log('[AIController] Map generation complete');
                 } else {
                     console.error('[AIController] Invalid map command generated');

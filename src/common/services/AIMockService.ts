@@ -8,6 +8,7 @@ import {
 } from './AICommandParser';
 import type { IMessage } from '../interfaces';
 import type { GameContext } from './AIContextBuilder';
+import { SeededRandom } from '../helpers/SeededRandom';
 
 interface MockScenario {
     id: string;
@@ -34,6 +35,8 @@ export class AIMockService {
     private static instance: AIMockService;
     private currentScenario: MockScenario;
     private turnCounter: Map<string, number> = new Map();
+    private rng: SeededRandom;
+    private readonly defaultSeed = 42; // Fixed seed for reproducible mock behavior
 
     // Predefined scenarios with coherent story progression
     private readonly scenarios: MockScenario[] = [
@@ -201,6 +204,8 @@ export class AIMockService {
     ];
 
     private constructor() {
+        // Initialize with fixed seed for consistent mock responses
+        this.rng = new SeededRandom(this.defaultSeed);
         // Start with the first scenario
         this.currentScenario = JSON.parse(JSON.stringify(this.scenarios[0]));
     }
@@ -228,8 +233,8 @@ export class AIMockService {
         if (turnIndex >= this.currentScenario.turns.length) {
             // Cycle back or switch scenarios
             turnIndex = 0;
-            // Switch to next scenario
-            const nextScenarioIndex = (this.scenarios.indexOf(this.currentScenario) + 1) % this.scenarios.length;
+            // Use RNG to randomly pick next scenario for variety while maintaining reproducibility
+            const nextScenarioIndex = this.rng.nextInt(this.scenarios.length);
             this.currentScenario = JSON.parse(JSON.stringify(this.scenarios[nextScenarioIndex]));
         }
 
@@ -322,6 +327,7 @@ export class AIMockService {
         // Return a more complex tactical map for a stolen military cruiser
         const mapCommand: MapCommand = {
             type: 'map',
+            seed: this.rng.getSeed(), // Use fixed seed for consistent map generation
             palette: {
                 terrain: '#1a1a2e'  // Dark space/metal floor
             },
@@ -506,6 +512,7 @@ export class AIMockService {
      */
     public reset(): void {
         this.turnCounter.clear();
+        this.rng.reset(); // Reset RNG to ensure consistent behavior
         this.currentScenario = JSON.parse(JSON.stringify(this.scenarios[0]));
     }
 
@@ -518,5 +525,13 @@ export class AIMockService {
             this.currentScenario = JSON.parse(JSON.stringify(scenario));
             this.turnCounter.clear();
         }
+    }
+
+    /**
+     * Set a custom seed for the random number generator
+     * Useful for testing or specific mock scenarios
+     */
+    public setSeed(seed: number): void {
+        this.rng.reset(seed);
     }
 }
