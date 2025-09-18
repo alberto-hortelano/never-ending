@@ -166,7 +166,7 @@ export class AIMockService {
                                 type: 'movement',
                                 characters: [{
                                     name: 'enemy_soldier_2',
-                                    location: '20,22'  // Within map bounds
+                                    location: 'Barracks'  // Use room name instead of coordinates
                                 }]
                             } as MovementCommand
                         },
@@ -434,7 +434,7 @@ export class AIMockService {
                     name: 'enemy_patrol_leader',
                     race: 'human',
                     description: 'Líder de patrulla del Comando',
-                    location: '18,20',  // Central corridor area (within bounds)
+                    location: 'Bridge',  // Use room name instead of coordinates
                     speed: 'medium',
                     orientation: 'bottom',
                     palette: {
@@ -447,7 +447,7 @@ export class AIMockService {
                     name: 'enemy_soldier_1',
                     race: 'human',
                     description: 'Soldado del Comando',
-                    location: '22,18',  // Near engineering (within map bounds)
+                    location: 'Engine Room',  // Use room name instead of coordinates
                     speed: 'medium',
                     orientation: 'left',
                     palette: {
@@ -460,7 +460,7 @@ export class AIMockService {
                     name: 'enemy_soldier_2',
                     race: 'human',
                     description: 'Guardia del Comando',
-                    location: '15,15',  // Guarding bridge area
+                    location: 'Navigation',  // Use room name instead of coordinates
                     speed: 'slow',
                     orientation: 'right',
                     palette: {

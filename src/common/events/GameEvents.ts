@@ -16,6 +16,8 @@ export enum GameEvent {
     aiInitializationComplete = 'GameEvent.aiInitializationComplete',
     /** AI story initialization failed */
     aiInitializationFailed = 'GameEvent.aiInitializationFailed',
+    /** Combat event occurred that should be tracked in AI context */
+    combatEvent = 'GameEvent.combatEvent',
 }
 
 interface AIInitializationProgress {
@@ -32,6 +34,14 @@ interface AIInitializationError {
     canRetry: boolean;
 }
 
+export interface CombatEventData {
+    type: 'combat';
+    actor: string;
+    target?: string;
+    description: string;
+    turn: string | number;
+}
+
 export interface GameEventsMap {
     [GameEvent.play]: boolean;
     [GameEvent.characters]: DeepReadonly<IState['characters']>;
@@ -43,4 +53,5 @@ export interface GameEventsMap {
     [GameEvent.aiInitializationProgress]: AIInitializationProgress;
     [GameEvent.aiInitializationComplete]: { state: IState };
     [GameEvent.aiInitializationFailed]: AIInitializationError;
+    [GameEvent.combatEvent]: CombatEventData;
 }

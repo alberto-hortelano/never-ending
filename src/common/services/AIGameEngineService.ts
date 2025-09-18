@@ -526,7 +526,7 @@ CRITICAL REMINDERS:
         const cacheKey: GameEngineRequest = { messages, endpoint: '/gameEngine' };
         const cachedResponse = AIBrowserCacheService.getCachedResponse<GameEngineRequest, GameEngineResponse>(cacheKey);
         if (cachedResponse) {
-            // DEBUG: console.log('[AIGameEngineService] Using cached response');
+            console.log('[AIGameEngineService] Using cached response');
             return cachedResponse;
         }
 

@@ -7,6 +7,7 @@ import {
     GUIEvent, GUIEventsMap, StateChangeEventsMap,
     UpdateStateEvent, UpdateStateEventsMap,
     ActionEvent, ActionEventsMap,
+    GameEvent, GameEventsMap,
 } from "./events";
 import { DirectionsService } from "./services/DirectionsService";
 import { InteractionModeManager } from "./InteractionModeManager";
@@ -15,7 +16,7 @@ import { ShootingService, VisibleCell, SHOOT_CONSTANTS } from "./services/Shooti
 
 export class Shoot extends EventBus<
     GUIEventsMap & ControlsEventsMap & StateChangeEventsMap & ActionEventsMap,
-    GUIEventsMap & ControlsEventsMap & UpdateStateEventsMap & ActionEventsMap
+    GUIEventsMap & ControlsEventsMap & UpdateStateEventsMap & ActionEventsMap & GameEventsMap
 > {
     private shootingCharacter?: DeepReadonly<ICharacter>;
     private visibleCells?: VisibleCell[];
@@ -169,6 +170,28 @@ export class Shoot extends EventBus<
                     attackerName: this.shootingCharacter.name
                 });
 
+                // Dispatch combat event for AI context
+                const hitDescription = isCritical ?
+                    `${this.shootingCharacter.name} critically hit ${targetCharacter.name} for ${finalDamage} damage` :
+                    `${this.shootingCharacter.name} shot ${targetCharacter.name} for ${finalDamage} damage`;
+
+                this.dispatch(GameEvent.combatEvent, {
+                    type: 'combat',
+                    actor: this.shootingCharacter.name,
+                    target: targetCharacter.name,
+                    description: hitDescription,
+                    turn: this.state.game.turn
+                });
+
+            } else if (targetCharacter) {
+                // Dispatch miss event for AI context
+                this.dispatch(GameEvent.combatEvent, {
+                    type: 'combat',
+                    actor: this.shootingCharacter.name,
+                    target: targetCharacter.name,
+                    description: `${this.shootingCharacter.name} shot at ${targetCharacter.name} but missed`,
+                    turn: this.state.game.turn
+                });
             }
 
             // Deduct action points for shooting and aiming

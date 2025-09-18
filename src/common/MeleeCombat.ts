@@ -7,6 +7,7 @@ import {
     UpdateStateEvent, UpdateStateEventsMap,
     ActionEvent, ActionEventsMap,
     StateChangeEventsMap,
+    GameEvent, GameEventsMap,
 } from "./events";
 import { InteractionModeManager } from "./InteractionModeManager";
 import { DirectionsService } from "./services/DirectionsService";
@@ -28,7 +29,7 @@ export interface MeleeCombatData {
 
 export class MeleeCombat extends EventBus<
     ControlsEventsMap & StateChangeEventsMap & ActionEventsMap,
-    ControlsEventsMap & UpdateStateEventsMap & ActionEventsMap
+    ControlsEventsMap & UpdateStateEventsMap & ActionEventsMap & GameEventsMap
 > {
     private static instance: MeleeCombat | null = null;
     private attackingCharacter?: DeepReadonly<ICharacter>;
@@ -296,6 +297,24 @@ export class MeleeCombat extends EventBus<
                 targetName: defender.name,
                 damage: damage,
                 attackerName: attacker.name
+            });
+
+            // Dispatch successful melee hit for AI context
+            this.dispatch(GameEvent.combatEvent, {
+                type: 'combat',
+                actor: attacker.name,
+                target: defender.name,
+                description: `${attacker.name} hit ${defender.name} with melee attack (${attackType}) for ${damage} damage`,
+                turn: this.state.game.turn
+            });
+        } else if (blocked) {
+            // Dispatch blocked attack for AI context
+            this.dispatch(GameEvent.combatEvent, {
+                type: 'combat',
+                actor: attacker.name,
+                target: defender.name,
+                description: `${defender.name} blocked ${attacker.name}'s melee attack (${attackType} vs ${defenseType})`,
+                turn: this.state.game.turn
             });
         }
 

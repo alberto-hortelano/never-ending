@@ -13,7 +13,8 @@ import {
     CharacterActionData,
     MovementActionData,
     AttackActionData,
-    ItemActionData
+    ItemActionData,
+    type CombatEventData
 } from '../events';
 import { State } from '../State';
 import { AIContextBuilder, GameContext } from './AIContextBuilder';
@@ -170,6 +171,19 @@ export class AIController extends EventBus<
         this.listen(ConversationEvent.continue, () => {
             // Player has responded to conversation
             // Turn management is now handled when conversation starts, not when it continues
+        });
+
+        // Listen for combat events to record in AI context
+        this.listen(GameEvent.combatEvent, (data: CombatEventData) => {
+            if (this.contextBuilder) {
+                this.contextBuilder.recordEvent({
+                    type: data.type,
+                    actor: data.actor,
+                    target: data.target,
+                    description: data.description,
+                    turn: data.turn
+                });
+            }
         });
 
         // Listen for storyline action execution
@@ -693,15 +707,15 @@ export class AIController extends EventBus<
                         console.warn('[AI] Invalid attack command - missing attack type or target');
                         return;
                     }
-                    // DEBUG: console.log(`[AI] ${character.name}: Attack (${attackType} vs ${target})`);
+                    console.log(`[AI] ${character.name}: Attack (${attackType} vs ${target})`);
                 } else if (validatedCommand.type === 'speech') {
-                    // const speechCmd = validatedCommand as SpeechCommand;
-                    // DEBUG: console.log(`[AI] ${character.name}: Speech - "${speechCmd.content?.substring(0, 50)}..."`);
+                    const speechCmd = validatedCommand as SpeechCommand;
+                    console.log(`[AI] ${character.name}: Speech - "${speechCmd.content?.substring(0, 50)}..."`);
                 } else if (validatedCommand.type === 'movement') {
-                    // const moveCmd = validatedCommand as MovementCommand;
-                    // DEBUG: console.log(`[AI] ${character.name}: Move to ${moveCmd.characters?.[0]?.location}`);
+                    const moveCmd = validatedCommand as MovementCommand;
+                    console.log(`[AI] ${character.name}: Move to ${moveCmd.characters?.[0]?.location}`);
                 } else {
-                    // DEBUG: console.log(`[AI] ${character.name}: ${validatedCommand.type}`);
+                    console.log(`[AI] ${character.name}: ${validatedCommand.type}`);
                 }
                 await this.executeAICommand(validatedCommand, character);
             } else {
@@ -847,7 +861,7 @@ export class AIController extends EventBus<
                 targetLocation: targetLocation,
                 targetName: targetChar?.name
             };
-            // DEBUG: console.log(`[AI] Setting ongoing movement for ${character.name} to ${targetChar?.name || 'location'}`);
+            console.log(`[AI] Setting ongoing movement for ${character.name} to ${targetChar?.name || 'location'}`);
         }
 
         // If we're already adjacent (within 1.5 cells), switch to appropriate action
@@ -898,7 +912,7 @@ export class AIController extends EventBus<
 
             if (blockage.type === 'character' && blockage.character && this.state) {
                 const isAlly = TeamService.areAllied(character, blockage.character, this.state.game.teams);
-                // DEBUG: console.log(`[AI] Path blocked by ${isAlly ? 'ally' : 'enemy'}: ${blockage.character.name} (health: ${blockage.character.health})`);
+                console.log(`[AI] Path blocked by ${isAlly ? 'ally' : 'enemy'}: ${blockage.character.name} (health: ${blockage.character.health})`);
 
                 // Request new AI instructions with context about the blockage
                 const blockageContext = {
@@ -931,7 +945,7 @@ export class AIController extends EventBus<
                     blockageInfo: JSON.stringify(blockageContext)
                 } as unknown as GameContext;
 
-                // DEBUG: console.log('[AI] Requesting new instructions due to blocked path');
+                console.log('[AI] Requesting new instructions due to blocked path');
                 const language = this.state?.language || 'es';
                 const response = await this.gameEngineService.requestAIAction(contextWithBlockage as unknown as AIActionContext, undefined, undefined, language as LanguageCode);
 
@@ -1087,6 +1101,8 @@ export class AIController extends EventBus<
                             resolve();
                         }, 500);
                     });
+
+                    // Combat event will be recorded when the actual melee attack happens
                 } else {
                     // Move closer to target first
                     await this.executeMovement({
@@ -1145,6 +1161,8 @@ export class AIController extends EventBus<
                         resolve();
                     }, 500); // Slightly longer delay for shooting action
                 });
+
+                // Combat event will be recorded when the actual shoot happens
 
                 // Wait longer to ensure action completes and points are deducted
                 await new Promise(resolve => setTimeout(resolve, 2000));
