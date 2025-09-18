@@ -38,19 +38,20 @@ describe('Conversation Response Parsing', () => {
             });
         });
         
-        it('should handle storyline responses by converting to speech format', () => {
-            const storylineResponse = JSON.stringify({
-                type: 'storyline',
+        it('should handle narrative speech responses properly', () => {
+            const narrativeResponse = JSON.stringify({
+                type: 'speech',
+                source: 'Narrador',
                 content: 'Las alarmas de la nave resuenan por los pasillos...',
-                description: 'The bridge of a military spaceship'
+                answers: ['Continuar', 'OK']
             });
-            
-            const result = (conversation as any).parseResponse(storylineResponse);
-            
+
+            const result = (conversation as any).parseResponse(narrativeResponse);
+
             expect(result.type).toBe('speech');
-            expect(result.source).toBe('Narrator');
+            expect(result.source).toBe('Narrador');
             expect(result.content).toBe('Las alarmas de la nave resuenan por los pasillos...');
-            expect(result.answers).toEqual(['Continue', 'OK']);
+            expect(result.answers).toEqual(['Continuar', 'OK']);
         });
         
         it('should handle speech without answers by providing defaults', () => {

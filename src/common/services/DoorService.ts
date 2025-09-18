@@ -96,11 +96,11 @@ export class DoorService extends EventBus<UpdateStateEventsMap, UpdateStateEvent
         
         console.log(`[DoorService] Triggering transition: ${door.transition.description}`);
         
-        // Dispatch storyline event if configured
-        if (door.transition.storylineEvent) {
+        // Dispatch narrative event if configured
+        if (door.transition.narrativeEvent) {
             this.dispatch(UpdateStateEvent.updateMessages, [{
                 role: 'assistant',
-                content: door.transition.storylineEvent.content
+                content: door.transition.narrativeEvent.content
             }]);
         }
         

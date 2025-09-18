@@ -191,7 +191,7 @@ const createCharacter = (character?: Partial<ICharacter>): ICharacter => ({ ...s
 const data: Partial<ICharacter> = {
     name: COMPANION_DROID_NAME,
     race: 'robot',
-    player: AI_PLAYER,
+    player: HUMAN_PLAYER,
     team: PLAYER_TEAM, // Data is on the player's team
     location: 'room4',
     position: { x: 25, y: 25 },

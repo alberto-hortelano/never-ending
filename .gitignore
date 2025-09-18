@@ -5,3 +5,4 @@ public/html
 test-results/
 playwright-report/
 playwright/.cache/
+serverLogs.txt

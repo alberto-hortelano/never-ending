@@ -156,7 +156,8 @@ describe('Complete AI Session Simulation', () => {
                         doors: []
                     },
                     {
-                        type: 'storyline',
+                        type: 'speech',
+                        source: 'Narrador',
                         content: 'Chapter 1: The Investigation Begins',
                         action: 'character'
                     }
@@ -174,11 +175,6 @@ describe('Complete AI Session Simulation', () => {
                 for (const cmd of initResponse.commands) {
                     if (cmd.type === 'map') {
                         await storyExecutor.executeMapCommand(cmd as any, state.story as any);
-                    } else if (cmd.type === 'storyline') {
-                        eventBus.dispatch(UpdateStateEvent.storyState, {
-                            ...state.story,
-                            currentChapter: 1
-                        });
                     }
                 }
             }

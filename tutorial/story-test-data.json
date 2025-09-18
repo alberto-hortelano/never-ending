@@ -92,7 +92,8 @@
             }
           ],
           "playerDecision": {
-            "type": "storyline",
+            "type": "speech",
+            "source": "Narrador",
             "hasConsequences": true,
             "affectsReputation": true
           }
@@ -107,7 +108,8 @@
           "sceneNumber": 5,
           "name": "Map Transition",
           "trigger": {
-            "type": "storyline",
+            "type": "speech",
+            "source": "Narrador",
             "action": "map",
             "requiresAcceptance": true
           },
@@ -162,7 +164,8 @@
           "name": "Final Decision",
           "location": "Laboratorio",
           "decisionPoint": {
-            "type": "storyline",
+            "type": "speech",
+            "source": "Narrador",
             "title": "El Momento de la Verdad",
             "options": [
               {
@@ -240,7 +243,7 @@
     },
     {
       "id": "map_transition_prompt",
-      "description": "Storyline prompt for map transition",
+      "description": "Narrative prompt for map transition",
       "act": 2,
       "scene": 5
     },

@@ -1,4 +1,4 @@
-export type CommandType = 'storyline' | 'map' | 'character' | 'movement' | 'attack' | 'speech' | 'tactical_directive' | 'item';
+export type CommandType = 'map' | 'character' | 'movement' | 'attack' | 'speech' | 'tactical_directive' | 'item';
 
 export interface AICommand {
     type: CommandType;
@@ -22,12 +22,15 @@ export interface AttackCommand extends AICommand {
     }>;
 }
 
+import type { ActionData } from '../events/ConversationEvents';
+
 export interface SpeechCommand extends AICommand {
     type: 'speech';
     source: string;
     content: string;
     answers?: string[];
     action?: string;
+    actionData?: ActionData; // Additional data for the action
     target?: string;  // Target of the speech (for AI-to-AI conversations)
     listener?: string; // Alternative field name for target
 }
@@ -49,17 +52,6 @@ export interface CharacterCommand extends AICommand {
     }>;
 }
 
-import type { StorylineActionData } from '../events/ConversationEvents';
-
-export type StorylineActionType = 'map' | 'character' | 'movement' | 'attack' | 'item';
-
-export interface StorylineCommand extends AICommand {
-    type: 'storyline';
-    content: string;
-    description: string;
-    action: StorylineActionType; // Required action
-    actionData?: StorylineActionData; // Additional data for the action
-}
 
 export interface TacticalDirectiveCommand extends AICommand {
     type: 'tactical_directive';
@@ -142,8 +134,6 @@ export class AICommandParser {
                 return this.validateSpeech(command);
             case 'character':
                 return this.validateCharacter(command);
-            case 'storyline':
-                return this.validateStoryline(command);
             case 'map':
                 return this.validateMap(command);
             case 'tactical_directive':
@@ -277,30 +267,6 @@ export class AICommandParser {
 
         // At this point, we've validated the structure matches CharacterCommand
         return cmd as CharacterCommand;
-    }
-
-    private validateStoryline(command: unknown): StorylineCommand | null {
-        if (!command || typeof command !== 'object') {
-            console.error('Storyline command is not an object');
-            return null;
-        }
-        
-        const cmd = command as Record<string, unknown>;
-        // Accept either content OR description (or both)
-        if (!cmd.content && !cmd.description) {
-            console.error('Storyline command missing both content and description');
-            return null;
-        }
-        
-        // Ensure we have at least one of the required fields
-        const validatedCmd = {
-            ...cmd,
-            content: cmd.content || cmd.description || '',
-            description: cmd.description || cmd.content || ''
-        };
-
-        // At this point, we've validated the structure matches StorylineCommand
-        return validatedCmd as StorylineCommand;
     }
 
     private validateMap(command: unknown): MapCommand | null {

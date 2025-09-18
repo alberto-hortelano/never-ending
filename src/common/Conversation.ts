@@ -327,16 +327,7 @@ export class Conversation extends EventBus<
                 const parsed = JSON.parse(jsonMatch[0]);
 
                 // Handle different response types
-                if (parsed.type === 'storyline') {
-                    // Convert storyline to speech format for conversation display
-                    return {
-                        type: 'speech',
-                        source: i18n.t('conversation.narrator'),
-                        content: parsed.content || i18n.t('conversation.storyContinues'),
-                        answers: [i18n.t('common.continue'), i18n.t('common.ok')],  // Default options for storyline
-                        action: parsed.action
-                    };
-                } else if (parsed.type === 'speech') {
+                if (parsed.type === 'speech') {
                     // Validate speech has required fields
                     if (!parsed.source || !parsed.content) {
                         throw new Error('Speech missing source or content');
@@ -359,8 +350,8 @@ export class Conversation extends EventBus<
                         action: parsed.action
                     };
                 } else if (parsed.type === 'map') {
-                    // Map command from AI - this should be handled as a storyline with map action
-                    // DEBUG: console.log('[Conversation] AI returned map command, converting to storyline format');
+                    // Map command from AI - this should be handled as a narrative with map action
+                    // DEBUG: console.log('[Conversation] AI returned map command, converting to narrative format');
                     return {
                         type: 'speech',
                         source: 'Narrador',

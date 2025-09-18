@@ -100,7 +100,7 @@ export default class Door extends Component {
                 // Show transition description
                 // DEBUG: Transition door activated
                 // console.log('Transition door:', door.transition.description);
-                // This would trigger a storyline event or map transition
+                // This would trigger a narrative event or map transition
             } else if (door.isLocked) {
                 // Show locked message
                 // DEBUG: Attempted to open locked door

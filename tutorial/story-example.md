@@ -199,14 +199,10 @@ This is a comprehensive story example demonstrating all AI story system features
 ```json
 {
   "type": "speech",
-  "speaker": "Víctor",
-  "target": "Jim",
-  "message": "Tengo esta tarjeta de acceso. La robé cuando escapé de NeoCorp. Os la daré si me ayudáis a llegar al refugio del norte.",
-  "action": {
-    "type": "storyline",
-    "action": "item",
-    "description": "Víctor te ofrece la Tarjeta de Acceso NeoCorp"
-  }
+  "source": "Víctor",
+  "content": "Tengo esta tarjeta de acceso. La robé cuando escapé de NeoCorp. Os la daré si me ayudáis a llegar al refugio del norte.",
+  "answers": ["Acepto el trato", "Necesito pensarlo"],
+  "action": "item"
 }
 ```
 
@@ -239,10 +235,11 @@ This is a comprehensive story example demonstrating all AI story system features
 }
 ```
 
-**Player Decision Point - Storyline Action**:
+**Player Decision Point - Speech with Action**:
 ```json
 {
-  "type": "storyline",
+  "type": "speech",
+  "source": "Narrador",
   "title": "Decisión Crítica",
   "description": "Los guardias de NeoCorp han encontrado a Víctor. Debes decidir rápidamente.",
   "action": "character",
@@ -266,7 +263,8 @@ This is a comprehensive story example demonstrating all AI story system features
 **After Getting the Office Key from Elena**:
 ```json
 {
-  "type": "storyline",
+  "type": "speech",
+  "source": "Narrador",
   "title": "Hacia el Distrito Industrial",
   "description": "Con la llave en mano, el equipo se prepara para infiltrar el Distrito Industrial controlado por NeoCorp.",
   "action": "map",
@@ -383,7 +381,8 @@ This is a comprehensive story example demonstrating all AI story system features
 **Final Confrontation**:
 ```json
 {
-  "type": "storyline",
+  "type": "speech",
+  "source": "Narrador",
   "title": "El Momento de la Verdad",
   "description": "Has llegado al laboratorio. Dr. Chen tiene la información que necesitas, pero también podría ser un valioso aliado.",
   "action": "character",
@@ -417,11 +416,10 @@ This is a comprehensive story example demonstrating all AI story system features
 ### AI Story Commands Used:
 1. **map** - Two complete map generations
 2. **character** - Multiple NPCs introduced mid-game
-3. **speech** - Various conversation types including AI-to-AI
-4. **storyline** - Decision points with gameplay consequences
-5. **item** - Key items and weapons spawned dynamically
-6. **movement** - AI-controlled character positioning
-7. **attack** - Combat encounters
+3. **speech** - Various conversation types including AI-to-AI, narrative transitions, and decision points
+4. **item** - Key items and weapons spawned dynamically
+5. **movement** - AI-controlled character positioning
+6. **attack** - Combat encounters
 
 ### Story Elements:
 - **Persistent Characters**: Jim and Data remain throughout

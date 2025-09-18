@@ -266,7 +266,7 @@ export class Conversation extends Component {
                     if (data.action) {
                         // DEBUG: Executing action on conversation close
                         // console.log('[Conversation] Executing action on close:', data.action);
-                        this.dispatchEvent(new CustomEvent('storyline-action', {
+                        this.dispatchEvent(new CustomEvent('speech-action', {
                             detail: { action: data.action, accepted: true },
                             bubbles: true
                         }));
@@ -369,8 +369,8 @@ export class Conversation extends Component {
             const currentData = this.conversationHistory[this.currentHistoryIndex]?.data;
             const actionData = currentData?.actionData;
 
-            // Dispatch storyline-action event to parent components
-            this.dispatchEvent(new CustomEvent('storyline-action', {
+            // Dispatch speech-action event to parent components
+            this.dispatchEvent(new CustomEvent('speech-action', {
                 detail: { action, actionData, accepted: true },
                 bubbles: true
             }));

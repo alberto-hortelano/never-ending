@@ -379,11 +379,12 @@ export interface ITransition {
     description: string; // Narrative text shown to player
     actionRequest?: string; // Action to request from AI (e.g., "generate_new_map")
     targetMap?: string; // Map identifier for transitions
-    storylineEvent?: IStorylineEvent; // Trigger storyline when entering
+    narrativeEvent?: INarrativeEvent; // Trigger narrative when entering
 }
 
-export interface IStorylineEvent {
-    type: 'storyline';
+export interface INarrativeEvent {
+    type: 'speech';
+    source: string; // e.g., "Narrador"
     content: string;
     choices?: string[]; // Player choices if applicable
 }

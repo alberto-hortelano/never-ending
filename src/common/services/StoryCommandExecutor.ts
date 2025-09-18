@@ -1,12 +1,11 @@
 import { EventBus } from '../events/EventBus';
-import { UpdateStateEvent, UpdateStateEventsMap, ConversationEvent, ConversationEventsMap } from '../events';
-import type { AICommand, MapCommand, StorylineCommand } from './AICommandParser';
+import { UpdateStateEvent, UpdateStateEventsMap } from '../events';
+import type { AICommand, MapCommand } from './AICommandParser';
 import type { ICharacter, IItem, IWeapon, IDoor, Direction, IStoryState, ItemType, ICell } from '../interfaces';
 import { DoorService } from './DoorService';
 import { weapons as availableWeapons, items as availableItems } from '../../data/state';
 import { CharacterPositioningError } from '../errors/CharacterPositioningError';
 import { MAIN_CHARACTER_NAME, COMPANION_DROID_NAME, PLAYER_TEAM, HUMAN_PLAYER } from '../constants';
-import { i18n } from '../i18n/i18n';
 import { CharacterSpawningService, type CharacterSpawnData } from './CharacterSpawningService';
 import { MapGenerationService } from './MapGenerationService';
 
@@ -30,7 +29,7 @@ interface MapCell extends ICell {
     doors?: IDoor[];
 }
 
-export class StoryCommandExecutor extends EventBus<UpdateStateEventsMap & ConversationEventsMap, UpdateStateEventsMap & ConversationEventsMap> {
+export class StoryCommandExecutor extends EventBus<UpdateStateEventsMap, UpdateStateEventsMap> {
     private static instance: StoryCommandExecutor;
     private characterSpawningService: CharacterSpawningService;
     private mapGenerationService: MapGenerationService;
@@ -113,77 +112,6 @@ export class StoryCommandExecutor extends EventBus<UpdateStateEventsMap & Conver
         }
     }
 
-    /**
-     * Execute a storyline command - updates narrative state and triggers action
-     */
-    public async executeStorylineCommand(command: StorylineCommand, storyState?: IStoryState): Promise<void> {
-
-        // Add to journal
-        if (storyState) {
-            const journalEntry = {
-                id: `story_${Date.now()}`,
-                title: command.description || 'Historia',
-                content: command.content,
-                date: new Date().toISOString(),
-                type: 'main' as const,
-                isRead: false
-            };
-
-            // Update story state with new journal entry
-            const currentEntries = storyState.journalEntries || [];
-            this.dispatch(UpdateStateEvent.storyState, {
-                journalEntries: [...currentEntries, journalEntry]
-            });
-        }
-
-        // If storyline has an action, display it through the conversation UI
-        if (command.action) {
-            this.showStorylinePopup(command);
-        } else {
-            // No action, just display as a simple message
-            this.dispatch(UpdateStateEvent.updateMessages, [{
-                role: 'assistant',
-                content: command.content
-            }]);
-        }
-
-        // Check for chapter transitions
-        if (command.description) {
-            if (command.description.includes('chapter') || command.description.includes('capítulo')) {
-                const currentChapter = storyState?.currentChapter || 1;
-                this.dispatch(UpdateStateEvent.storyState, {
-                    currentChapter: currentChapter + 1
-                });
-            }
-        }
-    }
-
-    private showStorylinePopup(command: StorylineCommand): void {
-        // Show the popup for the storyline
-        this.dispatch(UpdateStateEvent.uiPopup, {
-            popupId: 'main-popup',
-            popupState: {
-                type: 'conversation',
-                visible: true,
-                position: undefined,
-                data: {
-                    title: 'Historia'
-                }
-            }
-        });
-
-        // Wait for popup to be ready, then dispatch conversation update
-        setTimeout(() => {
-            this.dispatch(ConversationEvent.update, {
-                type: 'storyline',
-                source: i18n.t('conversation.narrator'),
-                content: command.content,
-                answers: [i18n.t('common.accept'), i18n.t('common.reject')],
-                action: command.action,
-                actionData: command.actionData
-            });
-        }, 200);
-    }
 
     /**
      * Spawn items or weapons at locations

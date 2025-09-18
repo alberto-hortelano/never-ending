@@ -4,7 +4,7 @@ import { AIBrowserCacheService, type AIRequest, type AIResponse } from './AIBrow
 import { ObjectValidator } from './ObjectValidator';
 import { StoryPlanValidator } from './StoryPlanValidator';
 import { AIMockService } from './AIMockService';
-import type { GameContext } from './AIContextBuilder';
+import type { GameContext, StoryContextInfo } from './AIContextBuilder';
 import { MAIN_CHARACTER_NAME, COMPANION_DROID_NAME, LANGUAGE_NAMES, LANGUAGE_INSTRUCTIONS, type LanguageCode } from '../constants';
 
 export interface AIGameEngineResponse {
@@ -75,6 +75,7 @@ export interface AIActionContext {
     blockageInfo?: string;
     npcFaction?: string;
     recentConversation?: ConversationExchange[];
+    storyContext?: StoryContextInfo;
     [key: string]: unknown; // Allow additional properties
 }
 
@@ -367,7 +368,7 @@ Remember: The map persists throughout gameplay. Characters move, fight, and talk
         const visibleChars = context.visibleCharacters || [];
         const conversableChars = context.charactersInConversationRange || [];
 
-        // Build character descriptions with clear status
+        // Build character descriptions with clear status and narrative purpose
         const characterDescriptions = visibleChars.map((char) => {
             const status = [];
             if (char.isAlly) status.push('ALLY');
@@ -375,7 +376,13 @@ Remember: The map persists throughout gameplay. Characters move, fight, and talk
             if (char.canConverse) status.push('CAN TALK');
             if (char.isAdjacent) status.push('ADJACENT');
 
-            return `  - ${char.name}: ${Math.round(char.distanceFromCurrent || 0)} cells away [${status.join(', ')}] Health: ${char.health?.current}/${char.health?.max}`;
+            // Add narrative purpose from story context
+            let narrativePurpose = '';
+            if (context.storyContext && context.storyContext.keyCharactersPresent?.includes(char.name)) {
+                narrativePurpose = ' [KEY CHARACTER]';
+            }
+
+            return `  - ${char.name}: ${Math.round(char.distanceFromCurrent || 0)} cells away [${status.join(', ')}] Health: ${char.health?.current}/${char.health?.max}${narrativePurpose}`;
         }).join('\n');
 
         // Create natural language situation summary
@@ -447,6 +454,7 @@ Recommended stance: ${context.tacticalAnalysis.suggestedStance}
         }
 
         // Add story context if available
+        // Include comprehensive story context
         if (storyState?.selectedOrigin) {
             situationSummary += `
 ## STORY CONTEXT
@@ -454,6 +462,27 @@ Origin: ${storyState.selectedOrigin.nameES}
 Chapter: ${storyState.currentChapter || 1}
 Companion: ${storyState.selectedOrigin.startingCompanion?.name || 'None'}
 `;
+
+            // Add story plan context if available
+            if (context.storyContext) {
+                const sc = context.storyContext;
+                if (sc.currentMission) {
+                    situationSummary += `
+### CURRENT MISSION
+Name: ${sc.currentMission.name}
+Type: ${sc.currentMission.type}
+Objectives: ${sc.currentMission.objectives.join(', ')}
+`;
+                }
+
+                if (sc.narrativeHooks && sc.narrativeHooks.length > 0) {
+                    situationSummary += `Narrative Hooks: ${sc.narrativeHooks.join(', ')}\n`;
+                }
+
+                if (sc.suggestedActions && sc.suggestedActions.length > 0) {
+                    situationSummary += `Mission Actions: ${sc.suggestedActions.join(', ')}\n`;
+                }
+            }
         }
 
         // Handle blockage situations
@@ -631,7 +660,7 @@ CRITICAL REMINDERS:
 
     public async requestStoryInitialization(
         origin: IOriginStory,
-        _storyState: IStoryState,
+        storyState: IStoryState,
         language: LanguageCode = 'es'
     ): Promise<{ commands: AICommand[], narrative?: string }> {
         // Check if mock mode is enabled
@@ -656,6 +685,22 @@ ${narrativePrompt}
             });
         }
 
+        // Build mission context if available
+        let missionContext = '';
+        if (storyState.storyPlan) {
+            const firstAct = storyState.storyPlan.acts[0];
+            const firstMission = firstAct?.missions[0];
+            if (firstMission) {
+                missionContext = `
+
+## STORY MISSION CONTEXT
+First Mission: ${firstMission.name}
+Mission Type: ${firstMission.type}
+Primary Objective: ${firstMission.objectives[0]?.description || 'Explore the area'}
+Environment: ${firstMission.mapContext?.environment || 'unknown'}`;
+            }
+        }
+
         // Build the initialization request
         const initRequest = `
 # STORY INITIALIZATION REQUEST
@@ -668,7 +713,7 @@ Description: ${origin.descriptionES}
 Starting Location Type: ${origin.startingLocation}
 Companion: ${origin.startingCompanion?.name || 'None'}
 Special Traits: ${origin.specialTraits.join(', ')}
-Faction Relations: ${Object.entries(origin.factionRelations).map(([f, v]) => `${f}: ${v}`).join(', ')}
+Faction Relations: ${Object.entries(origin.factionRelations).map(([f, v]) => `${f}: ${v}`).join(', ')}${missionContext}
 
 ## REQUIRED INITIALIZATION
 
@@ -700,7 +745,7 @@ Return a JSON object with:
   "commands": [
     {"type": "map", "palette": {...}, "buildings": [...]},
     {"type": "character", "characters": [...]},
-    {"type": "storyline", "storyline": {...}}
+    {"type": "speech", "source": "Narrador", "content": "..."}
   ],
   "narrative": "Initial story text in ${LANGUAGE_NAMES[language]} to display to the player"
 }
@@ -779,10 +824,10 @@ Return a JSON object with:
   ]
 }
 
-## STORYLINE COMMAND FORMAT
+## SPEECH/NARRATIVE COMMAND FORMAT
 {
-  "type": "storyline",
-  "storyline": {
+  "type": "speech",
+  "source": "Narrador",
     "title": "Mission Title in ${LANGUAGE_NAMES[language]}",
     "description": "Mission description in ${LANGUAGE_NAMES[language]}",
     "objectives": [
@@ -847,7 +892,7 @@ Remember: ALL narrative text, descriptions, objectives, and dialogue MUST be in 
         const messages: IMessage[] = [];
 
         // Add context
-        // Build story context for dialogue
+        // Build comprehensive story context for dialogue
         let storyContext = '';
         if (storyState?.selectedOrigin) {
             const faction = context?.npcFaction || 'unknown';
@@ -858,6 +903,26 @@ Story Context:
 - Faction Reputation with ${faction}: ${reputation}
 - Story Flags: ${Array.from(storyState.storyFlags || []).join(', ')}
 `;
+
+            // Add mission context if available
+            if (context?.storyContext && context.storyContext.currentMission) {
+                const mission = context.storyContext.currentMission;
+                storyContext += `
+Current Mission: ${mission.name}
+Mission Type: ${mission.type}
+Objectives: ${mission.objectives.join(', ')}
+`;
+            }
+
+            // Mark if listener is a key character
+            if (context?.storyContext && context.storyContext.keyCharactersPresent?.includes(listener)) {
+                storyContext += `\n${listener} is a KEY CHARACTER for the current mission.`;
+            }
+
+            // Add narrative hooks if available
+            if (context?.storyContext && context.storyContext.narrativeHooks && context.storyContext.narrativeHooks.length > 0) {
+                storyContext += `\nNarrative Hooks: ${context.storyContext.narrativeHooks.join(', ')}`;
+            }
         }
 
         // Build conversation history context

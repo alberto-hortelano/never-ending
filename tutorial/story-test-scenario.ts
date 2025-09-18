@@ -6,7 +6,7 @@
  */
 
 export interface StoryCommand {
-  type: 'map' | 'character' | 'speech' | 'movement' | 'attack' | 'item' | 'storyline';
+  type: 'map' | 'character' | 'speech' | 'movement' | 'attack' | 'item';
   data: any;
   expectedBehavior?: any;
 }
@@ -187,8 +187,9 @@ export const resistanceInfiltrationScenario = {
           attackType: 'kill'
         },
         decision: {
-          type: 'storyline',
-          title: 'Decisión Crítica',
+          type: 'speech',
+          source: 'Narrador',
+          content: 'Los guardias de NeoCorp han encontrado a Víctor. Decisión Crítica.',
           options: [
             { text: 'Proteger a Víctor', reputation: { NeoCorp: -20, Rebels: 10 } },
             { text: 'Entregar a Víctor', reputation: { NeoCorp: 15, Rebels: -30 } }
@@ -204,8 +205,9 @@ export const resistanceInfiltrationScenario = {
     
     transition: {
       trigger: {
-        type: 'storyline',
-        title: 'Hacia el Distrito Industrial',
+        type: 'speech',
+        source: 'Narrador',
+        content: 'Con la llave en mano, el equipo se prepara para infiltrar el Distrito Industrial.',
         action: 'map',
         requiresAccept: true
       },
@@ -283,8 +285,9 @@ export const resistanceInfiltrationScenario = {
         name: 'Final Decision',
         location: 'Laboratorio',
         decision: {
-          type: 'storyline',
-          title: 'El Momento de la Verdad',
+          type: 'speech',
+          source: 'Narrador',
+          content: 'Has llegado al laboratorio. El Momento de la Verdad.',
           critical: true,
           options: [
             { id: 'stealth', text: 'Robar datos y escapar' },
@@ -339,7 +342,7 @@ export const resistanceInfiltrationScenario = {
       'Story flags track decisions',
       'Reputation changes apply',
       'Map transitions preserve state',
-      'Storyline actions trigger correctly',
+      'Narrative actions trigger correctly',
       'Multiple endings accessible'
     ],
     

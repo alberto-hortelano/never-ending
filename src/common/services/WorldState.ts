@@ -1,6 +1,6 @@
 /**
  * WorldState Service
- * Manages the living world narrative system, tracking parallel storylines,
+ * Manages the living world narrative system, tracking parallel narratives,
  * character motivations, and emergent events happening in the background
  */
 

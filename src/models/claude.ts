@@ -3,6 +3,7 @@ import type { IMessage } from '../common/interfaces';
 import Anthropic from '@anthropic-ai/sdk';
 import { getPrompt } from '../prompts';
 import { initialSetup } from '../prompts/shortPrompts';
+import { FileLogger } from './fileLogger';
 
 const anthropic = new Anthropic();
 
@@ -76,7 +77,7 @@ class ModelFallbackManager {
 
             // DEBUG: console.log(`[ModelFallback] Model ${model} failed (${isOverload ? 'overload' : 'error'}). Falling back to ${fallbackModel}`);
         } else {
-            console.error(`[ModelFallback] Model ${model} failed with no fallback available`);
+            FileLogger.error(`[ModelFallback] Model ${model} failed with no fallback available`);
         }
 
         return fallbackModel;
@@ -184,14 +185,14 @@ async function callClaudeWithModel(
     narrativeArchitect: string
 ): Promise<Anthropic.Messages.Message> {
     // Log the AI request
-    console.log('═══════════════════════════════════════════════════════════════');
-    console.log(`[AI REQUEST] Model: ${model}`);
-    console.log(`[AI REQUEST] Prompt (last user message):`);
+    FileLogger.separator();
+    FileLogger.log(`[AI REQUEST] Model: ${model}`);
+    FileLogger.log(`[AI REQUEST] Prompt (last user message):`);
     const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
     if (lastUserMessage) {
-        console.log('---PROMPT START---');
-        console.log(lastUserMessage.content);
-        console.log('---PROMPT END---');
+        FileLogger.log('---PROMPT START---');
+        FileLogger.log(lastUserMessage.content);
+        FileLogger.log('---PROMPT END---');
     }
 
     const startTime = Date.now();
@@ -210,14 +211,14 @@ async function callClaudeWithModel(
 
         // Log the AI response
         const endTime = Date.now();
-        console.log(`[AI RESPONSE] Model: ${model}`);
-        console.log(`[AI RESPONSE] Response time: ${endTime - startTime}ms`);
-        console.log(`[AI RESPONSE] Response:`);
-        console.log('---RESPONSE START---');
+        FileLogger.log(`[AI RESPONSE] Model: ${model}`);
+        FileLogger.log(`[AI RESPONSE] Response time: ${endTime - startTime}ms`);
+        FileLogger.log(`[AI RESPONSE] Response:`);
+        FileLogger.log('---RESPONSE START---');
         const responseText = msg.content[0]?.type === 'text' ? (msg.content[0] as { text: string }).text : JSON.stringify(msg.content[0]);
-        console.log(responseText.substring(0, 1000) + (responseText.length > 1000 ? '... [truncated]' : ''));
-        console.log('---RESPONSE END---');
-        console.log('═══════════════════════════════════════════════════════════════');
+        FileLogger.log(responseText.substring(0, 1000) + (responseText.length > 1000 ? '... [truncated]' : ''));
+        FileLogger.log('---RESPONSE END---');
+        FileLogger.separator();
 
         // Success - clear any fallback for this model
         fallbackManager.clearFallback(model);
@@ -233,7 +234,7 @@ async function callClaudeWithModel(
             errorMessage.includes('overloaded') ||
             errorMessage.includes('overloaded_error');
 
-        console.error(`[Claude] Model ${model} failed:`, {
+        FileLogger.error(`[Claude] Model ${model} failed:`, {
             status: statusCode,
             message: errorMessage,
             isOverload
@@ -300,7 +301,7 @@ export const sendMessage: SendMessage = async (messages: IMessage[]) => {
         // Return as-is if no code block found
         return text;
     } catch (error) {
-        console.error('[Claude] All models failed:', error);
+        FileLogger.error('[Claude] All models failed:', error);
 
         // Return a structured error response that the game can handle
         return JSON.stringify({

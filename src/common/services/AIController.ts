@@ -18,7 +18,7 @@ import {
 } from '../events';
 import { State } from '../State';
 import { AIContextBuilder, GameContext } from './AIContextBuilder';
-import { AICommandParser, AICommand, MovementCommand, AttackCommand, SpeechCommand, CharacterCommand, MapCommand, StorylineCommand } from './AICommandParser';
+import { AICommandParser, AICommand, MovementCommand, AttackCommand, SpeechCommand, CharacterCommand, MapCommand } from './AICommandParser';
 import { AIGameEngineService, type AIActionContext } from './AIGameEngineService';
 import { TacticalExecutor, TacticalDirective } from './TacticalExecutor';
 import { CombatStances } from './CombatStances';
@@ -186,21 +186,21 @@ export class AIController extends EventBus<
             }
         });
 
-        // Listen for storyline action execution
+        // Listen for speech action execution
         this.listen(ConversationEvent.executeAction, async (data) => {
             const { action, actionData } = data;
 
-            // DEBUG: console.log('[AIController] Executing storyline action:', action);
+            // DEBUG: console.log('[AIController] Executing speech action:', action);
 
             // Handle the action based on its type
             switch (action) {
                 case 'map':
-                    // DEBUG: console.log('[AIController] Generating new map from storyline');
-                    await this.executeStorylineMapGeneration();
+                    // DEBUG: console.log('[AIController] Generating new map from speech action');
+                    await this.executeNarrativeMapGeneration();
                     break;
                     
                 case 'character':
-                    // DEBUG: console.log('[AIController] Spawning characters from storyline');
+                    // DEBUG: console.log('[AIController] Spawning characters from speech action');
                     // Type guard for character action data
                     const charActionData = actionData as CharacterActionData;
                     if (charActionData?.characters) {
@@ -219,7 +219,7 @@ export class AIController extends EventBus<
                     break;
                     
                 case 'movement':
-                    // DEBUG: console.log('[AIController] Executing movement from storyline');
+                    // DEBUG: console.log('[AIController] Executing movement from speech action');
                     // Type guard for movement action data
                     const moveActionData = actionData as MovementActionData;
                     if (moveActionData?.movements && this.state) {
@@ -245,7 +245,7 @@ export class AIController extends EventBus<
                     break;
                     
                 case 'attack':
-                    // DEBUG: console.log('[AIController] Initiating combat from storyline');
+                    // DEBUG: console.log('[AIController] Initiating combat from speech action');
                     // Type guard for attack action data
                     const attackActionData = actionData as AttackActionData;
                     if (attackActionData?.combatants && this.state) {
@@ -272,7 +272,7 @@ export class AIController extends EventBus<
                     break;
                     
                 case 'item':
-                    // DEBUG: console.log('[AIController] Spawning items from storyline');
+                    // DEBUG: console.log('[AIController] Spawning items from speech action');
                     // Type guard for item action data
                     const itemActionData = actionData as ItemActionData;
                     if (itemActionData?.items) {
@@ -287,7 +287,7 @@ export class AIController extends EventBus<
                     break;
                     
                 default:
-                    console.warn(`[AIController] Unknown storyline action: ${action}. Ignoring.`);
+                    console.warn(`[AIController] Unknown speech action: ${action}. Ignoring.`);
                     // Don't throw an error - just log and continue
                     // This allows for future action types without breaking the game
             }
@@ -791,21 +791,6 @@ export class AIController extends EventBus<
                         console.error('[AI] Character positioning failed:', error.message);
                         // Send error feedback to AI and request correction
                         await this.handlePositioningError(error, validatedCommand as MapCommand);
-                    } else {
-                        throw error;
-                    }
-                }
-                break;
-            case 'storyline':
-                // Convert DeepReadonly<IStoryState> to IStoryState for story executor
-                const storyStateForStoryline = storyState ? JSON.parse(JSON.stringify(storyState)) as IStoryState : undefined;
-                try {
-                    await this.storyExecutor.executeStorylineCommand(validatedCommand as StorylineCommand, storyStateForStoryline);
-                } catch (error) {
-                    if (error instanceof CharacterPositioningError) {
-                        console.error('[AI] Character positioning failed in storyline:', error.message);
-                        // For storyline errors, we may need to regenerate the entire scene
-                        await this.handlePositioningError(error, validatedCommand as StorylineCommand);
                     } else {
                         throw error;
                     }
@@ -1913,8 +1898,8 @@ export class AIController extends EventBus<
         return { x: retreatX, y: retreatY };
     }
 
-    private async executeStorylineMapGeneration(): Promise<void> {
-        // DEBUG: console.log('[AIController] Executing storyline map generation');
+    private async executeNarrativeMapGeneration(): Promise<void> {
+        // DEBUG: console.log('[AIController] Executing narrative map generation');
 
         try {
             // Get current story state
@@ -1922,13 +1907,13 @@ export class AIController extends EventBus<
 
             // Request map generation from AI
             const mapResponse = await this.gameEngineService.requestMapGeneration(
-                'storyline_transition',
-                'Generate a new map based on the storyline progression',
+                'narrative_transition',
+                'Generate a new map based on the narrative progression',
                 storyState ? JSON.parse(JSON.stringify(storyState)) : undefined
             );
 
             if (mapResponse && typeof mapResponse === 'object' && 'type' in mapResponse) {
-                // DEBUG: console.log('[AIController] Generated map command from storyline');
+                // DEBUG: console.log('[AIController] Generated map command from narrative action');
 
                 // Execute the map command
                 const validatedCommand = this.commandParser.validate(mapResponse);
@@ -1941,10 +1926,10 @@ export class AIController extends EventBus<
                     console.error('[AIController] Invalid map command generated');
                 }
             } else {
-                console.error('[AIController] Failed to generate map from storyline');
+                console.error('[AIController] Failed to generate map from narrative action');
             }
         } catch (error) {
-            console.error('[AIController] Error executing storyline map generation:', error);
+            console.error('[AIController] Error executing narrative map generation:', error);
         }
     }
 

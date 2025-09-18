@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import { initialSetup } from '../prompts/shortPrompts';
 import { WebSocketServer } from './WebSocketServer';
 import { sendMessage, getModelStatus } from '../models/claude';
+import { FileLogger } from '../models/fileLogger';
 
 export class Api {
     private dirname = dirname(fileURLToPath(import.meta.url));
@@ -55,7 +56,7 @@ export class Api {
                             req.url = dirPath + 'index.js';
                             return res.redirect(302, join(dirPath, 'index.js'));
                         } else {
-                            console.error('Error: Path not found', indexPath, join(dirPath, 'index.js'))
+                            FileLogger.error('Error: Path not found', indexPath, join(dirPath, 'index.js'))
                         }
                     }
                 }
@@ -98,7 +99,7 @@ export class Api {
                 messages.push(message);
                 res.send(messages);
             } catch (error) {
-                console.error('Api - /gameEngine - error:', error);
+                FileLogger.error('Api - /gameEngine - error:', error);
                 res.status(500).json({
                     error: error instanceof Error ? error.message : String(error)
                 });
@@ -138,7 +139,7 @@ export class Api {
                     content: response
                 });
             } catch (error) {
-                console.error('Api - /storyPlan - error:', error);
+                FileLogger.error('Api - /storyPlan - error:', error);
                 res.status(500).json({
                     error: error instanceof Error ? error.message : String(error)
                 });
@@ -173,7 +174,7 @@ export class Api {
                     content: response
                 });
             } catch (error) {
-                console.error('Api - /sceneContext - error:', error);
+                FileLogger.error('Api - /sceneContext - error:', error);
                 res.status(500).json({
                     error: error instanceof Error ? error.message : String(error)
                 });
@@ -276,7 +277,7 @@ Remember: All text in Spanish.`;
                 const status = getModelStatus();
                 res.json(status);
             } catch (error) {
-                console.error('Api - /modelStatus - error:', error);
+                FileLogger.error('Api - /modelStatus - error:', error);
                 res.status(500).json({
                     error: error instanceof Error ? error.message : String(error)
                 });
