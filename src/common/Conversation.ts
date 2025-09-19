@@ -332,10 +332,29 @@ export class Conversation extends EventBus<
                     if (!parsed.source || !parsed.content) {
                         throw new Error('Speech missing source or content');
                     }
-                    
+
+                    // Ensure content is a string
+                    let contentStr: string;
+                    if (typeof parsed.content === 'string') {
+                        contentStr = parsed.content;
+                    } else if (typeof parsed.content === 'object' && parsed.content !== null) {
+                        // Handle object content - try common patterns
+                        if ('text' in parsed.content && typeof parsed.content.text === 'string') {
+                            contentStr = parsed.content.text;
+                        } else if ('message' in parsed.content && typeof parsed.content.message === 'string') {
+                            contentStr = parsed.content.message;
+                        } else {
+                            // Fallback: stringify for debugging
+                            console.warn('[Conversation] Content is an object, converting to string:', parsed.content);
+                            contentStr = JSON.stringify(parsed.content);
+                        }
+                    } else {
+                        contentStr = String(parsed.content || '');
+                    }
+
                     // Ensure content doesn't exceed max length
-                    if (parsed.content.length > this.maxMessageLength) {
-                        parsed.content = parsed.content.substring(0, this.maxMessageLength) + '...';
+                    if (contentStr.length > this.maxMessageLength) {
+                        contentStr = contentStr.substring(0, this.maxMessageLength) + '...';
                     }
                     
                     // Check if conversation should end (empty answers array or specific text)
@@ -345,7 +364,7 @@ export class Conversation extends EventBus<
                     return {
                         type: 'speech',
                         source: parsed.source,
-                        content: parsed.content,
+                        content: contentStr,
                         answers: shouldEnd ? [] : (parsed.answers || [i18n.t('common.continue')]),  // Default to 'Continue' if no answers provided
                         action: parsed.action
                     };
@@ -372,13 +391,34 @@ export class Conversation extends EventBus<
                         answers: [],  // Empty answers will trigger conversation end
                         action: parsed.type
                     };
+                } else if (parsed.type === 'error') {
+                    // Handle error responses from AI service
+                    console.error('[Conversation] AI returned error:', parsed);
+                    return {
+                        type: 'speech',
+                        source: this.currentTarget || 'System',
+                        content: parsed.message || parsed.error || 'An error occurred. Please try again.',
+                        answers: [i18n.t('common.retry'), i18n.t('common.cancel')],
+                        action: undefined
+                    };
                 } else {
                     // Unknown type - still try to use what we have but log warning
                     console.warn('[Conversation] Unknown command type:', parsed.type);
+                    // Ensure content is a string for unknown types
+                    let contentStr = 'No response available';
+                    if (parsed.content) {
+                        if (typeof parsed.content === 'string') {
+                            contentStr = parsed.content;
+                        } else {
+                            console.warn('[Conversation] Unknown type with object content:', parsed);
+                            contentStr = JSON.stringify(parsed.content);
+                        }
+                    }
+
                     return {
                         type: 'speech',
                         source: parsed.source || this.currentTarget || 'Unknown',
-                        content: parsed.content || 'No response available',
+                        content: contentStr,
                         answers: parsed.answers || ['Continue'],
                         action: parsed.action
                     };
