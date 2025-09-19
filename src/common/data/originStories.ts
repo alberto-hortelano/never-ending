@@ -32,27 +32,27 @@ export const originStories: IOriginStory[] = [
         id: 'scavenger',
         name: 'The Scavenger',
         nameES: 'El Carroñero',
-        description: 'Leader of a salvage crew who discovered pre-collapse technology. Your find attracted unwanted attention.',
-        descriptionES: 'Líder de un equipo de salvamento que descubrió tecnología pre-colapso. Tu hallazgo atrajo atención no deseada.',
-        startingLocation: 'Modified Salvage Vessel',
+        description: 'Ruthless leader of a pirate salvage crew. You raid derelicts and fight rival crews for the best tech. Your latest haul included military-grade weapons.',
+        descriptionES: 'Líder despiadado de una tripulación pirata de salvamento. Asaltas naves abandonadas y luchas contra tripulaciones rivales por la mejor tecnología. Tu último botín incluía armas de grado militar.',
+        startingLocation: 'Armed Raider Ship',
         startingCompanion: {
             name: 'Rusty',
             type: 'robot',
-            description: 'A cobbled-together repair droid with surprising capabilities'
+            description: 'A heavily-modified combat droid bristling with weapons'
         },
-        initialInventory: ['plasma_cutter', 'scanner_array', 'ancient_artifact'],
+        initialInventory: ['heavy_plasma_rifle', 'combat_shield', 'stolen_military_tech'],
         factionRelations: {
-            'rogue_military': 0,
-            'rebel_coalition': 0,
-            'free_worlds': 30,
-            'syndicate': -40,
-            'technomancers': 50
+            'rogue_military': -60,
+            'rebel_coalition': -30,
+            'free_worlds': -50,
+            'syndicate': -70,
+            'technomancers': -40
         },
-        specialTraits: ['tech_savvy', 'resourceful', 'artifact_bearer'],
+        specialTraits: ['aggressive_fighter', 'feared_raider', 'combat_expert'],
         narrativeHooks: [
-            'Ancient technology mystery',
-            'Corporate exploitation',
-            'Survival through ingenuity'
+            'Territorial disputes with rival crews',
+            'Hostile takeover attempts',
+            'Combat for valuable salvage'
         ]
     },
     {

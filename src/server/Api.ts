@@ -20,6 +20,9 @@ export class Api {
         private app: Express,
         private port = 3000,
     ) {
+        // Initialize the logger (clears log file for new session)
+        FileLogger.initialize();
+
         this.start();
         this.server = this.listen();
         new WebSocketServer(this.server);

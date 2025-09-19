@@ -5,7 +5,7 @@ import { ObjectValidator } from './ObjectValidator';
 import { StoryPlanValidator } from './StoryPlanValidator';
 import { AIMockService } from './AIMockService';
 import type { GameContext, StoryContextInfo } from './AIContextBuilder';
-import { MAIN_CHARACTER_NAME, COMPANION_DROID_NAME, LANGUAGE_NAMES, LANGUAGE_INSTRUCTIONS, type LanguageCode } from '../constants';
+import { MAIN_CHARACTER_NAME, LANGUAGE_NAMES, LANGUAGE_INSTRUCTIONS, type LanguageCode } from '../constants';
 
 export interface AIGameEngineResponse {
     messages: IMessage[];
@@ -727,9 +727,8 @@ Generate the following in order:
 
 2. **CHARACTER PLACEMENT**
    - You MUST include the main character "${MAIN_CHARACTER_NAME}" in your character list
-   - You MUST include the companion "${COMPANION_DROID_NAME}" in your character list
-   - Place ${MAIN_CHARACTER_NAME} and ${COMPANION_DROID_NAME} in logical starting positions
-   ${origin.startingCompanion ? `- Also place companion "${origin.startingCompanion.name}" near ${MAIN_CHARACTER_NAME}` : ''}
+   ${origin.startingCompanion ? `- You MUST include the companion "${origin.startingCompanion.name}" in your character list
+   - Place ${MAIN_CHARACTER_NAME} and ${origin.startingCompanion.name} in logical starting positions` : ''}
    - Generate 2-4 additional NPCs or enemies appropriate to the origin story
    - Place all characters strategically on the map with valid positions
 
@@ -795,19 +794,19 @@ Return a JSON object with:
         "helmet": "white",
         "suit": "white"
       }
-    },
+    }${origin.startingCompanion ? `,
     {
-      "name": "Data",  // REQUIRED - companion (must be exactly "Data")
-      "race": "robot",
-      "description": "Loyal companion droid",
+      "name": "${origin.startingCompanion.name}",  // REQUIRED - companion (must be exactly "${origin.startingCompanion.name}")
+      "race": "${origin.startingCompanion.type}",
+      "description": "${origin.startingCompanion.description}",
       "location": "room_name or x,y coordinates",
       "player": "ai",
       "palette": {
-        "skin": "yellow",
-        "helmet": "gold",
-        "suit": "gold"
+        "skin": "#hexcolor",
+        "helmet": "#hexcolor",
+        "suit": "#hexcolor"
       }
-    },
+    }` : ''},
     {
       "name": "NPC Name",
       "race": "human/robot/alien",

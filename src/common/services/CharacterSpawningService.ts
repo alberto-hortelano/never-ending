@@ -226,10 +226,23 @@ export class CharacterSpawningService {
     }
 
     public determineTeam(charData: CharacterSpawnData): string {
+        // Use faction field if explicitly provided
         if (charData.faction) {
+            // Map faction values to team values
+            if (charData.faction === 'enemy') {
+                return 'enemy';
+            }
+            if (charData.faction === 'player') {
+                return PLAYER_TEAM;
+            }
+            if (charData.faction === 'neutral') {
+                return 'neutral';
+            }
+            // If faction is already a team value, use it directly
             return charData.faction;
         }
 
+        // Fallback to description-based detection
         const desc = (charData.description || '').toLowerCase();
         if (desc.includes('enemy') || desc.includes('hostile') || desc.includes('enemigo')) {
             return 'enemy';

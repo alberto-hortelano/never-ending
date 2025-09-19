@@ -481,9 +481,10 @@ export class AIController extends EventBus<
                 }
 
                 // Check if there are any living enemies to interact with
+                // Enemy is determined by different team, not different player
                 const hasLivingEnemies = this.state.characters.some(c =>
                     c.health > 0 &&
-                    c.player !== currentChar.player &&
+                    c.team !== currentChar.team &&
                     c.name !== currentChar.name
                 );
 

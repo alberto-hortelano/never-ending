@@ -216,7 +216,11 @@ async function callClaudeWithModel(
         FileLogger.log(`[AI RESPONSE] Response:`);
         FileLogger.log('---RESPONSE START---');
         const responseText = msg.content[0]?.type === 'text' ? (msg.content[0] as { text: string }).text : JSON.stringify(msg.content[0]);
-        FileLogger.log(responseText.substring(0, 1000) + (responseText.length > 1000 ? '... [truncated]' : ''));
+
+        // Log truncated to console, full to file
+        const truncatedText = responseText.substring(0, 1000) + (responseText.length > 1000 ? '... [truncated in console]' : '');
+        FileLogger.logWithTruncation(truncatedText, responseText);
+
         FileLogger.log('---RESPONSE END---');
         FileLogger.separator();
 

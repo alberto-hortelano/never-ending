@@ -41,6 +41,7 @@ export interface CharacterCommand extends AICommand {
         name: string;
         race: 'human' | 'alien' | 'robot';
         description: string;
+        faction?: 'player' | 'enemy' | 'neutral';
         speed: 'slow' | 'medium' | 'fast';
         orientation: 'top' | 'right' | 'bottom' | 'left';
         location: string;
@@ -90,6 +91,7 @@ export interface MapCommand extends AICommand {
         name: string;
         race: 'human' | 'alien' | 'robot';
         description: string;
+        faction?: 'player' | 'enemy' | 'neutral';
         speed: 'slow' | 'medium' | 'fast';
         orientation: 'top' | 'right' | 'bottom' | 'left';
         location: string;

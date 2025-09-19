@@ -51,7 +51,7 @@ export class StoryCommandExecutor extends EventBus<UpdateStateEventsMap, UpdateS
      * Execute a map generation command from AI
      * This replaces the current map with a new one
      */
-    public async executeMapCommand(command: MapCommand, _storyState?: IStoryState, seed?: number): Promise<void> {
+    public async executeMapCommand(command: MapCommand, storyState?: IStoryState, seed?: number): Promise<void> {
         try {
             // Generate the new map using the service
             const mapResult = this.mapGenerationService.generateMap(
@@ -97,7 +97,8 @@ export class StoryCommandExecutor extends EventBus<UpdateStateEventsMap, UpdateS
             if (characters.length > 0) {
                 await this.spawnCharactersFromMap(
                     characters as CharacterSpawnData[],
-                    newMap as MapCell[][]
+                    newMap as MapCell[][],
+                    storyState
                 );
             }
 
@@ -262,23 +263,27 @@ export class StoryCommandExecutor extends EventBus<UpdateStateEventsMap, UpdateS
     /**
      * Spawn characters as part of map generation
      */
-    private async spawnCharactersFromMap(characters: CharacterSpawnData[], map: MapCell[][]): Promise<void> {
+    private async spawnCharactersFromMap(characters: CharacterSpawnData[], map: MapCell[][], storyState?: IStoryState): Promise<void> {
         const occupiedPositions = new Set<string>();
         const availableRooms = this.characterSpawningService.getAvailableRooms(map as ICell[][]);
+
+        // Get companion name from origin story if available
+        const companionName = storyState?.selectedOrigin?.startingCompanion?.name || COMPANION_DROID_NAME;
 
         // Handle player characters first
         for (const charData of characters) {
             const isPlayer = charData.name?.toLowerCase() === MAIN_CHARACTER_NAME.toLowerCase();
-            const isData = charData.name === COMPANION_DROID_NAME ||
-                charData.name?.toLowerCase() === COMPANION_DROID_NAME.toLowerCase();
+            const isCompanion = charData.name === companionName ||
+                charData.name?.toLowerCase() === companionName.toLowerCase();
 
-            if (isPlayer || isData) {
+            if (isPlayer || isCompanion) {
                 await this.spawnPlayerCharacter(
                     charData,
                     map as ICell[][],
                     occupiedPositions,
                     availableRooms,
-                    isPlayer
+                    isPlayer,
+                    companionName
                 );
                 continue;
             }
@@ -286,9 +291,10 @@ export class StoryCommandExecutor extends EventBus<UpdateStateEventsMap, UpdateS
 
         // Spawn non-player characters
         for (const charData of characters) {
+            const companionName = storyState?.selectedOrigin?.startingCompanion?.name || COMPANION_DROID_NAME;
             if (charData.name?.toLowerCase() === MAIN_CHARACTER_NAME.toLowerCase() ||
-                charData.name === COMPANION_DROID_NAME ||
-                charData.name?.toLowerCase() === COMPANION_DROID_NAME.toLowerCase()) {
+                charData.name === companionName ||
+                charData.name?.toLowerCase() === companionName.toLowerCase()) {
                 continue;
             }
 
@@ -306,7 +312,8 @@ export class StoryCommandExecutor extends EventBus<UpdateStateEventsMap, UpdateS
         map: ICell[][],
         occupiedPositions: Set<string>,
         availableRooms: string[],
-        isPlayer: boolean
+        isPlayer: boolean,
+        companionName?: string
     ): Promise<void> {
         const position = this.characterSpawningService.findSpawnPosition(
             charData.location,
@@ -324,14 +331,14 @@ export class StoryCommandExecutor extends EventBus<UpdateStateEventsMap, UpdateS
         }
 
         const character = this.characterSpawningService.createCharacterFromBase({
-            name: isPlayer ? MAIN_CHARACTER_NAME : COMPANION_DROID_NAME,
+            name: isPlayer ? MAIN_CHARACTER_NAME : (charData.name || companionName || COMPANION_DROID_NAME),
             position: position,
-            race: isPlayer ? 'human' : 'robot',
+            race: isPlayer ? 'human' : (charData.race || 'robot'),
             player: HUMAN_PLAYER,
             team: PLAYER_TEAM,
             palette: isPlayer ?
                 { skin: '#d7a55f', helmet: 'white', suit: 'white' } :
-                { skin: 'yellow', helmet: 'gold', suit: 'gold' }
+                (charData.palette || { skin: 'yellow', helmet: 'gold', suit: 'gold' })
         });
 
         const updateWithNetwork = character as ICharacter & { fromNetwork?: boolean };
