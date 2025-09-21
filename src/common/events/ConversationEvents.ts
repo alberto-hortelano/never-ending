@@ -70,6 +70,7 @@ export interface ConversationUpdateData {
     answers?: string[];
     action?: string;
     actionData?: ActionData;
+    target?: string;  // For AI-to-AI conversations
 }
 
 interface ConversationActionData {

@@ -2,7 +2,7 @@
 import type { ICharacter, ICell, Direction } from "../interfaces";
 import type { State } from "../State";
 
-import { superEventBus, ControlsEvent, UpdateStateEvent } from "../events";
+import { EventBus, ControlsEvent, UpdateStateEvent } from "../events";
 import { Overwatch } from "../Overwatch";
 import { Movement } from "../Movement";
 import { baseCharacter } from "../../data/state";
@@ -16,6 +16,7 @@ describe('Overwatch Movement Mode Conflict', () => {
     let mockState: jest.Mocked<State>;
     let testCharacter: ICharacter;
     let testMap: ICell[][];
+    let eventBus: EventBus<any, any>;
 
     // Helper function to create a mock character
     const createMockCharacter = (overrides: Partial<ICharacter> = {}): ICharacter => ({
@@ -45,21 +46,13 @@ describe('Overwatch Movement Mode Conflict', () => {
         return map;
     };
 
-    // Helper class for managing test event listeners
-    class TestEventListener {
-        listen(
-            event: Parameters<typeof superEventBus.listen>[0],
-            callback: Parameters<typeof superEventBus.listen>[1]
-        ) {
-            superEventBus.listen.call(this, event, callback);
-        }
-    }
-
-    let testListeners: TestEventListener[] = [];
+    // Helper removed - using eventBus directly
 
     beforeEach(() => {
-        // Clear all mocks before each test
+        // Clear all mocks and event listeners before each test
         jest.clearAllMocks();
+        EventBus.reset();
+        eventBus = new EventBus();
 
         // Create test data
         testCharacter = createMockCharacter({
@@ -141,41 +134,34 @@ describe('Overwatch Movement Mode Conflict', () => {
         overwatch = new Overwatch(mockState);
         movement = new Movement(mockState);
 
-        // Reset test listeners
-        testListeners = [];
+        // Event listeners cleaned up via EventBus.reset()
     });
 
     afterEach(() => {
-        // Clean up all test listeners
-        testListeners.forEach(listener => superEventBus.remove(listener));
+        // Event listeners cleaned up via EventBus.reset() in beforeEach
         // Clean up service listeners
-        superEventBus.remove(overwatch);
+        eventBus.remove(overwatch);
         movement.destroy();
     });
 
     // Helper to create a test listener and track it
-    const createTestListener = () => {
-        const listener = new TestEventListener();
-        testListeners.push(listener);
-        return listener;
-    };
+    // Helper removed - using eventBus directly
 
     describe('Bug: Movement mode interferes with Overwatch activation', () => {
         it('should reproduce the bug when selecting character then clicking overwatch', () => {
-            const listener = createTestListener();
             const interactionModeSpy = jest.fn();
             const highlightsSpy = jest.fn();
             const cellVisualSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.uiInteractionMode, interactionModeSpy);
-            listener.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
-            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellVisualSpy);
+            eventBus.listen(UpdateStateEvent.uiInteractionMode, interactionModeSpy);
+            eventBus.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
+            eventBus.listen(UpdateStateEvent.uiCellVisualBatch, cellVisualSpy);
 
             mockState.findCharacter.mockReturnValue(testCharacter);
 
             // Step 1: Character is selected, which automatically shows movement
             // (simulating what happens in BottomBar when a character is selected)
-            superEventBus.dispatch(ControlsEvent.showMovement, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showMovement, testCharacter.name);
             
             // Update the mock state to reflect movement mode
             (mockState as any)._setInteractionMode({ type: 'moving', data: { characterId: testCharacter.name } });
@@ -198,7 +184,7 @@ describe('Overwatch Movement Mode Conflict', () => {
             cellVisualSpy.mockClear();
 
             // Step 2: User clicks overwatch without moving
-            superEventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
 
             // Check if overwatch mode was set
             const overwatchModeCall = interactionModeSpy.mock.calls.find(call => 
@@ -229,17 +215,16 @@ describe('Overwatch Movement Mode Conflict', () => {
         });
 
         it('should work correctly when character moves first then uses overwatch', () => {
-            const listener = createTestListener();
             const interactionModeSpy = jest.fn();
             const deductPointsSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.uiInteractionMode, interactionModeSpy);
-            listener.listen(UpdateStateEvent.deductActionPoints, deductPointsSpy);
+            eventBus.listen(UpdateStateEvent.uiInteractionMode, interactionModeSpy);
+            eventBus.listen(UpdateStateEvent.deductActionPoints, deductPointsSpy);
 
             mockState.findCharacter.mockReturnValue(testCharacter);
 
             // Step 1: Show movement
-            superEventBus.dispatch(ControlsEvent.showMovement, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showMovement, testCharacter.name);
 
             expect(interactionModeSpy).toHaveBeenCalledWith({
                 type: 'moving',
@@ -247,7 +232,7 @@ describe('Overwatch Movement Mode Conflict', () => {
             });
 
             // Step 2: Move character one cell
-            superEventBus.dispatch(ControlsEvent.cellClick, { x: 6, y: 5 });
+            eventBus.dispatch(ControlsEvent.cellClick, { x: 6, y: 5 });
 
             // Step 3: Wait for movement to complete
             // Update character position and actions
@@ -265,7 +250,7 @@ describe('Overwatch Movement Mode Conflict', () => {
             interactionModeSpy.mockClear();
 
             // Step 4: Now activate overwatch
-            superEventBus.dispatch(ControlsEvent.showOverwatch, movedCharacter.name);
+            eventBus.dispatch(ControlsEvent.showOverwatch, movedCharacter.name);
 
             // Verify overwatch mode is set correctly
             expect(interactionModeSpy).toHaveBeenCalledWith({
@@ -278,7 +263,7 @@ describe('Overwatch Movement Mode Conflict', () => {
             });
 
             // Confirm overwatch activation
-            superEventBus.dispatch(ControlsEvent.cellClick, { x: 8, y: 5 });
+            eventBus.dispatch(ControlsEvent.cellClick, { x: 8, y: 5 });
 
             // Verify action points are deducted correctly
             expect(deductPointsSpy).toHaveBeenCalledWith({
@@ -289,17 +274,16 @@ describe('Overwatch Movement Mode Conflict', () => {
         });
 
         it('should clear movement mode before activating overwatch', () => {
-            const listener = createTestListener();
             const interactionModeSpy = jest.fn();
             const highlightsSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.uiInteractionMode, interactionModeSpy);
-            listener.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
+            eventBus.listen(UpdateStateEvent.uiInteractionMode, interactionModeSpy);
+            eventBus.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
 
             mockState.findCharacter.mockReturnValue(testCharacter);
 
             // Activate movement mode
-            superEventBus.dispatch(ControlsEvent.showMovement, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showMovement, testCharacter.name);
             
             // Update the mock state to reflect movement mode
             (mockState as any)._setInteractionMode({ type: 'moving', data: { characterId: testCharacter.name } });
@@ -309,7 +293,7 @@ describe('Overwatch Movement Mode Conflict', () => {
             highlightsSpy.mockClear();
 
             // Activate overwatch
-            superEventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
 
             // Verify movement highlights are cleared
             const movementClearCall = highlightsSpy.mock.calls.find(call =>
@@ -329,17 +313,16 @@ describe('Overwatch Movement Mode Conflict', () => {
         });
 
         it('should not mix movement and overwatch visual states', () => {
-            const listener = createTestListener();
             const cellVisualSpy = jest.fn();
             const characterVisualSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellVisualSpy);
-            listener.listen(UpdateStateEvent.uiCharacterVisual, characterVisualSpy);
+            eventBus.listen(UpdateStateEvent.uiCellVisualBatch, cellVisualSpy);
+            eventBus.listen(UpdateStateEvent.uiCharacterVisual, characterVisualSpy);
 
             mockState.findCharacter.mockReturnValue(testCharacter);
 
             // Activate movement mode
-            superEventBus.dispatch(ControlsEvent.showMovement, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showMovement, testCharacter.name);
 
             // Store movement visual state
             const _movementCellCalls = cellVisualSpy.mock.calls.length;
@@ -349,7 +332,7 @@ describe('Overwatch Movement Mode Conflict', () => {
             characterVisualSpy.mockClear();
 
             // Activate overwatch
-            superEventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
 
             // Check if movement cells were cleared before overwatch cells were added
             const cellUpdates = cellVisualSpy.mock.calls;

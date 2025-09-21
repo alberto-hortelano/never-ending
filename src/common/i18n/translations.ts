@@ -70,6 +70,7 @@ export interface TranslationKeys {
   'conversation.continueListen': string;
   'conversation.narrator': string;
   'conversation.storyContinues': string;
+  'conversation.skip': string;
   
   // Top Bar
   'topbar.campaign': string;
@@ -322,7 +323,8 @@ export const translations: Record<string, TranslationKeys> = {
     'conversation.continueListen': 'Continue Listening',
     'conversation.narrator': 'Narrator',
     'conversation.storyContinues': 'The story continues...',
-    
+    'conversation.skip': 'Skip',
+
     // Top Bar
     'topbar.campaign': 'Campaign',
     'topbar.map': 'Map',
@@ -573,7 +575,8 @@ export const translations: Record<string, TranslationKeys> = {
     'conversation.continueListen': 'Seguir escuchando',
     'conversation.narrator': 'Narrador',
     'conversation.storyContinues': 'La historia continúa...',
-    
+    'conversation.skip': 'Saltar',
+
     // Top Bar
     'topbar.campaign': 'Campaña',
     'topbar.map': 'Mapa',

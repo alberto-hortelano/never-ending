@@ -408,8 +408,7 @@ export const getBaseState = () => initialState(40, 50, player, [data]);
 
 /**
  * Creates an empty state for AI-driven games
- * Only includes the player and Data, no map or other characters
- * The AI will populate everything else
+ * No characters or real map - the AI will populate everything
  */
 export const getEmptyState = (): IState => {
     const game: IGame = {
@@ -421,40 +420,20 @@ export const getEmptyState = (): IState => {
         },
         teams: TeamService.createSinglePlayerTeams()
     };
-    
-    // Create minimal characters - just Jim and Data
-    const minimalPlayer: ICharacter = {
-        ...baseCharacter,
-        ...player,
-        name: MAIN_CHARACTER_NAME,
-        position: { x: 10, y: 10 }, // Start position that will likely be in a room
-    } as ICharacter;
-    
-    const minimalData: ICharacter = {
-        ...baseCharacter,
-        ...data,
-        name: COMPANION_DROID_NAME,
-        position: { x: 11, y: 10 }, // Next to player
-    } as ICharacter;
-    
-    // Create an empty 50x50 map with just floor tiles
-    const emptyMap: ICell[][] = [];
-    for (let y = 0; y < 50; y++) {
-        emptyMap[y] = [];
-        for (let x = 0; x < 50; x++) {
-            emptyMap[y]![x] = {
-                position: { x, y },
-                locations: ['floor'], // Just basic floor
-                elements: [],
-                content: null
-            };
-        }
-    }
-    
+
+    // Create a minimal 1x1 placeholder map to avoid null issues
+    // The AI will replace this with a proper map
+    const placeholderMap: ICell[][] = [[{
+        position: { x: 0, y: 0 },
+        locations: ['placeholder'],
+        elements: [],
+        content: null
+    }]];
+
     const initialState: IState = {
         game,
-        map: emptyMap,
-        characters: [minimalPlayer, minimalData],
+        map: placeholderMap,
+        characters: [], // No characters - AI will create all characters at proper positions
         messages: [],
         overwatchData: {},
         ui: {
@@ -465,8 +444,8 @@ export const getEmptyState = (): IState => {
                 characters: {},
                 cells: {},
                 board: {
-                    mapWidth: 50,
-                    mapHeight: 50,
+                    mapWidth: 1,
+                    mapHeight: 1,
                     hasPopupActive: false
                 }
             },
@@ -484,6 +463,6 @@ export const getEmptyState = (): IState => {
             }
         }
     };
-    
+
     return initialState;
 };

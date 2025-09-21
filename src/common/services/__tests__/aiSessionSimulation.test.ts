@@ -144,7 +144,7 @@ describe('Complete AI Session Simulation', () => {
                                 name: 'VI-GO',
                                 race: 'robot',
                                 description: 'Analysis droid',
-                                location: 'Bridge/player',
+                                location: 'Undercover Ship - Bridge',
                                 orientation: 'right',
                                 palette: {
                                     skin: 'transparent',

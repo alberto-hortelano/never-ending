@@ -104,6 +104,7 @@ export class AIController extends EventBus<
     }
 
     public setGameState(state: State): void {
+        console.log('[AI] setGameState called');
         // Clean up previous listeners before setting new state
         this.cleanup();
 
@@ -112,12 +113,19 @@ export class AIController extends EventBus<
         // Preserve conversation history by keeping existing contextBuilder if possible
         // Only create new contextBuilder if it doesn't exist
         if (!this.contextBuilder) {
+            console.log('[AI] Creating new contextBuilder');
             this.contextBuilder = new AIContextBuilder(state);
         } else {
+            console.log('[AI] Updating existing contextBuilder');
             // Update the state reference in existing contextBuilder
             // This preserves conversation history while updating game state
             this.contextBuilder.updateState(state);
         }
+
+        // Reset processing flags when setting new state
+        this.isProcessingTurn = false;
+        this.isForcedTurnEnd = false;
+        console.log('[AI] Resetting flags: isProcessingTurn=false, isForcedTurnEnd=false');
 
         this.initialize();
     }
@@ -157,11 +165,22 @@ export class AIController extends EventBus<
         // Listen for turn changes to check if AI player should act
         this.listen(GameEvent.changeTurn, (data: GameEventsMap[GameEvent.changeTurn]) => {
             const currentPlayer = data.turn;
+            console.log(`[AI] Turn changed to: ${currentPlayer}`);
+
+            // Reset the processing flag when turn changes
+            // This ensures we don't get stuck from a previous turn
+            if (data.previousTurn && this.isAIPlayer(data.previousTurn)) {
+                console.log('[AI] Previous turn was AI, resetting isProcessingTurn flag');
+                this.isProcessingTurn = false;
+                this.isForcedTurnEnd = false;
+            }
 
             // Check if this is an AI-controlled player
             const isAI = this.isAIPlayer(currentPlayer);
+            console.log(`[AI] Is AI player: ${isAI}`);
 
             if (isAI) {
+                console.log(`[AI] Scheduling AI turn for player ${currentPlayer}`);
                 // Give a small delay for UI to update
                 setTimeout(() => this.processAIPlayerTurn(currentPlayer), 500);
             }
@@ -296,11 +315,19 @@ export class AIController extends EventBus<
 
     private isAIPlayer(playerId: string): boolean {
         if (!this.state) {
+            console.error('[AI] isAIPlayer - No state available');
             return false;
         }
         // Check if this player is marked as AI in the game state
         const game = this.state.game as ExtendedGame;
         const playerInfo = game.playerInfo?.[playerId];
+        console.log('[AI] isAIPlayer check:', {
+            playerId,
+            playerInfo,
+            hasPlayerInfo: !!game.playerInfo,
+            allPlayerInfo: game.playerInfo
+        });
+
         // This maintains backward compatibility
         if (!game.playerInfo) {
             console.warn('[AIController] No playerInfo in game state, using fallback check');
@@ -312,11 +339,19 @@ export class AIController extends EventBus<
     // Removed isAIControlled - not used
 
     private async processAIPlayerTurn(playerId: string): Promise<void> {
-        if (!this.state) return;
+        console.log(`[AI] processAIPlayerTurn called for player: ${playerId}`);
+
+        if (!this.state) {
+            console.error('[AI] processAIPlayerTurn - No state available');
+            return;
+        }
+
         // When it's an AI player's turn, find their characters and take actions
         const aiCharacters = this.state.characters.filter((c: DeepReadonly<ICharacter>) => c.player === playerId);
+        console.log(`[AI] Found ${aiCharacters.length} AI characters for player ${playerId}`);
 
         if (aiCharacters.length === 0) {
+            console.warn(`[AI] No characters found for AI player ${playerId}`);
             return;
         }
 
@@ -372,9 +407,26 @@ export class AIController extends EventBus<
     }
 
     private async processAICharacterTurn(character: DeepReadonly<ICharacter>): Promise<void> {
-        if (this.isProcessingTurn || !this.aiEnabled || !this.state || !this.contextBuilder) {
+        console.log(`[AI] processAICharacterTurn called for character: ${character.name}`);
+
+        if (this.isProcessingTurn) {
+            console.warn('[AI] Already processing turn, skipping');
             return;
         }
+        if (!this.aiEnabled) {
+            console.warn('[AI] AI is disabled');
+            return;
+        }
+        if (!this.state) {
+            console.error('[AI] No state available');
+            return;
+        }
+        if (!this.contextBuilder) {
+            console.error('[AI] No contextBuilder available');
+            return;
+        }
+
+        console.log('[AI] Starting to process character turn');
         this.isProcessingTurn = true;
 
         try {
@@ -556,8 +608,12 @@ export class AIController extends EventBus<
         } finally {
             // Only reset isProcessingTurn if the turn wasn't force-ended by conversation
             // This prevents the AI from processing again when it shouldn't
+            console.log('[AI] Finally block - isForcedTurnEnd:', this.isForcedTurnEnd);
             if (!this.isForcedTurnEnd) {
+                console.log('[AI] Clearing isProcessingTurn flag');
                 this.isProcessingTurn = false;
+            } else {
+                console.log('[AI] NOT clearing isProcessingTurn due to forced end');
             }
         }
     }
@@ -679,8 +735,17 @@ export class AIController extends EventBus<
         }
 
 
+        // Add location to current character in context
+        const contextWithLocation = {
+            ...context,
+            currentCharacter: {
+                ...context.currentCharacter,
+                location: this.getCurrentRoomName(character)
+            }
+        };
+
         // Get AI decision from game engine with story context
-        const response = await this.gameEngineService.requestAIAction(context, undefined, storyStateForPlanner, language as LanguageCode);
+        const response = await this.gameEngineService.requestAIAction(contextWithLocation, undefined, storyStateForPlanner, language as LanguageCode);
 
         // Check if response contains tactical directive
         if (response.command?.type === 'tactical_directive') {
@@ -814,12 +879,24 @@ export class AIController extends EventBus<
             throw new Error('[AI] ExecuteMovement - No characters in command');
         }
         const targetLocationString = characters[0].location;
-        const targetLocation = this.resolveLocation(targetLocationString, character);
+
+        let targetLocation: ICoord | null = null;
+        try {
+            targetLocation = this.resolveLocation(targetLocationString, character);
+        } catch (error) {
+            console.error(`[AI] ExecuteMovement - Failed to resolve location for ${character.name}:`, error);
+
+            // End the turn properly on invalid location
+            if (!this.isProcessingMultipleCharacters) {
+                this.endAITurn();
+            }
+            return;
+        }
 
         if (!targetLocation || !isFinite(targetLocation.x) || !isFinite(targetLocation.y) ||
             targetLocation.x < -1000 || targetLocation.x > 1000 ||
             targetLocation.y < -1000 || targetLocation.y > 1000) {
-            console.warn('[AI] ExecuteMovement - Invalid location:', targetLocationString, targetLocation);
+            console.error('[AI] ExecuteMovement - Invalid resolved location:', targetLocationString, targetLocation);
             if (!this.isProcessingMultipleCharacters) {
                 this.endAITurn();
             }
@@ -926,8 +1003,13 @@ export class AIController extends EventBus<
 
                 const context = this.contextBuilder.buildTurnContext(character, this.state);
                 // Create a new context object with blockage info as string (as expected by AIActionContext)
+                // Also add location to current character
                 const contextWithBlockage = {
                     ...context,
+                    currentCharacter: {
+                        ...context.currentCharacter,
+                        location: this.getCurrentRoomName(character)
+                    },
                     blockageInfo: JSON.stringify(blockageContext)
                 } as unknown as GameContext;
 
@@ -1755,50 +1837,28 @@ export class AIController extends EventBus<
         }
     }
 
-    private resolveLocation(location: string, fromCharacter?: DeepReadonly<ICharacter>): ICoord | null {
+    private resolveLocation(location: string, _fromCharacter?: DeepReadonly<ICharacter>): ICoord | null {
         if (!this.state) {
-            return null;
+            throw new Error(`[AI] Cannot resolve location: game state is not initialized`);
+        }
+
+        if (!location || location.trim() === '') {
+            throw new Error(`[AI] Invalid location: location is empty or null`);
         }
 
         const lowerLocation = location.toLowerCase().trim();
 
-        // Handle relative directions (including diagonals)
+        // Check if it's a direction - these are NOT allowed
         const directions = [
             'north', 'south', 'east', 'west', 'up', 'down', 'left', 'right',
             'northeast', 'northwest', 'southeast', 'southwest',
             'north-east', 'north-west', 'south-east', 'south-west'
         ];
 
-        if (fromCharacter && directions.includes(lowerLocation)) {
-            const moveDistance = 5; // Move 5 cells in the direction
-            const diagonalDistance = Math.floor(moveDistance * 0.7); // Diagonal moves are slightly shorter
-
-            switch (lowerLocation) {
-                case 'north':
-                case 'up':
-                    return { x: fromCharacter.position.x, y: fromCharacter.position.y - moveDistance };
-                case 'south':
-                case 'down':
-                    return { x: fromCharacter.position.x, y: fromCharacter.position.y + moveDistance };
-                case 'east':
-                case 'right':
-                    return { x: fromCharacter.position.x + moveDistance, y: fromCharacter.position.y };
-                case 'west':
-                case 'left':
-                    return { x: fromCharacter.position.x - moveDistance, y: fromCharacter.position.y };
-                case 'northeast':
-                case 'north-east':
-                    return { x: fromCharacter.position.x + diagonalDistance, y: fromCharacter.position.y - diagonalDistance };
-                case 'northwest':
-                case 'north-west':
-                    return { x: fromCharacter.position.x - diagonalDistance, y: fromCharacter.position.y - diagonalDistance };
-                case 'southeast':
-                case 'south-east':
-                    return { x: fromCharacter.position.x + diagonalDistance, y: fromCharacter.position.y + diagonalDistance };
-                case 'southwest':
-                case 'south-west':
-                    return { x: fromCharacter.position.x - diagonalDistance, y: fromCharacter.position.y + diagonalDistance };
-            }
+        if (directions.includes(lowerLocation)) {
+            const errorMsg = `[AI] Invalid location format '${location}': Movement locations must be room names or character names, not directions. Use actual location names like 'Cargo Bay' or character names like 'Enemy Captain'.`;
+            console.error(errorMsg);
+            throw new Error(errorMsg);
         }
 
         // Handle "center" or "center of map"
@@ -1832,21 +1892,65 @@ export class AIController extends EventBus<
             }
         }
 
-        // Try to parse as coordinates
+        // We should NOT accept arbitrary coordinates - they must be room or character names
+        // Log a warning if coordinates are attempted
         const coordMatch = location.match(/(\d+),\s*(\d+)/);
         if (coordMatch) {
-            const xStr = coordMatch[1];
-            const yStr = coordMatch[2];
-            if (xStr && yStr) {
-                const x = parseInt(xStr, 10);
-                const y = parseInt(yStr, 10);
-                if (!isNaN(x) && !isNaN(y)) {
-                    return { x, y };
+            const errorMsg = `[AI] Invalid location format '${location}': Movement locations must be room names or character names, not coordinates. Use names like 'Cargo Bay', 'Bridge', or character names like 'Enemy Captain'.`;
+            console.error(errorMsg);
+            throw new Error(errorMsg);
+        }
+
+        // If we couldn't resolve the location, throw an error with helpful information
+        const availableRooms = this.getAvailableRoomNames();
+        const availableCharacters = this.state.characters.map(c => c.name).join(', ');
+        const errorMsg = `[AI] Could not resolve location '${location}'. Available rooms: [${availableRooms.join(', ')}]. Available characters: [${availableCharacters}]`;
+        console.error(errorMsg);
+        throw new Error(errorMsg);
+    }
+
+    private getAvailableRoomNames(): string[] {
+        if (!this.state) return [];
+
+        const roomNames = new Set<string>();
+        const map = this.state.map;
+
+        for (let y = 0; y < map.length; y++) {
+            for (let x = 0; x < (map[y]?.length || 0); x++) {
+                const cell = map[y]?.[x];
+                if (cell?.locations) {
+                    for (const loc of cell.locations) {
+                        if (loc && loc !== 'floor' && loc !== 'wall') {
+                            roomNames.add(loc);
+                        }
+                    }
                 }
             }
         }
 
-        return null;
+        return Array.from(roomNames);
+    }
+
+    private getCurrentRoomName(character: DeepReadonly<ICharacter>): string {
+        if (!this.state) return 'Unknown Location';
+
+        const map = this.state.map;
+        const x = Math.round(character.position.x);
+        const y = Math.round(character.position.y);
+
+        // Get the cell at the character's position
+        const cell = map[y]?.[x];
+        if (cell?.locations && cell.locations.length > 0) {
+            // Find the first meaningful location (not floor/wall)
+            for (const loc of cell.locations) {
+                if (loc && loc !== 'floor' && loc !== 'wall') {
+                    return loc;
+                }
+            }
+        }
+
+        // If no room name found, return a descriptive fallback
+        return 'Unknown Location';
     }
 
     private findRoomCenter(roomName: string): ICoord | null {
@@ -1997,19 +2101,27 @@ export class AIController extends EventBus<
         try {
             if (this.state && this.contextBuilder) {
                 // Use first character or create dummy for context
+                // Use center of map for dummy position instead of (0,0)
+                const mapWidth = this.state.map[0]?.length || 50;
+                const mapHeight = this.state.map.length || 50;
                 const contextCharacter = this.state.characters[0] || {
                     name: 'system',
-                    position: { x: 0, y: 0 },
+                    position: { x: Math.floor(mapWidth / 2), y: Math.floor(mapHeight / 2) },
                     health: 100,
                     actions: { pointsLeft: 100 }
                 } as DeepReadonly<ICharacter>;
                 const context = this.contextBuilder.buildTurnContext(contextCharacter, this.state);
                 // Add error context to the AI request
+                // Also add location to current character
                 const contextWithError = {
                     ...context,
+                    currentCharacter: {
+                        ...context.currentCharacter,
+                        location: this.getCurrentRoomName(contextCharacter)
+                    },
                     positioningError: errorContext
                 } as unknown as GameContext;
-                
+
                 console.log('[AI] Requesting corrected command after positioning error');
                 const language = this.state?.language || 'es';
                 const response = await this.gameEngineService.requestAIAction(contextWithError as unknown as AIActionContext, undefined, undefined, language as LanguageCode);
@@ -2019,9 +2131,12 @@ export class AIController extends EventBus<
                     if (validatedCommand) {
                         console.log('[AI] Retrying with corrected command:', validatedCommand.type);
                         // Get a dummy character for the retry
+                        // Use center of map for dummy position instead of (0,0)
+                        const mapWidth = this.state?.map[0]?.length || 50;
+                        const mapHeight = this.state?.map.length || 50;
                         const dummyCharacter = (this.state?.characters[0] || {
                             name: 'system',
-                            position: { x: 0, y: 0 }
+                            position: { x: Math.floor(mapWidth / 2), y: Math.floor(mapHeight / 2) }
                         }) as DeepReadonly<ICharacter>;
                         await this.executeAICommand(validatedCommand, dummyCharacter);
                     } else {
@@ -2207,10 +2322,13 @@ export class AIController extends EventBus<
                         // Execute commands without a specific character context
                         // These are story-level commands like map generation
                         // Pass an empty character for story-level commands
+                        // Use center of map for dummy position instead of (0,0)
+                        const mapWidth = this.state?.map[0]?.length || 50;
+                        const mapHeight = this.state?.map.length || 50;
                         const emptyCharacter: DeepReadonly<ICharacter> = {
                             name: '',
                             player: '',
-                            position: { x: 0, y: 0 },
+                            position: { x: Math.floor(mapWidth / 2), y: Math.floor(mapHeight / 2) },
                             direction: 'down' as Direction,
                             health: 0,
                             maxHealth: 0,

@@ -1,7 +1,7 @@
 import { EventBus } from '../events/EventBus';
 import { UpdateStateEvent, UpdateStateEventsMap } from '../events';
 import type { AICommand, MapCommand } from './AICommandParser';
-import type { ICharacter, IItem, IWeapon, IDoor, Direction, IStoryState, ItemType, ICell } from '../interfaces';
+import type { ICharacter, IItem, IWeapon, IDoor, Direction, IStoryState, ItemType, ICell, ICoord } from '../interfaces';
 import { DoorService } from './DoorService';
 import { weapons as availableWeapons, items as availableItems } from '../../data/state';
 import { CharacterPositioningError } from '../errors/CharacterPositioningError';
@@ -63,29 +63,59 @@ export class StoryCommandExecutor extends EventBus<UpdateStateEventsMap, UpdateS
             // Update the map state
             this.dispatch(UpdateStateEvent.map, newMap);
 
-            // Player and Data already exist in state from getEmptyState()
-            // We need to ensure they are preserved and properly positioned
+            // Note: We don't clear existing characters here because they're needed
+            // for state management. Instead, we'll ensure proper names are used.
 
-            // Ensure player characters are in the list
+            // Get companion name from origin story if available
+            const companionName = storyState?.selectedOrigin?.startingCompanion?.name || COMPANION_DROID_NAME;
+
+            // Ensure player characters are in the list with correct names
             const characters = command.characters || [];
-            const playerChars = this.characterSpawningService.ensurePlayerCharacters();
 
-            // Add player characters if not already present
-            for (const playerChar of playerChars) {
-                const exists = characters.some(c =>
-                    c.name?.toLowerCase() === playerChar.name.toLowerCase()
-                );
-                if (!exists) {
-                    const firstRoomName = mapResult.rooms.length > 0 ? mapResult.rooms[0]!.name : 'floor';
-                    // Note: Merging CharacterSpawnData with MapCommand character requirements
-                    // This type assertion is safe as we're adding the required fields
-                    characters.unshift({
-                        ...playerChar,
-                        location: firstRoomName,
-                        speed: 'medium' as const,
-                        orientation: 'bottom' as const
-                    } as typeof command.characters[0]);
+            // Check if main character exists in command
+            const hasPlayer = characters.some(c =>
+                c.name?.toLowerCase() === MAIN_CHARACTER_NAME.toLowerCase()
+            );
+
+            // Check if companion exists in command (using origin story name)
+            const hasCompanion = characters.some(c =>
+                c.name?.toLowerCase() === companionName.toLowerCase()
+            );
+
+            // Add player character if not present
+            if (!hasPlayer) {
+                if (mapResult.rooms.length === 0) {
+                    throw new Error('Cannot spawn player character: No rooms available in the map');
                 }
+                const firstRoomName = mapResult.rooms[0]!.name;
+                characters.unshift({
+                    name: MAIN_CHARACTER_NAME,
+                    race: 'human',
+                    description: 'The player character',
+                    location: firstRoomName,
+                    speed: 'medium' as const,
+                    orientation: 'bottom' as const,
+                    palette: { skin: '#d7a55f', helmet: 'white', suit: 'white' }
+                } as typeof command.characters[0]);
+            }
+
+            // Add companion if not present (using origin story name)
+            // Note: If "Data" exists but we need "Rusty", we'll handle that during spawning
+            if (!hasCompanion && companionName !== COMPANION_DROID_NAME) {
+                // Only add if it's a different companion than the default "Data"
+                if (mapResult.rooms.length === 0) {
+                    throw new Error('Cannot spawn companion character: No rooms available in the map');
+                }
+                const firstRoomName = mapResult.rooms[0]!.name;
+                characters.unshift({
+                    name: companionName,  // Use the origin story companion name
+                    race: 'robot',
+                    description: storyState?.selectedOrigin?.startingCompanion?.description || 'Your robot companion',
+                    location: firstRoomName,
+                    speed: 'medium' as const,
+                    orientation: 'bottom' as const,
+                    palette: { skin: 'yellow', helmet: 'gold', suit: 'gold' }
+                } as typeof command.characters[0]);
             }
 
             // Handle door generation if included in map command
@@ -270,21 +300,47 @@ export class StoryCommandExecutor extends EventBus<UpdateStateEventsMap, UpdateS
         // Get companion name from origin story if available
         const companionName = storyState?.selectedOrigin?.startingCompanion?.name || COMPANION_DROID_NAME;
 
+        // If we have a different companion than the default "Data", remove "Data" first
+        if (companionName !== COMPANION_DROID_NAME) {
+            this.dispatch(UpdateStateEvent.removeCharacter, { characterName: COMPANION_DROID_NAME });
+        }
+
         // Handle player characters first
+        // Keep track of spawned characters to avoid duplicates
+        const spawnedNames = new Set<string>();
+        const spawnedCharacters: Array<{ name: string; position: ICoord }> = [];
+
         for (const charData of characters) {
             const isPlayer = charData.name?.toLowerCase() === MAIN_CHARACTER_NAME.toLowerCase();
             const isCompanion = charData.name === companionName ||
                 charData.name?.toLowerCase() === companionName.toLowerCase();
 
             if (isPlayer || isCompanion) {
-                await this.spawnPlayerCharacter(
-                    charData,
-                    map as ICell[][],
-                    occupiedPositions,
-                    availableRooms,
-                    isPlayer,
-                    companionName
-                );
+                // Skip if already spawned
+                const characterName = isPlayer ? MAIN_CHARACTER_NAME : companionName;
+                if (spawnedNames.has(characterName.toLowerCase())) {
+                    console.log(`[StoryCommandExecutor] Skipping duplicate spawn of ${characterName}`);
+                    continue;
+                }
+
+                try {
+                    const position = await this.spawnPlayerCharacter(
+                        charData,
+                        map as ICell[][],
+                        occupiedPositions,
+                        availableRooms,
+                        isPlayer,
+                        companionName,
+                        spawnedCharacters
+                    );
+                    spawnedNames.add(characterName.toLowerCase());
+                    if (position) {
+                        spawnedCharacters.push({ name: characterName, position });
+                    }
+                } catch (error) {
+                    console.error(`[StoryCommandExecutor] Failed to spawn player character ${characterName}:`, error);
+                    throw error;
+                }
                 continue;
             }
         }
@@ -294,16 +350,30 @@ export class StoryCommandExecutor extends EventBus<UpdateStateEventsMap, UpdateS
             const companionName = storyState?.selectedOrigin?.startingCompanion?.name || COMPANION_DROID_NAME;
             if (charData.name?.toLowerCase() === MAIN_CHARACTER_NAME.toLowerCase() ||
                 charData.name === companionName ||
-                charData.name?.toLowerCase() === companionName.toLowerCase()) {
+                charData.name?.toLowerCase() === companionName.toLowerCase() ||
+                spawnedNames.has(charData.name?.toLowerCase() || '')) {
+                if (spawnedNames.has(charData.name?.toLowerCase() || '')) {
+                    console.log(`[StoryCommandExecutor] Skipping duplicate spawn of NPC ${charData.name}`);
+                }
                 continue;
             }
 
-            await this.spawnNonPlayerCharacter(
-                charData,
-                map as ICell[][],
-                occupiedPositions,
-                availableRooms
-            );
+            try {
+                const position = await this.spawnNonPlayerCharacter(
+                    charData,
+                    map as ICell[][],
+                    occupiedPositions,
+                    availableRooms,
+                    spawnedCharacters
+                );
+                spawnedNames.add(charData.name?.toLowerCase() || '');
+                if (position && charData.name) {
+                    spawnedCharacters.push({ name: charData.name, position });
+                }
+            } catch (error) {
+                console.error(`[StoryCommandExecutor] Failed to spawn NPC ${charData.name}:`, error);
+                throw error;
+            }
         }
     }
 
@@ -313,15 +383,21 @@ export class StoryCommandExecutor extends EventBus<UpdateStateEventsMap, UpdateS
         occupiedPositions: Set<string>,
         availableRooms: string[],
         isPlayer: boolean,
-        companionName?: string
-    ): Promise<void> {
+        companionName?: string,
+        existingCharacters?: Array<{ name: string; position: ICoord }>
+    ): Promise<ICoord> {
+        const characterName = isPlayer ? MAIN_CHARACTER_NAME : (charData.name || companionName || COMPANION_DROID_NAME);
+        console.log(`[StoryCommandExecutor] Attempting to spawn player character: "${characterName}" at location: "${charData.location}"`);
+
         const position = this.characterSpawningService.findSpawnPosition(
             charData.location,
             map,
-            occupiedPositions
+            occupiedPositions,
+            existingCharacters
         );
 
         if (!position) {
+            console.error(`[StoryCommandExecutor] Failed to find spawn position for ${characterName} at location: "${charData.location}"`);
             throw new CharacterPositioningError(
                 charData.name,
                 charData.location,
@@ -330,8 +406,22 @@ export class StoryCommandExecutor extends EventBus<UpdateStateEventsMap, UpdateS
             );
         }
 
+        // Validate position is within bounds
+        const mapBounds = { width: map[0]?.length || 50, height: map.length || 50 };
+        if (position.x < 0 || position.x >= mapBounds.width || position.y < 0 || position.y >= mapBounds.height) {
+            console.error(`[StoryCommandExecutor] ERROR: Position (${position.x}, ${position.y}) is outside map bounds (${mapBounds.width}x${mapBounds.height}) for character ${characterName}`);
+            throw new CharacterPositioningError(
+                characterName,
+                `Invalid position (${position.x}, ${position.y})`,
+                availableRooms,
+                mapBounds
+            );
+        }
+
+        console.log(`[StoryCommandExecutor] Spawning ${characterName} at valid position (${position.x}, ${position.y})`);
+
         const character = this.characterSpawningService.createCharacterFromBase({
-            name: isPlayer ? MAIN_CHARACTER_NAME : (charData.name || companionName || COMPANION_DROID_NAME),
+            name: characterName,
             position: position,
             race: isPlayer ? 'human' : (charData.race || 'robot'),
             player: HUMAN_PLAYER,
@@ -341,26 +431,34 @@ export class StoryCommandExecutor extends EventBus<UpdateStateEventsMap, UpdateS
                 (charData.palette || { skin: 'yellow', helmet: 'gold', suit: 'gold' })
         });
 
+        // Use addCharacter for new characters instead of characterPosition
         const updateWithNetwork = character as ICharacter & { fromNetwork?: boolean };
         updateWithNetwork.fromNetwork = true;
-        this.dispatch(UpdateStateEvent.characterPosition, updateWithNetwork);
+        this.dispatch(UpdateStateEvent.addCharacter, updateWithNetwork);
 
         occupiedPositions.add(`${position.x},${position.y}`);
+        console.log(`[StoryCommandExecutor] Successfully spawned ${characterName}`);
+        return position;
     }
 
     private async spawnNonPlayerCharacter(
         charData: CharacterSpawnData,
         map: ICell[][],
         occupiedPositions: Set<string>,
-        availableRooms: string[]
-    ): Promise<void> {
+        availableRooms: string[],
+        existingCharacters?: Array<{ name: string; position: ICoord }>
+    ): Promise<ICoord> {
+        console.log(`[StoryCommandExecutor] Attempting to spawn NPC: "${charData.name}" at location: "${charData.location}"`);
+
         const position = this.characterSpawningService.findSpawnPosition(
             charData.location,
             map,
-            occupiedPositions
+            occupiedPositions,
+            existingCharacters
         );
 
         if (!position) {
+            console.error(`[StoryCommandExecutor] Failed to find spawn position for ${charData.name} at location: "${charData.location}"`);
             throw new CharacterPositioningError(
                 charData.name,
                 charData.location,
@@ -370,7 +468,19 @@ export class StoryCommandExecutor extends EventBus<UpdateStateEventsMap, UpdateS
         }
 
         const mapBounds = { width: map[0]?.length || 50, height: map.length || 50 };
-        this.characterSpawningService.validatePosition(position, mapBounds);
+
+        // Validate position is within bounds
+        if (position.x < 0 || position.x >= mapBounds.width || position.y < 0 || position.y >= mapBounds.height) {
+            console.error(`[StoryCommandExecutor] ERROR: Position (${position.x}, ${position.y}) is outside map bounds (${mapBounds.width}x${mapBounds.height}) for NPC ${charData.name}`);
+            throw new CharacterPositioningError(
+                charData.name,
+                `Invalid position (${position.x}, ${position.y})`,
+                availableRooms,
+                mapBounds
+            );
+        }
+
+        console.log(`[StoryCommandExecutor] Spawning NPC ${charData.name} at valid position (${position.x}, ${position.y})`);
 
         const newCharacter = this.characterSpawningService.createCharacterFromBase({
             name: charData.name,
@@ -389,6 +499,8 @@ export class StoryCommandExecutor extends EventBus<UpdateStateEventsMap, UpdateS
 
         this.dispatch(UpdateStateEvent.addCharacter, newCharacter);
         occupiedPositions.add(`${position.x},${position.y}`);
+        console.log(`[StoryCommandExecutor] Successfully spawned NPC ${charData.name}`);
+        return position;
     }
 
 

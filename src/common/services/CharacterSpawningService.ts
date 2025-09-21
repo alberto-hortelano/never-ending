@@ -22,7 +22,7 @@ export interface CharacterSpawnData {
 export class CharacterSpawningService {
     private static instance: CharacterSpawningService;
 
-    private constructor() {}
+    private constructor() { }
 
     public static getInstance(): CharacterSpawningService {
         if (!CharacterSpawningService.instance) {
@@ -45,57 +45,58 @@ export class CharacterSpawningService {
     public findSpawnPosition(
         location: string,
         map: ICell[][],
-        occupiedPositions: Set<string>
+        occupiedPositions: Set<string>,
+        existingCharacters?: Array<{ name: string; position: ICoord }>
     ): ICoord | null {
-        // Handle special location strings
-        if (location === 'center') {
-            return this.findCenterPosition(map, occupiedPositions);
-        }
+        console.log(`[CharacterSpawningService] Finding spawn position for location: "${location}"`);
 
-        if (location === 'near_player') {
-            return this.findNearPlayerPosition(map, occupiedPositions);
-        }
-
-        // Try coordinate format
-        const coordMatch = location.match(/(\d+),\s*(\d+)/);
-        if (coordMatch && coordMatch[1] && coordMatch[2]) {
-            return {
-                x: parseInt(coordMatch[1], 10),
-                y: parseInt(coordMatch[2], 10)
-            };
+        // Try to find a character with this name
+        if (existingCharacters) {
+            const targetCharacter = existingCharacters.find(c =>
+                c.name.toLowerCase() === location.toLowerCase()
+            );
+            if (targetCharacter) {
+                console.log(`[CharacterSpawningService] Found character "${location}" at position (${targetCharacter.position.x}, ${targetCharacter.position.y})`);
+                // Find a position near the target character
+                return this.findNearPosition(targetCharacter.position, map, occupiedPositions);
+            }
         }
 
         // Try to find room by name
+        console.log(`[CharacterSpawningService] Searching for room: "${location}"`);
         const roomPos = this.findRoomPosition(location, map, occupiedPositions);
         if (roomPos) {
+            console.log(`[CharacterSpawningService] Found room position for "${location}": (${roomPos.x}, ${roomPos.y})`);
             return roomPos;
         }
 
-        // Fallback to first walkable position
-        return this.findFirstWalkablePosition(map, occupiedPositions);
+        // Location not found - throw error with helpful information
+        const availableRooms = this.getAvailableRooms(map);
+        const characterNames = existingCharacters?.map(c => c.name).join(', ') || 'none';
+        console.error(`[CharacterSpawningService] ERROR: Location "${location}" not found.`);
+        console.error(`[CharacterSpawningService]   Available rooms: ${availableRooms.join(', ')}`);
+        console.error(`[CharacterSpawningService]   Available characters: ${characterNames}`);
+        throw new CharacterPositioningError(
+            'Unknown',
+            location,
+            availableRooms,
+            { width: map[0]?.length || 50, height: map.length }
+        );
     }
 
-    private findCenterPosition(map: ICell[][], occupiedPositions: Set<string>): ICoord | null {
-        const centerX = Math.floor((map[0]?.length || 0) / 2);
-        const centerY = Math.floor(map.length / 2);
-
-        return this.searchInRadius(centerX, centerY, map, occupiedPositions, 10);
-    }
-
-    private findNearPlayerPosition(map: ICell[][], occupiedPositions: Set<string>): ICoord | null {
-        const playerPos = this.findCenterPosition(map, new Set());
-        if (!playerPos) return null;
-
-        const offsets: [number, number][] = [[0, 1], [1, 0], [0, -1], [-1, 0]];
+    private findNearPosition(targetPos: ICoord, map: ICell[][], occupiedPositions: Set<string>): ICoord | null {
+        // Try adjacent cells first
+        const offsets: [number, number][] = [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]];
         for (const [dx, dy] of offsets) {
-            const x = playerPos.x + dx;
-            const y = playerPos.y + dy;
+            const x = targetPos.x + dx;
+            const y = targetPos.y + dy;
             if (this.isValidPosition(x, y, map, occupiedPositions)) {
                 return { x, y };
             }
         }
 
-        return null;
+        // If no adjacent cell is available, search in a wider radius
+        return this.searchInRadius(targetPos.x, targetPos.y, map, occupiedPositions, 5);
     }
 
     private findRoomPosition(
@@ -125,35 +126,27 @@ export class CharacterSpawningService {
             }
         }
 
-        // Find first unoccupied cell
-        for (const cell of roomCells) {
+        // Filter to get only unoccupied cells
+        const availableCells = roomCells.filter(cell => {
             const posKey = `${cell.x},${cell.y}`;
-            if (!occupiedPositions.has(posKey)) {
-                return cell;
-            }
+            return !occupiedPositions.has(posKey);
+        });
+
+        // Randomly select from available cells
+        if (availableCells.length > 0) {
+            const randomIndex = Math.floor(Math.random() * availableCells.length);
+            return availableCells[randomIndex] ?? null;
         }
 
-        // Return random cell if all occupied
-        return roomCells.length > 0 ? (roomCells[0] ?? null) : null;
-    }
-
-    private findFirstWalkablePosition(
-        map: ICell[][],
-        occupiedPositions: Set<string>
-    ): ICoord | null {
-        for (let y = 0; y < map.length; y++) {
-            const row = map[y];
-            if (!row) continue;
-
-            for (let x = 0; x < row.length; x++) {
-                if (this.isValidPosition(x, y, map, occupiedPositions)) {
-                    return { x, y };
-                }
-            }
+        // If all cells are occupied, return a random room cell (shouldn't happen in normal gameplay)
+        if (roomCells.length > 0) {
+            const randomIndex = Math.floor(Math.random() * roomCells.length);
+            return roomCells[randomIndex] ?? null;
         }
 
         return null;
     }
+
 
     private searchInRadius(
         centerX: number,
@@ -255,13 +248,18 @@ export class CharacterSpawningService {
         return 'neutral';
     }
 
-    public ensurePlayerCharacters(): CharacterSpawnData[] {
+    public ensurePlayerCharacters(firstRoomName: string): CharacterSpawnData[] {
+        // firstRoomName MUST be provided - no defaults allowed
+        if (!firstRoomName) {
+            throw new Error('Location must be specified for player characters - no defaults allowed');
+        }
+
         return [
             {
                 name: MAIN_CHARACTER_NAME,
                 race: 'human',
                 description: 'The player character',
-                location: 'center',
+                location: firstRoomName,
                 player: HUMAN_PLAYER,
                 team: PLAYER_TEAM,
                 palette: {
@@ -274,7 +272,7 @@ export class CharacterSpawningService {
                 name: COMPANION_DROID_NAME,
                 race: 'robot',
                 description: 'Your robot companion',
-                location: 'near_player',
+                location: MAIN_CHARACTER_NAME, // Spawn near the player character
                 player: HUMAN_PLAYER,
                 team: PLAYER_TEAM,
                 palette: {

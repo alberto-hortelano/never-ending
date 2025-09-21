@@ -266,8 +266,9 @@ export class WebSocketServer {
                 name: player.name,
                 // Assign different rooms to each player to avoid crowding
                 location: spawnRooms[index % spawnRooms.length],
-                // Initialize with default position - positionCharacters will handle actual placement
-                position: { x: 0, y: 0 },
+                // Initialize with temporary position - positionCharacters MUST handle actual placement
+                // Using invalid position to ensure it gets properly positioned
+                position: { x: -1, y: -1 },
                 // Ensure other required properties are set
                 direction: 'down' as const,
                 path: [],

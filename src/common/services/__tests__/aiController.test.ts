@@ -19,6 +19,25 @@ jest.mock('../AIGameEngineService', () => ({
     }
 }));
 
+// Mock calculatePath from map helpers
+jest.mock('../../helpers/map', () => ({
+    calculatePath: jest.fn((from, to) => {
+        // Return a simple path from the source to destination
+        const path = [];
+        const xDiff = to.x - from.x;
+        const yDiff = to.y - from.y;
+        const steps = Math.max(Math.abs(xDiff), Math.abs(yDiff));
+
+        for (let i = 1; i <= steps; i++) {
+            path.push({
+                x: from.x + Math.round((xDiff / steps) * i),
+                y: from.y + Math.round((yDiff / steps) * i)
+            });
+        }
+        return path;
+    })
+}));
+
 describe('AIController', () => {
     let aiController: AIController;
     let state: State;
@@ -203,9 +222,10 @@ describe('AIController', () => {
             expect(location).toEqual({ x: 5, y: 5 });
         });
         
-        it('should resolve coordinate strings', () => {
-            const location = (aiController as any).resolveLocation('10, 20');
-            expect(location).toEqual({ x: 10, y: 20 });
+        it('should throw error for coordinate strings', () => {
+            expect(() => (aiController as any).resolveLocation('10, 20')).toThrow(
+                "[AI] Invalid location format '10, 20': Movement locations must be room names or character names, not coordinates"
+            );
         });
         
         it('should handle case-insensitive character names', () => {
@@ -218,7 +238,7 @@ describe('AIController', () => {
         it('should dispatch movement events for reachable targets', async () => {
             const command = {
                 type: 'movement',
-                characters: [{ name: 'data', location: '18,15' }] // 3 cells away
+                characters: [{ name: 'data', location: 'Jim' }] // Move to Jim's position
             };
             
             const character = state.characters.find((c: any) => c.name === 'data');
@@ -245,7 +265,7 @@ describe('AIController', () => {
         it('should calculate intermediate position for far targets', async () => {
             const command = {
                 type: 'movement',
-                characters: [{ name: 'data', location: '5,5' }] // Far away
+                characters: [{ name: 'data', location: 'Jim' }] // Move to Jim's position
             };
             
             const character = state.characters.find((c: any) => c.name === 'data');

@@ -2,7 +2,7 @@
 import type { ICharacter, ICell, ICoord, Direction } from "../interfaces";
 import type { State } from "../State";
 
-import { superEventBus, ControlsEvent, GUIEvent, UpdateStateEvent } from "../events";
+import { EventBus, ControlsEvent, GUIEvent, UpdateStateEvent } from "../events";
 import { Shoot } from "../Shoot";
 import { baseCharacter } from "../../data/state";
 
@@ -44,21 +44,13 @@ describe('Shoot', () => {
         return map;
     };
 
-    // Helper class for managing test event listeners
-    class TestEventListener {
-        listen(
-            event: Parameters<typeof superEventBus.listen>[0],
-            callback: Parameters<typeof superEventBus.listen>[1]
-        ) {
-            superEventBus.listen.call(this, event, callback);
-        }
-    }
-
-    let testListeners: TestEventListener[] = [];
+    let eventBus: EventBus<any, any>;
 
     beforeEach(() => {
-        // Clear all mocks before each test
+        // Clear all mocks and event listeners before each test
         jest.clearAllMocks();
+        EventBus.reset();
+        eventBus = new EventBus();
 
         // Create test data
         testCharacter = createMockCharacter({
@@ -81,24 +73,11 @@ describe('Shoot', () => {
 
         // Create Shoot instance
         shoot = new Shoot(mockState);
-
-        // Reset test listeners
-        testListeners = [];
     });
 
     afterEach(() => {
-        // Clean up all test listeners
-        testListeners.forEach(listener => superEventBus.remove(listener));
-        // Clean up shoot listeners
-        superEventBus.remove(shoot);
+        // Event listeners are cleaned up by EventBus.reset() in beforeEach
     });
-
-    // Helper to create a test listener and track it
-    const createTestListener = () => {
-        const listener = new TestEventListener();
-        testListeners.push(listener);
-        return listener;
-    };
 
     describe('calculateVisibleCells (via events)', () => {
         it('should calculate visible cells in a cone in front of the character', () => {
@@ -108,12 +87,11 @@ describe('Shoot', () => {
 
             const cellBatchSpy = jest.fn();
             const highlightsSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
-            listener.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
+            eventBus.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
+            eventBus.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
 
             // Trigger showShooting
-            superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
 
             // Should update cells via batch update
             expect(cellBatchSpy).toHaveBeenCalled();
@@ -151,10 +129,9 @@ describe('Shoot', () => {
             mockState.findCharacter.mockReturnValue(testCharacter);
 
             const cellBatchSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
+            eventBus.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
-            superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
 
             const batchUpdate = cellBatchSpy.mock.calls[0][0];
             const nearCell = batchUpdate.updates.find((update: any) => {
@@ -177,10 +154,9 @@ describe('Shoot', () => {
             mockState.findCharacter.mockReturnValue(testCharacter);
 
             const cellBatchSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
+            eventBus.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
-            superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
 
             const batchUpdate = cellBatchSpy.mock.calls[0][0];
             const centerCell = batchUpdate.updates.find((update: any) => {
@@ -207,15 +183,21 @@ describe('Shoot', () => {
             };
 
             directions.forEach(direction => {
+                // Reset EventBus for each iteration
+                EventBus.reset();
+                const testEventBus = new EventBus<any, any>();
+
                 const cellBatchSpy = jest.fn();
-                const listener = createTestListener();
-                listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
+                testEventBus.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
+
+                // Re-create shoot instance with fresh state
+                shoot = new Shoot(mockState);
 
                 testCharacter.position = { x: 5, y: 5 };
                 testCharacter.direction = direction;
                 mockState.findCharacter.mockReturnValue(testCharacter);
 
-                superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+                testEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
 
                 const batchUpdate = cellBatchSpy.mock.calls[0][0];
                 const expectedCell = expectedCells[direction];
@@ -229,9 +211,6 @@ describe('Shoot', () => {
 
                 expect(foundCell).toBeDefined();
                 expect(foundCell!.visualState.highlightIntensity).toBeGreaterThan(0.5);
-
-                // Clean up listener for next iteration
-                superEventBus.remove(listener);
             });
         });
 
@@ -247,10 +226,9 @@ describe('Shoot', () => {
             mockState.findCharacter.mockReturnValue(testCharacter);
 
             const cellBatchSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
+            eventBus.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
-            superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
 
             const batchUpdate = cellBatchSpy.mock.calls[0][0];
 
@@ -296,11 +274,10 @@ describe('Shoot', () => {
             mockState.findCharacter.mockReturnValue(testCharacter);
 
             const cellBatchSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
+            eventBus.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
             // Trigger showShooting
-            superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
 
             // Verify cells were highlighted
             expect(cellBatchSpy).toHaveBeenCalled();
@@ -317,11 +294,10 @@ describe('Shoot', () => {
             mockState.findCharacter.mockReturnValue(undefined);
 
             const cellBatchSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
+            eventBus.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
             // Trigger showShooting
-            superEventBus.dispatch(ControlsEvent.showShooting, 'non-existent-character');
+            eventBus.dispatch(ControlsEvent.showShooting, 'non-existent-character');
 
             // Verify no cells were highlighted
             expect(cellBatchSpy).not.toHaveBeenCalled();
@@ -346,17 +322,16 @@ describe('Shoot', () => {
             (mockState as any).characters = [testCharacter, targetCharacter];
 
             const cellBatchSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
+            eventBus.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
             // First show shooting range
-            superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
 
             // Clear the spy to only capture the clearing event
             cellBatchSpy.mockClear();
 
             // Then click on the target character
-            superEventBus.dispatch(ControlsEvent.characterClick, {
+            eventBus.dispatch(ControlsEvent.characterClick, {
                 characterName: 'target',
                 position: { x: 7, y: 5 }
             });
@@ -385,17 +360,16 @@ describe('Shoot', () => {
             });
 
             const cellBatchSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
+            eventBus.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
             // Show shooting range
-            superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
 
             // Clear the spy to only capture potential clearing event
             cellBatchSpy.mockClear();
 
             // Click on a character behind the shooter (not visible)
-            superEventBus.dispatch(ControlsEvent.characterClick, {
+            eventBus.dispatch(ControlsEvent.characterClick, {
                 characterName: 'target',
                 position: { x: 1, y: 5 }
             });
@@ -437,12 +411,11 @@ describe('Shoot', () => {
             (mockState as any).characters = [testCharacter, targetCharacter];
 
             const projectileSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(GUIEvent.shootProjectile, projectileSpy);
+            eventBus.listen(GUIEvent.shootProjectile, projectileSpy);
 
             // Show shooting range and shoot
-            superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
-            superEventBus.dispatch(ControlsEvent.characterClick, {
+            eventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.characterClick, {
                 characterName: 'target',
                 position: { x: 7, y: 5 }
             });
@@ -486,11 +459,10 @@ describe('Shoot', () => {
             (mockState as any).characters = [testCharacter, targetCharacter];
 
             const projectileSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(GUIEvent.shootProjectile, projectileSpy);
+            eventBus.listen(GUIEvent.shootProjectile, projectileSpy);
 
-            superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
-            superEventBus.dispatch(ControlsEvent.characterClick, {
+            eventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.characterClick, {
                 characterName: 'target',
                 position: { x: 7, y: 5 }
             });
@@ -520,11 +492,10 @@ describe('Shoot', () => {
             (mockState as any).characters = [testCharacter, targetCharacter];
 
             const projectileSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(GUIEvent.shootProjectile, projectileSpy);
+            eventBus.listen(GUIEvent.shootProjectile, projectileSpy);
 
-            superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
-            superEventBus.dispatch(ControlsEvent.characterClick, {
+            eventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.characterClick, {
                 characterName: 'target',
                 position: { x: 7, y: 5 }
             });
@@ -572,12 +543,11 @@ describe('Shoot', () => {
             (mockState as any).characters = [testCharacter, targetCharacter];
 
             const damageSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.damageCharacter, damageSpy);
+            eventBus.listen(UpdateStateEvent.damageCharacter, damageSpy);
 
             // Show shooting range and shoot
-            superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
-            superEventBus.dispatch(ControlsEvent.characterClick, {
+            eventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.characterClick, {
                 characterName: 'target',
                 position: { x: 7, y: 5 }
             });
@@ -641,15 +611,14 @@ describe('Shoot', () => {
             (mockState as any).characters = [testCharacter, closeTarget, farTarget];
 
             const damageSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.damageCharacter, damageSpy);
+            eventBus.listen(UpdateStateEvent.damageCharacter, damageSpy);
 
             // First update mock state to have only the shooter and close target
             (mockState as any).characters = [testCharacter, closeTarget];
 
             // Shoot close target
-            superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
-            superEventBus.dispatch(ControlsEvent.characterClick, {
+            eventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.characterClick, {
                 characterName: 'closeTarget',
                 position: { x: 6, y: 5 }
             });
@@ -660,8 +629,8 @@ describe('Shoot', () => {
             damageSpy.mockClear();
             (mockState as any).characters = [testCharacter, farTarget];
             
-            superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
-            superEventBus.dispatch(ControlsEvent.characterClick, {
+            eventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.characterClick, {
                 characterName: 'farTarget',
                 position: { x: 12, y: 5 }
             });
@@ -688,11 +657,10 @@ describe('Shoot', () => {
             mockState.findCharacter.mockReturnValue(edgeCharacter);
 
             const cellBatchSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
+            eventBus.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
             // Should not crash when character is at edge
-            superEventBus.dispatch(ControlsEvent.showShooting, edgeCharacter.name);
+            eventBus.dispatch(ControlsEvent.showShooting, edgeCharacter.name);
 
             // Should still highlight some cells (facing down from top-left corner)
             expect(cellBatchSpy).toHaveBeenCalled();
@@ -709,10 +677,9 @@ describe('Shoot', () => {
             mockState.findCharacter.mockReturnValue(testCharacter);
 
             const cellBatchSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
+            eventBus.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
-            superEventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showShooting, testCharacter.name);
 
             // All highlighted cells should have meaningful intensity
             const batchUpdate = cellBatchSpy.mock.calls[0][0];

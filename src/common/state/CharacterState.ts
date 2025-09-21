@@ -58,16 +58,27 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
 
     private validatePosition(position: { x: number; y: number }, characterName: string): void {
         const mapBounds = this.getMapBounds?.();
-        
-        // If we don't have map bounds, use default 50x50
+
+        // If we don't have map bounds, log warning but still validate with defaults
+        if (!mapBounds) {
+            console.warn(`[CharacterState] Map bounds not available for validating ${characterName}, using default 50x50`);
+        }
+
         const maxX = mapBounds?.width || 50;
         const maxY = mapBounds?.height || 50;
-        
+
+        console.log(`[CharacterState] Validating position for ${characterName}: (${position.x}, ${position.y}) against bounds (${maxX}x${maxY})`);
+
         // Check if position is outside bounds
         if (position.x < 0 || position.x >= maxX || position.y < 0 || position.y >= maxY) {
+            console.error(`[CharacterState] CRITICAL: Character ${characterName} placed outside map bounds!`);
+            console.error(`[CharacterState]   Position: (${position.x}, ${position.y})`);
+            console.error(`[CharacterState]   Map bounds: width=${maxX}, height=${maxY}`);
+            console.error(`[CharacterState]   Valid range: x=[0,${maxX-1}], y=[0,${maxY-1}]`);
+
             throw new CharacterPositioningError(
                 characterName,
-                `${position.x},${position.y}`,
+                `Position (${position.x}, ${position.y}) outside map bounds`,
                 [], // No room info at this level
                 { width: maxX, height: maxY }
             );
@@ -281,15 +292,21 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
     private onAddCharacter(data: UpdateStateEventsMap[UpdateStateEvent.addCharacter]) {
         // Check if character already exists
         if (this.#characters.find(c => c.name === data.name)) {
-            console.warn(`Character ${data.name} already exists`);
+            console.warn(`[CharacterState] Character ${data.name} already exists - skipping duplicate spawn`);
             return;
         }
 
+        // Log character spawning attempt
+        console.log(`[CharacterState] Attempting to add character ${data.name} at position (${data.position.x}, ${data.position.y})`);
+
         // Validate spawn position - throw error if invalid
-        this.validatePosition(data.position, data.name);
-        
-        // Log character spawning
-        console.log(`[Character Position] Adding new character ${data.name} at position (${data.position.x}, ${data.position.y})`)
+        try {
+            this.validatePosition(data.position, data.name);
+            console.log(`[CharacterState] Position validation passed for ${data.name} at (${data.position.x}, ${data.position.y})`);
+        } catch (error) {
+            console.error(`[CharacterState] Position validation FAILED for ${data.name} at (${data.position.x}, ${data.position.y}):`, error);
+            throw error;
+        }
 
         // Create full character object with defaults
         const newCharacter: ICharacter = {
@@ -327,6 +344,7 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
         };
 
         this.#characters.push(newCharacter);
+        console.log(`[CharacterState] Successfully added character ${data.name} at position (${data.position.x}, ${data.position.y})`);
         this.dispatch(StateChangeEvent.characters, structuredClone(this.#characters));
         this.dispatch(StateChangeEvent.characterAdded, structuredClone(newCharacter));
         this.onSave?.();

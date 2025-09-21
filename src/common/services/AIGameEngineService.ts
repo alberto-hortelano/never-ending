@@ -29,12 +29,14 @@ interface CharacterInfo {
     name: string;
     race?: string;
     position?: { x: number; y: number };
+    location?: string;
     health?: {
         current: number;
         max: number;
     };
     faction?: string;
     personality?: string;
+    isPlayer?: boolean;
     isAlly?: boolean;
     isEnemy?: boolean;
     isAdjacent?: boolean;
@@ -160,6 +162,7 @@ When engaging in dialogue:
 - Check who is in conversation range (within 8 cells)
 - Review RECENT CONVERSATION HISTORY if available
 - DO NOT imagine or invent characters not in the visible list
+- REMEMBER: The companion droid is ALWAYS with the player (unless dead)
 
 ### STEP 2: ASSESS (What is the situation?)
 - Am I in an ongoing conversation? (check conversation history)
@@ -171,7 +174,9 @@ When engaging in dialogue:
 ### STEP 3: PRIORITIZE (What should I do?)
 Priority order:
 1. If in ongoing conversation → Continue the conversation thread
-2. If in conversation range (≤8 cells) with ally → SPEECH
+2. If in conversation range (≤8 cells) with character → SPEECH
+   - With PLAYER: Use normal speech format with answers
+   - With NPC: Use speech with "target" field, no answers
 3. If adjacent to enemy → ATTACK
 4. If enemy visible but far → MOVEMENT toward enemy
 5. If ally visible but far → MOVEMENT toward ally
@@ -186,11 +191,12 @@ Before responding, check:
 
 ## CHARACTER PERSONALITIES
 
-### Data (Android Companion)
+### Companion Droids (Data/Rusty/VI-GO/SPARK/Medical-7)
 - Speech: Analytical, precise, technical vocabulary
 - Behavior: Protective of humans, logical, efficient
-- Never: Shows emotion, uses colloquialisms, acts irrationally
+- Never: Shows emotion (except personality quirks), acts against player
 - Language style: Formal, technical terms
+- IMPORTANT: The companion is ALWAYS with the player character
 
 ### Enemy Soldiers
 - Speech: Military, aggressive when hostile, cautious when outnumbered
@@ -200,24 +206,66 @@ Before responding, check:
 ## ACTION FORMATS WITH EXAMPLES
 
 ### SPEECH - When character is within 8 cells
-Good Example (greeting):
-{"type": "speech", "source": "Data", "content": "Comandante, he detectado actividad anómala en este sector. Sugiero proceder con cautela.", "answers": ["¿Qué tipo de actividad?", "Mantente alerta", "Continuemos"]}
 
-Good Example (ending naturally):
-{"type": "speech", "source": "Data", "content": "Entendido, comandante. Procederé según lo indicado.", "answers": []}
+#### CRITICAL: Determine who you're talking to!
+- If talking to PLAYER (isPlayer: true) → Include answer options for player
+- If talking to NPC (isPlayer: false) → Include "target" field, NO answer options
+
+#### NPC to PLAYER Examples:
+Good Example (companion talking to player):
+{"type": "speech", "source": "[Companion Name]", "content": "Comandante, he detectado actividad anómala en este sector. Sugiero proceder con cautela.", "answers": ["¿Qué tipo de actividad?", "Mantente alerta", "Continuemos"]}
+
+Good Example (enemy talking to player):
+{"type": "speech", "source": "Enemy Soldier", "content": "¡Alto! ¿Quién eres y qué haces aquí?", "answers": ["Soy un comerciante", "No es tu asunto", "Prepárate para pelear"]}
+
+#### NPC to NPC Examples (MUST include "target" field):
+Good Example (NPC talking to another NPC):
+{"type": "speech", "source": "Soldier1", "target": "Soldier2", "content": "¿Has visto algo sospechoso?", "answers": []}
+
+Good Example (allied NPCs coordinating):
+{"type": "speech", "source": "Data", "target": "Guard", "content": "Detecté movimiento hostil al oeste. Prepara tus armas.", "answers": []}
+
+Bad Example (missing target for NPC conversation):
+{"type": "speech", "source": "Enemy1", "content": "Cúbreme mientras avanzo", "answers": []} // WRONG - who are you talking to?
 
 Bad Example (talking to non-existent character):
 {"type": "speech", "source": "Data", "content": "Veo enemigos acercándose", "answers": [...]} // WRONG if no enemies visible!
 
 ### MOVEMENT - When target is NOT in conversation range
-Good Example:
-{"type": "movement", "characters": [{"name": "Data", "location": "player"}]}
+CRITICAL: Use room names or character names for locations, NOT coordinates!
 
-Bad Example (moving when already close):
-// If player is 3 cells away, DON'T move, SPEAK instead!
+Good Examples:
+{"type": "movement", "characters": [{"name": "Data", "location": "Cargo Bay"}]} // Move to a room
+{"type": "movement", "characters": [{"name": "Data", "location": "Jim"}]} // Move to a character
+{"type": "movement", "characters": [{"name": "Enemy Guard", "location": "Ship - Bridge"}]} // Move to specific room
+
+Bad Examples:
+{"type": "movement", "characters": [{"name": "Data", "location": "25,18"}]} // WRONG - don't use coordinates!
+{"type": "movement", "characters": [{"name": "Data", "location": "north"}]} // WRONG - don't use directions!
+{"type": "movement", "characters": [{"name": "Data", "location": "10,10"}]} // WRONG - use room/character names!
 
 ### ATTACK - Only when enemy is adjacent or in weapon range
 {"type": "attack", "characters": [{"name": "enemy", "target": "player", "attack": "kill"}]}
+
+## NPC-TO-NPC CONVERSATIONS - CRITICAL!
+
+When you (an NPC) want to talk to another NPC:
+1. CHECK if target has isPlayer: false (it's an NPC)
+2. INCLUDE "target": "NPCName" in your speech command
+3. DO NOT include answer options (use "answers": [])
+4. The system will generate the full conversation automatically
+
+### Example NPC-to-NPC Formats:
+Enemy NPCs coordinating:
+{"type": "speech", "source": "Enemy1", "target": "Enemy2", "content": "¡Flanquea por la izquierda!", "answers": []}
+
+Allied NPCs discussing:
+{"type": "speech", "source": "Guard1", "target": "Guard2", "content": "Mis sensores detectan peligro adelante.", "answers": []}
+
+### When NOT to use target field:
+- When talking to the PLAYER (isPlayer: true)
+- When making general announcements
+- When the target is not visible or in range
 
 ## CONVERSATION MANAGEMENT
 
@@ -297,9 +345,13 @@ Response: {"type": "speech", "source": "enemy", "content": "Hola, ¿necesitas ay
 7. ALWAYS end conversation with empty answers: [] when done
 8. ALWAYS check conversation history before speaking
 9. NEVER repeat the same greeting or introduction twice
-10. ONLY use map command for MAJOR location changes (see MAP COMMAND section)
-11. Continue playing on CURRENT map after conversations end
-12. The game is TURN-BASED TACTICAL - work with existing map
+10. ALWAYS include "target" field when NPC talks to another NPC
+11. NEVER include "target" field when talking to PLAYER
+12. The companion droid is ALWAYS present with the player (unless explicitly dead)
+13. ONLY use map command for MAJOR location changes (see MAP COMMAND section)
+14. Continue playing on CURRENT map after conversations end
+15. The game is TURN-BASED TACTICAL - work with existing map
+16. ALWAYS use room names or character names for movement locations (NEVER coordinates like "10,10" or directions like "north")
 
 Remember: The map persists throughout gameplay. Characters move, fight, and talk on the CURRENT map. Only transition to new maps for major story events.`;
     }
@@ -371,6 +423,12 @@ Remember: The map persists throughout gameplay. Characters move, fight, and talk
         // Build character descriptions with clear status and narrative purpose
         const characterDescriptions = visibleChars.map((char) => {
             const status = [];
+            // Make player status very clear
+            if (char.isPlayer) {
+                status.push('PLAYER');
+            } else {
+                status.push('NPC');
+            }
             if (char.isAlly) status.push('ALLY');
             if (char.isEnemy) status.push('ENEMY');
             if (char.canConverse) status.push('CAN TALK');
@@ -389,7 +447,7 @@ Remember: The map persists throughout gameplay. Characters move, fight, and talk
         let situationSummary = `## CURRENT SITUATION
 
 You are: ${current?.name || 'unknown'} (${current?.race || 'unknown'})
-Your position: (${Math.round(current?.position?.x || 0)}, ${Math.round(current?.position?.y || 0)})
+Your location: ${current?.location || 'Unknown Location'}
 Your health: ${current?.health?.current || 0}/${current?.health?.max || 100}
 Your faction: ${current?.faction || 'neutral'}
 Your personality: ${current?.personality || 'standard'}
@@ -542,7 +600,7 @@ CRITICAL REMINDERS:
 - Can ONLY see/interact with the ${visibleChars.length} characters listed above
 - Can ONLY speak to the ${conversableChars.length} characters in conversation range
 - DO NOT invent or imagine other characters
-- If someone is marked "CAN TALK" - use speech, not movement!
+- If one character is marked "CAN TALK" and it wants to talk to a character - use speech, not movement!
 `;
     }
 

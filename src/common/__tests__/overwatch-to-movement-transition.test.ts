@@ -2,7 +2,7 @@
 import type { ICharacter, ICell } from "../interfaces";
 import type { State } from "../State";
 
-import { superEventBus, ControlsEvent, UpdateStateEvent, StateChangeEvent } from "../events";
+import { EventBus, ControlsEvent, UpdateStateEvent, StateChangeEvent } from "../events";
 import { Overwatch } from "../Overwatch";
 import { Movement } from "../Movement";
 import { baseCharacter } from "../../data/state";
@@ -18,6 +18,7 @@ describe('Overwatch to Movement Transition', () => {
     let testCharacter: ICharacter;
     let testMap: ICell[][];
     let uiStateService: UIStateService;
+    let eventBus: EventBus<any, any>;
 
     // Helper function to create a mock character
     const createMockCharacter = (overrides: Partial<ICharacter> = {}): ICharacter => ({
@@ -50,6 +51,8 @@ describe('Overwatch to Movement Transition', () => {
     beforeEach(() => {
         // Clear all mocks before each test
         jest.clearAllMocks();
+        EventBus.reset();
+        eventBus = new EventBus();
 
         // Create test data
         testCharacter = createMockCharacter({
@@ -138,9 +141,9 @@ describe('Overwatch to Movement Transition', () => {
 
     afterEach(() => {
         // Clean up
-        superEventBus.remove(overwatch);
+        eventBus.remove(overwatch);
         movement.destroy();
-        superEventBus.remove(uiStateService);
+        eventBus.remove(uiStateService);
     });
 
     describe('Transition from Overwatch to Movement', () => {
@@ -150,14 +153,14 @@ describe('Overwatch to Movement Transition', () => {
             const visualStatesSpy = jest.fn();
             
             // Listen for updates
-            superEventBus.listen.call({}, UpdateStateEvent.uiCellVisualBatch, cellVisualBatchSpy);
-            superEventBus.listen.call({}, UpdateStateEvent.uiHighlights, highlightsSpy);
-            superEventBus.listen.call({}, StateChangeEvent.uiVisualStates, visualStatesSpy);
+            eventBus.listen.call({}, UpdateStateEvent.uiCellVisualBatch, cellVisualBatchSpy);
+            eventBus.listen.call({}, UpdateStateEvent.uiHighlights, highlightsSpy);
+            eventBus.listen.call({}, StateChangeEvent.uiVisualStates, visualStatesSpy);
             
             mockState.findCharacter.mockReturnValue(testCharacter);
             
             // Step 1: Activate overwatch
-            superEventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
             
             // Check that overwatch highlights were set
             const overwatchHighlightsCall = highlightsSpy.mock.calls.find(call =>
@@ -185,7 +188,7 @@ describe('Overwatch to Movement Transition', () => {
             visualStatesSpy.mockClear();
             
             // Step 2: Switch to movement mode
-            superEventBus.dispatch(ControlsEvent.showMovement, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showMovement, testCharacter.name);
             
             console.log('Visual states calls after movement:', visualStatesSpy.mock.calls.length);
             console.log('Highlights calls:', highlightsSpy.mock.calls.length);

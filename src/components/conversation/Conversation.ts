@@ -291,10 +291,11 @@ export class Conversation extends Component {
     private handleAnswerClick(answer: string) {
         // Check for special AI-to-AI control answers
         if (this.isAIToAIMode) {
-            if (answer === i18n.t('common.continue') || answer === i18n.t('conversation.continueListen')) {
-                // Continue the AI-to-AI conversation
+            if (answer === i18n.t('common.continue') || answer === i18n.t('conversation.continueListen') ||
+                answer === i18n.t('conversation.next')) {
+                // Continue to next exchange in the AI-to-AI conversation
                 this.dispatch(ConversationEvent.continue, answer);
-                this.showLoading();
+                // No loading needed - all exchanges are already loaded
                 return;
             } else if (answer === i18n.t('conversation.interrupt')) {
                 // Player interrupts the conversation
@@ -302,7 +303,7 @@ export class Conversation extends Component {
                 this.dispatch(ConversationEvent.playerInterrupt, undefined);
                 this.hideAIExchangeIndicator();
                 return;
-            } else if (answer === i18n.t('common.skip')) {
+            } else if (answer === i18n.t('common.skip') || answer === i18n.t('conversation.skip')) {
                 // Skip the rest of the conversation
                 this.isAIToAIMode = false;
                 this.dispatch(ConversationEvent.skipConversation, undefined);
@@ -333,8 +334,11 @@ export class Conversation extends Component {
             });
         }
 
-        // Show loading state
-        this.showLoading();
+        // Show loading state only for regular conversations (not AI-to-AI)
+        // AI-to-AI conversations have all data pre-loaded, no loading needed
+        if (!this.isAIToAIMode) {
+            this.showLoading();
+        }
     }
 
     private handleActionAnswer(answer: string, action: string | undefined, accepted: boolean) {
@@ -386,12 +390,21 @@ export class Conversation extends Component {
             // console.log('[Conversation] User declined action:', action);
             // Continue conversation without executing action
             this.dispatch(ConversationEvent.continue, answer);
-            this.showLoading();
+            // Only show loading for regular conversations
+            if (!this.isAIToAIMode) {
+                this.showLoading();
+            }
         }
     }
 
     private showLoading() {
         if (!this.answersElement) return;
+
+        // Remove any existing loading indicators first
+        const existingLoading = this.answersElement.querySelector('.loading-indicator');
+        if (existingLoading) {
+            existingLoading.remove();
+        }
 
         const loadingElement = document.createElement('div');
         loadingElement.className = 'loading-indicator';

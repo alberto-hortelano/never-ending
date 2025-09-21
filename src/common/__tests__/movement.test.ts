@@ -1,4 +1,4 @@
-import { superEventBus, ControlsEvent, StateChangeEvent, UpdateStateEvent } from "../events";
+import { EventBus, ControlsEvent, StateChangeEvent, UpdateStateEvent } from "../events";
 import { Movement } from "../Movement";
 import type { ICharacter, ICell, ICoord, IPositionable } from "../interfaces";
 import type { State } from "../State";
@@ -35,6 +35,7 @@ describe('Movement', () => {
     let mockState: jest.Mocked<State>;
     let testCharacter: ICharacter;
     let testMap: ICell[][];
+    let eventBus: EventBus<any, any>;
 
     // Helper function to create a mock character
     const createMockCharacter = (overrides: Partial<ICharacter> = {}): ICharacter => ({
@@ -62,21 +63,12 @@ describe('Movement', () => {
         return map;
     };
 
-    // Helper class for managing test event listeners
-    class TestEventListener {
-        listen(
-            event: Parameters<typeof superEventBus.listen>[0],
-            callback: Parameters<typeof superEventBus.listen>[1]
-        ) {
-            superEventBus.listen.call(this, event, callback);
-        }
-    }
-
-    let testListeners: TestEventListener[] = [];
 
     beforeEach(() => {
         // Clear all mocks before each test
         jest.clearAllMocks();
+        EventBus.reset();
+        eventBus = new EventBus();
 
         // Create test data
         testCharacter = createMockCharacter({
@@ -97,24 +89,13 @@ describe('Movement', () => {
 
         // Create Movement instance
         movement = new Movement(mockState);
-
-        // Reset test listeners
-        testListeners = [];
     });
 
     afterEach(() => {
-        // Clean up all test listeners
-        testListeners.forEach(listener => superEventBus.remove(listener));
         // Clean up movement listeners
-        superEventBus.remove(movement);
+        eventBus.remove(movement);
     });
 
-    // Helper to create a test listener and track it
-    const createTestListener = () => {
-        const listener = new TestEventListener();
-        testListeners.push(listener);
-        return listener;
-    };
 
     describe('showMovement', () => {
         it('should highlight reachable cells when showMovement is triggered', () => {
@@ -129,11 +110,10 @@ describe('Movement', () => {
             mockState.findCharacter.mockReturnValue(testCharacter);
 
             const highlightsSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
+            eventBus.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
 
             // Trigger showMovement
-            superEventBus.dispatch(ControlsEvent.showMovement, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showMovement, testCharacter.name);
 
             // Verify getReachableCells was called with correct parameters
             const moveCost = testCharacter.actions.general.move;
@@ -163,11 +143,10 @@ describe('Movement', () => {
             mockState.findCharacter.mockReturnValue(undefined);
 
             const highlightsSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
+            eventBus.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
 
             // Trigger showMovement
-            superEventBus.dispatch(ControlsEvent.showMovement, 'non-existent-character');
+            eventBus.dispatch(ControlsEvent.showMovement, 'non-existent-character');
 
             // Verify no highlights were dispatched
             expect(highlightsSpy).not.toHaveBeenCalled();
@@ -195,15 +174,14 @@ describe('Movement', () => {
 
             const updateStateSpy = jest.fn();
             const highlightsSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.characterPath, updateStateSpy);
-            listener.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
+            eventBus.listen(UpdateStateEvent.characterPath, updateStateSpy);
+            eventBus.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
 
             // First show movement to set up reachable cells
-            superEventBus.dispatch(ControlsEvent.showMovement, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showMovement, testCharacter.name);
 
             // Then click on a reachable cell
-            superEventBus.dispatch(ControlsEvent.cellClick, destination);
+            eventBus.dispatch(ControlsEvent.cellClick, destination);
 
             // Verify path calculation
             expect(calculatePath).toHaveBeenCalledWith(
@@ -241,14 +219,13 @@ describe('Movement', () => {
             mockState.findCharacter.mockReturnValue(testCharacter);
 
             const updateStateSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.characterPath, updateStateSpy);
+            eventBus.listen(UpdateStateEvent.characterPath, updateStateSpy);
 
             // Show movement first
-            superEventBus.dispatch(ControlsEvent.showMovement, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showMovement, testCharacter.name);
 
             // Click on non-reachable cell
-            superEventBus.dispatch(ControlsEvent.cellClick, nonReachableCell);
+            eventBus.dispatch(ControlsEvent.cellClick, nonReachableCell);
 
             // Verify no path was set
             expect(calculatePath).not.toHaveBeenCalled();
@@ -268,12 +245,11 @@ describe('Movement', () => {
 
             const updatePathSpy = jest.fn();
             const highlightsSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.characterPath, updatePathSpy);
-            listener.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
+            eventBus.listen(UpdateStateEvent.characterPath, updatePathSpy);
+            eventBus.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
 
             // Dispatch characterPath event
-            superEventBus.dispatch(StateChangeEvent.characterPath, characterWithPath);
+            eventBus.dispatch(StateChangeEvent.characterPath, characterWithPath);
 
             // Verify path was cleared
             expect(updatePathSpy).toHaveBeenCalledWith(
@@ -298,11 +274,10 @@ describe('Movement', () => {
             });
 
             const moveCharacterSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(ControlsEvent.moveCharacter, moveCharacterSpy);
+            eventBus.listen(ControlsEvent.moveCharacter, moveCharacterSpy);
 
             // Dispatch characterPath event
-            superEventBus.dispatch(StateChangeEvent.characterPath, characterWithEmptyPath);
+            eventBus.dispatch(StateChangeEvent.characterPath, characterWithEmptyPath);
 
             // Verify moveCharacter was not dispatched
             expect(moveCharacterSpy).not.toHaveBeenCalled();
@@ -320,7 +295,7 @@ describe('Movement', () => {
             });
 
             // Dispatch characterPath event
-            superEventBus.dispatch(StateChangeEvent.characterPath, characterWithPath);
+            eventBus.dispatch(StateChangeEvent.characterPath, characterWithPath);
 
             // Movement completion is now handled through animations
             // The Movement class tracks completed movements internally
@@ -355,7 +330,7 @@ describe('Movement', () => {
                 (getReachableCells as jest.Mock).mockReturnValue([]);
 
                 // Trigger showMovement
-                superEventBus.dispatch(ControlsEvent.showMovement, character.name);
+                eventBus.dispatch(ControlsEvent.showMovement, character.name);
 
                 // Verify correct distance was calculated
                 expect(getReachableCells).toHaveBeenCalledWith(
@@ -389,15 +364,14 @@ describe('Movement', () => {
 
             const updatePathSpy = jest.fn();
             const highlightsSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.characterPath, updatePathSpy);
-            listener.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
+            eventBus.listen(UpdateStateEvent.characterPath, updatePathSpy);
+            eventBus.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
 
             // Start movement by dispatching characterPath event
-            superEventBus.dispatch(StateChangeEvent.characterPath, characterWithPath);
+            eventBus.dispatch(StateChangeEvent.characterPath, characterWithPath);
 
             // Character is defeated during movement
-            superEventBus.dispatch(StateChangeEvent.characterDefeated, defeatedCharacter);
+            eventBus.dispatch(StateChangeEvent.characterDefeated, defeatedCharacter);
 
             // Verify path was cleared for defeated character
             expect(updatePathSpy).toHaveBeenCalledWith(
@@ -426,11 +400,10 @@ describe('Movement', () => {
             mockState.findCharacter.mockReturnValue(defeatedCharacter);
 
             const highlightsSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
+            eventBus.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
 
             // Try to show movement for defeated character
-            superEventBus.dispatch(ControlsEvent.showMovement, 'deadChar');
+            eventBus.dispatch(ControlsEvent.showMovement, 'deadChar');
 
             // Verify no highlights were dispatched
             expect(highlightsSpy).not.toHaveBeenCalled();
@@ -451,11 +424,10 @@ describe('Movement', () => {
             };
 
             const updatePathSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.characterPath, updatePathSpy);
+            eventBus.listen(UpdateStateEvent.characterPath, updatePathSpy);
 
             // Character is defeated
-            superEventBus.dispatch(StateChangeEvent.characterDefeated, defeatedCharacter);
+            eventBus.dispatch(StateChangeEvent.characterDefeated, defeatedCharacter);
 
             // Verify path was cleared
             expect(updatePathSpy).toHaveBeenCalledWith(
@@ -478,12 +450,11 @@ describe('Movement', () => {
 
             const animationSpy = jest.fn();
             const updatePathSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.uiCharacterAnimation, animationSpy);
-            listener.listen(UpdateStateEvent.characterPath, updatePathSpy);
+            eventBus.listen(UpdateStateEvent.uiCharacterAnimation, animationSpy);
+            eventBus.listen(UpdateStateEvent.characterPath, updatePathSpy);
 
             // Dispatch characterPath event for defeated character
-            superEventBus.dispatch(StateChangeEvent.characterPath, defeatedCharacter);
+            eventBus.dispatch(StateChangeEvent.characterPath, defeatedCharacter);
 
             // Verify no animation was created
             expect(animationSpy).not.toHaveBeenCalled();
@@ -517,11 +488,10 @@ describe('Movement', () => {
                 .mockReturnValueOnce(reachableCells2);
 
             const highlightsSpy = jest.fn();
-            const listener = createTestListener();
-            listener.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
+            eventBus.listen(UpdateStateEvent.uiHighlights, highlightsSpy);
 
             // Show movement for first character
-            superEventBus.dispatch(ControlsEvent.showMovement, 'char1');
+            eventBus.dispatch(ControlsEvent.showMovement, 'char1');
             expect(highlightsSpy).toHaveBeenCalledWith(
                 expect.objectContaining({
                     reachableCells: reachableCells1
@@ -529,7 +499,7 @@ describe('Movement', () => {
             );
 
             // Show movement for second character
-            superEventBus.dispatch(ControlsEvent.showMovement, 'char2');
+            eventBus.dispatch(ControlsEvent.showMovement, 'char2');
             expect(highlightsSpy).toHaveBeenCalledWith(
                 expect.objectContaining({
                     reachableCells: reachableCells2
