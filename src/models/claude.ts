@@ -199,7 +199,7 @@ async function callClaudeWithModel(
 
     try {
         // Use streaming for better handling of long-running requests
-        const stream = await anthropic.messages.stream({
+        const stream = anthropic.messages.stream({
             model: model as Anthropic.Messages.MessageCreateParams['model'],
             max_tokens: 32000,
             system: narrativeArchitect,

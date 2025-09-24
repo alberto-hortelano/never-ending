@@ -777,34 +777,33 @@ Faction Relations: ${Object.entries(origin.factionRelations).map(([f, v]) => `${
 
 Generate the following in order:
 
-1. **MAP GENERATION**
+1. **INITIAL NARRATIVE**
+   - Create an opening scenario that reflects the origin's theme
+   - Set up an immediate objective or situation for the player
+   - ${LANGUAGE_INSTRUCTIONS[language]}
+
+2. **MAP GENERATION**
    - Create a tactical map appropriate for "${origin.startingLocation}"
-   - Include buildings, rooms, corridors, and environmental features
-   - Place strategic cover and obstacles
+   - Include buildings and rooms
    - The map should support the narrative of ${origin.nameES}
 
-2. **CHARACTER PLACEMENT**
+3. **CHARACTER PLACEMENT**
    - You MUST include the main character "${MAIN_CHARACTER_NAME}" in your character list
    ${origin.startingCompanion ? `- You MUST include the companion "${origin.startingCompanion.name}" in your character list
    - Place ${MAIN_CHARACTER_NAME} and ${origin.startingCompanion.name} in logical starting positions` : ''}
    - Generate 2-4 additional NPCs or enemies appropriate to the origin story
    - Place all characters strategically on the map with valid positions
 
-3. **INITIAL NARRATIVE**
-   - Create an opening scenario that reflects the origin's theme
-   - Set up an immediate objective or situation for the player
-   - ${LANGUAGE_INSTRUCTIONS[language]}
-
 ## RESPONSE FORMAT
 
 Return a JSON object with:
 {
+  "narrative": "Initial story text in ${LANGUAGE_NAMES[language]} to display to the player",
   "commands": [
     {"type": "map", "palette": {...}, "buildings": [...]},
     {"type": "character", "characters": [...]},
     {"type": "speech", "source": "Narrador", "content": "..."}
-  ],
-  "narrative": "Initial story text in ${LANGUAGE_NAMES[language]} to display to the player"
+  ]
 }
 
 ## MAP COMMAND FORMAT
@@ -842,10 +841,10 @@ Return a JSON object with:
   "type": "character",
   "characters": [
     {
-      "name": "Jim",  // REQUIRED - main character (must be exactly "Jim")
+      "name": "${MAIN_CHARACTER_NAME}",  // REQUIRED - main character (must be exactly "${MAIN_CHARACTER_NAME}")
       "race": "human",
       "description": "The main protagonist",
-      "location": "room_name or x,y coordinates",
+      "location": "room_name or character name to place next to it",
       "player": "human",
       "palette": {
         "skin": "#d7a55f",
@@ -857,7 +856,7 @@ Return a JSON object with:
       "name": "${origin.startingCompanion.name}",  // REQUIRED - companion (must be exactly "${origin.startingCompanion.name}")
       "race": "${origin.startingCompanion.type}",
       "description": "${origin.startingCompanion.description}",
-      "location": "room_name or x,y coordinates",
+      "location": "room_name or character name to place next to it",
       "player": "ai",
       "palette": {
         "skin": "#hexcolor",
