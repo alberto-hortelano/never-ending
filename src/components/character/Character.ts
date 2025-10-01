@@ -12,7 +12,7 @@ export default class Character extends Component {
     protected override hasHtml = true;
     private movable?: HTMLElement;
     private characterElement?: HTMLElement;
-    private player: string = '';
+    private controller: string = '';
     private currentTurn: string = '';
     private isShootingMode: boolean = false;
     private isMeleeMode: boolean = false;
@@ -100,8 +100,8 @@ export default class Character extends Component {
         }
 
         // Extract all data from state
-        const { race, player, palette, direction, position, health, maxHealth } = stateCharacter;
-        this.player = player;
+        const { race, controller, palette, direction, position, health, maxHealth } = stateCharacter;
+        this.controller = controller;
 
         const healthPercentage = Math.max(0, (health / maxHealth) * 100);
         const isDefeated = health <= 0;
@@ -162,7 +162,7 @@ export default class Character extends Component {
             } else {
                 // If clicking on another character (NPC or enemy), trigger talk
                 const currentPlayer = this.getState()?.game.turn;
-                if (currentPlayer && stateCharacter.player !== currentPlayer) {
+                if (currentPlayer && stateCharacter.controller !== currentPlayer) {
                     // Get the current selected character to perform the talk action
                     const selectedCharacter = this.getState()?.ui.selectedCharacter;
                     if (selectedCharacter) {
@@ -187,11 +187,11 @@ export default class Character extends Component {
                 details: []
             };
             
-            // Add player info
-            if (stateCharacter.player) {
+            // Add controller info
+            if (stateCharacter.controller) {
                 tooltipData.details?.push({
-                    label: 'Player',
-                    value: stateCharacter.player
+                    label: 'Controller',
+                    value: stateCharacter.controller
                 });
             }
             
@@ -513,15 +513,15 @@ export default class Character extends Component {
     private getTooltipType(character: DeepReadonly<ICharacter>): 'character' | 'enemy' | 'ally' {
         const currentPlayer = this.getState()?.game.turn;
         
-        if (character.player === currentPlayer) {
+        if (character.controller === currentPlayer) {
             return 'ally';
         }
         
-        // Check if character is on a hostile team
-        const teams = this.getState()?.game.teams;
-        if (teams && currentPlayer) {
-            const playerTeam = teams[currentPlayer];
-            if (playerTeam && playerTeam.hostile.includes(character.player)) {
+        // Check if character is on a hostile faction
+        const factions = this.getState()?.game.factions;
+        if (factions && currentPlayer) {
+            const playerFaction = factions[currentPlayer];
+            if (playerFaction && playerFaction.hostile.includes(character.controller)) {
                 return 'enemy';
             }
         }
@@ -540,10 +540,10 @@ export default class Character extends Component {
 
         if (networkPlayerId) {
             // Multiplayer mode: must be this player's character AND their turn
-            return this.player === networkPlayerId && this.player === currentTurn;
+            return this.controller === networkPlayerId && this.controller === currentTurn;
         } else {
             // Single player mode: use normal turn logic
-            return CharacterService.canControlCharacter(this.player, currentTurn);
+            return CharacterService.canControlCharacter(this.controller, currentTurn);
         }
     }
 
@@ -587,10 +587,10 @@ export default class Character extends Component {
     }
 
     private updateTurnIndicator() {
-        const shouldShowIndicator = CharacterService.shouldShowTurnIndicator(this.player, this.currentTurn);
+        const shouldShowIndicator = CharacterService.shouldShowTurnIndicator(this.controller, this.currentTurn);
         const networkPlayerId = this.networkService.getPlayerId();
-        const isMyCharacter = networkPlayerId ? this.player === networkPlayerId : false;
-        const isOpponentCharacter = networkPlayerId ? this.player !== networkPlayerId : false;
+        const isMyCharacter = networkPlayerId ? this.controller === networkPlayerId : false;
+        const isOpponentCharacter = networkPlayerId ? this.controller !== networkPlayerId : false;
 
         // Update visual state
         this.dispatch(UpdateStateEvent.uiCharacterVisual, {

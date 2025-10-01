@@ -4,9 +4,8 @@ import { AIBrowserCacheService, type AIRequest, type AIResponse } from './AIBrow
 import { ObjectValidator } from './ObjectValidator';
 import { StoryPlanValidator } from './StoryPlanValidator';
 import { AIMockService } from './AIMockService';
-import type { GameContext } from './AIContextBuilder';
-import { MAIN_CHARACTER_NAME, COMPANION_DROID_NAME, LANGUAGE_NAMES, LANGUAGE_INSTRUCTIONS, type LanguageCode } from '../constants';
-
+import type { AIGameContext } from './AIContextBuilder';
+import { MAIN_CHARACTER_NAME, LANGUAGE_NAMES, LANGUAGE_INSTRUCTIONS, type LanguageCode } from '../constants';
 export interface AIGameEngineResponse {
     messages: IMessage[];
     command: AICommand | null;
@@ -24,59 +23,10 @@ interface GameEngineRequest extends AIRequest {
     endpoint: string;
 }
 
-// Character interfaces
-interface CharacterInfo {
-    name: string;
-    race?: string;
-    position?: { x: number; y: number };
-    health?: {
-        current: number;
-        max: number;
-    };
-    faction?: string;
-    personality?: string;
-    isAlly?: boolean;
-    isEnemy?: boolean;
-    isAdjacent?: boolean;
-    distanceFromCurrent?: number;
-    canConverse?: boolean;
-}
+// Use types from AIGameContext
 
-interface ConversationExchange {
-    speaker: string;
-    content: string;
-}
-
-interface RecentEvent {
-    description: string;
-}
-
-interface ThreatInfo {
-    source: string;
-    level: number;
-    type: string;
-    distance: number;
-}
-
-interface TacticalAnalysis {
-    threats?: ThreatInfo[];
-    suggestedStance?: string;
-}
-
-// Main context interface
-export interface AIActionContext {
-    currentCharacter?: CharacterInfo;
-    visibleCharacters?: CharacterInfo[];
-    charactersInConversationRange?: CharacterInfo[];
-    recentEvents?: RecentEvent[];
-    conversationHistory?: ConversationExchange[];
-    activeConversations?: Map<string, ConversationExchange[]>;
-    tacticalAnalysis?: TacticalAnalysis;
-    blockageInfo?: string;
-    npcFaction?: string;
-    recentConversation?: ConversationExchange[];
-    [key: string]: unknown; // Allow additional properties
-}
+// Use unified AIGameContext from AIContextBuilder
+export type AIActionContext = AIGameContext;
 
 export class AIGameEngineService {
     private static instance: AIGameEngineService;
@@ -127,217 +77,32 @@ Response format:
         }
     }
 
-    private generateNarrativePrompt(language: LanguageCode): string {
-        return `You are the Narrative Architect for "Never Ending", a turn-based tactical strategy game set in a post-apocalyptic galaxy.
-
-## GAME MECHANICS - CRITICAL TO UNDERSTAND
-- **Turn-based tactical combat**: Characters take turns on the CURRENT map
-- **Persistent maps**: Maps stay loaded throughout gameplay sessions
-- **Map transitions are RARE**: Only change maps for major story events (escape, new planet, etc.)
-- **Normal gameplay**: Move, attack, and talk on the EXISTING map
-- **DO NOT** request new maps after conversations or minor events
-
-## Core Setting
-- Era: Post-empire galactic collapse
-- Theme: Survival, exploration, and finding purpose
-- Language: ${LANGUAGE_INSTRUCTIONS[language]}
-
-## CONVERSATION CONTINUITY - CRITICAL
-When engaging in dialogue:
-1. ALWAYS check "RECENT CONVERSATION HISTORY" section first
-2. Reference what was previously said - don't repeat yourself
-3. Build on the conversation naturally - acknowledge previous statements
-4. If someone mentioned desertion, combat, or specific topics, continue that thread
-5. Remember emotional tone from previous exchanges (hostile, friendly, suspicious)
-6. After conversation ends, continue playing on the SAME MAP
-
-## DECISION FRAMEWORK - Follow these steps IN ORDER:
-
-### STEP 1: OBSERVE (What is real?)
-- List ONLY characters marked as visible in the context
-- Note their exact distances and positions
-- Check who is in conversation range (within 8 cells)
-- Review RECENT CONVERSATION HISTORY if available
-- DO NOT imagine or invent characters not in the visible list
-
-### STEP 2: ASSESS (What is the situation?)
-- Am I in an ongoing conversation? (check conversation history)
-- Am I in combat? (hostile characters visible)
-- Am I in conversation? (friendly character in range)
-- Am I exploring? (no immediate threats or allies)
-- What was I doing last turn? (check recent events)
-
-### STEP 3: PRIORITIZE (What should I do?)
-Priority order:
-1. If in ongoing conversation → Continue the conversation thread
-2. If in conversation range (≤8 cells) with ally → SPEECH
-3. If adjacent to enemy → ATTACK
-4. If enemy visible but far → MOVEMENT toward enemy
-5. If ally visible but far → MOVEMENT toward ally
-6. If exploring → MOVEMENT to explore
-
-### STEP 4: VALIDATE (Can I actually do this?)
-Before responding, check:
-- Is my target ACTUALLY visible? (must be in visibleCharacters list)
-- Am I close enough for my chosen action?
-- Is this action possible in the game mechanics?
-- Does my response make sense given conversation history?
-
-## CHARACTER PERSONALITIES
-
-### Data (Android Companion)
-- Speech: Analytical, precise, technical vocabulary
-- Behavior: Protective of humans, logical, efficient
-- Never: Shows emotion, uses colloquialisms, acts irrationally
-- Language style: Formal, technical terms
-
-### Enemy Soldiers
-- Speech: Military, aggressive when hostile, cautious when outnumbered
-- Behavior: Tactical, team-oriented, follows orders
-- Language style: Commands, military terminology
-
-## ACTION FORMATS WITH EXAMPLES
-
-### SPEECH - When character is within 8 cells
-Good Example (greeting):
-{"type": "speech", "source": "Data", "content": "Comandante, he detectado actividad anómala en este sector. Sugiero proceder con cautela.", "answers": ["¿Qué tipo de actividad?", "Mantente alerta", "Continuemos"]}
-
-Good Example (ending naturally):
-{"type": "speech", "source": "Data", "content": "Entendido, comandante. Procederé según lo indicado.", "answers": []}
-
-Bad Example (talking to non-existent character):
-{"type": "speech", "source": "Data", "content": "Veo enemigos acercándose", "answers": [...]} // WRONG if no enemies visible!
-
-### MOVEMENT - When target is NOT in conversation range
-Good Example:
-{"type": "movement", "characters": [{"name": "Data", "location": "player"}]}
-
-Bad Example (moving when already close):
-// If player is 3 cells away, DON'T move, SPEAK instead!
-
-### ATTACK - Only when enemy is adjacent or in weapon range
-{"type": "attack", "characters": [{"name": "enemy", "target": "player", "attack": "kill"}]}
-
-## CONVERSATION MANAGEMENT
-
-### CRITICAL: Check Conversation History First!
-- ALWAYS read "RECENT CONVERSATION HISTORY" section
-- If you previously mentioned desertion, threats, or specific topics, continue that thread
-- Don't restart conversations - pick up where you left off
-- Remember the emotional tone (hostile, friendly, suspicious, urgent)
-
-### Starting Conversations
-- Greet appropriately based on situation
-- Provide useful information or warnings
-- Ask relevant questions
-- BUT if conversation already started, DON'T greet again!
-
-### During Conversation (2-3 exchanges maximum)
-- Stay on topic - don't suddenly change subjects
-- Provide new information each turn - don't repeat
-- React to player's choices - acknowledge what they said
-- Build tension or resolve it based on context
-
-### Ending Conversations
-End when:
-- No new information to share (use empty answers: [])
-- Action is needed (enemy approaching)
-- Player chooses to leave
-- After 3-4 exchanges
-- Natural conclusion reached (agreement, disagreement, threat executed)
-
-Example ending:
-{"type": "speech", "source": "Data", "content": "Mantendré vigilancia del perímetro, comandante.", "answers": []}
-
-## CONVERSATION CONTINUITY EXAMPLES
-
-### GOOD - References previous exchange:
-History: Player: "¿Eres un desertor?"
-Response: {"type": "speech", "source": "enemy", "content": "¿Desertor? Yo soy quien caza desertores como tú. El comando paga bien por traidores.", "answers": ["No soy un traidor", "¿Cuánto pagan?", "Prepárate para pelear"]}
-
-### BAD - Ignores previous exchange:
-History: Player: "¿Eres un desertor?"
-Response: {"type": "speech", "source": "enemy", "content": "¡Alto! ¿Quién eres?", "answers": [...]} // WRONG - already talking!
-
-### GOOD - Escalates based on context:
-History: Enemy threatened combat
-Response: {"type": "speech", "source": "enemy", "content": "¡Se acabó el tiempo! ¡Abran fuego!", "answers": []}
-
-### BAD - Resets emotional tone:
-History: Hostile confrontation about desertion
-Response: {"type": "speech", "source": "enemy", "content": "Hola, ¿necesitas ayuda?", "answers": [...]} // WRONG - tone reset!
-
-## MAP COMMAND - USE EXTREMELY RARELY
-
-### When to use MAP command (ONLY these cases):
-1. Player uses a transition door/portal to new location
-2. Story explicitly requires leaving current area (escape pod, ship departure)
-3. Mission completion that narratively moves to new location
-4. Major story act transition
-
-### NEVER use MAP command for:
-- After any normal conversation
-- To "refresh" or "update" the scene
-- When characters just need to move around
-- Minor story beats or encounters
-- Because you think the scene needs variety
-
-### MAP command format (when truly needed):
-{"type": "map", "palette": {...}, "buildings": [...], "characters": [...]}
-
-## CRITICAL RULES - NEVER VIOLATE THESE
-
-1. NEVER describe characters not in visibleCharacters list
-2. NEVER move toward a character already in conversation range
-3. NEVER continue conversation beyond 3-4 exchanges
-4. ONLY use ${LANGUAGE_NAMES[language]} in dialogue (never other languages)
-5. NEVER suggest impossible tactics (flanking, cover system, etc.)
-6. ALWAYS check canConverse flag before attempting speech
-7. ALWAYS end conversation with empty answers: [] when done
-8. ALWAYS check conversation history before speaking
-9. NEVER repeat the same greeting or introduction twice
-10. ONLY use map command for MAJOR location changes (see MAP COMMAND section)
-11. Continue playing on CURRENT map after conversations end
-12. The game is TURN-BASED TACTICAL - work with existing map
-
-Remember: The map persists throughout gameplay. Characters move, fight, and talk on the CURRENT map. Only transition to new maps for major story events.`;
-    }
 
     public async requestAIAction(
         context: AIActionContext,
         systemPrompt?: string,
         storyState?: IStoryState,
-        language: LanguageCode = 'es'
+        language: LanguageCode = 'en'
     ): Promise<AIGameEngineResponse> {
         // Check if mock mode is enabled
         const isMockEnabled = localStorage.getItem('ai_mock_enabled') === 'true';
         if (isMockEnabled) {
             // Convert AIActionContext to GameContext for the mock service
-            const gameContext = context as unknown as GameContext;
+            const gameContext = context as unknown as AIGameContext;
             return AIMockService.getInstance().requestAIAction(gameContext);
         }
 
-        const messages: IMessage[] = [];
         const startTime = Date.now();
 
-        // Add system context as first message
-        const narrativePrompt = this.generateNarrativePrompt(language);
-        if (systemPrompt || narrativePrompt) {
-            messages.push({
-                role: 'user',
-                content: systemPrompt || narrativePrompt
-            });
-        }
-
-        // Add the current context with story state
-        const contextPrompt = this.buildContextPrompt(context, storyState);
-        messages.push({
-            role: 'user',
-            content: contextPrompt
-        });
-
         try {
-            const response = await this.callGameEngine(messages);
+            // Send context to server, let it build the prompts
+            const response = await this.callGameEngine({
+                context,
+                language,
+                storyState,
+                systemPrompt
+            });
+
             const command = this.parseAIResponse(response.content);
 
             // const duration = Date.now() - startTime;
@@ -356,174 +121,24 @@ Remember: The map persists throughout gameplay. Characters move, fight, and talk
             const duration = Date.now() - startTime;
             console.error(`[AI] Request failed (${duration}ms):`, error);
             return {
-                messages: messages,
+                messages: [],
                 command: null
             };
         }
     }
 
-    private buildContextPrompt(context: AIActionContext, storyState?: IStoryState): string {
-        const current = context.currentCharacter;
-        const visibleChars = context.visibleCharacters || [];
-        const conversableChars = context.charactersInConversationRange || [];
-
-        // Build character descriptions with clear status
-        const characterDescriptions = visibleChars.map((char) => {
-            const status = [];
-            if (char.isAlly) status.push('ALLY');
-            if (char.isEnemy) status.push('ENEMY');
-            if (char.canConverse) status.push('CAN TALK');
-            if (char.isAdjacent) status.push('ADJACENT');
-
-            return `  - ${char.name}: ${Math.round(char.distanceFromCurrent || 0)} cells away [${status.join(', ')}] Health: ${char.health?.current}/${char.health?.max}`;
-        }).join('\n');
-
-        // Create natural language situation summary
-        let situationSummary = `## CURRENT SITUATION
-
-You are: ${current?.name || 'unknown'} (${current?.race || 'unknown'})
-Your position: (${Math.round(current?.position?.x || 0)}, ${Math.round(current?.position?.y || 0)})
-Your health: ${current?.health?.current || 0}/${current?.health?.max || 100}
-Your faction: ${current?.faction || 'neutral'}
-Your personality: ${current?.personality || 'standard'}
-
-## VISIBLE CHARACTERS (${visibleChars.length} total)
-${characterDescriptions || '  None visible'}
-
-## CONVERSATION OPTIONS (within 8 cells)
-${conversableChars.length > 0
-                ? conversableChars.map((c) => `  - ${c.name} (${Math.round(c.distanceFromCurrent || 0)}m) - Ready to talk`).join('\n')
-                : '  No characters in conversation range - need to move closer'}
-`;
-
-        // Add recent events if available
-        if (context.recentEvents && context.recentEvents.length > 0) {
-            situationSummary += `
-## RECENT EVENTS
-${context.recentEvents.map((e) => `  - ${e.description}`).join('\n')}
-`;
-        }
-
-        // Add conversation history if available
-        if (context.conversationHistory && context.conversationHistory.length > 0) {
-            situationSummary += `
-## RECENT CONVERSATION HISTORY
-${context.conversationHistory.map((exchange) =>
-                `  - ${exchange.speaker}: "${exchange.content}"`
-            ).join('\n')}
-`;
-        }
-
-        // Add active conversations if any
-        if (context.activeConversations && context.activeConversations.size > 0) {
-            const activeConvos: string[] = [];
-            context.activeConversations.forEach((exchanges, key) => {
-                if (exchanges.length > 0) {
-                    const lastExchange = exchanges[exchanges.length - 1];
-                    if (lastExchange) {
-                        activeConvos.push(`  - With ${key}: Last said "${lastExchange.content}" by ${lastExchange.speaker}`);
-                    }
-                }
-            });
-            if (activeConvos.length > 0) {
-                situationSummary += `
-## ACTIVE CONVERSATIONS
-${activeConvos.join('\n')}
-`;
-            }
-        }
-
-        // Add tactical analysis if in combat
-        if (context.tacticalAnalysis) {
-            const threats = context.tacticalAnalysis.threats || [];
-            if (threats.length > 0) {
-                situationSummary += `
-## TACTICAL ASSESSMENT
-Threats detected:
-${threats.map((t) => `  - ${t.source}: threat level ${t.level}, ${t.type} threat at ${t.distance}m`).join('\n')}
-Recommended stance: ${context.tacticalAnalysis.suggestedStance}
-`;
-            }
-        }
-
-        // Add story context if available
-        if (storyState?.selectedOrigin) {
-            situationSummary += `
-## STORY CONTEXT
-Origin: ${storyState.selectedOrigin.nameES}
-Chapter: ${storyState.currentChapter || 1}
-Companion: ${storyState.selectedOrigin.startingCompanion?.name || 'None'}
-`;
-        }
-
-        // Handle blockage situations
-        if (context.blockageInfo) {
-            if (typeof context.blockageInfo === 'string') {
-                situationSummary += `
-## ⚠️ PATH BLOCKED
-${context.blockageInfo}
-`;
-            } else if (typeof context.blockageInfo === 'object') {
-                const info = context.blockageInfo as {
-                    blockingCharacter?: {
-                        name: string;
-                        isAlly: boolean;
-                        distance: number;
-                    };
-                    originalTarget?: string;
-                };
-                const blocker = info.blockingCharacter;
-                if (blocker) {
-                    situationSummary += `
-## ⚠️ PATH BLOCKED
-Cannot reach ${info.originalTarget} - ${blocker.name} is blocking!
-${blocker.name} is ${blocker.isAlly ? 'an ALLY' : 'an ENEMY'} at ${Math.round(blocker.distance)} cells
-${blocker.distance <= 8 ? '✓ Can talk to resolve' : '✗ Too far to talk - move closer first'}
-`;
-                }
-            }
-        }
-
-        // Clear action reminders based on situation
-        let actionGuidance = `
-## DECISION GUIDANCE
-
-`;
-
-        // Priority guidance based on situation
-        if (conversableChars.some((c) => c.isAlly)) {
-            actionGuidance += `📢 PRIORITY: You have allies in conversation range! Consider speaking first.\n`;
-        }
-        if (visibleChars.some((c) => c.isAdjacent && c.isEnemy)) {
-            actionGuidance += `⚔️ COMBAT: Enemy adjacent! Attack or retreat immediately.\n`;
-        }
-        if (conversableChars.length === 0 && visibleChars.length > 0) {
-            actionGuidance += `🚶 MOVEMENT: No one in conversation range. Move closer to interact.\n`;
-        }
-        if (visibleChars.length === 0) {
-            actionGuidance += `🔍 EXPLORING: No one visible. Move to explore the area.\n`;
-        }
-
-        return situationSummary + actionGuidance + `
-## YOUR RESPONSE
-Based on the above situation, choose ONE action following the JSON format.
-Remember: ${current?.name || 'character'} would act according to their ${current?.personality || 'standard'} personality.
-
-CRITICAL REMINDERS:
-- Can ONLY see/interact with the ${visibleChars.length} characters listed above
-- Can ONLY speak to the ${conversableChars.length} characters in conversation range
-- DO NOT invent or imagine other characters
-- If someone is marked "CAN TALK" - use speech, not movement!
-`;
-    }
-
     private async callGameEngine(
-        messages: IMessage[],
+        data: { context?: AIActionContext; language?: string; storyState?: IStoryState; systemPrompt?: string } | IMessage[],
         retry = 0
     ): Promise<{ messages: IMessage[], content: string }> {
 
+        // Check if this is the new format (context object) or legacy format (messages array)
+        const isLegacyFormat = Array.isArray(data);
+
         // Check cache first
-        const cacheKey: GameEngineRequest = { messages, endpoint: '/gameEngine' };
+        const cacheKey: GameEngineRequest = isLegacyFormat
+            ? { messages: data as IMessage[], endpoint: '/gameEngine' }
+            : { messages: [], endpoint: '/gameEngine' };
         const cachedResponse = AIBrowserCacheService.getCachedResponse<GameEngineRequest, GameEngineResponse>(cacheKey);
         if (cachedResponse) {
             console.log('[AIGameEngineService] Using cached response');
@@ -536,7 +151,7 @@ CRITICAL REMINDERS:
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(messages)
+                body: JSON.stringify(data)
             });
 
             // console.log('[AIGameEngineService] Response status:', response.status, response.statusText);
@@ -556,7 +171,7 @@ CRITICAL REMINDERS:
             // Check if it's a direct command response
             if (responseData.type) {
                 const result: GameEngineResponse = {
-                    messages: messages,
+                    messages: [],
                     content: JSON.stringify(responseData)
                 };
                 // Cache the successful response
@@ -570,7 +185,7 @@ CRITICAL REMINDERS:
             if (!lastMessage || lastMessage.role !== 'assistant') {
                 // If not messages format, assume it's a direct response
                 const result: GameEngineResponse = {
-                    messages: messages,
+                    messages: [],
                     content: JSON.stringify(responseData)
                 };
                 // Cache the successful response
@@ -603,7 +218,7 @@ CRITICAL REMINDERS:
                 }
 
                 await new Promise(resolve => setTimeout(resolve, backoffDelay));
-                return this.callGameEngine(messages, retry + 1);
+                return this.callGameEngine(data, retry + 1);
             }
             throw error;
         }
@@ -631,8 +246,8 @@ CRITICAL REMINDERS:
 
     public async requestStoryInitialization(
         origin: IOriginStory,
-        _storyState: IStoryState,
-        language: LanguageCode = 'es'
+        storyState: IStoryState,
+        language: LanguageCode = 'en'
     ): Promise<{ commands: AICommand[], narrative?: string }> {
         // Check if mock mode is enabled
         const isMockEnabled = localStorage.getItem('ai_mock_enabled') === 'true';
@@ -642,18 +257,20 @@ CRITICAL REMINDERS:
 
         const messages: IMessage[] = [];
 
-        // Add the narrative architect prompt as a user message with context
-        // Note: The IMessage interface only supports 'user' | 'assistant' roles
-        const narrativePrompt = this.generateNarrativePrompt(language);
-        if (narrativePrompt) {
-            messages.push({
-                role: 'user',
-                content: `SYSTEM CONTEXT:
-${narrativePrompt}
+        // Build mission context if available
+        let missionContext = '';
+        if (storyState.storyPlan) {
+            const firstAct = storyState.storyPlan.acts[0];
+            const firstMission = firstAct?.missions[0];
+            if (firstMission) {
+                missionContext = `
 
----
-`
-            });
+## STORY MISSION CONTEXT
+First Mission: ${firstMission.name}
+Mission Type: ${firstMission.type}
+Primary Objective: ${firstMission.objectives[0]?.description || 'Explore the area'}
+Environment: ${firstMission.mapContext?.environment || 'unknown'}`;
+            }
         }
 
         // Build the initialization request
@@ -668,70 +285,65 @@ Description: ${origin.descriptionES}
 Starting Location Type: ${origin.startingLocation}
 Companion: ${origin.startingCompanion?.name || 'None'}
 Special Traits: ${origin.specialTraits.join(', ')}
-Faction Relations: ${Object.entries(origin.factionRelations).map(([f, v]) => `${f}: ${v}`).join(', ')}
+Faction Relations: ${Object.entries(origin.factionRelations).map(([f, v]) => `${f}: ${v}`).join(', ')}${missionContext}
 
 ## REQUIRED INITIALIZATION
 
 Generate the following in order:
 
-1. **MAP GENERATION**
-   - Create a tactical map appropriate for "${origin.startingLocation}"
-   - Include buildings, rooms, corridors, and environmental features
-   - Place strategic cover and obstacles
-   - The map should support the narrative of ${origin.nameES}
-
-2. **CHARACTER PLACEMENT**
-   - You MUST include the main character "${MAIN_CHARACTER_NAME}" in your character list
-   - You MUST include the companion "${COMPANION_DROID_NAME}" in your character list
-   - Place ${MAIN_CHARACTER_NAME} and ${COMPANION_DROID_NAME} in logical starting positions
-   ${origin.startingCompanion ? `- Also place companion "${origin.startingCompanion.name}" near ${MAIN_CHARACTER_NAME}` : ''}
-   - Generate 2-4 additional NPCs or enemies appropriate to the origin story
-   - Place all characters strategically on the map with valid positions
-
-3. **INITIAL NARRATIVE**
+1. **INITIAL NARRATIVE**
    - Create an opening scenario that reflects the origin's theme
    - Set up an immediate objective or situation for the player
    - ${LANGUAGE_INSTRUCTIONS[language]}
+
+2. **MAP GENERATION**
+   - Create a tactical map appropriate for "${origin.startingLocation}"
+   - Include buildings and rooms
+   - The map should support the narrative of ${origin.nameES}
+
+3. **CHARACTER PLACEMENT**
+   - You MUST include the main character "${MAIN_CHARACTER_NAME}" in your character list
+   ${origin.startingCompanion ? `- You MUST include the companion "${origin.startingCompanion.name}" in your character list
+   - Place ${MAIN_CHARACTER_NAME} and ${origin.startingCompanion.name} in logical starting positions` : ''}
+   - Generate 2-4 additional NPCs or enemies appropriate to the origin story
+   - Place all characters strategically on the map with valid positions. All the building names must exist in the map.
 
 ## RESPONSE FORMAT
 
 Return a JSON object with:
 {
+  "narrative": "Initial story text in ${LANGUAGE_NAMES[language]} to display to the player",
   "commands": [
     {"type": "map", "palette": {...}, "buildings": [...]},
     {"type": "character", "characters": [...]},
-    {"type": "storyline", "storyline": {...}}
-  ],
-  "narrative": "Initial story text in ${LANGUAGE_NAMES[language]} to display to the player"
+    {"type": "speech", "source": "Narrador", "content": "..."}
+  ]
 }
 
 ## MAP COMMAND FORMAT
 {
   "type": "map",
   "palette": {
-    "floor": "#hexcolor",
-    "wall": "#hexcolor",
-    "door": "#hexcolor"
+    "terrain": "#1a1a2e"  // Background color
   },
   "buildings": [
     {
-      "name": "Building Name",
-      "x": 10,
-      "y": 10,
-      "width": 20,
-      "height": 15,
+      "name": "Damaged Cruiser",
       "rooms": [
-        {
-          "name": "Room Name",
-          "x": 0,
-          "y": 0,
-          "width": 10,
-          "height": 10,
-          "doors": [{"position": "north", "x": 5}]
-        }
+        {"name": "Bridge", "size": "medium"},  // size: small|medium|big
+        {"name": "Cargo Bay", "size": "big"},
+        {"name": "Engineering", "size": "medium"}
       ],
-      "corridors": [...]
+      "position": {"x": 25, "y": 25},  // Building position on map
+      "palette": {
+        "floor": "#2d2d2d",
+        "innerWalls": "#4a4a4a",
+        "outerWalls": "#6b6b6b"
+      }
     }
+  ],
+  "characters": [
+    // Characters to spawn with the map (same format as CHARACTER command)
   ]
 }
 
@@ -740,55 +352,56 @@ Return a JSON object with:
   "type": "character",
   "characters": [
     {
-      "name": "Jim",  // REQUIRED - main character (must be exactly "Jim")
-      "race": "human",
-      "description": "The main protagonist",
-      "location": "room_name or x,y coordinates",
-      "player": "human",
+      "name": "${MAIN_CHARACTER_NAME}",  // REQUIRED - main character
+      "race": "human",  // REQUIRED: human|alien|robot
+      "description": "The main protagonist",  // REQUIRED
+      "faction": "player",  // REQUIRED: player|enemy|neutral
+      "speed": "medium",  // REQUIRED: slow|medium|fast
+      "orientation": "bottom",  // REQUIRED: top|right|bottom|left
+      "location": "Bridge",  // REQUIRED: room name or character name
       "palette": {
         "skin": "#d7a55f",
         "helmet": "white",
         "suit": "white"
       }
-    },
+    }${origin.startingCompanion ? `,
     {
-      "name": "Data",  // REQUIRED - companion (must be exactly "Data")
-      "race": "robot",
-      "description": "Loyal companion droid",
-      "location": "room_name or x,y coordinates",
-      "player": "ai",
+      "name": "${origin.startingCompanion.name}",  // REQUIRED - companion
+      "race": "${origin.startingCompanion.type}",
+      "description": "${origin.startingCompanion.description}",
+      "faction": "player",  // REQUIRED
+      "speed": "medium",  // REQUIRED
+      "orientation": "bottom",  // REQUIRED
+      "location": "${MAIN_CHARACTER_NAME}",  // Place near player
       "palette": {
         "skin": "yellow",
         "helmet": "gold",
         "suit": "gold"
       }
-    },
+    }` : ''},
     {
-      "name": "NPC Name",
-      "race": "human/robot/alien",
-      "description": "Brief description",
-      "location": "room_name or x,y",
-      "player": "ai",
-      "personality": "aggressive/defensive/neutral",
+      "name": "Enemy Guard",
+      "race": "human",  // REQUIRED
+      "description": "Hostile guard",  // REQUIRED
+      "faction": "enemy",  // REQUIRED
+      "speed": "medium",  // REQUIRED
+      "orientation": "left",  // REQUIRED
+      "location": "Cargo Bay",  // REQUIRED
       "palette": {
-        "skin": "#hexcolor",
-        "helmet": "#hexcolor",
-        "suit": "#hexcolor"
+        "skin": "#8b4513",
+        "helmet": "darkred",
+        "suit": "black"
       }
     }
   ]
 }
 
-## STORYLINE COMMAND FORMAT
+## SPEECH/NARRATIVE COMMAND FORMAT
 {
-  "type": "storyline",
-  "storyline": {
-    "title": "Mission Title in ${LANGUAGE_NAMES[language]}",
-    "description": "Mission description in ${LANGUAGE_NAMES[language]}",
-    "objectives": [
-      {"id": "obj1", "description": "Objective in ${LANGUAGE_NAMES[language]}", "completed": false}
-    ]
-  }
+  "type": "speech",
+  "source": "Narrator",  // or character name
+  "content": "The narrative text or dialogue in ${LANGUAGE_NAMES[language]}",  // REQUIRED
+  "answers": ["Option 1", "Option 2", "Option 3"]  // Optional, omit or use [] to end conversation
 }
 
 Remember: ALL narrative text, descriptions, objectives, and dialogue MUST be in ${LANGUAGE_NAMES[language]}.`;
@@ -836,7 +449,7 @@ Remember: ALL narrative text, descriptions, objectives, and dialogue MUST be in 
         playerChoice: string,
         context?: AIActionContext,
         storyState?: IStoryState,
-        language: LanguageCode = 'es'
+        language: LanguageCode = 'en'
     ): Promise<AIGameEngineResponse> {
         // Check if mock mode is enabled
         const isMockEnabled = localStorage.getItem('ai_mock_enabled') === 'true';
@@ -847,7 +460,7 @@ Remember: ALL narrative text, descriptions, objectives, and dialogue MUST be in 
         const messages: IMessage[] = [];
 
         // Add context
-        // Build story context for dialogue
+        // Build comprehensive story context for dialogue
         let storyContext = '';
         if (storyState?.selectedOrigin) {
             const faction = context?.npcFaction || 'unknown';
@@ -858,14 +471,23 @@ Story Context:
 - Faction Reputation with ${faction}: ${reputation}
 - Story Flags: ${Array.from(storyState.storyFlags || []).join(', ')}
 `;
+
+            // Add mission context if available
+            if (context?.currentMission) {
+                storyContext += `
+Current Mission: ${context.currentMission.name}
+Mission Type: ${context.currentMission.type}
+Objectives: ${context.currentMission.objectives.join(', ')}
+`;
+            }
         }
 
         // Build conversation history context
         let conversationContext = '';
-        if (context?.recentConversation && context.recentConversation.length > 0) {
+        if (context?.conversationHistory && context.conversationHistory.length > 0) {
             conversationContext = `
 Previous conversation exchanges:
-${context.recentConversation.join('\n')}
+${context.conversationHistory.map(ex => `${ex.speaker}: "${ex.content}"`).join('\n')}
 `;
         }
 

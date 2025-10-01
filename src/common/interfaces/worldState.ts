@@ -1,7 +1,7 @@
 /**
  * Living World State Interfaces
  * These interfaces define the structure for the background narrative system
- * that maintains parallel storylines and character motivations
+ * that maintains parallel narratives and character motivations
  */
 
 export interface IStoryThread {

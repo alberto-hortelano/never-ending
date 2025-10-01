@@ -1,8 +1,8 @@
 import { IState, ICharacter, IMessage, IItem, IWeapon, IInventory, IGame, IDoor, ICell } from "../common/interfaces";
 import { MapGenerator } from "../common/helpers/MapGenerator";
 import { positionCharacters } from "../common/helpers/map";
-import { TeamService } from "../common/services/TeamService";
-import { MAIN_CHARACTER_NAME, COMPANION_DROID_NAME, PLAYER_TEAM, ENEMY_TEAM, HUMAN_PLAYER, AI_PLAYER } from "../common/constants";
+import { FactionService } from "../common/services/FactionService";
+import { MAIN_CHARACTER_NAME, COMPANION_DROID_NAME, PLAYER_FACTION, ENEMY_FACTION, HUMAN_CONTROLLER, AI_CONTROLLER } from "../common/constants";
 
 // Example weapons
 export const weapons: IWeapon[] = [
@@ -147,7 +147,8 @@ export const baseCharacter: ICharacter = {
     race: 'human',
     description: 'test character',
     action: 'idle',
-    player: '',
+    controller: 'human',
+    faction: 'neutral',
     palette: {
         skin: 'green',
         helmet: 'red',
@@ -191,8 +192,8 @@ const createCharacter = (character?: Partial<ICharacter>): ICharacter => ({ ...s
 const data: Partial<ICharacter> = {
     name: COMPANION_DROID_NAME,
     race: 'robot',
-    player: AI_PLAYER,
-    team: PLAYER_TEAM, // Data is on the player's team
+    controller: AI_CONTROLLER,
+    faction: PLAYER_FACTION, // Data is on the player's faction
     location: 'room4',
     position: { x: 25, y: 25 },
     palette: {
@@ -216,8 +217,8 @@ const data: Partial<ICharacter> = {
 const player: Partial<ICharacter> = {
     name: MAIN_CHARACTER_NAME,
     race: 'human',
-    player: HUMAN_PLAYER,
-    team: PLAYER_TEAM, // Player's team
+    controller: HUMAN_CONTROLLER,
+    faction: PLAYER_FACTION, // Player's faction
     location: 'room2',
     position: { x: 24, y: 25 },
     palette: {
@@ -242,8 +243,8 @@ const player: Partial<ICharacter> = {
 const enemy: Partial<ICharacter> = {
     name: 'enemy',
     race: 'robot',
-    player: AI_PLAYER,
-    team: ENEMY_TEAM, // Enemy team
+    controller: AI_CONTROLLER,
+    faction: ENEMY_FACTION, // Enemy faction
     location: 'room3',
     position: { x: 23, y: 25 },
     palette: {
@@ -267,13 +268,13 @@ const enemy: Partial<ICharacter> = {
 export const initialState = (x: number, y: number, playerData: Partial<ICharacter> = player, charactersData: Partial<ICharacter>[] = [data, enemy], mapSeed?: number): IState => {
     // State
     const game: IGame = {
-        turn: HUMAN_PLAYER,
-        players: [HUMAN_PLAYER, AI_PLAYER],
+        turn: HUMAN_CONTROLLER,
+        players: [HUMAN_CONTROLLER, AI_CONTROLLER],
         playerInfo: {
-            [HUMAN_PLAYER]: { name: 'Player', isAI: false },
-            [AI_PLAYER]: { name: 'AI', isAI: true }
+            [HUMAN_CONTROLLER]: { name: 'Player', isAI: false },
+            [AI_CONTROLLER]: { name: 'AI', isAI: true }
         },
-        teams: TeamService.createSinglePlayerTeams()
+        factions: FactionService.createSinglePlayerFactions()
     }
     // Use provided seed or generate a random one
     const seed = mapSeed ?? Math.floor(Math.random() * 2147483647);
@@ -408,53 +409,32 @@ export const getBaseState = () => initialState(40, 50, player, [data]);
 
 /**
  * Creates an empty state for AI-driven games
- * Only includes the player and Data, no map or other characters
- * The AI will populate everything else
+ * No characters or real map - the AI will populate everything
  */
 export const getEmptyState = (): IState => {
     const game: IGame = {
-        turn: HUMAN_PLAYER,
-        players: [HUMAN_PLAYER, AI_PLAYER],
+        turn: HUMAN_CONTROLLER,
+        players: [HUMAN_CONTROLLER, AI_CONTROLLER],
         playerInfo: {
-            [HUMAN_PLAYER]: { name: 'Player', isAI: false },
-            [AI_PLAYER]: { name: 'AI', isAI: true }
+            [HUMAN_CONTROLLER]: { name: 'Player', isAI: false },
+            [AI_CONTROLLER]: { name: 'AI', isAI: true }
         },
-        teams: TeamService.createSinglePlayerTeams()
+        factions: FactionService.createSinglePlayerFactions()
     };
-    
-    // Create minimal characters - just Jim and Data
-    const minimalPlayer: ICharacter = {
-        ...baseCharacter,
-        ...player,
-        name: MAIN_CHARACTER_NAME,
-        position: { x: 10, y: 10 }, // Start position that will likely be in a room
-    } as ICharacter;
-    
-    const minimalData: ICharacter = {
-        ...baseCharacter,
-        ...data,
-        name: COMPANION_DROID_NAME,
-        position: { x: 11, y: 10 }, // Next to player
-    } as ICharacter;
-    
-    // Create an empty 50x50 map with just floor tiles
-    const emptyMap: ICell[][] = [];
-    for (let y = 0; y < 50; y++) {
-        emptyMap[y] = [];
-        for (let x = 0; x < 50; x++) {
-            emptyMap[y]![x] = {
-                position: { x, y },
-                locations: ['floor'], // Just basic floor
-                elements: [],
-                content: null
-            };
-        }
-    }
-    
+
+    // Create a minimal 1x1 placeholder map to avoid null issues
+    // The AI will replace this with a proper map
+    const placeholderMap: ICell[][] = [[{
+        position: { x: 0, y: 0 },
+        locations: ['placeholder'],
+        elements: [],
+        content: null
+    }]];
+
     const initialState: IState = {
         game,
-        map: emptyMap,
-        characters: [minimalPlayer, minimalData],
+        map: placeholderMap,
+        characters: [], // No characters - AI will create all characters at proper positions
         messages: [],
         overwatchData: {},
         ui: {
@@ -465,8 +445,8 @@ export const getEmptyState = (): IState => {
                 characters: {},
                 cells: {},
                 board: {
-                    mapWidth: 50,
-                    mapHeight: 50,
+                    mapWidth: 1,
+                    mapHeight: 1,
                     hasPopupActive: false
                 }
             },
@@ -484,6 +464,6 @@ export const getEmptyState = (): IState => {
             }
         }
     };
-    
+
     return initialState;
 };

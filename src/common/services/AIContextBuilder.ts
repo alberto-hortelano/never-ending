@@ -1,53 +1,52 @@
 import { State } from '../State';
-import { ICharacter, IGame, ICoord, IMission, IScreenContext, ICell } from '../interfaces';
-import { IStoryThread, IWorldEvent, IEmergingConflict } from '../interfaces/worldState';
+import { ICharacter, IGame, ICoord } from '../interfaces';
 import { DeepReadonly } from '../helpers/types';
-import { TeamService } from './TeamService';
-import { WorldState } from './WorldState';
+import { FactionService } from './FactionService';
 
-export interface GameContext {
+/**
+ * Unified AI Game Context
+ * Simplified interface containing only essential information for AI decision-making
+ */
+export interface AIGameContext {
+    // Core character information
     currentCharacter: CharacterContext;
     visibleCharacters: CharacterContext[];
-    charactersInConversationRange: CharacterContext[];  // Characters within 3 cells that can be talked to
-    mapInfo: MapContext;
-    recentEvents: EventContext[];
-    conversationHistory: ConversationExchange[];  // Recent conversation exchanges
-    activeConversations: Map<string, ConversationExchange[]>;  // Track conversations by character pairs
-    gameState: {
-        turn: number | string;
-        phase: string;
-        objectives?: string[];
+    charactersInConversationRange: CharacterContext[];  // Within 8 cells
+
+    // Conversation tracking
+    conversationHistory: ConversationExchange[];  // Recent exchanges
+
+    // Story information
+    currentMission?: {
+        id: string;
+        name: string;
+        type: string;
+        objectives: string[];
     };
-    tacticalAnalysis?: TacticalAnalysis;  // New tactical assessment
-    storyContext?: StoryContextInfo;  // Story planning context
-    worldContext?: WorldContextInfo;  // Living world narrative context
-    screenContext?: IScreenContext;  // Current screen context
-    [key: string]: unknown;  // Allow additional properties for compatibility
+    storyFlags?: Set<string>;  // Story progression flags
+
+    // Game state
+    turn: number;
+
+    // Optional contextual information
+    blockageInfo?: {
+        blockingCharacter: {
+            name: string;
+            isAlly: boolean;
+            distance: number;
+        };
+        originalTarget: string;
+    };
+    npcFaction?: string;  // Current NPC's faction
+
+    // Allow additional properties for compatibility
+    [key: string]: unknown;
 }
 
-export interface TacticalAnalysis {
-    threats: ThreatAssessment[];
-    opportunities: TacticalOpportunity[];
-    suggestedStance: 'aggressive' | 'defensive' | 'flanking' | 'suppressive' | 'retreating';
-    coverPositions: ICoord[];
-    flankingRoutes: ICoord[][];
-    retreatPaths: ICoord[][];
-}
+// Keep GameContext as alias for backward compatibility
+export type GameContext = AIGameContext;
 
-export interface ThreatAssessment {
-    source: string;  // Character name
-    level: number;  // 0-100
-    type: 'immediate' | 'potential' | 'distant';
-    distance: number;
-    weaponRange: number;
-}
-
-export interface TacticalOpportunity {
-    type: 'flank' | 'ambush' | 'highGround' | 'coverAdvance' | 'crossfire';
-    position: ICoord;
-    value: number;  // 0-100
-    description: string;
-}
+// Removed TacticalAnalysis - no longer needed with story-driven decisions
 
 export interface CharacterContext {
     name: string;
@@ -114,47 +113,7 @@ export interface ConversationExchange {
     timestamp?: number;
 }
 
-export interface StoryContextInfo {
-    currentAct?: number;
-    currentMission?: {
-        id: string;
-        name: string;
-        type: string;
-        objectives: string[];
-    };
-    completedObjectives?: string[];
-    narrativeHooks?: string[];
-    suggestedActions?: string[];
-    keyCharactersPresent?: string[];
-    importantObjectsNearby?: string[];
-}
-
-export interface WorldContextInfo {
-    narrativePressure?: string;  // Suggested story direction
-    activeThreads?: Array<{
-        title: string;
-        type: string;
-        status: string;
-        narrative: string;
-        tension: number;
-    }>;
-    characterMotivations?: Array<{
-        character: string;
-        goals: string[];
-    }>;
-    offscreenEvents?: Array<{
-        title: string;
-        description: string;
-        intensity: string;
-    }>;
-    emergingConflicts?: Array<{
-        type: string;
-        participants: string[];
-        stakes: string;
-        escalation: number;
-    }>;
-    worldSummary?: string;  // High-level narrative summary
-}
+// Removed StoryContextInfo and WorldContextInfo - consolidated into AIGameContext
 
 interface ExtendedGame extends IGame {
     phase?: string;
@@ -190,36 +149,30 @@ export class AIContextBuilder {
         this.state = newState;
     }
 
-    public buildTurnContext(character: DeepReadonly<ICharacter>, state: State): GameContext {
+    public buildTurnContext(character: DeepReadonly<ICharacter>, state: State): AIGameContext {
         this.state = state;
         const currentChar = this.buildCharacterContext(character, true);
         const visibleChars = this.getVisibleCharacters(character);
         const charactersInConversationRange = this.getCharactersInConversationRange(character, visibleChars);
-        const mapInfo = this.buildMapContext(character);
-        const gameState = this.buildGameState();
-        
-        // Only include tactical analysis if there are actual enemies visible
-        const hasEnemies = visibleChars.some(c => c.isEnemy);
-        const tacticalAnalysis = hasEnemies ? this.performTacticalAnalysis(character, visibleChars) : undefined;
-        
-        // Build story context if available
-        const storyContext = this.buildStoryContext(state);
-        
-        // Build world context for living world narrative
-        const worldContext = this.buildWorldContext(character);
+
+        // Get current mission if available
+        const currentMissionId = state.story?.currentMissionId;
+        const currentMission = currentMissionId
+            ? this.getCurrentMission(currentMissionId, state)
+            : undefined;
+
+        // Get story flags - convert DeepReadonly to regular Set
+        const storyFlags = state.story?.storyFlags ? new Set<string>(state.story.storyFlags as Set<string>) : undefined;
 
         return {
             currentCharacter: currentChar,
             visibleCharacters: visibleChars,
             charactersInConversationRange: charactersInConversationRange,
-            mapInfo: mapInfo,
-            recentEvents: this.recentEvents.slice(-5), // Last 5 events
-            conversationHistory: this.conversationHistory.slice(-5), // Last 5 conversation exchanges
-            activeConversations: this.activeConversations,
-            gameState: gameState,
-            tacticalAnalysis: tacticalAnalysis,
-            storyContext: storyContext,
-            worldContext: worldContext
+            conversationHistory: this.conversationHistory.slice(-5), // Last 5 exchanges
+            currentMission: currentMission,
+            storyFlags: storyFlags,
+            turn: typeof state.game.turn === 'string' ? parseInt(state.game.turn) : state.game.turn,
+            npcFaction: undefined // Will be set from character data if needed
         };
     }
 
@@ -235,17 +188,19 @@ export class AIContextBuilder {
             listener: listener ? this.buildCharacterContext(listener, false) : null,
             location: this.getCurrentLocation(),
             recentConversation: this.getRecentDialogue(),
-            gamePhase: (state.game as ExtendedGame).phase || 'exploration'
+            gamePhase: (state.game as ExtendedGame).phase || 'exploration',
+            existingCharacters: state.characters.map((c: DeepReadonly<ICharacter>) => c.name),
+            availableLocations: this.getAvailableRooms()
         };
     }
 
     private buildCharacterContext(character: DeepReadonly<ICharacter>, includeFull: boolean, fromPerspective?: DeepReadonly<ICharacter>): CharacterContext {
-        const isPlayer = character.player === 'human';
+        const isPlayer = character.controller === 'human';
         
         // Use perspective character or current turn character
-        const perspectiveChar = fromPerspective || this.state.characters.find(c => c.player === this.state.game.turn);
-        const isAlly = perspectiveChar ? TeamService.areAllied(perspectiveChar, character, this.state.game.teams) : false;
-        const isEnemy = perspectiveChar ? TeamService.areHostile(perspectiveChar, character, this.state.game.teams) : false;
+        const perspectiveChar = fromPerspective || this.state.characters.find(c => c.controller === this.state.game.turn);
+        const isAlly = perspectiveChar ? FactionService.areAllied(perspectiveChar, character, this.state.game.factions) : false;
+        const isEnemy = perspectiveChar ? FactionService.areHostile(perspectiveChar, character, this.state.game.factions) : false;
 
         const context: CharacterContext = {
             name: character.name,
@@ -368,191 +323,12 @@ export class AIContextBuilder {
         return true; // No obstacles found
     }
 
-    private buildMapContext(character: DeepReadonly<ICharacter>): MapContext {
-        const state = this.state;
-        const map = state.map as ExtendedMap;
-        
-        // Get current room/location
-        const currentCell = (map as Record<string, Record<string, unknown>>)[Math.floor(character.position.y)]?.[Math.floor(character.position.x)];
-        const locations = currentCell && typeof currentCell === 'object' && 'locations' in currentCell ? currentCell.locations : undefined;
-        const currentLocation = Array.isArray(locations) && locations.length > 0 ? locations[0] : 'exploration_area';
-        
-        // Get nearby rooms and their positions
-        const nearbyRooms = this.getNearbyRooms(character);
-        
-        // Get nearby buildings
-        const nearbyBuildings = this.getNearbyBuildings(character);
-        
-        // Get tactical positions
-        const obstacles = this.getNearbyObstacles(character);
-        const coverPositions = this.findCoverPositions(character);
-
-        return {
-            terrain: map?.palette?.terrain || 'urban',
-            currentLocation: currentLocation,
-            currentPosition: character.position,
-            nearbyRooms: nearbyRooms,
-            buildings: nearbyBuildings,
-            obstacles: obstacles,
-            coverPositions: coverPositions
-        };
-    }
-
-    private getNearbyRooms(character: DeepReadonly<ICharacter>): Array<{ position: ICoord; name: string; distance: number }> {
-        const state = this.state;
-        const map = state.map;
-        const rooms: Array<{ position: ICoord; name: string; distance: number }> = [];
-        const searchRadius = 15;
-        const roomPositions = new Map<string, { positions: ICoord[], center: ICoord }>();
-        
-        // Scan nearby cells to find rooms
-        for (let dy = -searchRadius; dy <= searchRadius; dy++) {
-            for (let dx = -searchRadius; dx <= searchRadius; dx++) {
-                const x = Math.floor(character.position.x) + dx;
-                const y = Math.floor(character.position.y) + dy;
-                
-                if (y >= 0 && y < map.length && x >= 0 && x < (map[0]?.length || 0)) {
-                    const cell = map[y]?.[x];
-                    if (cell?.locations && cell.locations.length > 0) {
-                        const roomName = cell.locations[0];
-                        if (roomName && roomName !== 'wall' && roomName !== 'floor') {
-                            if (!roomPositions.has(roomName)) {
-                                roomPositions.set(roomName, { positions: [], center: { x: 0, y: 0 } });
-                            }
-                            roomPositions.get(roomName)!.positions.push({ x, y });
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Calculate center position for each room
-        for (const [roomName, data] of roomPositions) {
-            if (data.positions.length > 0) {
-                const centerX = Math.floor(data.positions.reduce((sum, pos) => sum + pos.x, 0) / data.positions.length);
-                const centerY = Math.floor(data.positions.reduce((sum, pos) => sum + pos.y, 0) / data.positions.length);
-                const distance = Math.sqrt(
-                    Math.pow(centerX - character.position.x, 2) +
-                    Math.pow(centerY - character.position.y, 2)
-                );
-                
-                rooms.push({
-                    name: roomName,
-                    position: { x: centerX, y: centerY },
-                    distance: Math.round(distance)
-                });
-            }
-        }
-        
-        // Sort by distance
-        rooms.sort((a, b) => a.distance - b.distance);
-        
-        return rooms.slice(0, 5); // Return closest 5 rooms
-    }
-    
-
-    private getNearbyBuildings(character: DeepReadonly<ICharacter>): Array<{ position: ICoord; name: string; distance: number }> {
-        const state = this.state;
-        const buildings: Array<{ position: ICoord; name: string; distance: number }> = [];
-        const nearDistance = 20;
-        const map = state.map as ExtendedMap;
-
-        if (map?.buildings) {
-            for (const building of map.buildings) {
-                const distance = Math.sqrt(
-                    Math.pow(building.position.x - character.position.x, 2) +
-                    Math.pow(building.position.y - character.position.y, 2)
-                );
-
-                if (distance <= nearDistance) {
-                    buildings.push({
-                        name: building.name,
-                        position: building.position,
-                        distance: Math.round(distance)
-                    });
-                }
-            }
-        }
-
-        return buildings;
-    }
-
-    private getNearbyObstacles(_character: DeepReadonly<ICharacter>): Array<{ x: number; y: number }> {
-        // Get walls and other obstacles near the character
-        const obstacles: Array<{ x: number; y: number }> = [];
-        // const checkRadius = 10;
-
-        // TODO: Actually check the map grid for walls
-        // For now, return empty array
-        return obstacles;
-    }
 
 
-    private buildGameState(): { turn: number | string; phase: string; objectives?: string[] } {
-        const state = this.state;
-        const game = state.game as ExtendedGame;
-        
-        return {
-            turn: game.turn || 0,
-            phase: game.phase || 'exploration',
-            objectives: this.getCurrentObjectives()
-        };
-    }
-
-    private getCurrentObjectives(): string[] {
-        // Get current mission objectives
-        const state = this.state;
-        const objectives: string[] = [];
-        const game = state.game as ExtendedGame;
-
-        if (game.currentMission) {
-            objectives.push(game.currentMission);
-        }
-
-        // Add contextual objectives based on situation
-        if (this.isInCombat()) {
-            objectives.push('Eliminate hostile forces');
-        }
-
-        return objectives;
-    }
-
-    private isInCombat(): boolean {
-        // Check if any hostile characters are nearby
-        const state = this.state;
-        const player = state.characters.find((c: DeepReadonly<ICharacter>) => c.name === 'Player');
-        
-        if (!player) return false;
-
-        for (const char of state.characters) {
-            if (this.isHostileTo('Player', char.name)) {
-                const distance = Math.sqrt(
-                    Math.pow(char.position.x - player.position.x, 2) +
-                    Math.pow(char.position.y - player.position.y, 2)
-                );
-                
-                if (distance < 20) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private isHostileTo(character1: string, character2: string): boolean {
-        // Determine if two characters are hostile using TeamService
-        const char1 = this.state.characters.find(c => c.name === character1);
-        const char2 = this.state.characters.find(c => c.name === character2);
-        
-        if (!char1 || !char2) return false;
-        
-        return TeamService.areHostile(char1, char2, this.state.game.teams);
-    }
 
     private getCharacterFaction(character: DeepReadonly<ICharacter>): string {
-        // Use the team field if available, otherwise fallback to neutral
-        return character.team || 'neutral';
+        // Use the faction field if available, otherwise fallback to neutral
+        return character.faction || 'neutral';
     }
 
     private getCharacterPersonality(character: DeepReadonly<ICharacter>): string {
@@ -618,6 +394,30 @@ export class AIContextBuilder {
             .slice(-3); // Last 3 dialogue lines
     }
 
+    private getAvailableRooms(): string[] {
+        const rooms = new Set<string>();
+
+        if (!this.state || !this.state.map) {
+            return [];
+        }
+
+        // Iterate through all cells to find room names
+        for (const row of this.state.map) {
+            for (const cell of row) {
+                if (cell?.locations) {
+                    for (const location of cell.locations) {
+                        // Exclude generic terrain like 'floor' and 'wall'
+                        if (location && location !== 'floor' && location !== 'wall' && location !== 'terrain') {
+                            rooms.add(location);
+                        }
+                    }
+                }
+            }
+        }
+
+        return Array.from(rooms).sort();
+    }
+
     public recordEvent(event: EventContext): void {
         this.recentEvents.push(event);
         
@@ -667,7 +467,7 @@ export class AIContextBuilder {
         if (exchange.speaker) {
             // Assume conversation is with player if not specified otherwise
             const otherParticipant = this.state?.characters.find(c => 
-                c.player === 'human' && c.name !== exchange.speaker
+                c.controller === 'human' && c.name !== exchange.speaker
             )?.name || 'Player';
             return [exchange.speaker, otherParticipant].sort();
         }
@@ -686,270 +486,33 @@ export class AIContextBuilder {
         this.conversationHistory = [];
         this.activeConversations.clear();
     }
-    
-    private buildStoryContext(state: State): StoryContextInfo | undefined {
-        const storyState = state.story;
-        if (!storyState || !storyState.storyPlan) {
+
+    private getCurrentMission(missionId: string, state: State): AIGameContext['currentMission'] | undefined {
+        if (!state.story?.storyPlan) {
             return undefined;
         }
-        
-        const storyPlan = storyState.storyPlan;
-        const currentAct = storyPlan.acts[storyPlan.currentAct];
-        const currentMission = currentAct?.missions.find(m => m.id === storyState.currentMissionId);
-        
-        if (!currentMission) {
-            return undefined;
-        }
-        
-        // Get visible characters that are key to the story
-        const visibleKeyCharacters = currentAct && currentAct.keyCharacters ? currentAct.keyCharacters
-            .filter(kc => state.characters.find(c => c.name === kc.name))
-            .map(kc => kc.name) : [];
-        
-        // Get nearby important objects
-        const nearbyObjects = currentAct && currentAct.keyObjects && Array.isArray(currentMission.requiredObjects) 
-            ? currentAct.keyObjects
-                .filter(obj => currentMission.requiredObjects.includes(obj.id))
-                .map(obj => obj.name) 
-            : [];
-        
-        return {
-            currentAct: storyPlan.currentAct,
-            currentMission: {
-                id: currentMission.id,
-                name: currentMission.nameES || currentMission.name,
-                type: currentMission.type,
-                objectives: Array.isArray(currentMission.objectives) 
-                    ? currentMission.objectives
-                        .filter(o => !o.completed)
-                        .map(o => o.descriptionES || o.description)
-                    : []
-            },
-            completedObjectives: storyState.completedObjectives ? [...storyState.completedObjectives] : undefined,
-            narrativeHooks: Array.isArray(currentMission.narrativeHooks) 
-                ? [...currentMission.narrativeHooks]
-                : [],
-            suggestedActions: this.getSuggestedActionsFromMission(currentMission as IMission, state),
-            keyCharactersPresent: visibleKeyCharacters,
-            importantObjectsNearby: nearbyObjects
-        };
-    }
-    
-    private getSuggestedActionsFromMission(mission: IMission, state: State): string[] {
-        const suggestions: string[] = [];
-        
-        if (!Array.isArray(mission.objectives)) {
-            return suggestions;
-        }
-        
-        for (const objective of mission.objectives) {
-            if (!objective.completed && objective.conditions) {
-                for (const condition of objective.conditions) {
-                    const target = state.characters.find(c => c.name === condition.target);
-                    
-                    switch (condition.type) {
-                        case 'talk':
-                            if (target) {
-                                suggestions.push(`Talk to ${condition.target}`);
-                            }
-                            break;
-                        case 'kill':
-                            if (target) {
-                                suggestions.push(`Eliminate ${condition.target}`);
-                            }
-                            break;
-                        case 'reach':
-                            suggestions.push(`Reach ${condition.location || 'objective location'}`);
-                            break;
-                        case 'collect':
-                            suggestions.push(`Collect ${condition.target}`);
-                            break;
-                    }
-                }
-            }
-        }
-        
-        return suggestions;
-    }
 
-    /**
-     * Perform tactical analysis of the battlefield
-     * Simplified to only include actually achievable tactics
-     */
-    private performTacticalAnalysis(
-        character: DeepReadonly<ICharacter>,
-        visibleChars: CharacterContext[]
-    ): TacticalAnalysis {
-        const threats = this.assessThreats(character, visibleChars);
-        const opportunities = this.findSimpleTacticalOpportunities(character, visibleChars);
-        const suggestedStance = this.suggestStance(character, threats, opportunities);
-        
-        // Simplified - no complex flanking or cover mechanics
-        const coverPositions: ICoord[] = [];
-        const flankingRoutes: ICoord[][] = [];
-        const retreatPaths = threats.length > 0 ? this.calculateSimpleRetreatPaths(character, threats) : [];
-
-        return {
-            threats,
-            opportunities,
-            suggestedStance,
-            coverPositions,
-            flankingRoutes,
-            retreatPaths
-        };
-    }
-
-    private assessThreats(
-        _character: DeepReadonly<ICharacter>,
-        visibleChars: CharacterContext[]
-    ): ThreatAssessment[] {
-        const threats: ThreatAssessment[] = [];
-        
-        for (const other of visibleChars) {
-            if (!other.isEnemy || !other.distanceFromCurrent) continue;
-            
-            const distance = other.distanceFromCurrent;
-            const weaponRange = other.hasRangedWeapon ? 15 : 1.5;
-            
-            let type: 'immediate' | 'potential' | 'distant' = 'distant';
-            if (distance <= weaponRange) type = 'immediate';
-            else if (distance <= weaponRange * 2) type = 'potential';
-            
-            threats.push({
-                source: other.name,
-                level: other.threatLevel || 50,
-                type,
-                distance,
-                weaponRange
-            });
-        }
-        
-        return threats.sort((a, b) => b.level - a.level);
-    }
-
-    private findSimpleTacticalOpportunities(
-        character: DeepReadonly<ICharacter>,
-        visibleChars: CharacterContext[]
-    ): TacticalOpportunity[] {
-        const opportunities: TacticalOpportunity[] = [];
-        
-        // Only include simple, achievable opportunities
-        const enemies = visibleChars.filter(c => c.isEnemy);
-        
-        // Direct engagement opportunities
-        for (const enemy of enemies) {
-            if (!enemy.position || !enemy.distanceFromCurrent) continue;
-            
-            // Can we reach them this turn for melee?
-            if (enemy.canReachThisTurn && this.characterHasMeleeWeapon(character)) {
-                opportunities.push({
-                    type: 'ambush',
-                    position: enemy.position,
-                    value: 60,
-                    description: `Engage ${enemy.name} in melee combat`
-                });
-            }
-            
-            // Do we have range advantage?
-            if (this.checkCharacterHasRangedWeapon(character) && !enemy.hasRangedWeapon) {
-                opportunities.push({
-                    type: 'highGround', // Using as "range advantage"
-                    position: character.position,
-                    value: 70,
-                    description: `Maintain distance and use ranged attacks on ${enemy.name}`
-                });
-            }
-        }
-        
-        return opportunities;
-    }
-
-    private suggestStance(
-        _character: DeepReadonly<ICharacter>,
-        threats: ThreatAssessment[],
-        _opportunities: TacticalOpportunity[]
-    ): 'aggressive' | 'defensive' | 'flanking' | 'suppressive' | 'retreating' {
-        const healthPercent = _character.health / _character.maxHealth;
-        const immediateThreats = threats.filter(t => t.type === 'immediate').length;
-        
-        // Critical health - retreat
-        if (healthPercent < 0.3) return 'retreating';
-        
-        // Multiple immediate threats - defensive
-        if (immediateThreats > 1) return 'defensive';
-        
-        // Single threat and good health - aggressive
-        if (immediateThreats === 1 && healthPercent > 0.6) return 'aggressive';
-        
-        // Has ranged weapon and enemies are distant - suppressive
-        if (this.checkCharacterHasRangedWeapon(_character) && threats.every(t => t.type === 'distant')) {
-            return 'suppressive';
-        }
-        
-        // Default to defensive
-        return 'defensive';
-    }
-
-    private findCoverPositions(character: DeepReadonly<ICharacter>): ICoord[] {
-        const positions: ICoord[] = [];
-        const searchRadius = 10;
-        
-        // Simple grid search for cover positions
-        for (let dx = -searchRadius; dx <= searchRadius; dx++) {
-            for (let dy = -searchRadius; dy <= searchRadius; dy++) {
-                if (dx === 0 && dy === 0) continue;
-                
-                const pos: ICoord = {
-                    x: character.position.x + dx,
-                    y: character.position.y + dy
+        for (const act of state.story.storyPlan.acts) {
+            const mission = act.missions.find(m => m.id === missionId);
+            if (mission) {
+                return {
+                    id: mission.id,
+                    name: mission.name,
+                    type: mission.type,
+                    objectives: mission.objectives?.map(o => o.description) || []
                 };
-                
-                // Check if position would provide cover (simplified)
-                if (this.positionProvidesCover(pos)) {
-                    positions.push(pos);
-                }
             }
         }
-        
-        return positions;
+        return undefined;
     }
 
 
-    private calculateSimpleRetreatPaths(
-        character: DeepReadonly<ICharacter>,
-        threats: ThreatAssessment[]
-    ): ICoord[][] {
-        const paths: ICoord[][] = [];
-        
-        if (threats.length === 0) return paths;
-        
-        // Just suggest moving away from the nearest threat
-        const nearestThreat = threats[0]; // Already sorted by threat level
-        if (!nearestThreat) return paths;
-        
-        const threatChar = this.state.characters.find(c => c.name === nearestThreat.source);
-        
-        if (threatChar) {
-            // Simple retreat: move directly away
-            const retreatDirection = Math.atan2(
-                character.position.y - threatChar.position.y,
-                character.position.x - threatChar.position.x
-            );
-            
-            const path: ICoord[] = [];
-            // Just 3 steps back
-            for (let i = 1; i <= 3; i++) {
-                path.push({
-                    x: Math.round(character.position.x + Math.cos(retreatDirection) * i * 2),
-                    y: Math.round(character.position.y + Math.sin(retreatDirection) * i * 2)
-                });
-            }
-            
-            paths.push(path);
-        }
-        
-        return paths;
-    }
+
+
+
+
+
+
 
 
     private checkCharacterHasRangedWeapon(character: DeepReadonly<ICharacter>): boolean {
@@ -974,7 +537,7 @@ export class AIContextBuilder {
         targetChar: DeepReadonly<ICharacter>,
         distance: number
     ): number {
-        if (!TeamService.areHostile(_fromChar, targetChar, this.state.game.teams)) {
+        if (!FactionService.areHostile(_fromChar, targetChar, this.state.game.factions)) {
             return 0;
         }
         
@@ -996,75 +559,6 @@ export class AIContextBuilder {
     }
 
 
-    private positionProvidesCover(_pos: ICoord): boolean {
-        // Simplified - would need actual map analysis
-        // Check if position has adjacent walls or obstacles
-        return false;
-    }
     
-    /**
-     * Build world context from the living world narrative system
-     */
-    private buildWorldContext(character: DeepReadonly<ICharacter>): WorldContextInfo | undefined {
-        try {
-            // Get WorldState instance for living world context
-            const worldState = WorldState.getInstance();
-            
-            // Get world context relevant to current situation
-            const extendedMap = this.state.map as DeepReadonly<ICell[][]> & { currentLocation?: string };
-            const location = extendedMap.currentLocation || `position_${character.position.x}_${character.position.y}`;
-            
-            // Include the current character and nearby characters as participants
-            const nearbyChars = this.state.characters.filter((c: DeepReadonly<ICharacter>) => {
-                const distance = Math.abs(c.position.x - character.position.x) + 
-                                Math.abs(c.position.y - character.position.y);
-                return distance <= 10 && c.health > 0;
-            });
-            const participants = [character.name, ...nearbyChars.map(c => c.name)];
-            const context = worldState.getWorldContext(location, participants);
-            
-            if (!context) {
-                return undefined;
-            }
-            
-            // Transform world context into format for AI
-            const worldContextInfo: WorldContextInfo = {
-                narrativePressure: context.narrativePressure,
-                activeThreads: context.nearbyThreads.map((thread: IStoryThread) => ({
-                    title: thread.title,
-                    type: thread.type,
-                    status: thread.status,
-                    narrative: thread.currentNarrative,
-                    tension: thread.tension
-                })),
-                characterMotivations: [],
-                offscreenEvents: context.offscreenEvents.map((event: IWorldEvent) => ({
-                    title: event.title,
-                    description: event.description,
-                    intensity: event.intensity
-                })),
-                emergingConflicts: context.emergingConflicts.map((conflict: IEmergingConflict) => ({
-                    type: conflict.type,
-                    participants: conflict.instigators.concat(conflict.targets),
-                    stakes: conflict.stakes,
-                    escalation: conflict.escalation
-                })),
-                worldSummary: worldState.generateNarrativeSummary()
-            };
-            
-            // Convert character motivations map to array
-            context.characterMotivations.forEach((goals: string[], character: string) => {
-                worldContextInfo.characterMotivations!.push({
-                    character,
-                    goals: goals
-                });
-            });
-            
-            return worldContextInfo;
-        } catch (error) {
-            console.error('[AIContextBuilder] Error building world context:', error);
-            return undefined;
-        }
-    }
 
 }

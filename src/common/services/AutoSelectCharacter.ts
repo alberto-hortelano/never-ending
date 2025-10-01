@@ -50,7 +50,7 @@ export class AutoSelectCharacter extends EventBus<StateChangeEventsMap & Control
         
         // Get all characters for the current player
         const characters = this.state.characters;
-        const playerCharacters = characters.filter(char => char.player === currentPlayer);
+        const playerCharacters = characters.filter(char => char.controller === currentPlayer);
         
         // Only auto-select if the player has exactly one character
         if (playerCharacters.length === 1) {

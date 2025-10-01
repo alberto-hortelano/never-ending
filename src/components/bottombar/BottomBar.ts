@@ -225,12 +225,12 @@ class BottomBar extends Component {
                 this.hideConversation();
             });
 
-            // Listen for storyline-action event
-            this.conversationComponent.addEventListener('storyline-action', (event: Event) => {
+            // Listen for speech-action event
+            this.conversationComponent.addEventListener('speech-action', (event: Event) => {
                 const customEvent = event as CustomEvent;
                 const { action, actionData, accepted } = customEvent.detail;
-                // DEBUG: Storyline action handling
-                // console.log('[BottomBar] Received storyline-action event:', { action, actionData, accepted });
+                // DEBUG: Speech action handling
+                // console.log('[BottomBar] Received speech-action event:', { action, actionData, accepted });
 
                 if (accepted) {
                     // Dispatch event for AIController to handle the action

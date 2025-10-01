@@ -124,7 +124,6 @@ export class AIMockService {
                                 characters: [{
                                     name: 'enemy_soldier_1',
                                     target: 'player',
-                                    attack: 'kill'
                                 }]
                             } as AttackCommand,
                             delay: 1000
@@ -177,7 +176,6 @@ export class AIMockService {
                                 characters: [{
                                     name: 'enemy_soldier_2',
                                     target: 'area',
-                                    attack: 'hold'
                                 }]
                             } as AttackCommand,
                             delay: 500

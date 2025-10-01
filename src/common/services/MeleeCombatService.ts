@@ -96,7 +96,7 @@ export class MeleeCombatService {
         for (const character of characters) {
             if (character.name === attacker.name) continue;
             if (character.health <= 0) continue;
-            if (character.player === attacker.player) continue;
+            if (character.controller === attacker.controller) continue;
 
             const distance = this.calculateDistance(attacker.position, character.position);
             
@@ -211,7 +211,7 @@ export class MeleeCombatService {
     ): boolean {
         if (target.name === attacker.name) return false;
         if (target.health <= 0) return false;
-        if (target.player === attacker.player) return false;
+        if (target.controller === attacker.controller) return false;
         
         const distance = this.calculateDistance(attacker.position, target.position);
         const range = this.getMeleeRange(attacker);

@@ -17,10 +17,12 @@ import {
     type CombatEventData
 } from '../events';
 import { State } from '../State';
-import { AIContextBuilder, GameContext } from './AIContextBuilder';
-import { AICommandParser, AICommand, MovementCommand, AttackCommand, SpeechCommand, CharacterCommand, MapCommand, StorylineCommand } from './AICommandParser';
+import { AIContextBuilder, type AIGameContext } from './AIContextBuilder';
+import { AICommandParser, AICommand, MovementCommand, AttackCommand, SpeechCommand, CharacterCommand, MapCommand } from './AICommandParser';
 import { AIGameEngineService, type AIActionContext } from './AIGameEngineService';
-import { TacticalExecutor, TacticalDirective } from './TacticalExecutor';
+import { AICommandValidator } from './AICommandValidator';
+import { AIErrorHandler } from './AIErrorHandler';
+import { TacticalExecutor } from './TacticalExecutor';
 import { CombatStances } from './CombatStances';
 import { StoryCommandExecutor, ItemSpawnCommand } from './StoryCommandExecutor';
 import { CharacterPositioningError } from '../errors/CharacterPositioningError';
@@ -29,7 +31,7 @@ import { WorldState } from './WorldState';
 import { ICharacter, ICoord, Direction, IOriginStory, IStoryState, IScreenContext } from '../interfaces';
 import { DeepReadonly } from '../helpers/types';
 import { calculatePath } from '../helpers/map';
-import { TeamService } from './TeamService';
+import { FactionService } from './FactionService';
 import { MAIN_CHARACTER_NAME, type LanguageCode } from '../constants';
 import { i18n } from '../i18n/i18n';
 
@@ -55,6 +57,8 @@ export class AIController extends EventBus<
     private gameEngineService: AIGameEngineService;
     private contextBuilder?: AIContextBuilder;
     private commandParser: AICommandParser;
+    private validator?: AICommandValidator;
+    private errorHandler?: AIErrorHandler;
     private isProcessingTurn: boolean = false;
     private isForcedTurnEnd: boolean = false; // Track when turn was force-ended by conversation
     private aiEnabled: boolean = true;
@@ -67,7 +71,7 @@ export class AIController extends EventBus<
     private storyExecutor: StoryCommandExecutor;
     private storyPlanner: StoryPlanner;
     private useTacticalSystem: boolean = false; // Flag to enable/disable tactical system - disabled by default to use AI endpoint
-    private ongoingMovement?: { characterName: string; targetLocation: ICoord; targetName?: string }; // Track ongoing multi-cell movement
+    private ongoingMovement?: { characterName: string; targetLocation: ICoord; targetName?: string; targetLocationString: string }; // Track ongoing multi-cell movement
 
     private constructor() {
         super();
@@ -104,6 +108,7 @@ export class AIController extends EventBus<
     }
 
     public setGameState(state: State): void {
+        console.log('[AI] setGameState called');
         // Clean up previous listeners before setting new state
         this.cleanup();
 
@@ -112,12 +117,25 @@ export class AIController extends EventBus<
         // Preserve conversation history by keeping existing contextBuilder if possible
         // Only create new contextBuilder if it doesn't exist
         if (!this.contextBuilder) {
+            console.log('[AI] Creating new contextBuilder');
             this.contextBuilder = new AIContextBuilder(state);
+            // Initialize validator and error handler
+            this.validator = new AICommandValidator(state);
+            this.errorHandler = new AIErrorHandler(this.validator, this.gameEngineService);
         } else {
+            console.log('[AI] Updating existing contextBuilder');
             // Update the state reference in existing contextBuilder
             // This preserves conversation history while updating game state
             this.contextBuilder.updateState(state);
+            // Reinitialize validator with new state
+            this.validator = new AICommandValidator(state);
+            this.errorHandler = new AIErrorHandler(this.validator, this.gameEngineService);
         }
+
+        // Reset processing flags when setting new state
+        this.isProcessingTurn = false;
+        this.isForcedTurnEnd = false;
+        console.log('[AI] Resetting flags: isProcessingTurn=false, isForcedTurnEnd=false');
 
         this.initialize();
     }
@@ -157,11 +175,22 @@ export class AIController extends EventBus<
         // Listen for turn changes to check if AI player should act
         this.listen(GameEvent.changeTurn, (data: GameEventsMap[GameEvent.changeTurn]) => {
             const currentPlayer = data.turn;
+            console.log(`[AI] Turn changed to: ${currentPlayer}`);
+
+            // Reset the processing flag when turn changes
+            // This ensures we don't get stuck from a previous turn
+            if (data.previousTurn && this.isAIPlayer(data.previousTurn)) {
+                console.log('[AI] Previous turn was AI, resetting isProcessingTurn flag');
+                this.isProcessingTurn = false;
+                this.isForcedTurnEnd = false;
+            }
 
             // Check if this is an AI-controlled player
             const isAI = this.isAIPlayer(currentPlayer);
+            console.log(`[AI] Is AI player: ${isAI}`);
 
             if (isAI) {
+                console.log(`[AI] Scheduling AI turn for player ${currentPlayer}`);
                 // Give a small delay for UI to update
                 setTimeout(() => this.processAIPlayerTurn(currentPlayer), 500);
             }
@@ -186,21 +215,21 @@ export class AIController extends EventBus<
             }
         });
 
-        // Listen for storyline action execution
+        // Listen for speech action execution
         this.listen(ConversationEvent.executeAction, async (data) => {
             const { action, actionData } = data;
 
-            // DEBUG: console.log('[AIController] Executing storyline action:', action);
+            // DEBUG: console.log('[AIController] Executing speech action:', action);
 
             // Handle the action based on its type
             switch (action) {
                 case 'map':
-                    // DEBUG: console.log('[AIController] Generating new map from storyline');
-                    await this.executeStorylineMapGeneration();
+                    // DEBUG: console.log('[AIController] Generating new map from speech action');
+                    await this.executeNarrativeMapGeneration();
                     break;
                     
                 case 'character':
-                    // DEBUG: console.log('[AIController] Spawning characters from storyline');
+                    // DEBUG: console.log('[AIController] Spawning characters from speech action');
                     // Type guard for character action data
                     const charActionData = actionData as CharacterActionData;
                     if (charActionData?.characters) {
@@ -219,7 +248,7 @@ export class AIController extends EventBus<
                     break;
                     
                 case 'movement':
-                    // DEBUG: console.log('[AIController] Executing movement from storyline');
+                    // DEBUG: console.log('[AIController] Executing movement from speech action');
                     // Type guard for movement action data
                     const moveActionData = actionData as MovementActionData;
                     if (moveActionData?.movements && this.state) {
@@ -245,7 +274,7 @@ export class AIController extends EventBus<
                     break;
                     
                 case 'attack':
-                    // DEBUG: console.log('[AIController] Initiating combat from storyline');
+                    // DEBUG: console.log('[AIController] Initiating combat from speech action');
                     // Type guard for attack action data
                     const attackActionData = actionData as AttackActionData;
                     if (attackActionData?.combatants && this.state) {
@@ -260,7 +289,7 @@ export class AIController extends EventBus<
                                     characters: [{
                                         name: combatant.attacker,
                                         target: combatant.target,
-                                        attack: (combatant.attackType as 'melee' | 'hold' | 'kill' | 'retreat') || 'kill'
+                                        // Attack type simplified - no longer needed
                                     }]
                                 };
                                 await this.executeAttack(attackCommand, character);
@@ -272,7 +301,7 @@ export class AIController extends EventBus<
                     break;
                     
                 case 'item':
-                    // DEBUG: console.log('[AIController] Spawning items from storyline');
+                    // DEBUG: console.log('[AIController] Spawning items from speech action');
                     // Type guard for item action data
                     const itemActionData = actionData as ItemActionData;
                     if (itemActionData?.items) {
@@ -287,7 +316,7 @@ export class AIController extends EventBus<
                     break;
                     
                 default:
-                    console.warn(`[AIController] Unknown storyline action: ${action}. Ignoring.`);
+                    console.warn(`[AIController] Unknown speech action: ${action}. Ignoring.`);
                     // Don't throw an error - just log and continue
                     // This allows for future action types without breaking the game
             }
@@ -296,11 +325,19 @@ export class AIController extends EventBus<
 
     private isAIPlayer(playerId: string): boolean {
         if (!this.state) {
+            console.error('[AI] isAIPlayer - No state available');
             return false;
         }
         // Check if this player is marked as AI in the game state
         const game = this.state.game as ExtendedGame;
         const playerInfo = game.playerInfo?.[playerId];
+        console.log('[AI] isAIPlayer check:', {
+            playerId,
+            playerInfo,
+            hasPlayerInfo: !!game.playerInfo,
+            allPlayerInfo: game.playerInfo
+        });
+
         // This maintains backward compatibility
         if (!game.playerInfo) {
             console.warn('[AIController] No playerInfo in game state, using fallback check');
@@ -312,11 +349,26 @@ export class AIController extends EventBus<
     // Removed isAIControlled - not used
 
     private async processAIPlayerTurn(playerId: string): Promise<void> {
-        if (!this.state) return;
+        console.log(`[AI] processAIPlayerTurn called for player: ${playerId}`);
+
+        if (!this.state) {
+            console.error('[AI] processAIPlayerTurn - No state available');
+            return;
+        }
+
+        // Log all characters and their player assignments for debugging
+        console.log('[AI] Current characters in game:');
+        this.state.characters.forEach((c: DeepReadonly<ICharacter>) => {
+            console.log(`  - ${c.name}: controller=${c.controller}, faction=${c.faction}, health=${c.health}`);
+        });
+
         // When it's an AI player's turn, find their characters and take actions
-        const aiCharacters = this.state.characters.filter((c: DeepReadonly<ICharacter>) => c.player === playerId);
+        const aiCharacters = this.state.characters.filter((c: DeepReadonly<ICharacter>) => c.controller === playerId);
+        console.log(`[AI] Found ${aiCharacters.length} AI characters for player ${playerId}`);
 
         if (aiCharacters.length === 0) {
+            console.warn(`[AI] No characters found for AI player ${playerId}`);
+            console.warn('[AI] Make sure enemy faction characters are assigned to the AI player');
             return;
         }
 
@@ -372,9 +424,26 @@ export class AIController extends EventBus<
     }
 
     private async processAICharacterTurn(character: DeepReadonly<ICharacter>): Promise<void> {
-        if (this.isProcessingTurn || !this.aiEnabled || !this.state || !this.contextBuilder) {
+        console.log(`[AI] processAICharacterTurn called for character: ${character.name}`);
+
+        if (this.isProcessingTurn) {
+            console.warn('[AI] Already processing turn, skipping');
             return;
         }
+        if (!this.aiEnabled) {
+            console.warn('[AI] AI is disabled');
+            return;
+        }
+        if (!this.state) {
+            console.error('[AI] No state available');
+            return;
+        }
+        if (!this.contextBuilder) {
+            console.error('[AI] No contextBuilder available');
+            return;
+        }
+
+        console.log('[AI] Starting to process character turn');
         this.isProcessingTurn = true;
 
         try {
@@ -398,7 +467,7 @@ export class AIController extends EventBus<
                 }
 
                 // Check if turn changed (e.g., due to conversation)
-                if (this.state.game.turn !== currentChar.player) {
+                if (this.state.game.turn !== currentChar.controller) {
                     break;
                 }
 
@@ -419,33 +488,10 @@ export class AIController extends EventBus<
                     break;
                 }
 
-                // Check if we have an ongoing movement to continue
-                if (this.ongoingMovement && this.ongoingMovement.characterName === currentChar.name) {
-                    const target = this.ongoingMovement.targetLocation;
-                    const distance = this.getDistance(currentChar.position, target);
-
-                    // Check if we've reached the target or are close enough
-                    if (distance <= 3) {
-                        this.ongoingMovement = undefined;
-                        // Continue to get new AI decision
-                    } else if (pointsLeft >= 20) {
-                        // Continue moving toward the target
-                        // Create a movement command to continue toward the target
-                        const moveCommand: AICommand = {
-                            type: 'movement',
-                            characters: [{
-                                name: currentChar.name,
-                                location: this.ongoingMovement.targetName || `${target.x},${target.y}`
-                            }]
-                        };
-                        await this.executeMovement(moveCommand, currentChar);
-                        actionsPerformed++;
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                        continue; // Skip AI request and continue movement
-                    } else {
-                        // Not enough points to continue
-                        this.ongoingMovement = undefined;
-                    }
+                // Clear ongoing movement - each action should be a fresh AI decision
+                // This prevents characters from moving multiple times per turn
+                if (this.ongoingMovement?.characterName === currentChar.name) {
+                    this.ongoingMovement = undefined;
                 }
 
                 // Check if there's a pending speech command from previous movement
@@ -453,7 +499,7 @@ export class AIController extends EventBus<
                 if (pendingSpeech) {
                     // Check if we're now close enough to execute the pending speech
                     const speaker = currentChar;
-                    const humanCharacters = this.state.characters.filter(c => c.player === 'human' && c.health > 0);
+                    const humanCharacters = this.state.characters.filter(c => c.controller === 'human' && c.health > 0);
 
                     // Check if speaker can talk to any human character
                     let canTalkToAnyHuman = false;
@@ -481,9 +527,10 @@ export class AIController extends EventBus<
                 }
 
                 // Check if there are any living enemies to interact with
+                // Enemy is determined by different faction, not different player
                 const hasLivingEnemies = this.state.characters.some(c =>
                     c.health > 0 &&
-                    c.player !== currentChar.player &&
+                    c.faction !== currentChar.faction &&
                     c.name !== currentChar.name
                 );
 
@@ -520,7 +567,7 @@ export class AIController extends EventBus<
                 const currentChar = this.state.characters.find(c => c.name === character.name);
                 if (currentChar && currentChar.health > 0) {
                     const speaker = currentChar;
-                    const humanCharacters = this.state.characters.filter(c => c.player === 'human' && c.health > 0);
+                    const humanCharacters = this.state.characters.filter(c => c.controller === 'human' && c.health > 0);
 
                     // Check if speaker can talk to any human character
                     let canTalkToAnyHuman = false;
@@ -555,8 +602,12 @@ export class AIController extends EventBus<
         } finally {
             // Only reset isProcessingTurn if the turn wasn't force-ended by conversation
             // This prevents the AI from processing again when it shouldn't
+            console.log('[AI] Finally block - isForcedTurnEnd:', this.isForcedTurnEnd);
             if (!this.isForcedTurnEnd) {
+                console.log('[AI] Clearing isProcessingTurn flag');
                 this.isProcessingTurn = false;
+            } else {
+                console.log('[AI] NOT clearing isProcessingTurn due to forced end');
             }
         }
     }
@@ -672,42 +723,46 @@ export class AIController extends EventBus<
 
             // Add screen context to AI context with proper typing
             if (screenContext) {
-                const contextWithScreen = context as GameContext;
+                const contextWithScreen = context as AIGameContext;
                 contextWithScreen.screenContext = screenContext;
             }
         }
 
 
-        // Get AI decision from game engine with story context
-        const response = await this.gameEngineService.requestAIAction(context, undefined, storyStateForPlanner, language as LanguageCode);
-
-        // Check if response contains tactical directive
-        if (response.command?.type === 'tactical_directive') {
-            // Type guard for tactical directive
-            const directive = response.command as unknown as TacticalDirective;
-            this.tacticalExecutor.setDirective(directive);
-
-            // After setting directive, process turn with tactical system
-            if (this.useTacticalSystem) {
-                await this.processTacticalCharacterTurn(character);
+        // Add location to current character in context
+        const contextWithLocation = {
+            ...context,
+            currentCharacter: {
+                ...context.currentCharacter,
+                location: this.getCurrentRoomName(character)
             }
-            return;
-        }
+        };
 
-        // Parse and execute AI commands normally
-        if (response.command) {
-            const validatedCommand = this.commandParser.validate(response.command);
-            if (validatedCommand) {
+        // Get AI decision from game engine with story context
+        const response = await this.gameEngineService.requestAIAction(contextWithLocation, undefined, storyStateForPlanner, language as LanguageCode);
+
+        // Tactical directive removed - using story-driven decisions instead
+
+        // Parse and execute AI commands with new validation system
+        if (response.command && this.errorHandler && this.state) {
+            const retryResult = await this.errorHandler.executeWithRetry(
+                response.command,
+                contextWithLocation,
+                this.state,
+                language
+            );
+
+            if (retryResult.success && retryResult.command) {
+                const validatedCommand = retryResult.command;
                 // Log the AI decision with more context
                 if (validatedCommand.type === 'attack') {
                     const attackCmd = validatedCommand as AttackCommand;
-                    const attackType = attackCmd.characters?.[0]?.attack;
                     const target = attackCmd.characters?.[0]?.target;
-                    if (!attackType || !target) {
-                        console.warn('[AI] Invalid attack command - missing attack type or target');
+                    if (!target) {
+                        console.warn('[AI] Invalid attack command - missing target');
                         return;
                     }
-                    console.log(`[AI] ${character.name}: Attack (${attackType} vs ${target})`);
+                    console.log(`[AI] ${character.name}: Attack vs ${target}`);
                 } else if (validatedCommand.type === 'speech') {
                     const speechCmd = validatedCommand as SpeechCommand;
                     console.log(`[AI] ${character.name}: Speech - "${speechCmd.content?.substring(0, 50)}..."`);
@@ -717,6 +772,16 @@ export class AIController extends EventBus<
                 } else {
                     console.log(`[AI] ${character.name}: ${validatedCommand.type}`);
                 }
+                await this.executeAICommand(validatedCommand, character);
+            } else if (retryResult.finalErrors) {
+                // All retries failed - log the errors
+                console.error('[AI] Command validation failed after retries:',
+                    this.errorHandler.formatErrorFeedback(retryResult.finalErrors));
+            }
+        } else if (response.command) {
+            // Fallback to old validation if new system not initialized
+            const validatedCommand = this.commandParser.validate(response.command);
+            if (validatedCommand) {
                 await this.executeAICommand(validatedCommand, character);
             } else {
                 console.error('[AI] Invalid command:', response.command);
@@ -733,7 +798,7 @@ export class AIController extends EventBus<
         for (const other of this.state.characters) {
             if (other.name === character.name || other.health <= 0) continue;
 
-            if (TeamService.areHostile(character, other, this.state.game.teams)) {
+            if (FactionService.areHostile(character, other, this.state.game.factions)) {
                 const distance = Math.sqrt(
                     Math.pow(other.position.x - character.position.x, 2) +
                     Math.pow(other.position.y - character.position.y, 2)
@@ -796,21 +861,6 @@ export class AIController extends EventBus<
                     }
                 }
                 break;
-            case 'storyline':
-                // Convert DeepReadonly<IStoryState> to IStoryState for story executor
-                const storyStateForStoryline = storyState ? JSON.parse(JSON.stringify(storyState)) as IStoryState : undefined;
-                try {
-                    await this.storyExecutor.executeStorylineCommand(validatedCommand as StorylineCommand, storyStateForStoryline);
-                } catch (error) {
-                    if (error instanceof CharacterPositioningError) {
-                        console.error('[AI] Character positioning failed in storyline:', error.message);
-                        // For storyline errors, we may need to regenerate the entire scene
-                        await this.handlePositioningError(error, validatedCommand as StorylineCommand);
-                    } else {
-                        throw error;
-                    }
-                }
-                break;
             case 'item':
                 await this.storyExecutor.executeItemSpawnCommand(validatedCommand as ItemSpawnCommand);
                 break;
@@ -828,12 +878,27 @@ export class AIController extends EventBus<
             throw new Error('[AI] ExecuteMovement - No characters in command');
         }
         const targetLocationString = characters[0].location;
-        const targetLocation = this.resolveLocation(targetLocationString, character);
+
+        let targetLocation: ICoord | null = null;
+        try {
+            // Allow coordinates if the location string looks like coordinates (e.g., "11,12")
+            // This is for internal system use (e.g., when executeSpeech generates movement to line-of-sight positions)
+            const isCoordinate = /^\d+,\s*\d+$/.test(targetLocationString);
+            targetLocation = this.resolveLocation(targetLocationString, character, isCoordinate);
+        } catch (error) {
+            console.error(`[AI] ExecuteMovement - Failed to resolve location for ${character.name}:`, error);
+
+            // End the turn properly on invalid location
+            if (!this.isProcessingMultipleCharacters) {
+                this.endAITurn();
+            }
+            return;
+        }
 
         if (!targetLocation || !isFinite(targetLocation.x) || !isFinite(targetLocation.y) ||
             targetLocation.x < -1000 || targetLocation.x > 1000 ||
             targetLocation.y < -1000 || targetLocation.y > 1000) {
-            console.warn('[AI] ExecuteMovement - Invalid location:', targetLocationString, targetLocation);
+            console.error('[AI] ExecuteMovement - Invalid resolved location:', targetLocationString, targetLocation);
             if (!this.isProcessingMultipleCharacters) {
                 this.endAITurn();
             }
@@ -854,15 +919,17 @@ export class AIController extends EventBus<
             c.position.x === targetLocation.x && c.position.y === targetLocation.y
         );
 
-        // Set ongoing movement tracker if we're moving more than 1 cell away
-        if (currentDistance > 3) {
-            this.ongoingMovement = {
-                characterName: character.name,
-                targetLocation: targetLocation,
-                targetName: targetChar?.name
-            };
-            console.log(`[AI] Setting ongoing movement for ${character.name} to ${targetChar?.name || 'location'}`);
-        }
+        // Ongoing movement tracking disabled to prevent multiple movements per turn
+        // Each action loop iteration should request a fresh AI decision
+        // if (currentDistance > 3) {
+        //     this.ongoingMovement = {
+        //         characterName: character.name,
+        //         targetLocation: targetLocation,
+        //         targetName: targetChar?.name,
+        //         targetLocationString: targetLocationString
+        //     };
+        //     console.log(`[AI] Setting ongoing movement for ${character.name} to ${targetChar?.name || targetLocationString}`);
+        // }
 
         // If we're already adjacent (within 1.5 cells), switch to appropriate action
         if (currentDistance <= 1.5) {
@@ -879,7 +946,7 @@ export class AIController extends EventBus<
                 c.position.x === targetLocation.x && c.position.y === targetLocation.y
             );
 
-            if (targetChar && targetChar.player !== character.player && targetChar.name === MAIN_CHARACTER_NAME) {
+            if (targetChar && targetChar.controller !== character.controller && targetChar.name === MAIN_CHARACTER_NAME) {
                 // Create a speech command
                 const speechCommand: AICommand = {
                     type: 'speech',
@@ -911,7 +978,7 @@ export class AIController extends EventBus<
             const blockage = this.detectBlockingEntity(character.position, targetLocation);
 
             if (blockage.type === 'character' && blockage.character && this.state) {
-                const isAlly = TeamService.areAllied(character, blockage.character, this.state.game.teams);
+                const isAlly = FactionService.areAllied(character, blockage.character, this.state.game.factions);
                 console.log(`[AI] Path blocked by ${isAlly ? 'ally' : 'enemy'}: ${blockage.character.name} (health: ${blockage.character.health})`);
 
                 // Request new AI instructions with context about the blockage
@@ -940,13 +1007,18 @@ export class AIController extends EventBus<
 
                 const context = this.contextBuilder.buildTurnContext(character, this.state);
                 // Create a new context object with blockage info as string (as expected by AIActionContext)
+                // Also add location to current character
                 const contextWithBlockage = {
                     ...context,
+                    currentCharacter: {
+                        ...context.currentCharacter,
+                        location: this.getCurrentRoomName(character)
+                    },
                     blockageInfo: JSON.stringify(blockageContext)
-                } as unknown as GameContext;
+                } as unknown as AIGameContext;
 
                 console.log('[AI] Requesting new instructions due to blocked path');
-                const language = this.state?.language || 'es';
+                const language = this.state?.language || 'en';
                 const response = await this.gameEngineService.requestAIAction(contextWithBlockage as unknown as AIActionContext, undefined, undefined, language as LanguageCode);
 
                 if (response.command) {
@@ -988,6 +1060,24 @@ export class AIController extends EventBus<
         const moveToIndex = cellsToMove - 1; // -1 because array is 0-indexed
         const moveToDest = path[moveToIndex];
 
+        // Check if destination is occupied by another character
+        if (moveToDest && this.state) {
+            const occupyingChar = this.state.characters.find((c: DeepReadonly<ICharacter>) =>
+                c.name !== character.name &&
+                Math.round(c.position.x) === Math.round(moveToDest.x) &&
+                Math.round(c.position.y) === Math.round(moveToDest.y) &&
+                c.health > 0
+            );
+
+            if (occupyingChar) {
+                console.warn(`[AI] Cannot move ${character.name} - destination (${moveToDest.x}, ${moveToDest.y}) occupied by ${occupyingChar.name}`);
+                if (!this.isProcessingMultipleCharacters) {
+                    this.endAITurn();
+                }
+                return;
+            }
+        }
+
         // DEBUG: console.log(`[AI] Moving ${cellsToMove} cells toward target (${path.length} total cells to target)`);
 
         // Directly set the character's path to move them
@@ -1006,7 +1096,7 @@ export class AIController extends EventBus<
             }
 
             // Check if we're still in AI turn (movement might have changed it)
-            if (this.state && this.state.game.turn === character.player) {
+            if (this.state && this.state.game.turn === character.controller) {
                 // Check if we have a pending speech command and are now close enough
                 const pendingSpeech = this.pendingSpeechCommands.get(character.name);
                 if (pendingSpeech && moveToDest) {
@@ -1023,13 +1113,9 @@ export class AIController extends EventBus<
                     }
                 }
 
-                // If we haven't reached the target and still have action points, continue in next loop
-                if (cellsToMove < path.length) {
-                    // DEBUG: console.log('[AI] Will continue movement in next action loop');
-                    // ongoingMovement is already set, so next loop will continue
-                } else {
-                    this.ongoingMovement = undefined;
-                }
+                // Movement complete - next action loop will request fresh AI decision
+                // No longer using ongoingMovement to prevent multiple moves per turn
+                this.ongoingMovement = undefined;
             }
         }, 1500); // Wait for movement animation to complete
 
@@ -1051,8 +1137,8 @@ export class AIController extends EventBus<
         }
         const attackData = chars[0];
 
-        // Handle 'area' target for overwatch
-        if (attackData.target === 'area' && attackData.attack === 'hold') {
+        // Handle 'area' target for overwatch - removed with simplified attack
+        if (attackData.target === 'area') {
             // Set overwatch without specific target
             this.dispatch(ControlsEvent.showOverwatch, character.name);
             await new Promise<void>(resolve => {
@@ -1083,121 +1169,68 @@ export class AIController extends EventBus<
         }
 
 
-        // Dispatch attack event based on attack type
-        switch (attackData.attack) {
-            case 'melee':
-                // Check if target is adjacent for melee
-                const distance = this.getDistance(character.position, targetChar.position);
-                if (distance <= 1.5) {
-                    // Dispatch melee attack
-                    this.dispatch(ControlsEvent.toggleMelee, character.name);
-                    // After a delay, click on target character
-                    await new Promise<void>(resolve => {
-                        setTimeout(() => {
-                            this.dispatch(ControlsEvent.characterClick, {
-                                characterName: targetChar.name,
-                                position: targetChar.position
-                            });
-                            resolve();
-                        }, 500);
+        // Dispatch attack event - simplified without attack types
+        const distance = this.getDistance(character.position, targetChar.position);
+        if (distance <= 1.5) {
+            // Melee attack if adjacent
+            this.dispatch(ControlsEvent.toggleMelee, character.name);
+            // After a delay, click on target character
+            await new Promise<void>(resolve => {
+                setTimeout(() => {
+                    this.dispatch(ControlsEvent.characterClick, {
+                        characterName: targetChar.name,
+                        position: targetChar.position
                     });
+                    resolve();
+                }, 500);
+            });
+        } else {
+            // Ranged attack if not adjacent
+            const hasLineOfSight = this.checkLineOfSight(character.position, targetChar.position);
 
-                    // Combat event will be recorded when the actual melee attack happens
-                } else {
-                    // Move closer to target first
-                    await this.executeMovement({
-                        type: 'movement',
-                        characters: [{
-                            name: character.name,
-                            location: targetChar.name
-                        }]
-                    }, character);
-                }
-                break;
+            if (!hasLineOfSight) {
+                // Move closer to target instead of shooting
+                await this.executeMovement({
+                    type: 'movement',
+                    characters: [{
+                        name: character.name,
+                        location: targetChar.name
+                    }]
+                }, character);
+                return;
+            }
 
-            case 'kill':
-                // First check if we have line of sight to the target
-                // If not, we should move closer instead
-                const hasLineOfSight = this.checkLineOfSight(character.position, targetChar.position);
+            // First, rotate to face the target
+            const angle = Math.atan2(
+                targetChar.position.y - character.position.y,
+                targetChar.position.x - character.position.x
+            );
+            const direction = this.angleToDirection(angle);
 
-                if (!hasLineOfSight) {
-                    // DEBUG: console.log(`[AI] No line of sight to ${targetChar.name}, moving closer instead`);
-                    // Move closer to target instead of shooting
-                    await this.executeMovement({
-                        type: 'movement',
-                        characters: [{
-                            name: character.name,
-                            location: targetChar.name
-                        }]
-                    }, character);
-                    break;
-                }
+            // Update character direction
+            this.dispatch(UpdateStateEvent.characterDirection, {
+                characterName: character.name,
+                direction: direction
+            });
 
-                // First, rotate to face the target
-                const angle = Math.atan2(
-                    targetChar.position.y - character.position.y,
-                    targetChar.position.x - character.position.x
-                );
-                const direction = this.angleToDirection(angle);
+            // Small delay for rotation to complete
+            await new Promise(resolve => setTimeout(resolve, 200));
 
-                // Update character direction
-                this.dispatch(UpdateStateEvent.characterDirection, {
-                    characterName: character.name,
-                    direction: direction
-                });
+            // Enter shooting mode
+            this.dispatch(ControlsEvent.showShooting, character.name);
+            // After a delay, click on target character
+            await new Promise<void>(resolve => {
+                setTimeout(() => {
+                    this.dispatch(ControlsEvent.characterClick, {
+                        characterName: targetChar.name,
+                        position: targetChar.position
+                    });
+                    resolve();
+                }, 500);
+            });
 
-                // Small delay for rotation to complete
-                await new Promise(resolve => setTimeout(resolve, 200));
-
-                // Enter shooting mode
-                this.dispatch(ControlsEvent.showShooting, character.name);
-                // After a delay, click on target character (not just the cell)
-                await new Promise<void>(resolve => {
-                    setTimeout(() => {
-                        this.dispatch(ControlsEvent.characterClick, {
-                            characterName: targetChar.name,
-                            position: targetChar.position
-                        });
-                        resolve();
-                    }, 500); // Slightly longer delay for shooting action
-                });
-
-                // Combat event will be recorded when the actual shoot happens
-
-                // Wait longer to ensure action completes and points are deducted
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                break;
-
-            case 'hold':
-                // Hold position - set overwatch
-                this.dispatch(ControlsEvent.showOverwatch, character.name);
-                // After a delay, click in front of character to activate overwatch
-                await new Promise<void>(resolve => {
-                    setTimeout(() => {
-                        // Calculate a position in front of the character
-                        const frontPosition = this.getPositionInFront(character);
-                        this.dispatch(ControlsEvent.cellClick, frontPosition);
-                        resolve();
-                    }, 500);
-                });
-                break;
-
-            case 'retreat':
-                // Find retreat position and move
-                const retreatTarget = this.findRetreatPosition(character, attackData.target);
-                if (retreatTarget) {
-                    await this.executeMovement({
-                        type: 'movement',
-                        characters: [{
-                            name: character.name,
-                            location: `${retreatTarget.x},${retreatTarget.y}`
-                        }]
-                    }, character);
-                }
-                break;
-
-            default:
-                console.warn('[AI] Unknown attack type:', attackData.attack);
+            // Wait longer to ensure action completes and points are deducted
+            await new Promise(resolve => setTimeout(resolve, 2000));
         }
     }
 
@@ -1435,7 +1468,7 @@ export class AIController extends EventBus<
                 c.name.toLowerCase() === targetCharName.toLowerCase() && c.health > 0
             );
             
-            if (targetChar && targetChar.player !== 'human') {
+            if (targetChar && targetChar.controller !== 'human') {
                 // This is an AI-to-AI conversation
                 const distance = this.getDistance(speaker.position, targetChar.position);
                 const hasLineOfSight = this.checkLineOfSight(speaker.position, targetChar.position, true);
@@ -1443,7 +1476,7 @@ export class AIController extends EventBus<
                 if (distance <= 8 && hasLineOfSight) {
                     // Check if human player is nearby to observe
                     const humanCharacters = this.state.characters.filter((c: DeepReadonly<ICharacter>) =>
-                        c.player === 'human' && c.health > 0
+                        c.controller === 'human' && c.health > 0
                     );
                     
                     let isEavesdropping = false;
@@ -1497,7 +1530,7 @@ export class AIController extends EventBus<
 
         // Find any human-controlled character that's in conversation range
         const humanCharacters = this.state.characters.filter((c: DeepReadonly<ICharacter>) =>
-            c.player === 'human' && c.health > 0
+            c.controller === 'human' && c.health > 0
         );
 
         // Check if speaker can talk to any human character
@@ -1690,17 +1723,28 @@ export class AIController extends EventBus<
                 continue;
             }
 
+            // Determine which controller owns this character based on faction
+            // Enemy faction characters should always belong to the AI controller
+            let assignedController = this.state.game.turn;
+            if (charData.faction === 'enemy') {
+                assignedController = 'ai';
+            } else if (charData.faction === 'player') {
+                assignedController = 'human';
+            }
+            // neutral faction characters remain assigned to current turn
+
             // Create a new character object with required fields
             const newCharacter = {
                 name: charData.name,
                 race: charData.race || 'human',
                 description: charData.description || '',
+                faction: charData.faction || 'neutral',
                 position: spawnLocation,
                 x: spawnLocation.x,
                 y: spawnLocation.y,
                 direction: this.mapDirection(charData.orientation || 'down'),
                 speed: charData.speed || 'medium',
-                player: this.state.game.turn, // Assign to current AI player
+                controller: assignedController,
                 health: 100,
                 maxHealth: 100,
                 palette: charData.palette || {
@@ -1709,6 +1753,8 @@ export class AIController extends EventBus<
                     suit: '#404040'
                 }
             };
+
+            console.log(`[AI] Spawning character ${charData.name} with faction ${charData.faction} assigned to controller ${assignedController}`);
 
             // Add character to game state
             this.dispatch(UpdateStateEvent.addCharacter, newCharacter);
@@ -1744,17 +1790,88 @@ export class AIController extends EventBus<
         const context = this.contextBuilder.buildDialogueContext(dialogue, this.state);
 
         try {
-            const language = this.state?.language || 'es';
+            const language = this.state?.language || 'en';
+
+            // Create a mutable copy of the story state if it exists
+            let storyStateCopy: IStoryState | undefined;
+            if (this.state?.story) {
+                const story = this.state.story;
+                storyStateCopy = {
+                    selectedOrigin: story.selectedOrigin ? {
+                        id: story.selectedOrigin.id,
+                        name: story.selectedOrigin.name,
+                        nameES: story.selectedOrigin.nameES,
+                        description: story.selectedOrigin.description,
+                        descriptionES: story.selectedOrigin.descriptionES,
+                        startingLocation: story.selectedOrigin.startingLocation,
+                        startingCompanion: story.selectedOrigin.startingCompanion ? {
+                            name: story.selectedOrigin.startingCompanion.name,
+                            type: story.selectedOrigin.startingCompanion.type,
+                            description: story.selectedOrigin.startingCompanion.description
+                        } : undefined,
+                        initialInventory: [...story.selectedOrigin.initialInventory],
+                        factionRelations: { ...story.selectedOrigin.factionRelations },
+                        specialTraits: [...story.selectedOrigin.specialTraits],
+                        narrativeHooks: [...story.selectedOrigin.narrativeHooks]
+                    } : null,
+                    currentChapter: story.currentChapter,
+                    completedMissions: [...story.completedMissions],
+                    majorDecisions: story.majorDecisions.map(d => ({
+                        id: d.id,
+                        missionId: d.missionId,
+                        choice: d.choice,
+                        consequences: [...d.consequences],
+                        timestamp: d.timestamp
+                    })),
+                    factionReputation: { ...story.factionReputation },
+                    storyFlags: new Set<string>(),
+                    journalEntries: story.journalEntries.map(j => ({ ...j })),
+                    storyPlan: story.storyPlan ? JSON.parse(JSON.stringify(story.storyPlan)) : undefined,
+                    completedObjectives: story.completedObjectives ? [...story.completedObjectives] : undefined
+                };
+                // Copy story flags manually due to DeepReadonly Set issues
+                if (story.storyFlags && storyStateCopy) {
+                    // Use a for...of loop to iterate over the Set
+                    const flagsIterator = (story.storyFlags as any).values();
+                    for (const flag of flagsIterator) {
+                        storyStateCopy.storyFlags.add(flag);
+                    }
+                }
+            }
+
             const response = await this.gameEngineService.requestDialogueResponse(
                 dialogue.speaker || 'Player',
                 dialogue.targetNPC,
                 dialogue.playerChoice,
-                context,
-                undefined,
+                context as AIActionContext,
+                storyStateCopy,
                 language as LanguageCode
             );
 
-            if (response.command && response.command.type === 'speech') {
+            if (response.command && response.command.type === 'speech' && this.errorHandler && this.state) {
+                // Use error handler for validation and retry
+                const retryResult = await this.errorHandler.executeWithRetry(
+                    response.command,
+                    context as AIActionContext,
+                    this.state,
+                    language as LanguageCode
+                );
+
+                if (retryResult.success && retryResult.command) {
+                    await this.executeSpeech(retryResult.command, {} as DeepReadonly<ICharacter>);
+
+                    // Trigger world state update for conversation
+                    this.triggerWorldStateUpdate('conversation',
+                        [dialogue.speaker || 'Player', dialogue.targetNPC],
+                        'neutral',
+                        undefined
+                    );
+                } else if (retryResult.finalErrors) {
+                    console.error('[AI] Dialogue validation failed:',
+                        this.errorHandler.formatErrorFeedback(retryResult.finalErrors));
+                }
+            } else if (response.command && response.command.type === 'speech') {
+                // Fallback if error handler not initialized
                 await this.executeSpeech(response.command, {} as DeepReadonly<ICharacter>);
 
                 // Trigger world state update for conversation
@@ -1769,50 +1886,28 @@ export class AIController extends EventBus<
         }
     }
 
-    private resolveLocation(location: string, fromCharacter?: DeepReadonly<ICharacter>): ICoord | null {
+    private resolveLocation(location: string, _fromCharacter?: DeepReadonly<ICharacter>, allowCoordinates = false): ICoord | null {
         if (!this.state) {
-            return null;
+            throw new Error(`[AI] Cannot resolve location: game state is not initialized`);
+        }
+
+        if (!location || location.trim() === '') {
+            throw new Error(`[AI] Invalid location: location is empty or null`);
         }
 
         const lowerLocation = location.toLowerCase().trim();
 
-        // Handle relative directions (including diagonals)
+        // Check if it's a direction - these are NOT allowed
         const directions = [
             'north', 'south', 'east', 'west', 'up', 'down', 'left', 'right',
             'northeast', 'northwest', 'southeast', 'southwest',
             'north-east', 'north-west', 'south-east', 'south-west'
         ];
 
-        if (fromCharacter && directions.includes(lowerLocation)) {
-            const moveDistance = 5; // Move 5 cells in the direction
-            const diagonalDistance = Math.floor(moveDistance * 0.7); // Diagonal moves are slightly shorter
-
-            switch (lowerLocation) {
-                case 'north':
-                case 'up':
-                    return { x: fromCharacter.position.x, y: fromCharacter.position.y - moveDistance };
-                case 'south':
-                case 'down':
-                    return { x: fromCharacter.position.x, y: fromCharacter.position.y + moveDistance };
-                case 'east':
-                case 'right':
-                    return { x: fromCharacter.position.x + moveDistance, y: fromCharacter.position.y };
-                case 'west':
-                case 'left':
-                    return { x: fromCharacter.position.x - moveDistance, y: fromCharacter.position.y };
-                case 'northeast':
-                case 'north-east':
-                    return { x: fromCharacter.position.x + diagonalDistance, y: fromCharacter.position.y - diagonalDistance };
-                case 'northwest':
-                case 'north-west':
-                    return { x: fromCharacter.position.x - diagonalDistance, y: fromCharacter.position.y - diagonalDistance };
-                case 'southeast':
-                case 'south-east':
-                    return { x: fromCharacter.position.x + diagonalDistance, y: fromCharacter.position.y + diagonalDistance };
-                case 'southwest':
-                case 'south-west':
-                    return { x: fromCharacter.position.x - diagonalDistance, y: fromCharacter.position.y + diagonalDistance };
-            }
+        if (directions.includes(lowerLocation)) {
+            const errorMsg = `[AI] Invalid location format '${location}': Movement locations must be room names or character names, not directions. Use actual location names like 'Cargo Bay' or character names like 'Enemy Captain'.`;
+            console.error(errorMsg);
+            throw new Error(errorMsg);
         }
 
         // Handle "center" or "center of map"
@@ -1827,6 +1922,20 @@ export class AIController extends EventBus<
             c.name.toLowerCase() === lowerLocation
         );
         if (targetChar) {
+            // Find the nearest empty cell near the target character
+            const nearestEmpty = this.findNearestEmptyCell(
+                targetChar.position,
+                _fromCharacter?.position
+            );
+
+            if (nearestEmpty) {
+                console.log(`[AI] Resolved character '${targetChar.name}' at (${targetChar.position.x}, ${targetChar.position.y}) to nearest empty cell at (${nearestEmpty.x}, ${nearestEmpty.y})`);
+                return nearestEmpty;
+            }
+
+            // Fallback: if no empty cell found, return character position
+            // (this shouldn't happen in normal gameplay but provides a safe fallback)
+            console.warn(`[AI] No empty cell found near character '${targetChar.name}', using character position`);
             return { x: targetChar.position.x, y: targetChar.position.y };
         }
 
@@ -1846,21 +1955,148 @@ export class AIController extends EventBus<
             }
         }
 
-        // Try to parse as coordinates
+        // Check for coordinate strings (e.g., "11,12")
+        // Only allow coordinates if this is an internal system call (allowCoordinates=true)
         const coordMatch = location.match(/(\d+),\s*(\d+)/);
-        if (coordMatch) {
-            const xStr = coordMatch[1];
-            const yStr = coordMatch[2];
-            if (xStr && yStr) {
-                const x = parseInt(xStr, 10);
-                const y = parseInt(yStr, 10);
-                if (!isNaN(x) && !isNaN(y)) {
+        if (coordMatch && coordMatch[1] && coordMatch[2]) {
+            if (allowCoordinates) {
+                // Parse and validate coordinates for internal system use
+                const x = parseInt(coordMatch[1], 10);
+                const y = parseInt(coordMatch[2], 10);
+
+                // Validate coordinates are within map bounds
+                const mapWidth = this.state.map[0]?.length || 50;
+                const mapHeight = this.state.map.length || 50;
+
+                if (x >= 0 && x < mapWidth && y >= 0 && y < mapHeight) {
                     return { x, y };
                 }
+
+                const errorMsg = `[AI] Coordinate '${location}' is out of map bounds (${mapWidth}x${mapHeight})`;
+                console.error(errorMsg);
+                throw new Error(errorMsg);
+            } else {
+                // Coordinates from AI commands are not allowed
+                const errorMsg = `[AI] Invalid location format '${location}': Movement locations must be room names or character names, not coordinates. Use names like 'Cargo Bay', 'Bridge', or character names like 'Enemy Captain'.`;
+                console.error(errorMsg);
+                throw new Error(errorMsg);
+            }
+        }
+
+        // If we couldn't resolve the location, throw an error with helpful information
+        const availableRooms = this.getAvailableRoomNames();
+        const availableCharacters = this.state.characters.map(c => c.name).join(', ');
+        const errorMsg = `[AI] Could not resolve location '${location}'. Available rooms: [${availableRooms.join(', ')}]. Available characters: [${availableCharacters}]`;
+        console.error(errorMsg);
+        throw new Error(errorMsg);
+    }
+
+    /**
+     * Find the nearest empty and reachable cell near a target position
+     */
+    private findNearestEmptyCell(targetPosition: ICoord, fromPosition?: ICoord): ICoord | null {
+        if (!this.state) return null;
+
+        const map = this.state.map;
+        const characters = this.state.characters;
+        const mapWidth = map[0]?.length || 0;
+        const mapHeight = map.length;
+
+        // Check cells in expanding radius around target
+        const maxRadius = 10; // Don't search too far
+
+        for (let radius = 1; radius <= maxRadius; radius++) {
+            const candidates: Array<{ pos: ICoord; distance: number }> = [];
+
+            // Check all cells at this radius
+            for (let dx = -radius; dx <= radius; dx++) {
+                for (let dy = -radius; dy <= radius; dy++) {
+                    // Only check cells at exactly this radius (Manhattan distance)
+                    if (Math.abs(dx) + Math.abs(dy) !== radius) continue;
+
+                    const pos: ICoord = {
+                        x: targetPosition.x + dx,
+                        y: targetPosition.y + dy
+                    };
+
+                    // Check bounds
+                    if (pos.x < 0 || pos.x >= mapWidth || pos.y < 0 || pos.y >= mapHeight) {
+                        continue;
+                    }
+
+                    // Check if cell is valid (not blocked, not occupied)
+                    const cell = map[pos.y]?.[pos.x];
+                    if (cell?.content?.blocker) continue;
+
+                    // Check if a character is blocking
+                    const isOccupied = characters.some(c =>
+                        Math.round(c.position.x) === pos.x &&
+                        Math.round(c.position.y) === pos.y &&
+                        c.health > 0
+                    );
+                    if (isOccupied) continue;
+
+                    // Calculate distance from starting position if provided
+                    const distance = fromPosition ?
+                        Math.abs(pos.x - fromPosition.x) + Math.abs(pos.y - fromPosition.y) :
+                        0;
+
+                    candidates.push({ pos, distance });
+                }
+            }
+
+            // If we found valid cells at this radius, return the closest one to starting position
+            if (candidates.length > 0) {
+                candidates.sort((a, b) => a.distance - b.distance);
+                return candidates[0]!.pos;
             }
         }
 
         return null;
+    }
+
+    private getAvailableRoomNames(): string[] {
+        if (!this.state) return [];
+
+        const roomNames = new Set<string>();
+        const map = this.state.map;
+
+        for (let y = 0; y < map.length; y++) {
+            for (let x = 0; x < (map[y]?.length || 0); x++) {
+                const cell = map[y]?.[x];
+                if (cell?.locations) {
+                    for (const loc of cell.locations) {
+                        if (loc && loc !== 'floor' && loc !== 'wall') {
+                            roomNames.add(loc);
+                        }
+                    }
+                }
+            }
+        }
+
+        return Array.from(roomNames);
+    }
+
+    private getCurrentRoomName(character: DeepReadonly<ICharacter>): string {
+        if (!this.state) return 'Unknown Location';
+
+        const map = this.state.map;
+        const x = Math.round(character.position.x);
+        const y = Math.round(character.position.y);
+
+        // Get the cell at the character's position
+        const cell = map[y]?.[x];
+        if (cell?.locations && cell.locations.length > 0) {
+            // Find the first meaningful location (not floor/wall)
+            for (const loc of cell.locations) {
+                if (loc && loc !== 'floor' && loc !== 'wall') {
+                    return loc;
+                }
+            }
+        }
+
+        // If no room name found, return a descriptive fallback
+        return 'Unknown Location';
     }
 
     private findRoomCenter(roomName: string): ICoord | null {
@@ -1893,28 +2129,8 @@ export class AIController extends EventBus<
         return null;
     }
 
-    private findRetreatPosition(character: DeepReadonly<ICharacter>, threat: string): ICoord | null {
-        if (!this.state) return null;
-
-        // Find a position away from the threat
-        const threatChar = this.state.characters.find((c: DeepReadonly<ICharacter>) => c.name === threat);
-
-        if (!threatChar) return null;
-
-        // Calculate direction away from threat
-        const dx = character.position.x - threatChar.position.x;
-        const dy = character.position.y - threatChar.position.y;
-
-        // Move in opposite direction
-        const retreatX = character.position.x + Math.sign(dx) * 5;
-        const retreatY = character.position.y + Math.sign(dy) * 5;
-
-        // TODO: Validate position is walkable
-        return { x: retreatX, y: retreatY };
-    }
-
-    private async executeStorylineMapGeneration(): Promise<void> {
-        // DEBUG: console.log('[AIController] Executing storyline map generation');
+    private async executeNarrativeMapGeneration(): Promise<void> {
+        // DEBUG: console.log('[AIController] Executing narrative map generation');
 
         try {
             // Get current story state
@@ -1922,13 +2138,13 @@ export class AIController extends EventBus<
 
             // Request map generation from AI
             const mapResponse = await this.gameEngineService.requestMapGeneration(
-                'storyline_transition',
-                'Generate a new map based on the storyline progression',
+                'narrative_transition',
+                'Generate a new map based on the narrative progression',
                 storyState ? JSON.parse(JSON.stringify(storyState)) : undefined
             );
 
             if (mapResponse && typeof mapResponse === 'object' && 'type' in mapResponse) {
-                // DEBUG: console.log('[AIController] Generated map command from storyline');
+                // DEBUG: console.log('[AIController] Generated map command from narrative action');
 
                 // Execute the map command
                 const validatedCommand = this.commandParser.validate(mapResponse);
@@ -1941,10 +2157,10 @@ export class AIController extends EventBus<
                     console.error('[AIController] Invalid map command generated');
                 }
             } else {
-                console.error('[AIController] Failed to generate map from storyline');
+                console.error('[AIController] Failed to generate map from narrative action');
             }
         } catch (error) {
-            console.error('[AIController] Error executing storyline map generation:', error);
+            console.error('[AIController] Error executing narrative map generation:', error);
         }
     }
 
@@ -2011,21 +2227,29 @@ export class AIController extends EventBus<
         try {
             if (this.state && this.contextBuilder) {
                 // Use first character or create dummy for context
+                // Use center of map for dummy position instead of (0,0)
+                const mapWidth = this.state.map[0]?.length || 50;
+                const mapHeight = this.state.map.length || 50;
                 const contextCharacter = this.state.characters[0] || {
                     name: 'system',
-                    position: { x: 0, y: 0 },
+                    position: { x: Math.floor(mapWidth / 2), y: Math.floor(mapHeight / 2) },
                     health: 100,
                     actions: { pointsLeft: 100 }
                 } as DeepReadonly<ICharacter>;
                 const context = this.contextBuilder.buildTurnContext(contextCharacter, this.state);
                 // Add error context to the AI request
+                // Also add location to current character
                 const contextWithError = {
                     ...context,
+                    currentCharacter: {
+                        ...context.currentCharacter,
+                        location: this.getCurrentRoomName(contextCharacter)
+                    },
                     positioningError: errorContext
-                } as unknown as GameContext;
-                
+                } as unknown as AIGameContext;
+
                 console.log('[AI] Requesting corrected command after positioning error');
-                const language = this.state?.language || 'es';
+                const language = this.state?.language || 'en';
                 const response = await this.gameEngineService.requestAIAction(contextWithError as unknown as AIActionContext, undefined, undefined, language as LanguageCode);
                 
                 if (response.command) {
@@ -2033,9 +2257,12 @@ export class AIController extends EventBus<
                     if (validatedCommand) {
                         console.log('[AI] Retrying with corrected command:', validatedCommand.type);
                         // Get a dummy character for the retry
+                        // Use center of map for dummy position instead of (0,0)
+                        const mapWidth = this.state?.map[0]?.length || 50;
+                        const mapHeight = this.state?.map.length || 50;
                         const dummyCharacter = (this.state?.characters[0] || {
                             name: 'system',
-                            position: { x: 0, y: 0 }
+                            position: { x: Math.floor(mapWidth / 2), y: Math.floor(mapHeight / 2) }
                         }) as DeepReadonly<ICharacter>;
                         await this.executeAICommand(validatedCommand, dummyCharacter);
                     } else {
@@ -2189,7 +2416,7 @@ export class AIController extends EventBus<
 
             // Request story initialization from AI
             // DEBUG: console.log('[AI] Calling AIGameEngineService.requestStoryInitialization...');
-            const language = this.state?.language || 'es';
+            const language = this.state?.language || 'en';
             const response = await this.gameEngineService.requestStoryInitialization(
                 originCopy,
                 storyStateCopy,
@@ -2221,10 +2448,14 @@ export class AIController extends EventBus<
                         // Execute commands without a specific character context
                         // These are story-level commands like map generation
                         // Pass an empty character for story-level commands
+                        // Use center of map for dummy position instead of (0,0)
+                        const mapWidth = this.state?.map[0]?.length || 50;
+                        const mapHeight = this.state?.map.length || 50;
                         const emptyCharacter: DeepReadonly<ICharacter> = {
                             name: '',
-                            player: '',
-                            position: { x: 0, y: 0 },
+                            controller: '',
+                            faction: 'neutral',
+                            position: { x: Math.floor(mapWidth / 2), y: Math.floor(mapHeight / 2) },
                             direction: 'down' as Direction,
                             health: 0,
                             maxHealth: 0,
@@ -2252,8 +2483,16 @@ export class AIController extends EventBus<
                         };
                         await this.executeAICommand(validatedCommand, emptyCharacter);
 
-                        // Small delay between commands for stability
-                        await new Promise(resolve => setTimeout(resolve, 100));
+                        // Small delay between commands for stability and state updates
+                        await new Promise(resolve => setTimeout(resolve, 200));
+
+                        // If this was a map command, ensure validator gets the updated state
+                        if (validatedCommand.type === 'map' && this.state && this.validator) {
+                            this.validator = new AICommandValidator(this.state);
+                            if (this.errorHandler) {
+                                this.errorHandler = new AIErrorHandler(this.validator, this.gameEngineService);
+                            }
+                        }
                     } else {
                         console.warn('[AI] Invalid initialization command:', command);
                     }

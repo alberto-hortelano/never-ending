@@ -1,7 +1,7 @@
 import { DeepReadonly } from '../helpers/types';
 import { ICharacter, ICoord } from '../interfaces';
 import { State } from '../State';
-import { TeamService } from './TeamService';
+import { FactionService } from './FactionService';
 import { AICommand } from './AICommandParser';
 
 export interface TacticalDirective {
@@ -137,7 +137,7 @@ export class TacticalExecutor {
 
         for (const other of visibleCharacters) {
             // Skip allies and defeated characters
-            const areAllied = TeamService.areAllied(character, other, state.game.teams);
+            const areAllied = FactionService.areAllied(character, other, state.game.factions);
             
             if (areAllied || other.health <= 0) {
                 continue;
@@ -269,7 +269,6 @@ export class TacticalExecutor {
                     characters: [{
                         name: character.name,
                         target: primaryThreat.character.name,
-                        attack: 'melee'
                     }]
                 },
                 reasoning: 'Enemy adjacent - melee attack'
@@ -288,7 +287,6 @@ export class TacticalExecutor {
                     characters: [{
                         name: character.name,
                         target: primaryThreat.character.name,
-                        attack: 'kill'
                     }]
                 },
                 reasoning: `Attacking ${primaryThreat.character.name} at distance ${distance.toFixed(1)}`
@@ -371,8 +369,7 @@ export class TacticalExecutor {
                         characters: [{
                             name: character.name,
                             target: primaryThreat.character.name,
-                            attack: 'kill'
-                        }]
+                            }]
                     },
                     reasoning: `Defending against ${primaryThreat.character.name} at distance ${primaryThreat.distance.toFixed(1)}`
                 });
@@ -423,7 +420,6 @@ export class TacticalExecutor {
                     characters: [{
                         name: character.name,
                         target: primaryThreat?.character.name || 'area',
-                        attack: 'hold'
                     }]
                 },
                 reasoning: 'Setting defensive overwatch'
@@ -480,8 +476,7 @@ export class TacticalExecutor {
                         characters: [{
                             name: character.name,
                             target: primaryThreat.character.name,
-                            attack: 'kill'
-                        }]
+                            }]
                     },
                     reasoning: 'Attacking from flanking position'
                 });
@@ -575,7 +570,6 @@ export class TacticalExecutor {
                     characters: [{
                         name: character.name,
                         target: threats[0].character.name,
-                        attack: 'retreat'
                     }]
                 },
                 reasoning: 'Fighting retreat'
@@ -880,7 +874,7 @@ export class TacticalExecutor {
     private findNearbyAlly(character: DeepReadonly<ICharacter>, state: State): DeepReadonly<ICharacter> | null {
         for (const other of state.characters) {
             if (other.name !== character.name && 
-                TeamService.areAllied(character, other, state.game.teams) &&
+                FactionService.areAllied(character, other, state.game.factions) &&
                 other.health > 0) {
                 return other;
             }

@@ -53,8 +53,8 @@ export class Shoot extends EventBus<
 
         // Check if the character belongs to the current turn
         const currentTurn = this.state.game.turn;
-        if (character.player !== currentTurn) {
-            console.error('[Shoot] Not current turn - character player:', character.player, 'current turn:', currentTurn);
+        if (character.controller !== currentTurn) {
+            console.error('[Shoot] Not current turn - character player:', character.controller, 'current turn:', currentTurn);
             return;
         }
 

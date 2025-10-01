@@ -51,16 +51,18 @@ describe('AI User Experience', () => {
             
             // Parse the narrative
             const result = (conversation as any).parseResponse(JSON.stringify({
-                type: 'storyline',
-                content: narrative.content
+                type: 'speech',
+                source: 'Narrador',
+                content: narrative.content,
+                answers: ['Continuar', 'OK']
             }));
-            
+
             // Should have narrator as source
-            expect(result.source).toBe('Narrator');
+            expect(result.source).toBe('Narrador');
             // Should have story content
             expect(result.content).toContain('Your story begins');
-            // Should have default continue options (for storyline)
-            expect(result.answers).toEqual(['Continue', 'OK']);
+            // Should have continue options
+            expect(result.answers).toEqual(['Continuar', 'OK']);
         });
         
         it('should not confuse users with system messages', () => {

@@ -1,29 +1,21 @@
 import { AnimationService } from '../services/AnimationService';
-import { superEventBus, StateChangeEvent, UpdateStateEvent } from "../events";
+import { EventBus, StateChangeEvent, UpdateStateEvent } from "../events";
 import type { ICharacterAnimation } from "../interfaces";
 
 // Mock requestAnimationFrame
 global.requestAnimationFrame = jest.fn((cb) => setTimeout(cb, 16)) as any;
 global.cancelAnimationFrame = jest.fn((id) => clearTimeout(id)) as any;
 
-// Test event listener class
-class TestEventListener {
-    listen(
-        event: Parameters<typeof superEventBus.listen>[0],
-        callback: Parameters<typeof superEventBus.listen>[1]
-    ) {
-        superEventBus.listen.call(this, event, callback);
-    }
-}
 
 describe('AnimationService', () => {
-    let testListener: TestEventListener;
     let animationService: AnimationService;
+    let eventBus: EventBus<any, any>;
 
     beforeEach(() => {
         jest.clearAllMocks();
         jest.useFakeTimers();
-        testListener = new TestEventListener();
+        EventBus.reset();
+        eventBus = new EventBus();
         // Create a fresh instance for each test
         animationService = new AnimationService();
     });
@@ -33,8 +25,7 @@ describe('AnimationService', () => {
         // Clean up any running animations
         animationService.destroy();
         // Clean up event listeners
-        superEventBus.remove(animationService);
-        superEventBus.remove(testListener);
+        eventBus.remove(animationService);
     });
 
     describe('defeated character handling', () => {
@@ -55,13 +46,13 @@ describe('AnimationService', () => {
             const visualUpdateSpy = jest.fn();
             
             // Listen for visual updates
-            testListener.listen(UpdateStateEvent.uiCharacterVisual, visualUpdateSpy);
+            eventBus.listen(UpdateStateEvent.uiCharacterVisual, visualUpdateSpy);
 
             // Start the animation
             animationService.startAnimation(characterId, animation);
 
             // Sync animations to activate them
-            superEventBus.dispatch(StateChangeEvent.uiAnimations, {
+            eventBus.dispatch(StateChangeEvent.uiAnimations, {
                 characters: {
                     [characterId]: animation
                 }
@@ -83,7 +74,7 @@ describe('AnimationService', () => {
             visualUpdateSpy.mockClear();
 
             // Simulate character being defeated by dispatching animations without this character
-            superEventBus.dispatch(StateChangeEvent.uiAnimations, {
+            eventBus.dispatch(StateChangeEvent.uiAnimations, {
                 characters: {}
             });
 
@@ -107,13 +98,13 @@ describe('AnimationService', () => {
             };
 
             const visualUpdateSpy = jest.fn();
-            testListener.listen(UpdateStateEvent.uiCharacterVisual, visualUpdateSpy);
+            eventBus.listen(UpdateStateEvent.uiCharacterVisual, visualUpdateSpy);
 
             // Start animation
             animationService.startAnimation(characterId, animation);
 
             // Sync animations
-            superEventBus.dispatch(StateChangeEvent.uiAnimations, {
+            eventBus.dispatch(StateChangeEvent.uiAnimations, {
                 characters: {
                     [characterId]: animation
                 }
@@ -161,14 +152,14 @@ describe('AnimationService', () => {
             };
 
             const visualUpdateSpy = jest.fn();
-            testListener.listen(UpdateStateEvent.uiCharacterVisual, visualUpdateSpy);
+            eventBus.listen(UpdateStateEvent.uiCharacterVisual, visualUpdateSpy);
 
             // Start animations for both characters
             animationService.startAnimation(char1Id, animation1);
             animationService.startAnimation(char2Id, animation2);
 
             // Sync both animations
-            superEventBus.dispatch(StateChangeEvent.uiAnimations, {
+            eventBus.dispatch(StateChangeEvent.uiAnimations, {
                 characters: {
                     [char1Id]: animation1,
                     [char2Id]: animation2
@@ -192,7 +183,7 @@ describe('AnimationService', () => {
             visualUpdateSpy.mockClear();
 
             // Remove one character's animation
-            superEventBus.dispatch(StateChangeEvent.uiAnimations, {
+            eventBus.dispatch(StateChangeEvent.uiAnimations, {
                 characters: {
                     [char1Id]: animation1
                     // char2 removed

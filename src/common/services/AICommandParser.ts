@@ -1,4 +1,4 @@
-export type CommandType = 'storyline' | 'map' | 'character' | 'movement' | 'attack' | 'speech' | 'tactical_directive' | 'item';
+export type CommandType = 'map' | 'character' | 'movement' | 'attack' | 'speech' | 'item';
 
 export interface AICommand {
     type: CommandType;
@@ -18,9 +18,10 @@ export interface AttackCommand extends AICommand {
     characters: Array<{
         name: string;
         target: string;
-        attack: 'melee' | 'hold' | 'kill' | 'retreat';
     }>;
 }
+
+import type { ActionData } from '../events/ConversationEvents';
 
 export interface SpeechCommand extends AICommand {
     type: 'speech';
@@ -28,6 +29,7 @@ export interface SpeechCommand extends AICommand {
     content: string;
     answers?: string[];
     action?: string;
+    actionData?: ActionData; // Additional data for the action
     target?: string;  // Target of the speech (for AI-to-AI conversations)
     listener?: string; // Alternative field name for target
 }
@@ -38,6 +40,7 @@ export interface CharacterCommand extends AICommand {
         name: string;
         race: 'human' | 'alien' | 'robot';
         description: string;
+        faction?: 'player' | 'enemy' | 'neutral';
         speed: 'slow' | 'medium' | 'fast';
         orientation: 'top' | 'right' | 'bottom' | 'left';
         location: string;
@@ -49,31 +52,6 @@ export interface CharacterCommand extends AICommand {
     }>;
 }
 
-import type { StorylineActionData } from '../events/ConversationEvents';
-
-export type StorylineActionType = 'map' | 'character' | 'movement' | 'attack' | 'item';
-
-export interface StorylineCommand extends AICommand {
-    type: 'storyline';
-    content: string;
-    description: string;
-    action: StorylineActionType; // Required action
-    actionData?: StorylineActionData; // Additional data for the action
-}
-
-export interface TacticalDirectiveCommand extends AICommand {
-    type: 'tactical_directive';
-    objective: 'attack' | 'defend' | 'patrol' | 'pursue' | 'retreat' | 'support';
-    priority_targets?: string[];
-    tactics: {
-        stance: 'aggressive' | 'defensive' | 'flanking' | 'suppressive' | 'retreating';
-        engagement_range: 'close' | 'medium' | 'long';
-        retreat_threshold: number;
-        coordination?: 'individual' | 'flanking' | 'concentrated' | 'dispersed';
-    };
-    position?: { x: number; y: number };
-    duration?: number; // How many turns to maintain this directive
-}
 
 export interface MapCommand extends AICommand {
     type: 'map';
@@ -98,6 +76,7 @@ export interface MapCommand extends AICommand {
         name: string;
         race: 'human' | 'alien' | 'robot';
         description: string;
+        faction?: 'player' | 'enemy' | 'neutral';
         speed: 'slow' | 'medium' | 'fast';
         orientation: 'top' | 'right' | 'bottom' | 'left';
         location: string;
@@ -142,12 +121,8 @@ export class AICommandParser {
                 return this.validateSpeech(command);
             case 'character':
                 return this.validateCharacter(command);
-            case 'storyline':
-                return this.validateStoryline(command);
             case 'map':
                 return this.validateMap(command);
-            case 'tactical_directive':
-                return this.validateTacticalDirective(command);
             case 'item':
                 return this.validateItem(command);
             default:
@@ -185,22 +160,17 @@ export class AICommandParser {
             console.error('Attack command is not an object');
             return null;
         }
-        
+
         const cmd = command as Record<string, unknown>;
         if (!Array.isArray(cmd.characters) || cmd.characters.length === 0) {
             console.error('Attack command missing characters array');
             return null;
         }
 
-        const validAttacks = ['melee', 'hold', 'kill', 'retreat'];
         for (const char of cmd.characters) {
             const charObj = char as Record<string, unknown>;
-            if (!charObj.name || !charObj.target || !charObj.attack) {
-                console.error('Attack character missing required fields');
-                return null;
-            }
-            if (!validAttacks.includes(charObj.attack as string)) {
-                console.error('Invalid attack type:', charObj.attack);
+            if (!charObj.name || !charObj.target) {
+                console.error('Attack character missing name or target');
                 return null;
             }
         }
@@ -214,10 +184,16 @@ export class AICommandParser {
             console.error('Speech command is not an object');
             return null;
         }
-        
+
         const cmd = command as Record<string, unknown>;
         if (!cmd.source || !cmd.content) {
-            console.error('Speech command missing source or content');
+            console.error('Speech command missing required fields:', {
+                hasSource: !!cmd.source,
+                hasContent: !!cmd.content,
+                actualFields: Object.keys(cmd),
+                requiredFields: ['type', 'source', 'content'],
+                receivedCommand: cmd
+            });
             return null;
         }
 
@@ -248,23 +224,44 @@ export class AICommandParser {
 
         for (const char of cmd.characters) {
             const charObj = char as Record<string, unknown>;
-            if (!charObj.name || !charObj.race || !charObj.description || !charObj.speed || !charObj.orientation || !charObj.location) {
-                console.error('Character missing required fields');
+            const requiredFields = ['name', 'race', 'description', 'speed', 'orientation', 'location'];
+            const missingFields = requiredFields.filter(field => !charObj[field]);
+
+            if (missingFields.length > 0) {
+                console.error('Character missing required fields:', {
+                    characterName: charObj.name || 'unknown',
+                    missingFields,
+                    requiredFields,
+                    actualFields: Object.keys(charObj),
+                    receivedCharacter: charObj
+                });
                 return null;
             }
 
             if (!validRaces.includes(charObj.race as string)) {
-                console.error('Invalid race:', charObj.race);
+                console.error('Invalid character race:', {
+                    characterName: charObj.name || 'unknown',
+                    invalidValue: charObj.race,
+                    validOptions: validRaces
+                });
                 return null;
             }
 
             if (!validSpeeds.includes(charObj.speed as string)) {
-                console.error('Invalid speed:', charObj.speed);
+                console.error('Invalid character speed:', {
+                    characterName: charObj.name || 'unknown',
+                    invalidValue: charObj.speed,
+                    validOptions: validSpeeds
+                });
                 return null;
             }
 
             if (!validOrientations.includes(charObj.orientation as string)) {
-                console.error('Invalid orientation:', charObj.orientation);
+                console.error('Invalid character orientation:', {
+                    characterName: charObj.name || 'unknown',
+                    invalidValue: charObj.orientation,
+                    validOptions: validOrientations
+                });
                 return null;
             }
 
@@ -277,30 +274,6 @@ export class AICommandParser {
 
         // At this point, we've validated the structure matches CharacterCommand
         return cmd as CharacterCommand;
-    }
-
-    private validateStoryline(command: unknown): StorylineCommand | null {
-        if (!command || typeof command !== 'object') {
-            console.error('Storyline command is not an object');
-            return null;
-        }
-        
-        const cmd = command as Record<string, unknown>;
-        // Accept either content OR description (or both)
-        if (!cmd.content && !cmd.description) {
-            console.error('Storyline command missing both content and description');
-            return null;
-        }
-        
-        // Ensure we have at least one of the required fields
-        const validatedCmd = {
-            ...cmd,
-            content: cmd.content || cmd.description || '',
-            description: cmd.description || cmd.content || ''
-        };
-
-        // At this point, we've validated the structure matches StorylineCommand
-        return validatedCmd as StorylineCommand;
     }
 
     private validateMap(command: unknown): MapCommand | null {
@@ -360,8 +333,8 @@ export class AICommandParser {
             }
         }
 
-        if (cmd['characters'] && Array.isArray(cmd['characters'])) {
-            // Reuse character validation logic
+        if (cmd['characters'] && Array.isArray(cmd['characters']) && cmd['characters'].length > 0) {
+            // Reuse character validation logic only if there are characters to validate
             const charCommand = { type: 'character', characters: cmd['characters'] };
             if (!this.validateCharacter(charCommand)) {
                 return null;
@@ -438,63 +411,6 @@ export class AICommandParser {
         return commands;
     }
 
-    private validateTacticalDirective(command: unknown): TacticalDirectiveCommand | null {
-        if (!command || typeof command !== 'object') {
-            console.error('Tactical directive is not an object');
-            return null;
-        }
-        
-        const cmd = command as Record<string, unknown>;
-        if (!cmd.objective || !cmd.tactics) {
-            console.error('Tactical directive missing objective or tactics');
-            return null;
-        }
-
-        const validObjectives = ['attack', 'defend', 'patrol', 'pursue', 'retreat', 'support'];
-        if (!validObjectives.includes(cmd.objective as string)) {
-            console.error('Invalid tactical objective:', cmd.objective);
-            return null;
-        }
-
-        const tactics = cmd.tactics as Record<string, unknown>;
-        const validStances = ['aggressive', 'defensive', 'flanking', 'suppressive', 'retreating'];
-        if (!tactics.stance || !validStances.includes(tactics.stance as string)) {
-            console.error('Invalid tactical stance:', tactics.stance);
-            return null;
-        }
-
-        const validRanges = ['close', 'medium', 'long'];
-        if (!tactics.engagement_range || !validRanges.includes(tactics.engagement_range as string)) {
-            console.error('Invalid engagement range:', tactics.engagement_range);
-            return null;
-        }
-
-        if (typeof tactics.retreat_threshold !== 'number' || 
-            tactics.retreat_threshold < 0 || 
-            tactics.retreat_threshold > 1) {
-            console.error('Invalid retreat threshold:', tactics.retreat_threshold);
-            return null;
-        }
-
-        if (tactics.coordination) {
-            const validCoordination = ['individual', 'flanking', 'concentrated', 'dispersed'];
-            if (!validCoordination.includes(tactics.coordination as string)) {
-                console.error('Invalid coordination type:', tactics.coordination);
-                return null;
-            }
-        }
-
-        const position = cmd.position as Record<string, unknown> | undefined;
-        if (position) {
-            if (typeof position.x !== 'number' || typeof position.y !== 'number') {
-                console.error('Invalid position in tactical directive');
-                return null;
-            }
-        }
-
-        // At this point, we've validated the structure matches TacticalDirectiveCommand
-        return cmd as TacticalDirectiveCommand;
-    }
     
     private validateItem(command: unknown): AICommand | null {
         if (!command || typeof command !== 'object') {

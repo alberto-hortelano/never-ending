@@ -3,6 +3,7 @@ import { Conversation } from '../../Conversation';
 import { State } from '../../State';
 import { ConversationEvent, UpdateStateEvent, EventBus } from '../../events';
 import { StoryCommandExecutor } from '../StoryCommandExecutor';
+import { AICommandParser } from '../AICommandParser';
 
 describe('AI Story Flow Integration', () => {
     let conversation: Conversation;
@@ -239,41 +240,40 @@ describe('AI Story Flow Integration', () => {
             expect(events[2].data.action).toBe('map'); // Triggers map change
         });
 
-        it('should handle storyline commands properly', () => {
-            const storylineCommand = {
-                type: 'storyline',
+        it('should handle narrative speech commands properly', () => {
+            const narrativeCommand = {
+                type: 'speech',
+                source: 'Narrador',
                 content: 'The investigation continues...',
-                description: 'A tense moment',
+                answers: ['Continuar', 'OK'],
                 action: 'character'
             };
 
-            // Parse storyline command
-            const result = (conversation as any).parseResponse(JSON.stringify(storylineCommand));
+            // Parse narrative command
+            const result = (conversation as any).parseResponse(JSON.stringify(narrativeCommand));
 
-            // Should convert to narrator speech
+            // Should preserve as narrator speech
             expect(result.type).toBe('speech');
-            expect(result.source).toBe('Narrator');
+            expect(result.source).toBe('Narrador');
             expect(result.content).toBe('The investigation continues...');
-            expect(result.answers).toEqual(['Continue', 'OK']);
+            expect(result.answers).toEqual(['Continuar', 'OK']);
             expect(result.action).toBe('character');
         });
     });
 
     describe('Error Handling', () => {
-        it('should handle invalid storyline commands gracefully', () => {
+        it('should handle invalid narrative commands gracefully', () => {
             const invalidCommand = {
-                type: 'storyline'
-                // Missing required fields
+                type: 'speech'
+                // Missing required fields source and content
             };
 
             // Command validation should handle missing fields
-            // Since we can't access private members, test through conversation parsing
-            const result = (conversation as any).parseResponse(JSON.stringify(invalidCommand));
+            const parser = new AICommandParser();
+            const validated = parser.validate(invalidCommand);
 
-            // Should handle gracefully with defaults
-            expect(result).toBeTruthy();
-            expect(result.type).toBe('speech');
-            expect(result.source).toBe('Narrator');
+            // Should reject invalid command
+            expect(validated).toBeNull();
         });
 
         it('should not crash on malformed AI responses', () => {

@@ -43,7 +43,6 @@ describe('AI Action Points Management', () => {
                     characters: [{
                         name: 'TestChar',
                         target: 'Enemy',
-                        attack: 'kill' as const
                     }]
                 },
                 reasoning: 'Test attack'
@@ -110,7 +109,6 @@ describe('AI Action Points Management', () => {
                     characters: [{
                         name: 'TestChar',
                         target: 'Enemy',
-                        attack: 'kill' as const
                     }]
                 },
                 reasoning: 'Test attack'
@@ -131,9 +129,9 @@ describe('AI Action Points Management', () => {
         it('should not generate impossible actions', () => {
             const mockState: any = {
                 game: {
-                    teams: {
-                        player: { members: ['TestChar'], name: 'Player Team' },
-                        enemy: { members: ['Enemy'], name: 'Enemy Team' }
+                    factions: {
+                        player: { members: ['TestChar'], name: 'Player Faction' },
+                        enemy: { members: ['Enemy'], name: 'Enemy Faction' }
                     }
                 },
                 characters: [],
@@ -151,8 +149,8 @@ describe('AI Action Points Management', () => {
                 position: { x: 10, y: 10 },
                 health: 100,
                 maxHealth: 100,
-                team: 'player',
-                player: 'ai',
+                faction: 'enemy',
+                controller: 'ai',
                 actions: {
                     pointsLeft: 10, // Very low action points
                     general: { move: 20 },
@@ -165,7 +163,7 @@ describe('AI Action Points Management', () => {
                 position: { x: 15, y: 15 },
                 health: 100,
                 maxHealth: 100,
-                team: 'enemy',
+                faction: 'enemy',
                 player: 'enemy'
             };
 

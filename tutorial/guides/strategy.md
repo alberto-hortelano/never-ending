@@ -1,14 +1,14 @@
 # Strategy Guide
 
 ## Overview
-Success in Never Ending requires more than understanding individual mechanics. This guide covers advanced strategies, team tactics, and the decision-making that separates good players from great ones.
+Success in Never Ending requires more than understanding individual mechanics. This guide covers advanced strategies, faction tactics, and the decision-making that separates good players from great ones.
 
 ![Victory Screen](../images/15-victory.png)
 
 ## Core Strategic Principles
 
 ### Action Economy
-The team that takes more effective actions wins:
+The faction that takes more effective actions wins:
 - **Eliminate enemies** reduces their actions
 - **Preserve characters** maintains your actions
 - **Efficient AP usage** maximizes actions per turn
@@ -115,26 +115,26 @@ Impregnable defensive position:
 - Protected flanks
 - Reserve force ready
 
-## Team Compositions
+## Faction Compositions
 
-### Balanced Team
+### Balanced Faction
 - 2 Assault (versatile damage)
 - 1 Sniper (long range elimination)
 - 1 Support (healing/utility)
 - **Strategy**: Flexible, any situation
 
-### Rush Team
+### Rush Faction
 - 3 Assault (maximum firepower)
 - 1 Scout (speed and recon)
 - **Strategy**: Aggressive, fast victories
 
-### Defensive Team
+### Defensive Faction
 - 1 Sniper (long range)
 - 2 Heavy (tankiness)
 - 1 Support (sustainability)
 - **Strategy**: Attrition, outlast enemy
 
-### Specialist Team
+### Specialist Faction
 - 4 unique specialized roles
 - **Strategy**: Specific tactics
 - **Risk**: Less flexibility
@@ -153,7 +153,7 @@ Manage limited ammo:
 - Count shots remaining
 - Reload during safe moments
 - Carry backup weapons
-- Share ammo with team
+- Share ammo with faction
 
 ### Medical Supplies
 Preserve healing items:

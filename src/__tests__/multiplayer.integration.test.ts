@@ -141,7 +141,7 @@ class MultiplayerTestHelper {
                     {
                         ...baseCharacter,
                         name: 'Player 1',
-                        player: player1Id,
+                        controller: player1Id,
                         position: { x: 20, y: 25 },
                         health: 100,
                         maxHealth: 100,
@@ -153,7 +153,7 @@ class MultiplayerTestHelper {
                     {
                         ...baseCharacter,
                         name: 'Player 2',
-                        player: player2Id,
+                        controller: player2Id,
                         position: { x: 25, y: 25 },
                         health: 100,
                         maxHealth: 100,
@@ -214,7 +214,7 @@ describe('Multiplayer Integration Tests', () => {
                 {
                     ...baseCharacter,
                     name: 'Player 1',
-                    player: player1Id,
+                    controller: player1Id,
                     position: { x: 20, y: 25 },
                     health: 100,
                     maxHealth: 100,
@@ -226,7 +226,7 @@ describe('Multiplayer Integration Tests', () => {
                 {
                     ...baseCharacter,
                     name: 'Player 2',
-                    player: player2Id,
+                    controller: player2Id,
                     position: { x: 25, y: 25 },
                     health: 100,
                     maxHealth: 100,
@@ -310,8 +310,8 @@ describe('Multiplayer Integration Tests', () => {
             const characters = state.characters;
             expect(characters.length).toBe(2);
 
-            const player1Char = characters.find((c) => c.player === player1Id);
-            const player2Char = characters.find((c) => c.player === player2Id);
+            const player1Char = characters.find((c) => c.controller === player1Id);
+            const player2Char = characters.find((c) => c.controller === player2Id);
 
             expect(player1Char).toBeDefined();
             expect(player2Char).toBeDefined();
@@ -350,8 +350,8 @@ describe('Multiplayer Integration Tests', () => {
             const initialTurn = state.game.turn;
             expect(initialTurn).toBe(player1Id);
 
-            const player1Char = state.characters.find((c) => c.player === player1Id);
-            const player2Char = state.characters.find((c) => c.player === player2Id);
+            const player1Char = state.characters.find((c) => c.controller === player1Id);
+            const player2Char = state.characters.find((c) => c.controller === player2Id);
 
             // Player 1 tries to move (should succeed)
             eventBus.dispatch(UpdateStateEvent.characterPosition, {
@@ -401,7 +401,7 @@ describe('Multiplayer Integration Tests', () => {
 
             await new Promise(resolve => setTimeout(resolve, 10));
 
-            const player2Char = state.characters.find((c) => c.player === player2Id);
+            const player2Char = state.characters.find((c) => c.controller === player2Id);
 
             // End player 1's turn
             eventBus.dispatch(GameEvent.changeTurn, {
@@ -448,7 +448,7 @@ describe('Multiplayer Integration Tests', () => {
 
             await new Promise(resolve => setTimeout(resolve, 10));
 
-            const player2Char = state.characters.find((c) => c.player === player2Id);
+            const player2Char = state.characters.find((c) => c.controller === player2Id);
 
             // Simulate receiving a network action for player 2 moving (even though it's player 1's turn)
             // This should work because fromNetwork bypasses turn validation
@@ -501,7 +501,7 @@ describe('Multiplayer Integration Tests', () => {
                 game: { 
                     ...state.game, 
                     players: [...state.game.players],
-                    teams: state.game.teams ? { ...state.game.teams } : undefined
+                    factions: state.game.factions ? { ...state.game.factions } : undefined
                 } as IGame,
                 messages: [...state.messages]
             });
@@ -579,7 +579,7 @@ describe('Multiplayer Integration Tests', () => {
 
             await new Promise(resolve => setTimeout(resolve, 10));
 
-            const player1Char = state.characters.find((c) => c.player === player1Id);
+            const player1Char = state.characters.find((c) => c.controller === player1Id);
 
             // Deduct all AP
             eventBus.dispatch(UpdateStateEvent.deductActionPoints, {

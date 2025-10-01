@@ -19,10 +19,10 @@ describe('Action service', () => {
         // Use the existing initialState function with test data
         // This creates a state with characters: player, data, and enemy
         const testState = initialState(20, 20,
-            { name: 'Jim', player: 'human' },
+            { name: 'Jim', controller: 'human', faction: 'player' },
             [
-                { name: 'data', player: 'ai' },
-                { name: 'enemy', player: 'ai' }
+                { name: 'data', controller: 'ai', faction: 'player' },
+                { name: 'enemy', controller: 'ai', faction: 'enemy' }
             ]
         );
 

@@ -258,7 +258,7 @@ export class Movement extends EventBus<
         }
 
         // Check if this character belongs to the current turn
-        if (character.player !== this.state.game.turn) {
+        if (character.controller !== this.state.game.turn) {
             return;
         }
 
@@ -296,7 +296,7 @@ export class Movement extends EventBus<
 
         // Check if the character belongs to the current turn
         const currentTurn = this.state.game.turn;
-        if (character.player !== currentTurn) {
+        if (character.controller !== currentTurn) {
             return;
         }
 

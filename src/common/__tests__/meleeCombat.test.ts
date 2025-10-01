@@ -25,9 +25,10 @@ describe('MeleeCombat', () => {
         range
     });
 
-    const createMockCharacter = (name: string, player: string, position: { x: number; y: number }, weapon?: IWeapon): ICharacter => ({
+    const createMockCharacter = (name: string, controller: string, position: { x: number; y: number }, weapon?: IWeapon): ICharacter => ({
         name,
-        player,
+        controller,
+        faction: controller === 'player1' ? 'player' : 'enemy',
         position,
         direction: 'down',
         race: 'human',
@@ -435,7 +436,7 @@ describe('MeleeCombat', () => {
 
     describe('Target Validation', () => {
         it('should not allow targeting allies', () => {
-            mockCharacters[1]!.player = 'player1'; // Make defender an ally
+            mockCharacters[1]!.controller = 'player1'; // Make defender an ally
             
             // Need to recreate state with updated characters
             const mockState: IState = {

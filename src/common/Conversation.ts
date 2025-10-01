@@ -7,7 +7,7 @@ import {
     ConversationEvent, ConversationEventsMap, ConversationStartData, ConversationUpdateData,
     AIToAIConversationData
 } from "./events";
-import { conversationSystemPrompt, characterContext, aiToAIConversationPrompt, getAIToAIContext } from "../prompts/conversationPrompts";
+import { conversationSystemPrompt, characterContext } from "../prompts/conversationPrompts";
 import { i18n } from './i18n/i18n';
 import { AIGameEngineService } from './services/AIGameEngineService';
 import { MAIN_CHARACTER_NAME, COMPANION_DROID_NAME } from './constants';
@@ -27,9 +27,10 @@ export class Conversation extends EventBus<
     private storyState?: DeepReadonly<IStoryState>;
     private isAIToAIConversation = false;
     private aiToAIExchangeCount = 0;
-    private maxAIToAIExchanges = 4;
     private currentAISpeaker?: DeepReadonly<ICharacter>;
     private currentAIListener?: DeepReadonly<ICharacter>;
+    private fullAIConversation: ConversationUpdateData[] = [];
+    private aiConversationSummary?: string;
 
     constructor(state?: State) {
         super();
@@ -327,24 +328,34 @@ export class Conversation extends EventBus<
                 const parsed = JSON.parse(jsonMatch[0]);
 
                 // Handle different response types
-                if (parsed.type === 'storyline') {
-                    // Convert storyline to speech format for conversation display
-                    return {
-                        type: 'speech',
-                        source: i18n.t('conversation.narrator'),
-                        content: parsed.content || i18n.t('conversation.storyContinues'),
-                        answers: [i18n.t('common.continue'), i18n.t('common.ok')],  // Default options for storyline
-                        action: parsed.action
-                    };
-                } else if (parsed.type === 'speech') {
+                if (parsed.type === 'speech') {
                     // Validate speech has required fields
                     if (!parsed.source || !parsed.content) {
                         throw new Error('Speech missing source or content');
                     }
-                    
+
+                    // Ensure content is a string
+                    let contentStr: string;
+                    if (typeof parsed.content === 'string') {
+                        contentStr = parsed.content;
+                    } else if (typeof parsed.content === 'object' && parsed.content !== null) {
+                        // Handle object content - try common patterns
+                        if ('text' in parsed.content && typeof parsed.content.text === 'string') {
+                            contentStr = parsed.content.text;
+                        } else if ('message' in parsed.content && typeof parsed.content.message === 'string') {
+                            contentStr = parsed.content.message;
+                        } else {
+                            // Fallback: stringify for debugging
+                            console.warn('[Conversation] Content is an object, converting to string:', parsed.content);
+                            contentStr = JSON.stringify(parsed.content);
+                        }
+                    } else {
+                        contentStr = String(parsed.content || '');
+                    }
+
                     // Ensure content doesn't exceed max length
-                    if (parsed.content.length > this.maxMessageLength) {
-                        parsed.content = parsed.content.substring(0, this.maxMessageLength) + '...';
+                    if (contentStr.length > this.maxMessageLength) {
+                        contentStr = contentStr.substring(0, this.maxMessageLength) + '...';
                     }
                     
                     // Check if conversation should end (empty answers array or specific text)
@@ -354,13 +365,13 @@ export class Conversation extends EventBus<
                     return {
                         type: 'speech',
                         source: parsed.source,
-                        content: parsed.content,
+                        content: contentStr,
                         answers: shouldEnd ? [] : (parsed.answers || [i18n.t('common.continue')]),  // Default to 'Continue' if no answers provided
                         action: parsed.action
                     };
                 } else if (parsed.type === 'map') {
-                    // Map command from AI - this should be handled as a storyline with map action
-                    // DEBUG: console.log('[Conversation] AI returned map command, converting to storyline format');
+                    // Map command from AI - this should be handled as a narrative with map action
+                    // DEBUG: console.log('[Conversation] AI returned map command, converting to narrative format');
                     return {
                         type: 'speech',
                         source: 'Narrador',
@@ -368,9 +379,8 @@ export class Conversation extends EventBus<
                         answers: [i18n.t('common.accept'), i18n.t('common.reject')],  // Action buttons
                         action: 'map'  // Pass the map action
                     };
-                } else if (parsed.type === 'movement' || parsed.type === 'attack' || 
-                          parsed.type === 'character' || parsed.type === 'item' || 
-                          parsed.type === 'tactical_directive') {
+                } else if (parsed.type === 'movement' || parsed.type === 'attack' ||
+                          parsed.type === 'character' || parsed.type === 'item') {
                     // AI is taking a non-conversation action - end the conversation
                     // DEBUG: console.log('[Conversation] AI returned non-speech command:', parsed.type);
                     // DEBUG: console.log('[Conversation] Ending conversation as AI wants to perform action');
@@ -381,13 +391,34 @@ export class Conversation extends EventBus<
                         answers: [],  // Empty answers will trigger conversation end
                         action: parsed.type
                     };
+                } else if (parsed.type === 'error') {
+                    // Handle error responses from AI service
+                    console.error('[Conversation] AI returned error:', parsed);
+                    return {
+                        type: 'speech',
+                        source: this.currentTarget || 'System',
+                        content: parsed.message || parsed.error || 'An error occurred. Please try again.',
+                        answers: [i18n.t('common.retry'), i18n.t('common.cancel')],
+                        action: undefined
+                    };
                 } else {
                     // Unknown type - still try to use what we have but log warning
                     console.warn('[Conversation] Unknown command type:', parsed.type);
+                    // Ensure content is a string for unknown types
+                    let contentStr = 'No response available';
+                    if (parsed.content) {
+                        if (typeof parsed.content === 'string') {
+                            contentStr = parsed.content;
+                        } else {
+                            console.warn('[Conversation] Unknown type with object content:', parsed);
+                            contentStr = JSON.stringify(parsed.content);
+                        }
+                    }
+
                     return {
                         type: 'speech',
                         source: parsed.source || this.currentTarget || 'Unknown',
-                        content: parsed.content || 'No response available',
+                        content: contentStr,
                         answers: parsed.answers || ['Continue'],
                         action: parsed.action
                     };
@@ -448,60 +479,42 @@ export class Conversation extends EventBus<
 
         this.isLoading = true;
         this.isAIToAIConversation = true;
-        this.aiToAIExchangeCount = 1;
+        this.aiToAIExchangeCount = 0;
         this.currentAISpeaker = speaker;
         this.currentAIListener = listener;
+        this.fullAIConversation = [];
+        this.aiConversationSummary = undefined;
 
         try {
             // Build story context
             const storyContext = this.buildStoryContext();
-            
-            // Create context for AI-to-AI conversation
-            const aiContext = getAIToAIContext(speaker.name, listener.name, this.aiToAIExchangeCount, this.maxAIToAIExchanges);
-            const contextMessage: IMessage = {
+
+            // Request the full conversation from AI
+            const fullConversationPrompt = this.buildFullAIConversationPrompt(speaker, listener, storyContext);
+
+            const messages: IMessage[] = [{
                 role: 'user',
-                content: aiContext
-            };
+                content: fullConversationPrompt
+            }];
 
-            let contextContent = aiToAIConversationPrompt;
-            if (storyContext) {
-                contextContent += '\n' + storyContext;
-            }
-            contextContent += '\n\n' + contextMessage.content;
-
-            const fullContextMessage: IMessage = {
-                role: 'user',
-                content: contextContent
-            };
-
-            const messages = [...this.messages, fullContextMessage];
-
-            // Call API for first AI speaker
+            // Call API to get the full conversation
             const response = await this.callAIService(messages);
 
-            // Parse and dispatch AI exchange
-            const conversationData = this.parseResponse(response.content);
-            
-            // Dispatch as AI exchange event
-            this.dispatch(ConversationEvent.aiExchange, {
-                speaker: speaker.name,
-                listener: listener.name,
-                content: conversationData.content,
-                exchangeNumber: this.aiToAIExchangeCount,
-                maxExchanges: this.maxAIToAIExchanges,
-                isLastExchange: false
-            });
+            // Parse the full conversation response
+            const fullConversation = this.parseFullAIConversation(response.content, speaker.name, listener.name);
+
+            if (!fullConversation || fullConversation.exchanges.length === 0) {
+                throw new Error('Failed to generate AI conversation');
+            }
+
+            this.fullAIConversation = fullConversation.exchanges;
+            this.aiConversationSummary = fullConversation.summary;
 
             // Update messages state
             this.dispatch(UpdateStateEvent.updateMessages, response.messages);
 
-            // Also update the conversation UI
-            this.dispatch(ConversationEvent.update, {
-                ...conversationData,
-                source: speaker.name,
-                // For AI-to-AI, provide control options to the player
-                answers: isEavesdropping ? ['Continue', 'Interrupt', 'Skip'] : ['Continue Listening', 'Skip']
-            });
+            // Show the first exchange
+            this.showNextAIExchange(isEavesdropping);
 
         } catch (error) {
             console.error('Error starting AI-to-AI conversation:', error);
@@ -513,82 +526,60 @@ export class Conversation extends EventBus<
         }
     }
 
-    private async continueAIToAIConversation() {
-        if (this.isLoading || !this.currentAISpeaker || !this.currentAIListener) return;
+    private showNextAIExchange(isEavesdropping = false) {
+        if (this.aiToAIExchangeCount >= this.fullAIConversation.length) {
+            // Conversation is complete
+            this.endAIToAIConversation();
+            return;
+        }
 
-        this.isLoading = true;
+        const exchange = this.fullAIConversation[this.aiToAIExchangeCount];
+        if (!exchange) {
+            // Safety check
+            this.endAIToAIConversation();
+            return;
+        }
         this.aiToAIExchangeCount++;
 
-        // Swap speaker and listener for the response
-        const tempSpeaker = this.currentAISpeaker;
-        this.currentAISpeaker = this.currentAIListener;
-        this.currentAIListener = tempSpeaker;
+        // Dispatch AI exchange event
+        this.dispatch(ConversationEvent.aiExchange, {
+            speaker: exchange.source,
+            listener: exchange.target || '',
+            content: exchange.content,
+            exchangeNumber: this.aiToAIExchangeCount,
+            maxExchanges: this.fullAIConversation.length,
+            isLastExchange: this.aiToAIExchangeCount === this.fullAIConversation.length
+        });
 
-        try {
-            const storyContext = this.buildStoryContext();
-            const isLastExchange = this.aiToAIExchangeCount >= this.maxAIToAIExchanges;
-            
-            // Create context for the response
-            const aiContext = getAIToAIContext(this.currentAISpeaker.name, this.currentAIListener.name, this.aiToAIExchangeCount, this.maxAIToAIExchanges);
-            const contextMessage: IMessage = {
-                role: 'user',
-                content: aiContext
-            };
+        // Update conversation UI with next/skip buttons
+        const isLastExchange = this.aiToAIExchangeCount === this.fullAIConversation.length;
+        let answers: string[];
 
-            let messageContent = contextMessage.content;
-            if (storyContext) {
-                messageContent = storyContext + '\n\n' + messageContent;
-            }
-            
-            const playerMessage: IMessage = {
-                role: 'user',
-                content: messageContent
-            };
-
-            // Call AI service for response
-            const response = await this.callAIService([...this.messages, playerMessage]);
-
-            // Parse and dispatch
-            const conversationData = this.parseResponse(response.content);
-            
-            // Dispatch AI exchange event
-            this.dispatch(ConversationEvent.aiExchange, {
-                speaker: this.currentAISpeaker.name,
-                listener: this.currentAIListener.name,
-                content: conversationData.content,
-                exchangeNumber: this.aiToAIExchangeCount,
-                maxExchanges: this.maxAIToAIExchanges,
-                isLastExchange: isLastExchange
-            });
-
-            // Update messages state
-            this.dispatch(UpdateStateEvent.updateMessages, response.messages);
-
-            // Update conversation UI
-            let answers: string[];
-            if (isLastExchange || conversationData.answers?.length === 0) {
-                // Conversation is ending
-                answers = [];
-                this.isAIToAIConversation = false;
-            } else {
-                // Continue with control options
-                answers = ['Continue', 'Interrupt', 'Skip'];
-            }
-
-            this.dispatch(ConversationEvent.update, {
-                ...conversationData,
-                source: this.currentAISpeaker.name,
-                answers: answers
-            });
-
-        } catch (error) {
-            console.error('Error continuing AI-to-AI conversation:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Failed to continue AI-to-AI conversation';
-            this.dispatch(ConversationEvent.error, errorMessage);
-            this.isAIToAIConversation = false;
-        } finally {
-            this.isLoading = false;
+        if (isLastExchange) {
+            answers = [];
+        } else if (isEavesdropping) {
+            answers = [i18n.t('conversation.next'), i18n.t('conversation.interrupt'), i18n.t('conversation.skip')];
+        } else {
+            answers = [i18n.t('conversation.next'), i18n.t('conversation.skip')];
         }
+
+        // Create a properly typed update data
+        const updateData: ConversationUpdateData = {
+            type: exchange.type,
+            source: exchange.source,
+            content: exchange.content,
+            answers: answers,
+            action: exchange.action,
+            actionData: exchange.actionData,
+            target: exchange.target
+        };
+
+        this.dispatch(ConversationEvent.update, updateData);
+    }
+
+    private async continueAIToAIConversation() {
+        // For pre-generated conversations, just show the next exchange
+        this.showNextAIExchange(true);
     }
 
     private handlePlayerInterrupt() {
@@ -611,13 +602,160 @@ export class Conversation extends EventBus<
         this.isAIToAIConversation = false;
         this.aiToAIExchangeCount = 0;
 
-        // Show a summary or final state
+        // Show the summary if available
+        const summaryContent = this.aiConversationSummary ||
+            `${this.currentAISpeaker?.name} y ${this.currentAIListener?.name} terminaron su conversación.`;
+
         this.dispatch(ConversationEvent.update, {
             type: 'speech',
-            source: 'Narrador',
-            content: 'La conversación entre los personajes continúa en segundo plano...',
+            source: i18n.t('conversation.narrator'),
+            content: summaryContent,
             answers: []
         });
+    }
+
+    private endAIToAIConversation() {
+        this.isAIToAIConversation = false;
+        this.aiToAIExchangeCount = 0;
+        this.fullAIConversation = [];
+
+        // Show conversation end message
+        this.dispatch(ConversationEvent.update, {
+            type: 'speech',
+            source: i18n.t('conversation.narrator'),
+            content: 'La conversación ha terminado.',
+            answers: []
+        });
+    }
+
+    private buildFullAIConversationPrompt(speaker: DeepReadonly<ICharacter>, listener: DeepReadonly<ICharacter>, storyContext?: string): string {
+        const prompt = `Generate a complete conversation between two AI characters.
+
+## IMPORTANT: FULL CONVERSATION GENERATION
+
+You must generate the ENTIRE conversation at once with all exchanges between the two characters.
+
+### Characters:
+- Speaker: ${speaker.name} (${speaker.controller === 'ai1' ? 'Allied' : 'Enemy'})
+- Listener: ${listener.name} (${listener.controller === 'ai1' ? 'Allied' : 'Enemy'})
+
+${storyContext ? `### Story Context:\n${storyContext}\n` : ''}
+
+### Requirements:
+1. Generate 3-5 complete exchanges between the characters
+2. Each character should respond naturally to the previous statement
+3. The conversation should reveal tactical information, character motivations, or advance the story
+4. Keep each exchange concise but meaningful
+5. All dialogue must be in Spanish
+6. End with a natural conclusion
+7. Include a brief summary of what was discussed
+
+### Response Format:
+Return a JSON object with this structure:
+{
+  "exchanges": [
+    {
+      "type": "speech",
+      "source": "Character Name",
+      "content": "Dialogue in Spanish",
+      "answers": []
+    },
+    // ... more exchanges
+  ],
+  "summary": "Brief summary in Spanish of what was discussed (for skip functionality)"
+}
+
+### Example:
+{
+  "exchanges": [
+    {
+      "type": "speech",
+      "source": "${speaker.name}",
+      "content": "Hemos detectado movimiento en el sector oeste. ¿Cuál es tu posición?",
+      "answers": []
+    },
+    {
+      "type": "speech",
+      "source": "${listener.name}",
+      "content": "Estoy en el punto de observación norte. Confirmo actividad hostil, tres unidades acercándose.",
+      "answers": []
+    },
+    {
+      "type": "speech",
+      "source": "${speaker.name}",
+      "content": "Entendido. Prepara la emboscada en el corredor principal. Yo los guiaré hacia ti.",
+      "answers": []
+    },
+    {
+      "type": "speech",
+      "source": "${listener.name}",
+      "content": "En posición. Espero tu señal.",
+      "answers": []
+    }
+  ],
+  "summary": "Los soldados coordinaron una emboscada para los intrusos detectados en el sector oeste."
+}
+
+Now generate the full conversation between ${speaker.name} and ${listener.name}:`;
+
+        return prompt;
+    }
+
+    private parseFullAIConversation(response: string, speakerName: string, listenerName: string): { exchanges: ConversationUpdateData[], summary: string } | null {
+        try {
+            // Try to extract JSON from the response
+            const jsonMatch = response.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+                console.error('[Conversation] No JSON found in AI response');
+                return null;
+            }
+
+            const parsed = JSON.parse(jsonMatch[0]);
+
+            if (!parsed.exchanges || !Array.isArray(parsed.exchanges)) {
+                console.error('[Conversation] Invalid conversation format - missing exchanges array');
+                return null;
+            }
+
+            // Validate and format each exchange
+            const exchanges: ConversationUpdateData[] = parsed.exchanges.map((exchange: {
+                source?: string;
+                content?: unknown;
+                target?: string;
+            }) => ({
+                type: 'speech' as const,
+                source: exchange.source || speakerName,
+                content: String(exchange.content || ''),
+                answers: [],  // AI-to-AI conversations don't have player answers
+                target: exchange.target
+            }));
+
+            const summary = parsed.summary || `Conversación entre ${speakerName} y ${listenerName}.`;
+
+            return { exchanges, summary };
+
+        } catch (error) {
+            console.error('[Conversation] Error parsing full AI conversation:', error);
+
+            // Fallback: create a simple exchange
+            return {
+                exchanges: [
+                    {
+                        type: 'speech',
+                        source: speakerName,
+                        content: '¿Qué está pasando aquí?',
+                        answers: []
+                    },
+                    {
+                        type: 'speech',
+                        source: listenerName,
+                        content: 'Estamos investigando la situación.',
+                        answers: []
+                    }
+                ],
+                summary: `${speakerName} y ${listenerName} discutieron la situación actual.`
+            };
+        }
     }
 
 }

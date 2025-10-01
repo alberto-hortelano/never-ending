@@ -12,7 +12,7 @@ import {
 import { ShootingService, SHOOT_CONSTANTS, VisibleCell } from "./services/ShootingService";
 import { DirectionsService } from "./services/DirectionsService";
 import { InteractionModeManager } from "./InteractionModeManager";
-import { TeamService } from "./services/TeamService";
+import { FactionService } from "./services/FactionService";
 
 // Type aliases for better readability
 type CharacterName = string;
@@ -279,7 +279,7 @@ export class Overwatch extends EventBus<
         this.state.characters.forEach(character => {
             const overwatchData = this.getOverwatchData(character.name);
             if (overwatchData?.active) {
-                if (character.player === data.turn) {
+                if (character.controller === data.turn) {
                     overwatchesToClear.push(character.name);
                 }
             }
@@ -443,7 +443,7 @@ export class Overwatch extends EventBus<
     }
     
     private isCharacterTurn(character: DeepReadonly<ICharacter>): boolean {
-        return character.player === this.state.game.turn;
+        return character.controller === this.state.game.turn;
     }
 
     private hasActionPoints(character: DeepReadonly<ICharacter>): boolean {
@@ -502,8 +502,8 @@ export class Overwatch extends EventBus<
             return false;
         }
 
-        // Check if characters are hostile using team logic
-        if (!TeamService.areHostile(overwatcher, target, this.state.game.teams)) {
+        // Check if characters are hostile using faction logic
+        if (!FactionService.areHostile(overwatcher, target, this.state.game.factions)) {
             return false;
         }
 

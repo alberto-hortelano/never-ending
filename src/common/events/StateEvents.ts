@@ -103,7 +103,7 @@ export interface UpdateStateEventsMap {
         cost: number;
     };
     [UpdateStateEvent.resetActionPoints]: {
-        player: string;
+        controller: string;
     };
     [UpdateStateEvent.damageCharacter]: {
         targetName: string;

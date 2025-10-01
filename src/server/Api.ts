@@ -9,6 +9,9 @@ import { fileURLToPath } from 'url';
 import { initialSetup } from '../prompts/shortPrompts';
 import { WebSocketServer } from './WebSocketServer';
 import { sendMessage, getModelStatus } from '../models/claude';
+import { FileLogger } from '../models/fileLogger';
+import { PromptTemplate } from '../prompts/PromptTemplate';
+import { LANGUAGE_NAMES, LANGUAGE_INSTRUCTIONS, getMainCharacterName } from '../common/constants';
 
 export class Api {
     private dirname = dirname(fileURLToPath(import.meta.url));
@@ -19,6 +22,9 @@ export class Api {
         private app: Express,
         private port = 3000,
     ) {
+        // Initialize the logger (clears log file for new session)
+        FileLogger.initialize();
+
         this.start();
         this.server = this.listen();
         new WebSocketServer(this.server);
@@ -55,7 +61,7 @@ export class Api {
                             req.url = dirPath + 'index.js';
                             return res.redirect(302, join(dirPath, 'index.js'));
                         } else {
-                            console.error('Error: Path not found', indexPath, join(dirPath, 'index.js'))
+                            FileLogger.error('Error: Path not found', indexPath, join(dirPath, 'index.js'))
                         }
                     }
                 }
@@ -73,37 +79,154 @@ export class Api {
 
     private gameEngine() {
         this.app.post('/gameEngine', async (req, res) => {
-            const body: IMessage[] = req.body;
-
-            const messages: IMessage[] = body.length ? body : [{
-                role: 'user',
-                content: initialSetup,
-            }];
-
             try {
-                await new Promise(r => setTimeout(r, 1000))
+                // Check if this is a legacy request with messages array
+                if (Array.isArray(req.body)) {
+                    // Handle legacy format for backward compatibility
+                    const body: IMessage[] = req.body;
+                    const messages: IMessage[] = body.length ? body : [{
+                        role: 'user',
+                        content: initialSetup,
+                    }];
+
+                    await new Promise(r => setTimeout(r, 1000));
+                    const response = await sendMessage(messages);
+                    const message: IMessage = {
+                        role: 'assistant',
+                        content: response,
+                    };
+                    messages.push(message);
+                    res.send(messages);
+                    return;
+                }
+
+                // New format: receive context and build prompts server-side
+                const { context, language = 'es', storyState, systemPrompt } = req.body;
+
+                // Build messages array server-side
+                const messages: IMessage[] = [];
+
+                // If this is initial setup (no context provided)
+                if (!context) {
+                    messages.push({
+                        role: 'user',
+                        content: initialSetup,
+                    });
+                } else {
+                    // Build the narrative architect prompt with proper substitution
+                    const promptTemplate = new PromptTemplate();
+                    const originId = storyState?.selectedOrigin?.id;
+                    const companionName = storyState?.selectedOrigin?.startingCompanion?.name;
+
+                    const narrativePrompt = await promptTemplate.load('narrativeArchitect', {
+                        language: LANGUAGE_NAMES[language as keyof typeof LANGUAGE_NAMES],
+                        languageInstruction: LANGUAGE_INSTRUCTIONS[language as keyof typeof LANGUAGE_INSTRUCTIONS],
+                        mainCharacter: getMainCharacterName(originId),
+                        companionName: companionName || 'Companion'
+                    });
+
+                    // Add system prompt
+                    messages.push({
+                        role: 'user',
+                        content: systemPrompt || narrativePrompt
+                    });
+
+                    // Add the context as a formatted prompt
+                    const contextPrompt = this.buildContextPrompt(context, storyState);
+                    messages.push({
+                        role: 'user',
+                        content: contextPrompt
+                    });
+                }
+
+                // Add artificial delay for testing
+                await new Promise(r => setTimeout(r, 1000));
+
+                // Call the AI service
                 const response = await sendMessage(messages);
-                // const response = JSON.stringify({
-                //     "type": "speech",
-                //     "source": "Data",
-                //     "content": "Capitán, mis sensores detectan múltiples señales de comunicación interceptadas desde que abandonamos la base. Creo que nos están rastreando activamente. Debemos tomar medidas evasivas inmediatas.",
-                //     "answers": ["¿Qué tipo de señales?", "¿Cuánto tiempo tenemos?", "Prepara un salto de emergencia", "Déjalo por ahora"]
-                // });
 
                 const message: IMessage = {
                     role: 'assistant',
                     content: response,
-                }
+                };
 
                 messages.push(message);
                 res.send(messages);
             } catch (error) {
-                console.error('Api - /gameEngine - error:', error);
+                FileLogger.error('Api - /gameEngine - error:', error);
                 res.status(500).json({
                     error: error instanceof Error ? error.message : String(error)
                 });
             }
         });
+    }
+
+    private buildContextPrompt(context: any, _storyState?: IStoryState): string {
+        const current = context.currentCharacter;
+        const visibleChars = context.visibleCharacters || [];
+        const conversableChars = context.charactersInConversationRange || [];
+
+        // Build character descriptions with clear status
+        const characterDescriptions = visibleChars.map((char: any) => {
+            const status = [];
+            if (char.isPlayer) {
+                status.push('PLAYER');
+            } else {
+                status.push('NPC');
+            }
+            if (char.isAlly) status.push('ALLY');
+            if (char.isEnemy) status.push('ENEMY');
+            if (char.canConverse) status.push('CAN TALK');
+            if (char.isAdjacent) status.push('ADJACENT');
+
+            return `  - ${char.name}: ${Math.round(char.distanceFromCurrent || 0)} cells away [${status.join(', ')}] Health: ${char.health?.current}/${char.health?.max}`;
+        }).join('\n');
+
+        // Create natural language situation summary
+        let situationSummary = `## CURRENT SITUATION
+
+You are: ${current?.name || 'unknown'} (${current?.race || 'unknown'})
+Your position: (${current?.position?.x || 0}, ${current?.position?.y || 0})
+Your health: ${current?.health?.current || 0}/${current?.health?.max || 100}
+Your faction: ${current?.faction || 'neutral'}
+Your personality: ${current?.personality || 'standard'}
+
+## VISIBLE CHARACTERS (${visibleChars.length} total)
+${characterDescriptions || '  None visible'}
+
+## CONVERSATION OPTIONS (within 8 cells)
+${conversableChars.map((c: any) => `  - ${c.name}`).join('\n') || '  None in range'}`;
+
+        // Add conversation history if present
+        if (context.conversationHistory && context.conversationHistory.length > 0) {
+            situationSummary += `\n\n## RECENT CONVERSATION\n${context.conversationHistory.map((exchange: any) =>
+                `  ${exchange.speaker}: "${exchange.content}"`
+            ).join('\n')}`;
+        }
+
+        // Add blockage information if present
+        if (context.blockageInfo) {
+            situationSummary += `\n\n## PATH BLOCKED\n  Your path is blocked by ${context.blockageInfo.blockingCharacter.name}\n  They are ${context.blockageInfo.blockingCharacter.isAlly ? 'an ally' : 'not an ally'}\n  Original target: ${context.blockageInfo.originalTarget}`;
+        }
+
+        // Add mission information
+        if (context.currentMission) {
+            situationSummary += `\n\n## CURRENT MISSION\n  Name: ${context.currentMission.name}\n  Type: ${context.currentMission.type}\n  Objectives: ${context.currentMission.objectives.join(', ')}`;
+        }
+
+        // Add existing characters list
+        if (context.existingCharacters && context.existingCharacters.length > 0) {
+            situationSummary += `\n\n## ALL EXISTING CHARACTERS\nThese are the ONLY characters that exist and can be referenced in commands:\n${context.existingCharacters.map((name: string) => `  - ${name}`).join('\n')}`;
+        }
+
+        // Add available locations list
+        if (context.availableLocations && context.availableLocations.length > 0) {
+            situationSummary += `\n\n## AVAILABLE LOCATIONS\nThese are the ONLY rooms/locations that exist and can be used in movement commands:\n${context.availableLocations.map((loc: string) => `  - ${loc}`).join('\n')}`;
+        }
+
+        situationSummary += `\n\n## YOUR RESPONSE\nDecide what ${current?.name || 'the character'} should do next. You must respond with a valid JSON command.\nIMPORTANT: Only use character names and locations from the lists above.`;
+
+        return situationSummary;
     }
 
     private storyPlan() {
@@ -138,7 +261,7 @@ export class Api {
                     content: response
                 });
             } catch (error) {
-                console.error('Api - /storyPlan - error:', error);
+                FileLogger.error('Api - /storyPlan - error:', error);
                 res.status(500).json({
                     error: error instanceof Error ? error.message : String(error)
                 });
@@ -173,7 +296,7 @@ export class Api {
                     content: response
                 });
             } catch (error) {
-                console.error('Api - /sceneContext - error:', error);
+                FileLogger.error('Api - /sceneContext - error:', error);
                 res.status(500).json({
                     error: error instanceof Error ? error.message : String(error)
                 });
@@ -276,7 +399,7 @@ Remember: All text in Spanish.`;
                 const status = getModelStatus();
                 res.json(status);
             } catch (error) {
-                console.error('Api - /modelStatus - error:', error);
+                FileLogger.error('Api - /modelStatus - error:', error);
                 res.status(500).json({
                     error: error instanceof Error ? error.message : String(error)
                 });

@@ -2,7 +2,7 @@
 import type { ICharacter, ICell, ICoord, Direction } from "../interfaces";
 import type { State } from "../State";
 
-import { superEventBus, ControlsEvent, GUIEvent, UpdateStateEvent, GameEvent, StateChangeEvent, ActionEvent } from "../events";
+import { EventBus, ControlsEvent, GUIEvent, UpdateStateEvent, GameEvent, StateChangeEvent, ActionEvent } from "../events";
 import { Overwatch } from "../Overwatch";
 import { baseCharacter } from "../../data/state";
 import { InteractionModeManager } from "../InteractionModeManager";
@@ -71,6 +71,7 @@ describe('Overwatch', () => {
     let enemyCharacter: ICharacter;
     let testMap: ICell[][];
     let mockOverwatchDataMap: Map<string, any>;
+    let eventBus: EventBus<any, any>;
 
     // Helper function to create a mock character
     const createMockCharacter = (overrides: Partial<ICharacter> = {}): ICharacter => ({
@@ -101,31 +102,19 @@ describe('Overwatch', () => {
         return map;
     };
 
-    // Helper class for managing test event listeners
-    class TestEventListener {
-        listen(
-            event: Parameters<typeof superEventBus.listen>[0],
-            callback: Parameters<typeof superEventBus.listen>[1]
-        ) {
-            superEventBus.listen.call(this, event, callback);
-        }
-    }
-
-    let testListeners: TestEventListener[] = [];
+    // No longer needed - using eventBus directly
 
     beforeEach(() => {
-        // Clear all mocks before each test
+        // Clear all mocks and event listeners before each test
         jest.clearAllMocks();
-        
-        // Clear all event listeners from superEventBus to ensure complete isolation
-        (superEventBus as any).listeners = new Map();
-        
+        EventBus.reset();
+        eventBus = new EventBus();
+
         // Reset the InteractionModeManager singleton
         InteractionModeManager.resetInstance();
-        
+
         // Clean up any existing overwatch instance
         if (overwatch) {
-            superEventBus.remove(overwatch);
             overwatch = null as any;
         }
         
@@ -134,7 +123,7 @@ describe('Overwatch', () => {
             name: 'overwatcher',
             direction: 'right' as Direction,
             position: { x: 5, y: 5 },
-            player: 'human',
+            controller: 'human', faction: 'player',
             actions: {
                 ...baseCharacter.actions,
                 pointsLeft: 100, // Enough points for multiple shots
@@ -169,7 +158,7 @@ describe('Overwatch', () => {
             name: 'enemy',
             direction: 'left' as Direction,
             position: { x: 10, y: 5 },
-            player: 'ai'
+            controller: 'ai', faction: 'enemy'
         });
 
         testMap = createMockMap(15, 15);
@@ -209,26 +198,25 @@ describe('Overwatch', () => {
         // This prevents event handling conflicts
 
         // Reset test listeners
-        testListeners = [];
+        // Event listeners cleaned up via EventBus.reset()
     });
 
     afterEach(() => {
         // Clean up all test listeners
-        testListeners.forEach(listener => superEventBus.remove(listener));
-        testListeners = [];
+        // Event listeners are cleaned up by EventBus.reset() in beforeEach
         
         // Clean up all overwatch instances
-        overwatchInstances.forEach(instance => superEventBus.remove(instance));
+        overwatchInstances.forEach(instance => eventBus.remove(instance));
         overwatchInstances.length = 0;
         
         // Clean up overwatch listeners
         if (overwatch) {
-            superEventBus.remove(overwatch);
+            eventBus.remove(overwatch);
             overwatch = null as any;
         }
         
         // Clear all event listeners to ensure complete cleanup
-        (superEventBus as any).listeners = new Map();
+        (eventBus as any).listeners = new Map();
         
         // Clear mock data
         mockOverwatchDataMap.clear();
@@ -240,12 +228,7 @@ describe('Overwatch', () => {
         InteractionModeManager.resetInstance();
     });
 
-    // Helper to create a test listener and track it
-    const createTestListener = () => {
-        const listener = new TestEventListener();
-        testListeners.push(listener);
-        return listener;
-    };
+    // Helper removed - using eventBus directly
     
     // Track all created overwatch instances for cleanup
     const overwatchInstances: Overwatch[] = [];
@@ -254,11 +237,11 @@ describe('Overwatch', () => {
     // Helper to create overwatch instance for tests that need it
     const createOverwatch = () => {
         // Clean up all existing instances first
-        overwatchInstances.forEach(instance => superEventBus.remove(instance));
+        overwatchInstances.forEach(instance => eventBus.remove(instance));
         overwatchInstances.length = 0;
         
         if (overwatch) {
-            superEventBus.remove(overwatch);
+            eventBus.remove(overwatch);
         }
         overwatch = new Overwatch(mockState);
         overwatchInstances.push(overwatch);
@@ -269,17 +252,16 @@ describe('Overwatch', () => {
         it('should activate overwatch mode when showOverwatch event is dispatched', () => {
             createOverwatch(); // Create overwatch instance for this test
             
-            const listener = createTestListener();
             const cellBatchSpy = jest.fn();
             const interactionModeSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
-            listener.listen(UpdateStateEvent.uiInteractionMode, interactionModeSpy);
+            eventBus.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
+            eventBus.listen(UpdateStateEvent.uiInteractionMode, interactionModeSpy);
 
             mockState.findCharacter.mockReturnValue(testCharacter);
 
             // Trigger showOverwatch
-            superEventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
 
             // Should update cells with overwatch highlight
             expect(cellBatchSpy).toHaveBeenCalled();
@@ -301,18 +283,17 @@ describe('Overwatch', () => {
         it('should consume all remaining action points when overwatch is activated', () => {
             createOverwatch(); // Create overwatch instance for this test
             
-            const listener = createTestListener();
             const deductPointsSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.deductActionPoints, deductPointsSpy);
+            eventBus.listen(UpdateStateEvent.deductActionPoints, deductPointsSpy);
 
             mockState.findCharacter.mockReturnValue(testCharacter);
 
             // Trigger showOverwatch
-            superEventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
 
             // Confirm overwatch activation
-            superEventBus.dispatch(ControlsEvent.cellClick, { x: 7, y: 5 }); // Click in overwatch range
+            eventBus.dispatch(ControlsEvent.cellClick, { x: 7, y: 5 }); // Click in overwatch range
 
             // Should deduct all remaining action points
             expect(deductPointsSpy).toHaveBeenCalledWith({
@@ -325,18 +306,17 @@ describe('Overwatch', () => {
         it('should store overwatch data in state when activated', () => {
             createOverwatch(); // Create overwatch instance for this test
             
-            const listener = createTestListener();
             const updateOverwatchSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.setOverwatchData, updateOverwatchSpy);
+            eventBus.listen(UpdateStateEvent.setOverwatchData, updateOverwatchSpy);
 
             mockState.findCharacter.mockReturnValue(testCharacter);
 
             // Trigger showOverwatch
-            superEventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
 
             // Confirm overwatch activation
-            superEventBus.dispatch(ControlsEvent.cellClick, { x: 7, y: 5 });
+            eventBus.dispatch(ControlsEvent.cellClick, { x: 7, y: 5 });
 
             // Should store overwatch data
             expect(updateOverwatchSpy).toHaveBeenCalled();
@@ -355,16 +335,15 @@ describe('Overwatch', () => {
         it('should not allow overwatch if character has no action points', () => {
             createOverwatch(); // Create overwatch instance for this test
             
-            const listener = createTestListener();
             const errorSpy = jest.fn();
 
-            listener.listen(ActionEvent.error, errorSpy);
+            eventBus.listen(ActionEvent.error, errorSpy);
 
             const noPointsCharacter = { ...testCharacter, actions: { ...testCharacter.actions, pointsLeft: 0 } };
             mockState.findCharacter.mockReturnValue(noPointsCharacter);
 
             // Trigger showOverwatch
-            superEventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
 
             // Should show error
             expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('No action points'));
@@ -373,10 +352,9 @@ describe('Overwatch', () => {
         it('should not allow overwatch if not current turn', () => {
             createOverwatch(); // Create overwatch instance for this test
             
-            const listener = createTestListener();
             const cellBatchSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
+            eventBus.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
             // Mock the game getter to return a different turn
             Object.defineProperty(mockState, 'game', {
@@ -386,7 +364,7 @@ describe('Overwatch', () => {
             mockState.findCharacter.mockReturnValue(testCharacter);
 
             // Trigger showOverwatch
-            superEventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
 
             // Should not update cells
             expect(cellBatchSpy).not.toHaveBeenCalled();
@@ -421,7 +399,7 @@ describe('Overwatch', () => {
         afterEach(() => {
             // Clean up local overwatch instance
             if (localOverwatch) {
-                superEventBus.remove(localOverwatch);
+                eventBus.remove(localOverwatch);
                 const index = overwatchInstances.indexOf(localOverwatch);
                 if (index > -1) {
                     overwatchInstances.splice(index, 1);
@@ -431,12 +409,11 @@ describe('Overwatch', () => {
         });
 
         it('should shoot at enemy entering overwatch zone', () => {
-            const listener = createTestListener();
             const projectileSpy = jest.fn();
             const damageSpy = jest.fn();
 
-            listener.listen(GUIEvent.shootProjectile, projectileSpy);
-            listener.listen(UpdateStateEvent.damageCharacter, damageSpy);
+            eventBus.listen(GUIEvent.shootProjectile, projectileSpy);
+            eventBus.listen(UpdateStateEvent.damageCharacter, damageSpy);
 
             // Set up mock to return enemy character when queried
             mockState.findCharacter.mockImplementation((name) => {
@@ -449,7 +426,7 @@ describe('Overwatch', () => {
             const mockRandom = jest.spyOn(Math, 'random').mockReturnValue(0.5);
 
             // Simulate enemy movement into overwatch zone
-            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+            eventBus.dispatch(StateChangeEvent.characterPosition, {
                 ...enemyCharacter,
                 position: { x: 8, y: 5 } // Moving into watched cell
             });
@@ -469,10 +446,9 @@ describe('Overwatch', () => {
         });
 
         it('should shoot once per cell as enemy moves through overwatch zone', () => {
-            const listener = createTestListener();
             const projectileSpy = jest.fn();
 
-            listener.listen(GUIEvent.shootProjectile, projectileSpy);
+            eventBus.listen(GUIEvent.shootProjectile, projectileSpy);
 
             mockState.findCharacter.mockImplementation((name) => {
                 if (name === enemyCharacter.name) return enemyCharacter;
@@ -490,7 +466,7 @@ describe('Overwatch', () => {
 
             movementPath.forEach((position, index) => {
                 if (index > 0) { // Skip starting position
-                    superEventBus.dispatch(StateChangeEvent.characterPosition, {
+                    eventBus.dispatch(StateChangeEvent.characterPosition, {
                         ...enemyCharacter,
                         position
                     });
@@ -502,10 +478,9 @@ describe('Overwatch', () => {
         });
 
         it('should reduce shots remaining after each shot', () => {
-            const listener = createTestListener();
             const updateOverwatchSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.setOverwatchData, updateOverwatchSpy);
+            eventBus.listen(UpdateStateEvent.setOverwatchData, updateOverwatchSpy);
 
             mockState.findCharacter.mockImplementation((name) => {
                 if (name === enemyCharacter.name) return enemyCharacter;
@@ -514,7 +489,7 @@ describe('Overwatch', () => {
             });
 
             // Simulate enemy movement
-            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+            eventBus.dispatch(StateChangeEvent.characterPosition, {
                 ...enemyCharacter,
                 position: { x: 8, y: 5 }
             });
@@ -527,10 +502,9 @@ describe('Overwatch', () => {
         });
 
         it('should NOT deduct action points when shooting in overwatch (already consumed)', () => {
-            const listener = createTestListener();
             const deductPointsSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.deductActionPoints, deductPointsSpy);
+            eventBus.listen(UpdateStateEvent.deductActionPoints, deductPointsSpy);
 
             // Set up character - but remember, in real game they'll have 0 points after activating overwatch
             const characterWithPoints = { 
@@ -548,7 +522,7 @@ describe('Overwatch', () => {
             });
 
             // Simulate enemy movement into overwatch zone
-            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+            eventBus.dispatch(StateChangeEvent.characterPosition, {
                 ...enemyCharacter,
                 position: { x: 8, y: 5 }
             });
@@ -568,9 +542,12 @@ describe('Overwatch', () => {
             ];
 
             testCases.forEach(({ actionPoints, shootCost, expectedShots }) => {
-                const listener = createTestListener();
+                // Reset EventBus for each test case
+                EventBus.reset();
+                const testEventBus = new EventBus<any, any>();
+
                 const dispatchSpy = jest.fn();
-                listener.listen(UpdateStateEvent.setOverwatchData, dispatchSpy);
+                testEventBus.listen(UpdateStateEvent.setOverwatchData, dispatchSpy);
 
                 const overwatch = new Overwatch(mockState as any);
                 const character = {
@@ -593,19 +570,20 @@ describe('Overwatch', () => {
                 overwatch['activateOverwatch'](character);
 
                 // Verify the correct number of shots was set
-                expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({
-                    shotsRemaining: expectedShots
-                }));
+                expect(dispatchSpy).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        shotsRemaining: expectedShots
+                    })
+                );
             });
         });
 
         it('should be able to shoot even with 0 action points (points already consumed)', () => {
-            const listener = createTestListener();
             const projectileSpy = jest.fn();
             const damageSpy = jest.fn();
 
-            listener.listen(GUIEvent.shootProjectile, projectileSpy);
-            listener.listen(UpdateStateEvent.damageCharacter, damageSpy);
+            eventBus.listen(GUIEvent.shootProjectile, projectileSpy);
+            eventBus.listen(UpdateStateEvent.damageCharacter, damageSpy);
 
             // Set up character with 0 action points (realistic after overwatch activation)
             const zeroPointsCharacter = { 
@@ -637,7 +615,7 @@ describe('Overwatch', () => {
             const mockRandom = jest.spyOn(Math, 'random').mockReturnValue(0.5);
 
             // Simulate enemy movement
-            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+            eventBus.dispatch(StateChangeEvent.characterPosition, {
                 ...enemyCharacter,
                 position: { x: 8, y: 5 }
             });
@@ -651,12 +629,11 @@ describe('Overwatch', () => {
         });
 
         it('should deactivate overwatch when shots run out', () => {
-            const listener = createTestListener();
             const updateOverwatchSpy = jest.fn();
             const clearHighlightsSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.setOverwatchData, updateOverwatchSpy);
-            listener.listen(UpdateStateEvent.uiHighlights, clearHighlightsSpy);
+            eventBus.listen(UpdateStateEvent.setOverwatchData, updateOverwatchSpy);
+            eventBus.listen(UpdateStateEvent.uiHighlights, clearHighlightsSpy);
 
             // Set overwatch with only 1 shot remaining
             (mockState as any)._overwatchData.set(testCharacter.name, {
@@ -676,7 +653,7 @@ describe('Overwatch', () => {
             });
 
             // Simulate enemy movement
-            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+            eventBus.dispatch(StateChangeEvent.characterPosition, {
                 ...enemyCharacter,
                 position: { x: 8, y: 5 }
             });
@@ -694,14 +671,13 @@ describe('Overwatch', () => {
         });
 
         it('should not shoot at friendly units', () => {
-            const listener = createTestListener();
             const projectileSpy = jest.fn();
 
-            listener.listen(GUIEvent.shootProjectile, projectileSpy);
+            eventBus.listen(GUIEvent.shootProjectile, projectileSpy);
 
             const friendlyCharacter = createMockCharacter({
                 name: 'friendly',
-                player: 'human', // Same team as overwatch character
+                controller: 'human', faction: 'player', // Same faction as overwatch character
                 position: { x: 10, y: 5 }
             });
 
@@ -712,7 +688,7 @@ describe('Overwatch', () => {
             });
 
             // Simulate friendly movement into overwatch zone
-            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+            eventBus.dispatch(StateChangeEvent.characterPosition, {
                 ...friendlyCharacter,
                 position: { x: 8, y: 5 }
             });
@@ -722,10 +698,9 @@ describe('Overwatch', () => {
         });
 
         it.skip('should not shoot if line of sight is blocked', () => {
-            const listener = createTestListener();
             const projectileSpy = jest.fn();
 
-            listener.listen(GUIEvent.shootProjectile, projectileSpy);
+            eventBus.listen(GUIEvent.shootProjectile, projectileSpy);
 
             // Add obstacle between overwatch and target
             testMap[5]![7] = createMockCell(7, 5, true); // Blocking cell
@@ -737,7 +712,7 @@ describe('Overwatch', () => {
             });
 
             // Simulate enemy movement behind obstacle
-            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+            eventBus.dispatch(StateChangeEvent.characterPosition, {
                 ...enemyCharacter,
                 position: { x: 8, y: 5 }
             });
@@ -754,12 +729,11 @@ describe('Overwatch', () => {
         });
         
         it('should clear overwatch when character\'s turn starts', () => {
-            const listener = createTestListener();
             const updateOverwatchSpy = jest.fn();
             const clearHighlightsSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.setOverwatchData, updateOverwatchSpy);
-            listener.listen(UpdateStateEvent.uiHighlights, clearHighlightsSpy);
+            eventBus.listen(UpdateStateEvent.setOverwatchData, updateOverwatchSpy);
+            eventBus.listen(UpdateStateEvent.uiHighlights, clearHighlightsSpy);
 
             // Set up active overwatch
             (mockState as any)._overwatchData.set(testCharacter.name, {
@@ -773,7 +747,7 @@ describe('Overwatch', () => {
             });
 
             // Simulate turn change back to human (overwatcher's turn)
-            superEventBus.dispatch(GameEvent.changeTurn, {
+            eventBus.dispatch(GameEvent.changeTurn, {
                 turn: 'human',
                 previousTurn: 'ai'
             });
@@ -789,10 +763,9 @@ describe('Overwatch', () => {
         });
 
         it('should maintain overwatch during other players\' turns', () => {
-            const listener = createTestListener();
             const updateOverwatchSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.setOverwatchData, updateOverwatchSpy);
+            eventBus.listen(UpdateStateEvent.setOverwatchData, updateOverwatchSpy);
 
             // Set up active overwatch
             (mockState as any)._overwatchData.set(testCharacter.name, {
@@ -806,7 +779,7 @@ describe('Overwatch', () => {
             });
 
             // Simulate turn change to AI (not overwatcher's turn)
-            superEventBus.dispatch(GameEvent.changeTurn, {
+            eventBus.dispatch(GameEvent.changeTurn, {
                 turn: 'ai',
                 previousTurn: 'human'
             });
@@ -816,16 +789,15 @@ describe('Overwatch', () => {
         });
 
         it('should allow multiple characters to have overwatch simultaneously', () => {
-            const listener = createTestListener();
             const cellBatchSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
+            eventBus.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
             const secondOverwatcher = createMockCharacter({
                 name: 'overwatcher2',
                 direction: 'left' as Direction,
                 position: { x: 10, y: 10 },
-                player: 'human',
+                controller: 'human', faction: 'player',
                 actions: { ...baseCharacter.actions, pointsLeft: 8 }
             });
 
@@ -843,7 +815,7 @@ describe('Overwatch', () => {
             mockState.findCharacter.mockReturnValue(secondOverwatcher);
 
             // Activate second overwatch
-            superEventBus.dispatch(ControlsEvent.showOverwatch, secondOverwatcher.name);
+            eventBus.dispatch(ControlsEvent.showOverwatch, secondOverwatcher.name);
 
             // Both overwatches should be active
             expect(cellBatchSpy).toHaveBeenCalled();
@@ -855,15 +827,14 @@ describe('Overwatch', () => {
         it.skip('should show persistent overwatch highlights', () => {
             createOverwatch(); // Create overwatch instance for this test
             
-            const listener = createTestListener();
             const cellBatchSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
+            eventBus.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
             mockState.findCharacter.mockReturnValue(testCharacter);
 
             // Trigger showOverwatch
-            superEventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
 
             // Should highlight cells with overwatch type
             expect(cellBatchSpy).toHaveBeenCalled();
@@ -888,15 +859,14 @@ describe('Overwatch', () => {
         it('should add overwatch class to character', () => {
             createOverwatch(); // Create overwatch instance for this test
             
-            const listener = createTestListener();
             const characterVisualSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.uiCharacterVisual, characterVisualSpy);
+            eventBus.listen(UpdateStateEvent.uiCharacterVisual, characterVisualSpy);
 
             mockState.findCharacter.mockReturnValue(testCharacter);
 
             // Trigger showOverwatch
-            superEventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
 
             // Should add overwatch class
             expect(characterVisualSpy).toHaveBeenCalledWith({
@@ -911,10 +881,9 @@ describe('Overwatch', () => {
         it('should show remaining shots in UI', () => {
             createOverwatch(); // Create overwatch instance for this test
             
-            const listener = createTestListener();
             const interactionModeSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.uiInteractionMode, interactionModeSpy);
+            eventBus.listen(UpdateStateEvent.uiInteractionMode, interactionModeSpy);
 
             mockState.findCharacter.mockReturnValue(testCharacter);
             
@@ -922,7 +891,7 @@ describe('Overwatch', () => {
             // when setting up overwatch
 
             // Update overwatch display
-            superEventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
+            eventBus.dispatch(ControlsEvent.showOverwatch, testCharacter.name);
 
             // Should include remaining points in interaction mode (overwatch preview mode)
             expect(interactionModeSpy).toHaveBeenCalledWith({
@@ -946,12 +915,11 @@ describe('Overwatch', () => {
         it.skip('should shoot at enemy on every cell they enter in overwatch area', () => {
             // Note: With character blocking implemented, the enemy character blocks line of sight
             // to some cells as they move, so we may get fewer shots than cells entered
-            const listener = createTestListener();
             const projectileSpy = jest.fn();
             const damageSpy = jest.fn();
 
-            listener.listen(GUIEvent.shootProjectile, projectileSpy);
-            listener.listen(UpdateStateEvent.damageCharacter, damageSpy);
+            eventBus.listen(GUIEvent.shootProjectile, projectileSpy);
+            eventBus.listen(UpdateStateEvent.damageCharacter, damageSpy);
 
             // Set up a wider overwatch area
             const watchedCells = [
@@ -1011,7 +979,7 @@ describe('Overwatch', () => {
 
             // Mock the UpdateStateEvent.setOverwatchData to track shotCells
             const updateOverwatchSpy = jest.fn();
-            listener.listen(UpdateStateEvent.setOverwatchData, (data) => {
+            eventBus.listen(UpdateStateEvent.setOverwatchData, (data) => {
                 if (data && typeof data === 'object' && 'shotsRemaining' in data) {
                     // Update our mock state's overwatch data
                     const overwatchUpdate = data as any;
@@ -1031,7 +999,7 @@ describe('Overwatch', () => {
                     enemyCharacter.position = position;
                 } else {
                     // Trigger movement event
-                    superEventBus.dispatch(StateChangeEvent.characterPosition, {
+                    eventBus.dispatch(StateChangeEvent.characterPosition, {
                         ...enemyCharacter,
                         position
                     });
@@ -1082,10 +1050,9 @@ describe('Overwatch', () => {
         });
 
         it('should not shoot twice at the same cell even if enemy re-enters it', () => {
-            const listener = createTestListener();
             const projectileSpy = jest.fn();
 
-            listener.listen(GUIEvent.shootProjectile, projectileSpy);
+            eventBus.listen(GUIEvent.shootProjectile, projectileSpy);
 
             const watchedCells = [
                 { x: 7, y: 5 },
@@ -1111,7 +1078,7 @@ describe('Overwatch', () => {
             });
 
             // Mock the UpdateStateEvent.setOverwatchData to track shotCells
-            listener.listen(UpdateStateEvent.setOverwatchData, (data) => {
+            eventBus.listen(UpdateStateEvent.setOverwatchData, (data) => {
                 if (data && typeof data === 'object' && 'shotsRemaining' in data) {
                     const overwatchUpdate = data as any;
                     const currentData = (mockState as any)._overwatchData.get(overwatchUpdate.characterName);
@@ -1124,7 +1091,7 @@ describe('Overwatch', () => {
             });
 
             // Enemy enters cell
-            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+            eventBus.dispatch(StateChangeEvent.characterPosition, {
                 ...enemyCharacter,
                 position: { x: 8, y: 5 }
             });
@@ -1132,12 +1099,12 @@ describe('Overwatch', () => {
             expect(projectileSpy).toHaveBeenCalledTimes(1);
 
             // Enemy leaves and re-enters the same cell
-            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+            eventBus.dispatch(StateChangeEvent.characterPosition, {
                 ...enemyCharacter,
                 position: { x: 10, y: 5 } // Leave watched area
             });
 
-            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+            eventBus.dispatch(StateChangeEvent.characterPosition, {
                 ...enemyCharacter,
                 position: { x: 8, y: 5 } // Re-enter same cell
             });
@@ -1154,10 +1121,9 @@ describe('Overwatch', () => {
         });
         
         it('should not shoot multiple times if character stays in same cell', () => {
-            const listener = createTestListener();
             const projectileSpy = jest.fn();
 
-            listener.listen(GUIEvent.shootProjectile, projectileSpy);
+            eventBus.listen(GUIEvent.shootProjectile, projectileSpy);
 
             // Set up overwatch data
             const overwatchData = {
@@ -1172,7 +1138,7 @@ describe('Overwatch', () => {
             (mockState as any)._overwatchData.set(testCharacter.name, overwatchData);
 
             // Listen for overwatch updates and update our mock data
-            listener.listen(UpdateStateEvent.setOverwatchData, (update) => {
+            eventBus.listen(UpdateStateEvent.setOverwatchData, (update) => {
                 if (update && typeof update === 'object' && 'characterName' in update) {
                     const updateData = update as any;
                     if (updateData.characterName === testCharacter.name) {
@@ -1194,7 +1160,7 @@ describe('Overwatch', () => {
             });
 
             // Enemy enters overwatch zone
-            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+            eventBus.dispatch(StateChangeEvent.characterPosition, {
                 ...enemyCharacter,
                 position: { x: 8, y: 5 }
             });
@@ -1202,7 +1168,7 @@ describe('Overwatch', () => {
             expect(projectileSpy).toHaveBeenCalledTimes(1);
 
             // Dispatch same position again (simulating duplicate events)
-            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+            eventBus.dispatch(StateChangeEvent.characterPosition, {
                 ...enemyCharacter,
                 position: { x: 8, y: 5 }
             });
@@ -1211,7 +1177,7 @@ describe('Overwatch', () => {
             expect(projectileSpy).toHaveBeenCalledTimes(1);
 
             // Dispatch visual state change with same position
-            superEventBus.dispatch(StateChangeEvent.uiVisualStates, {
+            eventBus.dispatch(StateChangeEvent.uiVisualStates, {
                 characters: {
                     [enemyCharacter.name]: {
                         direction: 'left',
@@ -1237,14 +1203,13 @@ describe('Overwatch', () => {
         });
 
         it('should shoot when enemy moves into overwatch zone - full integration test', () => {
-            const listener = createTestListener();
             const projectileSpy = jest.fn();
             const deductPointsSpy = jest.fn();
             const damageSpy = jest.fn();
             let characterActionPoints = 100;
 
-            listener.listen(GUIEvent.shootProjectile, projectileSpy);
-            listener.listen(UpdateStateEvent.deductActionPoints, (data) => {
+            eventBus.listen(GUIEvent.shootProjectile, projectileSpy);
+            eventBus.listen(UpdateStateEvent.deductActionPoints, (data) => {
                 if (data && typeof data === 'object' && 'characterName' in data) {
                     const deductData = data as any;
                     if (deductData.characterName === testCharacter.name) {
@@ -1253,7 +1218,7 @@ describe('Overwatch', () => {
                 }
                 deductPointsSpy(data);
             });
-            listener.listen(UpdateStateEvent.damageCharacter, damageSpy);
+            eventBus.listen(UpdateStateEvent.damageCharacter, damageSpy);
 
             // Set up character with plenty of action points
             const overwatchChar = { 
@@ -1289,7 +1254,7 @@ describe('Overwatch', () => {
             });
 
             // Simulate enemy movement into overwatch zone
-            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+            eventBus.dispatch(StateChangeEvent.characterPosition, {
                 ...enemyCharacter,
                 position: { x: 8, y: 5 }
             });
@@ -1308,10 +1273,9 @@ describe('Overwatch', () => {
         });
         
         it('should handle character death during overwatch', () => {
-            const listener = createTestListener();
             const updateOverwatchSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.setOverwatchData, updateOverwatchSpy);
+            eventBus.listen(UpdateStateEvent.setOverwatchData, updateOverwatchSpy);
 
             // Set up active overwatch
             (mockState as any)._overwatchData.set(testCharacter.name, {
@@ -1323,7 +1287,7 @@ describe('Overwatch', () => {
             });
 
             // Simulate character death
-            superEventBus.dispatch(StateChangeEvent.characterHealth, {
+            eventBus.dispatch(StateChangeEvent.characterHealth, {
                 ...testCharacter,
                 health: 0
             });
@@ -1336,10 +1300,9 @@ describe('Overwatch', () => {
         });
 
         it('should update overwatch if character is moved by external force', () => {
-            const listener = createTestListener();
             const updateOverwatchSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.setOverwatchData, updateOverwatchSpy);
+            eventBus.listen(UpdateStateEvent.setOverwatchData, updateOverwatchSpy);
 
             // Set up active overwatch
             (mockState as any)._overwatchData.set(testCharacter.name, {
@@ -1352,7 +1315,7 @@ describe('Overwatch', () => {
 
             // Simulate character being moved (e.g., knocked back)
             const newPosition = { x: 3, y: 3 };
-            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+            eventBus.dispatch(StateChangeEvent.characterPosition, {
                 ...testCharacter,
                 position: newPosition
             });
@@ -1365,10 +1328,9 @@ describe('Overwatch', () => {
         });
 
         it.skip('should handle rapid movement through overwatch zone', () => {
-            const listener = createTestListener();
             const projectileSpy = jest.fn();
 
-            listener.listen(GUIEvent.shootProjectile, projectileSpy);
+            eventBus.listen(GUIEvent.shootProjectile, projectileSpy);
 
             mockState.findCharacter.mockImplementation((name) => {
                 if (name === enemyCharacter.name) return enemyCharacter;
@@ -1387,7 +1349,7 @@ describe('Overwatch', () => {
             });
 
             // Simulate very fast movement (teleport/dash)
-            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+            eventBus.dispatch(StateChangeEvent.characterPosition, {
                 ...enemyCharacter,
                 position: { x: 7, y: 5 } // Jump directly to watched cell
             });
@@ -1397,12 +1359,11 @@ describe('Overwatch', () => {
         });
 
         it('should update overwatch visual cells when character with overwatch moves', () => {
-            const listener = createTestListener();
             const cellBatchSpy = jest.fn();
             const updateOverwatchSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
-            listener.listen(UpdateStateEvent.setOverwatchData, updateOverwatchSpy);
+            eventBus.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
+            eventBus.listen(UpdateStateEvent.setOverwatchData, updateOverwatchSpy);
 
             // Set up active overwatch at initial position
             const initialPosition = { x: 5, y: 5 };
@@ -1423,7 +1384,7 @@ describe('Overwatch', () => {
 
             // Move the character to a new position
             const newPosition = { x: 8, y: 8 };
-            superEventBus.dispatch(StateChangeEvent.characterPosition, {
+            eventBus.dispatch(StateChangeEvent.characterPosition, {
                 ...testCharacter,
                 position: newPosition
             });
@@ -1438,7 +1399,7 @@ describe('Overwatch', () => {
             expect(Array.isArray(updateCall.watchedCells)).toBe(true);
 
             // Trigger the visual update by dispatching the overwatchData change
-            superEventBus.dispatch(StateChangeEvent.overwatchData, (mockState as any)._overwatchData);
+            eventBus.dispatch(StateChangeEvent.overwatchData, (mockState as any)._overwatchData);
 
             // Verify visual cells were updated (cells were cleared and new ones highlighted)
             expect(cellBatchSpy).toHaveBeenCalled();
@@ -1454,14 +1415,13 @@ describe('Overwatch', () => {
         });
 
         it('should prioritize closest target when multiple enemies in range', () => {
-            const listener = createTestListener();
             const damageSpy = jest.fn();
 
-            listener.listen(UpdateStateEvent.damageCharacter, damageSpy);
+            eventBus.listen(UpdateStateEvent.damageCharacter, damageSpy);
 
             const closerEnemy = createMockCharacter({
                 name: 'closerEnemy',
-                player: 'ai',
+                controller: 'ai', faction: 'enemy',
                 position: { x: 6, y: 5 } // Closer to overwatcher
             });
 
@@ -1483,7 +1443,7 @@ describe('Overwatch', () => {
             });
 
             // Move closer enemy first
-            superEventBus.dispatch(StateChangeEvent.characterPosition, closerEnemy);
+            eventBus.dispatch(StateChangeEvent.characterPosition, closerEnemy);
 
             // Should shoot at closer enemy and consume the shot
             expect(damageSpy).toHaveBeenCalledWith(expect.objectContaining({

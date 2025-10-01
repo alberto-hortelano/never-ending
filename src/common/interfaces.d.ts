@@ -26,7 +26,7 @@ export interface IGame {
     turn: string;
     players: string[];
     playerInfo?: Record<string, IPlayerInfo>;
-    teams?: ITeamConfiguration;
+    factions?: IFactionConfiguration;
 }
 
 export interface IPlayerInfo {
@@ -34,11 +34,11 @@ export interface IPlayerInfo {
     isAI?: boolean;
 }
 
-export interface ITeamConfiguration {
-    [teamId: string]: ITeamDefinition;
+export interface IFactionConfiguration {
+    [factionId: string]: IFactionDefinition;
 }
 
-export interface ITeamDefinition {
+export interface IFactionDefinition {
     name: string;
     hostile: string[];
     allied?: string[];
@@ -135,8 +135,8 @@ export interface ICharacter extends IMovable {
     race: Race;
     description: string;
     action: Action;
-    player: string;
-    team?: string;
+    controller: string;  // who controls this character: 'human' or 'ai'
+    faction: string;     // character allegiance: 'player', 'enemy', or 'neutral'
     palette: ICharacterPalette;
     inventory: IInventory;
     actions: ICharacterActions;
@@ -379,11 +379,12 @@ export interface ITransition {
     description: string; // Narrative text shown to player
     actionRequest?: string; // Action to request from AI (e.g., "generate_new_map")
     targetMap?: string; // Map identifier for transitions
-    storylineEvent?: IStorylineEvent; // Trigger storyline when entering
+    narrativeEvent?: INarrativeEvent; // Trigger narrative when entering
 }
 
-export interface IStorylineEvent {
-    type: 'storyline';
+export interface INarrativeEvent {
+    type: 'speech';
+    source: string; // e.g., "Narrador"
     content: string;
     choices?: string[]; // Player choices if applicable
 }

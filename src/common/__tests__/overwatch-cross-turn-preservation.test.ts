@@ -2,7 +2,7 @@
 import type { ICharacter, ICell } from "../interfaces";
 import type { State } from "../State";
 
-import { superEventBus, ControlsEvent, UpdateStateEvent, StateChangeEvent, GameEvent } from "../events";
+import { EventBus, ControlsEvent, UpdateStateEvent, StateChangeEvent, GameEvent } from "../events";
 import { Overwatch } from "../Overwatch";
 import { Movement } from "../Movement";
 import { baseCharacter } from "../../data/state";
@@ -19,6 +19,7 @@ describe('Overwatch Cross-Turn Preservation', () => {
     let aiCharacter: ICharacter;
     let testMap: ICell[][];
     let uiStateService: UIStateService;
+    let eventBus: EventBus<any, any>;
 
     // Helper function to create a mock character
     const createMockCharacter = (overrides: Partial<ICharacter> = {}): ICharacter => ({
@@ -51,13 +52,15 @@ describe('Overwatch Cross-Turn Preservation', () => {
     beforeEach(() => {
         // Clear all mocks before each test
         jest.clearAllMocks();
+        EventBus.reset();
+        eventBus = new EventBus();
 
         // Create test data
         humanCharacter = createMockCharacter({
             name: 'humanCharacter',
             direction: 'right' as const,
             position: { x: 5, y: 5 },
-            player: 'human',
+            controller: 'human', faction: 'player',
             actions: {
                 ...baseCharacter.actions,
                 pointsLeft: 10,
@@ -96,7 +99,7 @@ describe('Overwatch Cross-Turn Preservation', () => {
             name: 'aiCharacter',
             direction: 'left' as const,
             position: { x: 15, y: 15 },
-            player: 'ai',
+            controller: 'ai', faction: 'enemy',
             actions: {
                 ...baseCharacter.actions,
                 pointsLeft: 10,
@@ -154,7 +157,7 @@ describe('Overwatch Cross-Turn Preservation', () => {
         movement = new Movement(mockState);
         
         // Listen for overwatch updates and update the mock state
-        superEventBus.listen.call({}, UpdateStateEvent.setOverwatchData, (data: any) => {
+        eventBus.listen(UpdateStateEvent.setOverwatchData, (data: any) => {
             if (data.active) {
                 (mockState.overwatchData as any)[data.characterName] = data;
             } else {
@@ -172,9 +175,9 @@ describe('Overwatch Cross-Turn Preservation', () => {
 
     afterEach(() => {
         // Clean up
-        superEventBus.remove(overwatch);
+        eventBus.remove(overwatch);
         movement.destroy();
-        superEventBus.remove(uiStateService);
+        eventBus.remove(uiStateService);
     });
 
     describe('Overwatch preservation across turns', () => {
@@ -183,11 +186,11 @@ describe('Overwatch Cross-Turn Preservation', () => {
             const cellBatchSpy = jest.fn();
             
             // Listen for visual state updates
-            superEventBus.listen.call({}, StateChangeEvent.uiVisualStates, visualStatesSpy);
-            superEventBus.listen.call({}, UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
+            eventBus.listen(StateChangeEvent.uiVisualStates, visualStatesSpy);
+            eventBus.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
             
             // Step 1: Human player shows overwatch range
-            superEventBus.dispatch(ControlsEvent.showOverwatch, humanCharacter.name);
+            eventBus.dispatch(ControlsEvent.showOverwatch, humanCharacter.name);
             
             // Wait a bit for showOverwatch to complete
             await new Promise(resolve => setTimeout(resolve, 10));
@@ -208,13 +211,13 @@ describe('Overwatch Cross-Turn Preservation', () => {
             }
             
             // Click a cell to activate overwatch
-            superEventBus.dispatch(ControlsEvent.cellClick, { x: 6, y: 5 });
+            eventBus.dispatch(ControlsEvent.cellClick, { x: 6, y: 5 });
             
             // Wait for the overwatch to be fully activated and rendered
             await new Promise(resolve => setTimeout(resolve, 50));
             
             // Trigger a state change event to force rendering
-            superEventBus.dispatch(StateChangeEvent.overwatchData, mockState.overwatchData);
+            eventBus.dispatch(StateChangeEvent.overwatchData, mockState.overwatchData);
             
             // Also manually trigger the renderAllOverwatchHighlights method
             if (mockState.overwatchData && Object.keys(mockState.overwatchData).length > 0) {
@@ -277,15 +280,15 @@ describe('Overwatch Cross-Turn Preservation', () => {
             });
             
             // Activate overwatch (click on a cell)
-            superEventBus.dispatch(ControlsEvent.cellClick, { x: 10, y: 10 });
+            eventBus.dispatch(ControlsEvent.cellClick, { x: 10, y: 10 });
             
             // Step 2: Change turn to AI
             (mockState as any).setTurn('ai');
-            superEventBus.dispatch(GameEvent.changeTurn, { turn: 'ai' });
+            eventBus.dispatch(GameEvent.changeTurn, { turn: 'ai' });
             
             // Step 3: Show movement for AI character (simulating selection)
             visualStatesSpy.mockClear();
-            superEventBus.dispatch(ControlsEvent.showMovement, aiCharacter.name);
+            eventBus.dispatch(ControlsEvent.showMovement, aiCharacter.name);
             
             // Wait a bit for all events to process
             await new Promise(resolve => setTimeout(resolve, 10));

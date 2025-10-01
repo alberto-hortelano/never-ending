@@ -569,7 +569,7 @@ export class UIStateService extends EventBus<UpdateStateEventsMap, StateChangeEv
                             const characters = fullState.characters;
                             const overwatchCharacter = characters.find(c => c.name === characterName);
                             // Preserve if it's from a different player
-                            if (overwatchCharacter && overwatchCharacter.player !== currentTurn) {
+                            if (overwatchCharacter && overwatchCharacter.controller !== currentTurn) {
                                 shouldPreserve = true;
                             }
                         }

@@ -1,6 +1,6 @@
 /**
  * WorldState Service
- * Manages the living world narrative system, tracking parallel storylines,
+ * Manages the living world narrative system, tracking parallel narratives,
  * character motivations, and emergent events happening in the background
  */
 
@@ -793,7 +793,7 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
             activities.push('Searching for valuables', 'Negotiating deals', 'Counting profits');
         }
         if (character.personality.loyalty > 70) {
-            activities.push('Protecting allies', 'Coordinating with team', 'Following orders');
+            activities.push('Protecting allies', 'Coordinating with faction', 'Following orders');
         }
         if (character.personality.compassion > 70) {
             activities.push('Helping civilians', 'Tending to wounded', 'Distributing supplies');

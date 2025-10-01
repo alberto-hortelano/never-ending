@@ -136,11 +136,18 @@ export const positionCharacters = (characters: ICharacter[], map: DeepReadonly<I
                 const positionedCharacter = { ...character, path: [cell.position], position: cell.position };
                 positionedCharacters.push(positionedCharacter);
             } else {
-                // Fallback to original position
-                positionedCharacters.push(character);
+                // This should never happen since we check availableCells.length > 0
+                throw new Error(`Failed to position character ${character.name}: No valid cell found despite available cells`);
             }
         } else {
-            // No available cells in the location, use original position
+            // No available cells in the location
+            // Check if the original position is valid - if not, this is an error
+            const originalPos = character.position;
+            if (originalPos.x < 0 || originalPos.y < 0 ||
+                originalPos.y >= map.length || originalPos.x >= (map[0]?.length || 0)) {
+                throw new Error(`Failed to position character ${character.name} at location "${character.location}": No valid cells found and original position (${originalPos.x}, ${originalPos.y}) is invalid`);
+            }
+            // Only use original position if it's valid
             positionedCharacters.push(character);
         }
     }

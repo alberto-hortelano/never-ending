@@ -144,7 +144,7 @@ describe('Complete AI Session Simulation', () => {
                                 name: 'VI-GO',
                                 race: 'robot',
                                 description: 'Analysis droid',
-                                location: 'Bridge/player',
+                                location: 'Undercover Ship - Bridge',
                                 orientation: 'right',
                                 palette: {
                                     skin: 'transparent',
@@ -156,7 +156,8 @@ describe('Complete AI Session Simulation', () => {
                         doors: []
                     },
                     {
-                        type: 'storyline',
+                        type: 'speech',
+                        source: 'Narrador',
                         content: 'Chapter 1: The Investigation Begins',
                         action: 'character'
                     }
@@ -174,11 +175,6 @@ describe('Complete AI Session Simulation', () => {
                 for (const cmd of initResponse.commands) {
                     if (cmd.type === 'map') {
                         await storyExecutor.executeMapCommand(cmd as any, state.story as any);
-                    } else if (cmd.type === 'storyline') {
-                        eventBus.dispatch(UpdateStateEvent.storyState, {
-                            ...state.story,
-                            currentChapter: 1
-                        });
                     }
                 }
             }
@@ -228,7 +224,7 @@ describe('Complete AI Session Simulation', () => {
             });
             
             // Trigger AI turn
-            eventBus.dispatch(GameEvent.play, { characterName: 'VI-GO', player: 'ai' });
+            eventBus.dispatch(GameEvent.play, { characterName: 'VI-GO', controller: 'ai', faction: 'enemy' });
             
             // Wait for AI processing
             await new Promise(resolve => setTimeout(resolve, 100));

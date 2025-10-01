@@ -266,7 +266,7 @@ export class Conversation extends Component {
                     if (data.action) {
                         // DEBUG: Executing action on conversation close
                         // console.log('[Conversation] Executing action on close:', data.action);
-                        this.dispatchEvent(new CustomEvent('storyline-action', {
+                        this.dispatchEvent(new CustomEvent('speech-action', {
                             detail: { action: data.action, accepted: true },
                             bubbles: true
                         }));
@@ -291,10 +291,11 @@ export class Conversation extends Component {
     private handleAnswerClick(answer: string) {
         // Check for special AI-to-AI control answers
         if (this.isAIToAIMode) {
-            if (answer === i18n.t('common.continue') || answer === i18n.t('conversation.continueListen')) {
-                // Continue the AI-to-AI conversation
+            if (answer === i18n.t('common.continue') || answer === i18n.t('conversation.continueListen') ||
+                answer === i18n.t('conversation.next')) {
+                // Continue to next exchange in the AI-to-AI conversation
                 this.dispatch(ConversationEvent.continue, answer);
-                this.showLoading();
+                // No loading needed - all exchanges are already loaded
                 return;
             } else if (answer === i18n.t('conversation.interrupt')) {
                 // Player interrupts the conversation
@@ -302,7 +303,7 @@ export class Conversation extends Component {
                 this.dispatch(ConversationEvent.playerInterrupt, undefined);
                 this.hideAIExchangeIndicator();
                 return;
-            } else if (answer === i18n.t('common.skip')) {
+            } else if (answer === i18n.t('common.skip') || answer === i18n.t('conversation.skip')) {
                 // Skip the rest of the conversation
                 this.isAIToAIMode = false;
                 this.dispatch(ConversationEvent.skipConversation, undefined);
@@ -322,19 +323,23 @@ export class Conversation extends Component {
         // Dispatch continue event with the selected answer
         this.dispatch(ConversationEvent.continue, answer);
 
-        // Disable all answer buttons to prevent multiple clicks
-        if (this.answersElement) {
-            const buttons = this.answersElement.querySelectorAll('button');
-            buttons.forEach(button => {
-                if (button instanceof HTMLButtonElement) {
-                    button.disabled = true;
-                    button.classList.add('disabled');
-                }
-            });
-        }
+        // Only disable buttons and show loading for regular player conversations
+        // AI-to-AI conversations have all data pre-loaded, so keep buttons enabled for quick navigation
+        if (!this.isAIToAIMode) {
+            // Disable all answer buttons to prevent multiple clicks while waiting for API response
+            if (this.answersElement) {
+                const buttons = this.answersElement.querySelectorAll('button');
+                buttons.forEach(button => {
+                    if (button instanceof HTMLButtonElement) {
+                        button.disabled = true;
+                        button.classList.add('disabled');
+                    }
+                });
+            }
 
-        // Show loading state
-        this.showLoading();
+            // Show loading state
+            this.showLoading();
+        }
     }
 
     private handleActionAnswer(answer: string, action: string | undefined, accepted: boolean) {
@@ -349,15 +354,19 @@ export class Conversation extends Component {
             }
         }
 
-        // Disable all answer buttons to prevent multiple clicks
-        if (this.answersElement) {
-            const buttons = this.answersElement.querySelectorAll('button');
-            buttons.forEach(button => {
-                if (button instanceof HTMLButtonElement) {
-                    button.disabled = true;
-                    button.classList.add('disabled');
-                }
-            });
+        // Only disable buttons for regular player conversations
+        // AI-to-AI conversations keep buttons enabled for quick navigation
+        if (!this.isAIToAIMode) {
+            // Disable all answer buttons to prevent multiple clicks
+            if (this.answersElement) {
+                const buttons = this.answersElement.querySelectorAll('button');
+                buttons.forEach(button => {
+                    if (button instanceof HTMLButtonElement) {
+                        button.disabled = true;
+                        button.classList.add('disabled');
+                    }
+                });
+            }
         }
 
         // If action was accepted, dispatch event to execute it
@@ -369,8 +378,8 @@ export class Conversation extends Component {
             const currentData = this.conversationHistory[this.currentHistoryIndex]?.data;
             const actionData = currentData?.actionData;
 
-            // Dispatch storyline-action event to parent components
-            this.dispatchEvent(new CustomEvent('storyline-action', {
+            // Dispatch speech-action event to parent components
+            this.dispatchEvent(new CustomEvent('speech-action', {
                 detail: { action, actionData, accepted: true },
                 bubbles: true
             }));
@@ -386,12 +395,21 @@ export class Conversation extends Component {
             // console.log('[Conversation] User declined action:', action);
             // Continue conversation without executing action
             this.dispatch(ConversationEvent.continue, answer);
-            this.showLoading();
+            // Only show loading for regular conversations
+            if (!this.isAIToAIMode) {
+                this.showLoading();
+            }
         }
     }
 
     private showLoading() {
         if (!this.answersElement) return;
+
+        // Remove any existing loading indicators first
+        const existingLoading = this.answersElement.querySelector('.loading-indicator');
+        if (existingLoading) {
+            existingLoading.remove();
+        }
 
         const loadingElement = document.createElement('div');
         loadingElement.className = 'loading-indicator';
@@ -447,25 +465,29 @@ export class Conversation extends Component {
         // Clear the input
         this.freeTextInput.value = '';
 
-        // Disable input and button to prevent multiple submissions
-        this.freeTextInput.disabled = true;
-        if (this.freeTextSubmit) {
-            this.freeTextSubmit.disabled = true;
-        }
+        // Only disable inputs and show loading for regular player conversations
+        // AI-to-AI conversations keep inputs enabled for quick interaction
+        if (!this.isAIToAIMode) {
+            // Disable input and button to prevent multiple submissions
+            this.freeTextInput.disabled = true;
+            if (this.freeTextSubmit) {
+                this.freeTextSubmit.disabled = true;
+            }
 
-        // Disable all answer buttons too
-        if (this.answersElement) {
-            const buttons = this.answersElement.querySelectorAll('button');
-            buttons.forEach(button => {
-                if (button instanceof HTMLButtonElement) {
-                    button.disabled = true;
-                    button.classList.add('disabled');
-                }
-            });
-        }
+            // Disable all answer buttons too
+            if (this.answersElement) {
+                const buttons = this.answersElement.querySelectorAll('button');
+                buttons.forEach(button => {
+                    if (button instanceof HTMLButtonElement) {
+                        button.disabled = true;
+                        button.classList.add('disabled');
+                    }
+                });
+            }
 
-        // Show loading state
-        this.showLoading();
+            // Show loading state
+            this.showLoading();
+        }
     }
 
     private navigateToPrevious() {

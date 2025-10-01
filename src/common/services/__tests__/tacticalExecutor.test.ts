@@ -21,8 +21,8 @@ describe('TacticalExecutor', () => {
             position: { x: 10, y: 10 },
             health: 80,
             maxHealth: 100,
-            team: 'player',
-            player: 'ai',
+            faction: 'enemy',
+            controller: 'ai',
             direction: 'bottom',
             speed: 'medium',
             action: { current: 'idle' },
@@ -47,7 +47,7 @@ describe('TacticalExecutor', () => {
             position: { x: 15, y: 15 },
             health: 100,
             maxHealth: 100,
-            team: 'enemy',
+            faction: 'enemy',
             player: 'enemy',
             direction: 'left',
             speed: 'medium',
@@ -68,8 +68,8 @@ describe('TacticalExecutor', () => {
             position: { x: 8, y: 10 },
             health: 60,
             maxHealth: 100,
-            team: 'player',
-            player: 'ai',
+            faction: 'enemy',
+            controller: 'ai',
             direction: 'right',
             speed: 'medium',
             action: { current: 'idle' },
@@ -85,9 +85,9 @@ describe('TacticalExecutor', () => {
         // Create mock state with minimal required fields
         mockState = {
             game: {
-                teams: {
-                    player: { members: ['TestChar', 'Ally'], name: 'Player Team' },
-                    enemy: { members: ['Enemy'], name: 'Enemy Team' }
+                factions: {
+                    player: { members: ['TestChar', 'Ally'], name: 'Player Faction' },
+                    enemy: { members: ['Enemy'], name: 'Enemy Faction' }
                 },
                 turn: 'ai',
                 players: ['ai', 'enemy']
@@ -342,9 +342,8 @@ describe('TacticalExecutor', () => {
                 expect(action.command.characters).toHaveLength(1);
                 expect((action.command as any).characters[0].name).toBe('TestChar');
                 expect((action.command as any).characters[0].target).toBeDefined();
-                expect(['melee', 'kill', 'hold', 'retreat']).toContain(
-                    (action.command as any).characters[0].attack
-                );
+                // Attack field no longer exists - just verify target is set
+                expect((action.command as any).characters[0].target).toBeTruthy();
             }
         });
     });

@@ -7,13 +7,29 @@
 export const MAIN_CHARACTER_NAME = 'Jim';
 export const COMPANION_DROID_NAME = 'Data';
 
-// Team Names
-export const PLAYER_TEAM = 'player';
-export const ENEMY_TEAM = 'enemy';
+/**
+ * Get the main character name based on origin or custom settings
+ * @param originId - The selected origin story ID
+ * @returns The character name to use
+ */
+export function getMainCharacterName(_originId?: string): string {
+    // Future: This will check for custom names based on origin
+    // For now, return the default
+    return MAIN_CHARACTER_NAME;
+}
 
-// Player Types
-export const HUMAN_PLAYER = 'human';
-export const AI_PLAYER = 'ai';
+// Faction Names (character allegiance)
+export const PLAYER_FACTION = 'player';
+export const ENEMY_FACTION = 'enemy';
+export const NEUTRAL_FACTION = 'neutral';
+
+// Controller Types (who controls the character)
+export const HUMAN_CONTROLLER = 'human';
+export const AI_CONTROLLER = 'ai';
+
+// Legacy aliases for backward compatibility (to be removed later)
+export const HUMAN_PLAYER = HUMAN_CONTROLLER;
+export const AI_PLAYER = AI_CONTROLLER;
 
 // Animation durations in milliseconds
 export const ANIMATION_DURATIONS = {

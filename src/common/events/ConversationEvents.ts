@@ -18,7 +18,7 @@ export interface ConversationStartData {
     targetCharacter: DeepReadonly<ICharacter>;
 }
 
-// Specific action data types for different storyline actions
+// Specific action data types for different speech actions
 export interface CharacterActionData {
     characters?: Array<{
         name: string;
@@ -46,7 +46,6 @@ export interface AttackActionData {
     combatants?: Array<{
         attacker: string;
         target: string;
-        attackType?: 'melee' | 'hold' | 'kill' | 'retreat';
     }>;
 }
 
@@ -61,7 +60,7 @@ export interface ItemActionData {
 }
 
 // Union type for all possible action data
-export type StorylineActionData = CharacterActionData | MovementActionData | AttackActionData | ItemActionData | void;
+export type ActionData = CharacterActionData | MovementActionData | AttackActionData | ItemActionData | void;
 
 export interface ConversationUpdateData {
     type: string;
@@ -69,12 +68,13 @@ export interface ConversationUpdateData {
     content: string;
     answers?: string[];
     action?: string;
-    actionData?: StorylineActionData;
+    actionData?: ActionData;
+    target?: string;  // For AI-to-AI conversations
 }
 
 interface ConversationActionData {
     action: string;
-    actionData?: StorylineActionData;
+    actionData?: ActionData;
 }
 
 export interface AIToAIConversationData {
