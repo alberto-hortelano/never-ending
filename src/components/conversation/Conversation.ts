@@ -323,20 +323,21 @@ export class Conversation extends Component {
         // Dispatch continue event with the selected answer
         this.dispatch(ConversationEvent.continue, answer);
 
-        // Disable all answer buttons to prevent multiple clicks
-        if (this.answersElement) {
-            const buttons = this.answersElement.querySelectorAll('button');
-            buttons.forEach(button => {
-                if (button instanceof HTMLButtonElement) {
-                    button.disabled = true;
-                    button.classList.add('disabled');
-                }
-            });
-        }
-
-        // Show loading state only for regular conversations (not AI-to-AI)
-        // AI-to-AI conversations have all data pre-loaded, no loading needed
+        // Only disable buttons and show loading for regular player conversations
+        // AI-to-AI conversations have all data pre-loaded, so keep buttons enabled for quick navigation
         if (!this.isAIToAIMode) {
+            // Disable all answer buttons to prevent multiple clicks while waiting for API response
+            if (this.answersElement) {
+                const buttons = this.answersElement.querySelectorAll('button');
+                buttons.forEach(button => {
+                    if (button instanceof HTMLButtonElement) {
+                        button.disabled = true;
+                        button.classList.add('disabled');
+                    }
+                });
+            }
+
+            // Show loading state
             this.showLoading();
         }
     }
@@ -353,15 +354,19 @@ export class Conversation extends Component {
             }
         }
 
-        // Disable all answer buttons to prevent multiple clicks
-        if (this.answersElement) {
-            const buttons = this.answersElement.querySelectorAll('button');
-            buttons.forEach(button => {
-                if (button instanceof HTMLButtonElement) {
-                    button.disabled = true;
-                    button.classList.add('disabled');
-                }
-            });
+        // Only disable buttons for regular player conversations
+        // AI-to-AI conversations keep buttons enabled for quick navigation
+        if (!this.isAIToAIMode) {
+            // Disable all answer buttons to prevent multiple clicks
+            if (this.answersElement) {
+                const buttons = this.answersElement.querySelectorAll('button');
+                buttons.forEach(button => {
+                    if (button instanceof HTMLButtonElement) {
+                        button.disabled = true;
+                        button.classList.add('disabled');
+                    }
+                });
+            }
         }
 
         // If action was accepted, dispatch event to execute it
@@ -460,25 +465,29 @@ export class Conversation extends Component {
         // Clear the input
         this.freeTextInput.value = '';
 
-        // Disable input and button to prevent multiple submissions
-        this.freeTextInput.disabled = true;
-        if (this.freeTextSubmit) {
-            this.freeTextSubmit.disabled = true;
-        }
+        // Only disable inputs and show loading for regular player conversations
+        // AI-to-AI conversations keep inputs enabled for quick interaction
+        if (!this.isAIToAIMode) {
+            // Disable input and button to prevent multiple submissions
+            this.freeTextInput.disabled = true;
+            if (this.freeTextSubmit) {
+                this.freeTextSubmit.disabled = true;
+            }
 
-        // Disable all answer buttons too
-        if (this.answersElement) {
-            const buttons = this.answersElement.querySelectorAll('button');
-            buttons.forEach(button => {
-                if (button instanceof HTMLButtonElement) {
-                    button.disabled = true;
-                    button.classList.add('disabled');
-                }
-            });
-        }
+            // Disable all answer buttons too
+            if (this.answersElement) {
+                const buttons = this.answersElement.querySelectorAll('button');
+                buttons.forEach(button => {
+                    if (button instanceof HTMLButtonElement) {
+                        button.disabled = true;
+                        button.classList.add('disabled');
+                    }
+                });
+            }
 
-        // Show loading state
-        this.showLoading();
+            // Show loading state
+            this.showLoading();
+        }
     }
 
     private navigateToPrevious() {

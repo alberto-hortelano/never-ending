@@ -68,7 +68,7 @@ describe('AIController', () => {
                     name: 'Jim',
                     race: 'human',
                     description: 'The player character',
-                    player: 'human',
+                    controller: 'human', faction: 'player',
                     position: { x: 5, y: 5 },
                     location: '',
                     blocker: true,
@@ -99,7 +99,7 @@ describe('AIController', () => {
                     name: 'data',
                     race: 'robot',
                     description: 'AI companion robot',
-                    player: 'ai',
+                    controller: 'ai', faction: 'enemy',
                     position: { x: 15, y: 15 },
                     location: '',
                     blocker: true,
@@ -186,17 +186,12 @@ describe('AIController', () => {
                 characters: [{ 
                     name: 'data', 
                     target: 'enemy',
-                    attack: 'ranged' // Should be 'kill' for ranged according to the spec
                 }]
             };
             
-            // First check if 'ranged' is valid, if not use 'kill'
-            let validated = parser.validate(command);
-            if (!validated && command.characters[0]) {
-                command.characters[0].attack = 'kill';
-                validated = parser.validate(command);
-            }
-            
+            // Validate the command without attack subtypes
+            const validated = parser.validate(command);
+
             expect(validated).toBeTruthy();
             expect(validated?.type).toBe('attack');
         });
@@ -217,20 +212,34 @@ describe('AIController', () => {
     });
     
     describe('Location Resolution', () => {
-        it('should resolve character names to positions', () => {
+        it('should resolve character names to nearest empty cell', () => {
             const location = (aiController as any).resolveLocation('Jim');
-            expect(location).toEqual({ x: 5, y: 5 });
+            // Jim is at (5, 5), so we should get an adjacent empty cell
+            expect(location).toBeDefined();
+            expect(location.x).toBeGreaterThanOrEqual(4);
+            expect(location.x).toBeLessThanOrEqual(6);
+            expect(location.y).toBeGreaterThanOrEqual(4);
+            expect(location.y).toBeLessThanOrEqual(6);
+            // Should not be the exact character position
+            expect(location.x !== 5 || location.y !== 5).toBe(true);
         });
-        
+
         it('should throw error for coordinate strings', () => {
             expect(() => (aiController as any).resolveLocation('10, 20')).toThrow(
                 "[AI] Invalid location format '10, 20': Movement locations must be room names or character names, not coordinates"
             );
         });
-        
+
         it('should handle case-insensitive character names', () => {
             const location = (aiController as any).resolveLocation('JIM');
-            expect(location).toEqual({ x: 5, y: 5 });
+            // Jim is at (5, 5), so we should get an adjacent empty cell
+            expect(location).toBeDefined();
+            expect(location.x).toBeGreaterThanOrEqual(4);
+            expect(location.x).toBeLessThanOrEqual(6);
+            expect(location.y).toBeGreaterThanOrEqual(4);
+            expect(location.y).toBeLessThanOrEqual(6);
+            // Should not be the exact character position
+            expect(location.x !== 5 || location.y !== 5).toBe(true);
         });
     });
     
@@ -322,7 +331,6 @@ describe('AIController', () => {
                 characters: [{
                     name: 'data',
                     target: 'Jim',
-                    attack: 'kill'  // 'kill' is the attack type for ranged in AIController
                 }]
             };
 
@@ -350,21 +358,21 @@ describe('AIController', () => {
             );
         });
         
-        it('should handle overwatch/hold commands', async () => {
+        it('should handle generic attack commands', async () => {
             const command = {
                 type: 'attack',
                 characters: [{
                     name: 'data',
-                    target: 'Jim',
-                    attack: 'hold'
+                    target: 'Jim'
                 }]
             };
-            
+
             const character = state.characters.find((c: any) => c.name === 'data');
             await (aiController as any).executeAttack(command, character);
-            
+
+            // Should show shooting interface for generic attacks
             expect(dispatchSpy).toHaveBeenCalledWith(
-                ControlsEvent.showOverwatch,
+                ControlsEvent.showShooting,
                 'data'
             );
         });

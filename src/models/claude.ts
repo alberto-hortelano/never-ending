@@ -1,18 +1,19 @@
 import type { IMessage } from '../common/interfaces';
 
 import Anthropic from '@anthropic-ai/sdk';
-import { getPrompt } from '../prompts';
+import { PromptTemplate } from '../prompts/PromptTemplate';
 import { initialSetup } from '../prompts/shortPrompts';
 import { FileLogger } from './fileLogger';
+import { LANGUAGE_NAMES, LANGUAGE_INSTRUCTIONS, getMainCharacterName } from '../common/constants';
 
 const anthropic = new Anthropic();
 
 // Model fallback configuration
 const CLAUDE_MODELS = [
-    'claude-opus-4-1',         // Primary model
-    'claude-opus-4-0', // First fallback
-    'claude-sonnet-4-0', // Second fallback
-    'claude-3-7-sonnet-latest',     // Third fallback
+    'claude-sonnet-4-5',         // Primary model
+    'claude-opus-4-1', // First fallback
+    'claude-opus-4-0', // Second fallback
+    'claude-sonnet-4-0', // Third fallback
 ] as const;
 
 type ClaudeModel = typeof CLAUDE_MODELS[number];
@@ -269,7 +270,21 @@ export const sendMessage: SendMessage = async (messages: IMessage[]) => {
     // Clean up expired fallbacks periodically
     fallbackManager.cleanupExpired();
 
-    const narrativeArchitect = await getPrompt('narrativeArchitect');
+    // Load the narrative architect prompt with variable substitution
+    const promptTemplate = new PromptTemplate();
+    // Extract language from the messages if available, default to 'es'
+    let language = 'es';
+    const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+    if (lastUserMessage?.content.includes('Language: English')) {
+        language = 'en';
+    }
+
+    const narrativeArchitect = await promptTemplate.load('narrativeArchitect', {
+        language: LANGUAGE_NAMES[language as keyof typeof LANGUAGE_NAMES],
+        languageInstruction: LANGUAGE_INSTRUCTIONS[language as keyof typeof LANGUAGE_INSTRUCTIONS],
+        mainCharacter: getMainCharacterName(),
+        companionName: 'Companion' // Default, will be replaced based on origin in actual game
+    });
 
     // Get the current model (considering active fallbacks)
     const currentModel = fallbackManager.getCurrentModel();

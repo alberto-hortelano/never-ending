@@ -43,7 +43,7 @@ describe('AI Conversation Range', () => {
                     name: 'data',
                     race: 'robot',
                     description: 'AI companion robot',
-                    player: 'ai',
+                    controller: 'ai', faction: 'enemy',
                     position: { x: 15, y: 15 },
                     location: '',
                     blocker: true,
@@ -75,7 +75,7 @@ describe('AI Conversation Range', () => {
                     name: 'Jim',
                     race: 'human',
                     description: 'The player character',
-                    player: 'human',
+                    controller: 'human', faction: 'player',
                     position: { x: 17, y: 15 }, // 2 cells away
                     location: '',
                     blocker: true,
@@ -107,7 +107,7 @@ describe('AI Conversation Range', () => {
                     name: 'ally',
                     race: 'human',
                     description: 'Friendly character',
-                    player: 'human',
+                    controller: 'human', faction: 'player',
                     position: { x: 15, y: 18 }, // 3 cells away vertically
                     location: '',
                     blocker: true,

@@ -5,7 +5,7 @@ import type { ICharacter, IItem, IWeapon, IDoor, Direction, IStoryState, ItemTyp
 import { DoorService } from './DoorService';
 import { weapons as availableWeapons, items as availableItems } from '../../data/state';
 import { CharacterPositioningError } from '../errors/CharacterPositioningError';
-import { MAIN_CHARACTER_NAME, COMPANION_DROID_NAME, PLAYER_TEAM, HUMAN_PLAYER } from '../constants';
+import { MAIN_CHARACTER_NAME, COMPANION_DROID_NAME, PLAYER_FACTION, HUMAN_CONTROLLER } from '../constants';
 import { CharacterSpawningService, type CharacterSpawnData } from './CharacterSpawningService';
 import { MapGenerationService } from './MapGenerationService';
 
@@ -424,8 +424,8 @@ export class StoryCommandExecutor extends EventBus<UpdateStateEventsMap, UpdateS
             name: characterName,
             position: position,
             race: isPlayer ? 'human' : (charData.race || 'robot'),
-            player: HUMAN_PLAYER,
-            team: PLAYER_TEAM,
+            controller: HUMAN_CONTROLLER,
+            faction: PLAYER_FACTION,
             palette: isPlayer ?
                 { skin: '#d7a55f', helmet: 'white', suit: 'white' } :
                 (charData.palette || { skin: 'yellow', helmet: 'gold', suit: 'gold' })
@@ -482,20 +482,31 @@ export class StoryCommandExecutor extends EventBus<UpdateStateEventsMap, UpdateS
 
         console.log(`[StoryCommandExecutor] Spawning NPC ${charData.name} at valid position (${position.x}, ${position.y})`);
 
+        // Determine controller assignment based on faction
+        let assignedController = charData.controller || 'ai'; // Default to AI for NPCs
+        if (charData.faction === 'enemy') {
+            assignedController = 'ai';
+        } else if (charData.faction === 'player') {
+            assignedController = 'human';
+        }
+        // neutral faction remains with default or specified player
+
         const newCharacter = this.characterSpawningService.createCharacterFromBase({
             name: charData.name,
             race: charData.race || 'human',
             description: charData.description || '',
             position: position,
             direction: this.mapDirection(charData.orientation || 'down'),
-            player: charData.player || 'ai',
-            team: charData.team || this.characterSpawningService.determineTeam(charData),
+            controller: assignedController,
+            faction: charData.faction || this.characterSpawningService.determineFaction(charData),
             palette: charData.palette || {
                 skin: '#d7a55f',
                 helmet: '#808080',
                 suit: '#404040'
             }
         });
+
+        console.log(`[StoryCommandExecutor] Spawning NPC ${charData.name} with faction ${charData.faction} assigned to controller ${assignedController}`);
 
         this.dispatch(UpdateStateEvent.addCharacter, newCharacter);
         occupiedPositions.add(`${position.x},${position.y}`);

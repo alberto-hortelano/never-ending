@@ -97,7 +97,7 @@ describe.skip('Multiplayer Smooth Movement - NEEDS REWRITE', () => {
         // Update first character
         const char1 = initialState.characters[0]!;
         char1.name = 'player1-char';
-        char1.player = 'player1';
+        char1.controller = 'player1';
         char1.position = { x: 5, y: 5 };
         char1.location = 'test-location';
         char1.direction = 'down';
@@ -107,7 +107,7 @@ describe.skip('Multiplayer Smooth Movement - NEEDS REWRITE', () => {
         // Update second character
         const char2 = initialState.characters[1]!;
         char2.name = 'player2-char';
-        char2.player = 'player2';
+        char2.controller = 'player2';
         char2.position = { x: 10, y: 10 };
         char2.location = 'test-location';
         char2.direction = 'up';
@@ -183,7 +183,7 @@ describe.skip('Multiplayer Smooth Movement - NEEDS REWRITE', () => {
                     type: UpdateStateEvent.characterPath,
                     data: {
                         name: 'player2-char',
-                        player: 'player2',
+                        controller: 'player2',
                         position: { x: 10, y: 10 },
                         direction: 'up',
                         path: path,
@@ -266,7 +266,7 @@ describe.skip('Multiplayer Smooth Movement - NEEDS REWRITE', () => {
                     type: UpdateStateEvent.characterPath,
                     data: {
                         name: 'player2-char',
-                        player: 'player2',
+                        controller: 'player2',
                         position: { x: 10, y: 10 },
                         direction: 'up',
                         path: [{ x: 10, y: 9 }],
@@ -316,7 +316,7 @@ describe.skip('Multiplayer Smooth Movement - NEEDS REWRITE', () => {
                         type: UpdateStateEvent.characterPath,
                         data: {
                             name: 'player2-char',
-                            player: 'player2',
+                            controller: 'player2',
                             position: { x: 10, y: 10 },
                             direction: 'up',
                             path: path,

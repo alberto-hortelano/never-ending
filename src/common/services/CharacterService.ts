@@ -164,7 +164,7 @@ export class CharacterService extends EventBus {
     position: ICoord;
   } {
     const race = (dataset.race || 'human') as ICharacter['race'];
-    const player = dataset.player || '';
+    const player = dataset.controller || '';
     const palette = this.parseCharacterPalette(dataset.palette);
     const direction = dataset.direction as Direction | undefined;
     const position = this.getPositionFromDataset(dataset);

@@ -103,7 +103,7 @@ export class MeleeCombat extends EventBus<
         }
 
         const currentTurn = this.state.game.turn;
-        if (character.player !== currentTurn) {
+        if (character.controller !== currentTurn) {
             return;
         }
 

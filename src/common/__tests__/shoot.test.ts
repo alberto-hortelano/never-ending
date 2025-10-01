@@ -56,7 +56,7 @@ describe('Shoot', () => {
         testCharacter = createMockCharacter({
             direction: 'right',
             position: { x: 5, y: 5 },
-            player: 'human'
+            controller: 'human', faction: 'player'
         });
         testMap = createMockMap(15, 15);
 
@@ -310,7 +310,7 @@ describe('Shoot', () => {
             const targetCharacter = createMockCharacter({
                 name: 'target',
                 position: { x: 7, y: 5 },
-                player: 'ai'
+                controller: 'ai', faction: 'enemy'
             });
 
             mockState.findCharacter.mockImplementation((name: string) => {
@@ -350,7 +350,7 @@ describe('Shoot', () => {
             const targetCharacter = createMockCharacter({
                 name: 'target',
                 position: { x: 1, y: 5 },
-                player: 'ai'
+                controller: 'ai', faction: 'enemy'
             });
 
             mockState.findCharacter.mockImplementation((name: string) => {
@@ -384,7 +384,7 @@ describe('Shoot', () => {
             const targetCharacter = createMockCharacter({
                 name: 'target',
                 position: { x: 7, y: 5 },
-                player: 'ai'
+                controller: 'ai', faction: 'enemy'
             });
 
             // Set up character with weapon
@@ -432,7 +432,7 @@ describe('Shoot', () => {
             const targetCharacter = createMockCharacter({
                 name: 'target',
                 position: { x: 7, y: 5 },
-                player: 'ai'
+                controller: 'ai', faction: 'enemy'
             });
 
             // High damage weapon should use laser
@@ -477,7 +477,7 @@ describe('Shoot', () => {
             const targetCharacter = createMockCharacter({
                 name: 'target',
                 position: { x: 7, y: 5 },
-                player: 'ai'
+                controller: 'ai', faction: 'enemy'
             });
 
             // No weapon equipped
@@ -514,7 +514,7 @@ describe('Shoot', () => {
             const targetCharacter = createMockCharacter({
                 name: 'target',
                 position: { x: 7, y: 5 },
-                player: 'ai',
+                controller: 'ai', faction: 'enemy',
                 health: 100,
                 maxHealth: 100
             });
@@ -577,13 +577,13 @@ describe('Shoot', () => {
             const closeTarget = createMockCharacter({
                 name: 'closeTarget',
                 position: { x: 6, y: 5 }, // 1 unit away
-                player: 'ai'
+                controller: 'ai', faction: 'enemy'
             });
 
             const farTarget = createMockCharacter({
                 name: 'farTarget',
                 position: { x: 12, y: 5 }, // 7 units away (within 20 range)
-                player: 'ai'
+                controller: 'ai', faction: 'enemy'
             });
 
             // Set up character with weapon
@@ -650,7 +650,7 @@ describe('Shoot', () => {
     describe('edge cases', () => {
         it('should handle character at map edge', () => {
             const edgeCharacter = createMockCharacter({
-                player: 'human',
+                controller: 'human', faction: 'player',
                 position: { x: 0, y: 0 },
                 direction: 'down'
             });

@@ -59,9 +59,9 @@ export class DefenseWheel extends Component {
                 
                 // DEBUG: Multiplayer defense wheel filtering
                 // console.log('[DefenseWheel] Multiplayer check - Network player:', networkPlayerId);
-                // console.log('[DefenseWheel] Defender character:', defenderCharacter?.name, 'Player:', defenderCharacter?.player);
+                // console.log('[DefenseWheel] Defender character:', defenderCharacter?.name, 'Player:', defenderCharacter?.controller);
 
-                if (!defenderCharacter || defenderCharacter.player !== networkPlayerId) {
+                if (!defenderCharacter || defenderCharacter.controller !== networkPlayerId) {
                     // DEBUG: Not the defender, ignoring
                     // console.log('[DefenseWheel] Not the defender in multiplayer, ignoring event');
                     return;

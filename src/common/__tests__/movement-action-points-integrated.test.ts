@@ -65,7 +65,8 @@ describe('Movement action points - integrated test', () => {
         // Add a test character to the state
         const testCharacter: ICharacter = {
             name: 'TestChar',
-            player: 'player1',
+            controller: 'player1',
+            faction: 'player',
             position: { x: 5, y: 5 },
             direction: 's' as Direction,
             race: 'human',
@@ -156,7 +157,7 @@ describe('Movement action points - integrated test', () => {
         // Simulate first position update
         eventBus.dispatch(StateChangeEvent.characterPosition, {
             name: 'TestChar',
-            player: 'player1',
+            controller: 'player1',
             position: { x: 6, y: 5 },
             direction: 'e' as Direction
         });
@@ -172,7 +173,7 @@ describe('Movement action points - integrated test', () => {
         // Simulate second position update
         eventBus.dispatch(StateChangeEvent.characterPosition, {
             name: 'TestChar',
-            player: 'player1',
+            controller: 'player1',
             position: { x: 7, y: 5 },
             direction: 'e' as Direction
         });
@@ -187,7 +188,7 @@ describe('Movement action points - integrated test', () => {
         // Simulate third position update
         eventBus.dispatch(StateChangeEvent.characterPosition, {
             name: 'TestChar',
-            player: 'player1',
+            controller: 'player1',
             position: { x: 8, y: 5 },
             direction: 'e' as Direction
         });

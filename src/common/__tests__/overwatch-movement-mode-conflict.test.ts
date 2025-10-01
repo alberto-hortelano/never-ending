@@ -59,7 +59,7 @@ describe('Overwatch Movement Mode Conflict', () => {
             name: 'testCharacter',
             direction: 'right' as Direction,
             position: { x: 5, y: 5 },
-            player: 'human',
+            controller: 'human', faction: 'player',
             actions: {
                 ...baseCharacter.actions,
                 pointsLeft: 10,

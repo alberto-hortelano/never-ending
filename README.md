@@ -46,7 +46,7 @@ The game will be available at `http://localhost:3000`
 ### Basic Gameplay
 
 1. **Start a Game**: Click "Single Player" from the main menu
-2. **Control Characters**: Click on your characters (shown in your team color)
+2. **Control Characters**: Click on your characters (shown in your faction color)
 3. **Move**: Click on highlighted hexes to move your character
 4. **Actions**: Use the action bar at the bottom for combat and abilities
 5. **End Turn**: Click "End Turn" when you've used your action points

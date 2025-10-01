@@ -53,7 +53,7 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
         const character = this.findCharacter(characterName);
         if (!character) return false;
 
-        return character.player === this.getCurrentTurn();
+        return character.controller === this.getCurrentTurn();
     }
 
     private validatePosition(position: { x: number; y: number }, characterName: string): void {
@@ -93,7 +93,7 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
 
         const fromNetwork = hasProperty(characterData, 'fromNetwork') ? characterData.fromNetwork as boolean : undefined;
         if (!this.isValidTurn(characterData.name, fromNetwork)) {
-            console.warn(`Invalid turn: ${character.player} tried to move during ${this.getCurrentTurn()}'s turn`);
+            console.warn(`Invalid turn: ${character.controller} tried to move during ${this.getCurrentTurn()}'s turn`);
             return;
         }
 
@@ -116,7 +116,7 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
 
         const fromNetwork = hasProperty(characterData, 'fromNetwork') ? characterData.fromNetwork as boolean : undefined;
         if (!this.isValidTurn(characterData.name, fromNetwork)) {
-            console.warn(`Invalid turn: ${character.player} tried to set path during ${this.getCurrentTurn()}'s turn`);
+            console.warn(`Invalid turn: ${character.controller} tried to set path during ${this.getCurrentTurn()}'s turn`);
             return;
         }
 
@@ -143,7 +143,7 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
 
         const fromNetwork = hasProperty(data, 'fromNetwork') ? data.fromNetwork as boolean : undefined;
         if (!this.isValidTurn(data.characterName, fromNetwork)) {
-            console.warn(`Invalid turn: ${character.player} tried to rotate during ${this.getCurrentTurn()}'s turn`);
+            console.warn(`Invalid turn: ${character.controller} tried to rotate during ${this.getCurrentTurn()}'s turn`);
             return;
         }
 
@@ -160,7 +160,7 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
 
         const fromNetwork = hasProperty(data, 'fromNetwork') ? data.fromNetwork as boolean : undefined;
         if (!this.isValidTurn(data.characterName, fromNetwork)) {
-            console.warn(`Invalid turn: ${character.player} tried to update inventory during ${this.getCurrentTurn()}'s turn`);
+            console.warn(`Invalid turn: ${character.controller} tried to update inventory during ${this.getCurrentTurn()}'s turn`);
             return;
         }
 
@@ -231,7 +231,7 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
 
         const fromNetwork = hasProperty(data, 'fromNetwork') ? data.fromNetwork as boolean : undefined;
         if (!this.isValidTurn(data.characterName, fromNetwork)) {
-            console.warn(`Invalid turn: ${character.player} tried to use action points during ${this.getCurrentTurn()}'s turn`);
+            console.warn(`Invalid turn: ${character.controller} tried to use action points during ${this.getCurrentTurn()}'s turn`);
             return;
         }
 
@@ -252,7 +252,7 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
 
     private onResetActionPoints(data: UpdateStateEventsMap[UpdateStateEvent.resetActionPoints]) {
         this.#characters.forEach(character => {
-            if (character.player === data.player) {
+            if (character.controller === data.controller) {
                 character.actions.pointsLeft = 100;
                 character.actions.pendingCost = 0;
                 this.dispatch(StateChangeEvent.characterActions, structuredClone(character));
@@ -281,7 +281,7 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
 
     resetActionPointsForTurn(turn: string) {
         this.#characters.forEach(character => {
-            if (character.player === turn) {
+            if (character.controller === turn) {
                 character.actions.pointsLeft = 100;
                 character.actions.pendingCost = 0;
                 this.dispatch(StateChangeEvent.characterActions, structuredClone(character));
@@ -317,7 +317,8 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
             location: '',  // Required by IPositionable
             blocker: true,  // Characters are blockers
             direction: data.direction ? toDirection(data.direction) : 'down',
-            player: data.player || this.getCurrentTurn(),
+            controller: data.controller || this.getCurrentTurn(),
+            faction: data.faction || 'neutral',
             action: data.action ? toAction(data.action) : 'idle',
             path: [],
             health: data.health || 100,

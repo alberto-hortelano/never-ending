@@ -379,9 +379,8 @@ export class Conversation extends EventBus<
                         answers: [i18n.t('common.accept'), i18n.t('common.reject')],  // Action buttons
                         action: 'map'  // Pass the map action
                     };
-                } else if (parsed.type === 'movement' || parsed.type === 'attack' || 
-                          parsed.type === 'character' || parsed.type === 'item' || 
-                          parsed.type === 'tactical_directive') {
+                } else if (parsed.type === 'movement' || parsed.type === 'attack' ||
+                          parsed.type === 'character' || parsed.type === 'item') {
                     // AI is taking a non-conversation action - end the conversation
                     // DEBUG: console.log('[Conversation] AI returned non-speech command:', parsed.type);
                     // DEBUG: console.log('[Conversation] Ending conversation as AI wants to perform action');
@@ -637,8 +636,8 @@ export class Conversation extends EventBus<
 You must generate the ENTIRE conversation at once with all exchanges between the two characters.
 
 ### Characters:
-- Speaker: ${speaker.name} (${speaker.player === 'ai1' ? 'Allied' : 'Enemy'})
-- Listener: ${listener.name} (${listener.player === 'ai1' ? 'Allied' : 'Enemy'})
+- Speaker: ${speaker.name} (${speaker.controller === 'ai1' ? 'Allied' : 'Enemy'})
+- Listener: ${listener.name} (${listener.controller === 'ai1' ? 'Allied' : 'Enemy'})
 
 ${storyContext ? `### Story Context:\n${storyContext}\n` : ''}
 

@@ -1,6 +1,6 @@
 import type { ICharacter, ICell, ICoord } from '../interfaces';
 import { baseCharacter } from '../../data/state';
-import { MAIN_CHARACTER_NAME, COMPANION_DROID_NAME, PLAYER_TEAM, HUMAN_PLAYER } from '../constants';
+import { MAIN_CHARACTER_NAME, COMPANION_DROID_NAME, PLAYER_FACTION, HUMAN_CONTROLLER } from '../constants';
 import { CharacterPositioningError } from '../errors/CharacterPositioningError';
 
 export interface CharacterSpawnData {
@@ -14,8 +14,7 @@ export interface CharacterSpawnData {
         helmet: string;
         suit: string;
     };
-    player?: string;
-    team?: string;
+    controller?: string;
     faction?: string;
 }
 
@@ -138,10 +137,18 @@ export class CharacterSpawningService {
             return availableCells[randomIndex] ?? null;
         }
 
-        // If all cells are occupied, return a random room cell (shouldn't happen in normal gameplay)
+        // If all cells in the room are occupied, find an adjacent free cell near the room
         if (roomCells.length > 0) {
-            const randomIndex = Math.floor(Math.random() * roomCells.length);
-            return roomCells[randomIndex] ?? null;
+            console.warn(`[CharacterSpawningService] All cells in room "${roomName}" are occupied, searching for adjacent position`);
+            // Try each room cell and find an adjacent free position
+            for (const roomCell of roomCells) {
+                const nearPos = this.findNearPosition(roomCell, map, occupiedPositions);
+                if (nearPos) {
+                    console.log(`[CharacterSpawningService] Found adjacent position (${nearPos.x}, ${nearPos.y}) near room`);
+                    return nearPos;
+                }
+            }
+            console.error(`[CharacterSpawningService] Could not find any free position near room "${roomName}"`);
         }
 
         return null;
@@ -218,20 +225,20 @@ export class CharacterSpawningService {
         return Array.from(rooms);
     }
 
-    public determineTeam(charData: CharacterSpawnData): string {
+    public determineFaction(charData: CharacterSpawnData): string {
         // Use faction field if explicitly provided
         if (charData.faction) {
-            // Map faction values to team values
+            // Map faction values to faction values
             if (charData.faction === 'enemy') {
                 return 'enemy';
             }
             if (charData.faction === 'player') {
-                return PLAYER_TEAM;
+                return PLAYER_FACTION;
             }
             if (charData.faction === 'neutral') {
                 return 'neutral';
             }
-            // If faction is already a team value, use it directly
+            // If faction is already a faction value, use it directly
             return charData.faction;
         }
 
@@ -242,7 +249,7 @@ export class CharacterSpawningService {
         }
 
         if (desc.includes('ally') || desc.includes('friend') || desc.includes('aliado')) {
-            return PLAYER_TEAM;
+            return PLAYER_FACTION;
         }
 
         return 'neutral';
@@ -260,8 +267,8 @@ export class CharacterSpawningService {
                 race: 'human',
                 description: 'The player character',
                 location: firstRoomName,
-                player: HUMAN_PLAYER,
-                team: PLAYER_TEAM,
+                controller: HUMAN_CONTROLLER,
+                faction: PLAYER_FACTION,
                 palette: {
                     skin: '#d7a55f',
                     helmet: 'white',
@@ -273,8 +280,8 @@ export class CharacterSpawningService {
                 race: 'robot',
                 description: 'Your robot companion',
                 location: MAIN_CHARACTER_NAME, // Spawn near the player character
-                player: HUMAN_PLAYER,
-                team: PLAYER_TEAM,
+                controller: HUMAN_CONTROLLER,
+                faction: PLAYER_FACTION,
                 palette: {
                     skin: 'yellow',
                     helmet: 'gold',

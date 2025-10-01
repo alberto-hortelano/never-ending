@@ -53,14 +53,14 @@ describe('Multiplayer Character Positioning', () => {
             {
                 ...baseCharacter,
                 name: 'Player 1',
-                player: 'player1',
+                controller: 'player1',
                 location: 'room2',
                 position: { x: 0, y: 0 } // Invalid initial position
             },
             {
                 ...baseCharacter,
                 name: 'Player 2',
-                player: 'player2',
+                controller: 'player2',
                 location: 'room3',
                 position: { x: 0, y: 0 } // Invalid initial position
             }
@@ -69,8 +69,8 @@ describe('Multiplayer Character Positioning', () => {
         const positionedCharacters = positionCharacters(characters, map);
         
         // Check that characters were positioned in their respective rooms
-        const player1 = positionedCharacters.find(c => c.player === 'player1');
-        const player2 = positionedCharacters.find(c => c.player === 'player2');
+        const player1 = positionedCharacters.find(c => c.controller === 'player1');
+        const player2 = positionedCharacters.find(c => c.controller === 'player2');
         
         expect(player1).toBeDefined();
         expect(player2).toBeDefined();
@@ -99,14 +99,14 @@ describe('Multiplayer Character Positioning', () => {
             {
                 ...baseCharacter,
                 name: 'Player 1',
-                player: 'player1',
+                controller: 'player1',
                 location: 'room2',
                 position: { x: 0, y: 0 }
             },
             {
                 ...baseCharacter,
                 name: 'Player 2',
-                player: 'player2',
+                controller: 'player2',
                 location: 'room2', // Same room as player 1
                 position: { x: 0, y: 0 }
             }
@@ -114,8 +114,8 @@ describe('Multiplayer Character Positioning', () => {
         
         const positionedCharacters = positionCharacters(characters, map);
         
-        const player1 = positionedCharacters.find(c => c.player === 'player1');
-        const player2 = positionedCharacters.find(c => c.player === 'player2');
+        const player1 = positionedCharacters.find(c => c.controller === 'player1');
+        const player2 = positionedCharacters.find(c => c.controller === 'player2');
         
         // Both should be in room2
         expect(player1!.position.x).toBeGreaterThanOrEqual(1);
@@ -140,14 +140,14 @@ describe('Multiplayer Character Positioning', () => {
             {
                 ...baseCharacter,
                 name: 'Player 1',
-                player: 'player1',
+                controller: 'player1',
                 location: 'nonexistent-room',
                 position: { x: 5, y: 5 } // Center position
             }
         ];
         
         const positionedCharacters = positionCharacters(characters, map);
-        const player1 = positionedCharacters.find(c => c.player === 'player1');
+        const player1 = positionedCharacters.find(c => c.controller === 'player1');
         
         // Should keep original position since no valid room was found
         expect(player1!.position).toEqual({ x: 5, y: 5 });

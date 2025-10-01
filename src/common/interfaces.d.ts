@@ -26,7 +26,7 @@ export interface IGame {
     turn: string;
     players: string[];
     playerInfo?: Record<string, IPlayerInfo>;
-    teams?: ITeamConfiguration;
+    factions?: IFactionConfiguration;
 }
 
 export interface IPlayerInfo {
@@ -34,11 +34,11 @@ export interface IPlayerInfo {
     isAI?: boolean;
 }
 
-export interface ITeamConfiguration {
-    [teamId: string]: ITeamDefinition;
+export interface IFactionConfiguration {
+    [factionId: string]: IFactionDefinition;
 }
 
-export interface ITeamDefinition {
+export interface IFactionDefinition {
     name: string;
     hostile: string[];
     allied?: string[];
@@ -135,8 +135,8 @@ export interface ICharacter extends IMovable {
     race: Race;
     description: string;
     action: Action;
-    player: string;
-    team?: string;
+    controller: string;  // who controls this character: 'human' or 'ai'
+    faction: string;     // character allegiance: 'player', 'enemy', or 'neutral'
     palette: ICharacterPalette;
     inventory: IInventory;
     actions: ICharacterActions;

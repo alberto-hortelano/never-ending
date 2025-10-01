@@ -224,7 +224,7 @@ describe('Complete AI Session Simulation', () => {
             });
             
             // Trigger AI turn
-            eventBus.dispatch(GameEvent.play, { characterName: 'VI-GO', player: 'ai' });
+            eventBus.dispatch(GameEvent.play, { characterName: 'VI-GO', controller: 'ai', faction: 'enemy' });
             
             // Wait for AI processing
             await new Promise(resolve => setTimeout(resolve, 100));

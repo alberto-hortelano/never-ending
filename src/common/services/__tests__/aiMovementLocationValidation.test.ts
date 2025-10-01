@@ -76,8 +76,8 @@ describe('AI Movement Location Validation', () => {
                     name: 'Jim',
                     race: 'human',
                     description: 'The player character',
-                    player: 'human',
-                    team: 'player',
+                    controller: 'human',
+                    faction: 'player',
                     position: { x: 7, y: 7 }, // In Cargo Bay
                     location: '',
                     blocker: true,
@@ -108,8 +108,8 @@ describe('AI Movement Location Validation', () => {
                     name: 'Enemy Guard',
                     race: 'human',
                     description: 'An enemy guard',
-                    player: 'ai',
-                    team: 'enemy',
+                    controller: 'ai',
+                    faction: 'enemy',
                     position: { x: 17, y: 7 }, // In Bridge
                     location: '',
                     blocker: true,
@@ -140,8 +140,8 @@ describe('AI Movement Location Validation', () => {
                     name: 'Rusty',
                     race: 'robot',
                     description: 'AI companion',
-                    player: 'human',
-                    team: 'player',
+                    controller: 'human',
+                    faction: 'player',
                     position: { x: 8, y: 8 }, // In Cargo Bay
                     location: '',
                     blocker: true,

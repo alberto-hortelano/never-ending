@@ -59,7 +59,7 @@ describe('Overwatch to Movement Transition', () => {
             name: 'testCharacter',
             direction: 'right' as const,
             position: { x: 5, y: 5 },
-            player: 'human',
+            controller: 'human', faction: 'player',
             actions: {
                 ...baseCharacter.actions,
                 pointsLeft: 10,

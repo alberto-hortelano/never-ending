@@ -46,7 +46,6 @@ export interface AttackActionData {
     combatants?: Array<{
         attacker: string;
         target: string;
-        attackType?: 'melee' | 'hold' | 'kill' | 'retreat';
     }>;
 }
 

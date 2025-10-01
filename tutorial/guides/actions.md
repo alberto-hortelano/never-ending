@@ -124,9 +124,9 @@ Every turn in Never Ending, you have 100 Action Points (AP) to spend on various 
 
 ### Spot Target
 - **Cost**: 15 AP
-- **Description**: Mark enemy for team
+- **Description**: Mark enemy for faction
 - **Use When**: Coordinating attacks
-- **Benefit**: Team gets +10% accuracy
+- **Benefit**: Faction gets +10% accuracy
 
 ### Interact
 - **Cost**: 10-20 AP
@@ -206,7 +206,7 @@ Total: 100 AP
 1. **Improve position** - Better angles
 2. **Support allies** - Covering fire
 3. **Reload weapons** - Maintain readiness
-4. **Mark targets** - Team coordination
+4. **Mark targets** - Faction coordination
 
 ### Low Priority Actions
 1. **Collect items** - Non-essential loot
@@ -219,7 +219,7 @@ Total: 100 AP
 - **Plan ahead**: Know your full turn before acting
 - **Action order**: Movement before shooting usually
 - **Reserve wisely**: Keep AP for critical moments
-- **Team coordination**: Spread AP usage across team
+- **Faction coordination**: Spread AP usage across faction
 
 ### Common AP Wastes
 - Moving unnecessarily

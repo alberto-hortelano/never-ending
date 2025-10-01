@@ -4,7 +4,7 @@ import { initialState } from '../../../data/state';
 import { EventBus } from '../../events';
 import { UpdateStateEvent, GUIEvent } from '../../events';
 
-describe('Overwatch Team-based Targeting', () => {
+describe('Overwatch Faction-based Targeting', () => {
     let overwatch: Overwatch;
     let state: any; // Use any for test manipulation
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -12,7 +12,7 @@ describe('Overwatch Team-based Targeting', () => {
     let dispatchSpy: jest.SpyInstance;
 
     beforeEach(() => {
-        // Create initial state with team configuration
+        // Create initial state with faction configuration
         const stateData = initialState(40, 50);
         state = new State(stateData) as any; // Cast to any for test manipulation
         
@@ -28,7 +28,7 @@ describe('Overwatch Team-based Targeting', () => {
         jest.clearAllMocks();
     });
 
-    test('Player overwatch should NOT shoot at Data (same team)', () => {
+    test('Player overwatch should NOT shoot at Data (same faction)', () => {
         // Setup: Player in overwatch mode
         const player = state.characters.find((c: any) => c.name === 'Jim')!;
         const data = state.characters.find((c: any) => c.name === 'Data')!;
@@ -54,7 +54,7 @@ describe('Overwatch Team-based Targeting', () => {
         expect(shootEvents).toHaveLength(0);
     });
 
-    test('Player overwatch SHOULD shoot at enemy (different team)', () => {
+    test('Player overwatch SHOULD shoot at enemy (different faction)', () => {
         // Setup: Player in overwatch mode
         const player = state.characters.find((c: any) => c.name === 'Jim')!;
         const enemy = state.characters.find((c: any) => c.name === 'enemy')!;
@@ -93,7 +93,7 @@ describe('Overwatch Team-based Targeting', () => {
         expect(damageEvents[0][1].targetName).toBe('enemy');
     });
 
-    test('Data overwatch should NOT shoot at player (same team)', () => {
+    test('Data overwatch should NOT shoot at player (same faction)', () => {
         // Setup: Data in overwatch mode
         const data = state.characters.find((c: any) => c.name === 'Data')!;
         const player = state.characters.find((c: any) => c.name === 'Jim')!;
@@ -119,7 +119,7 @@ describe('Overwatch Team-based Targeting', () => {
         expect(shootEvents).toHaveLength(0);
     });
 
-    test('Data overwatch SHOULD shoot at enemy (different team)', () => {
+    test('Data overwatch SHOULD shoot at enemy (different faction)', () => {
         // Setup: Data in overwatch mode
         const data = state.characters.find((c: any) => c.name === 'Data')!;
         const enemy = state.characters.find((c: any) => c.name === 'enemy')!;
@@ -158,7 +158,7 @@ describe('Overwatch Team-based Targeting', () => {
         expect(damageEvents[0][1].targetName).toBe('enemy');
     });
 
-    test('Enemy overwatch SHOULD shoot at both player and Data (both on player team)', () => {
+    test('Enemy overwatch SHOULD shoot at both player and Data (both on player faction)', () => {
         // Setup: Enemy in overwatch mode
         const enemy = state.characters.find((c: any) => c.name === 'enemy')!;
         const player = state.characters.find((c: any) => c.name === 'Jim')!;

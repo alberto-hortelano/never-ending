@@ -123,7 +123,7 @@ describe('Overwatch', () => {
             name: 'overwatcher',
             direction: 'right' as Direction,
             position: { x: 5, y: 5 },
-            player: 'human',
+            controller: 'human', faction: 'player',
             actions: {
                 ...baseCharacter.actions,
                 pointsLeft: 100, // Enough points for multiple shots
@@ -158,7 +158,7 @@ describe('Overwatch', () => {
             name: 'enemy',
             direction: 'left' as Direction,
             position: { x: 10, y: 5 },
-            player: 'ai'
+            controller: 'ai', faction: 'enemy'
         });
 
         testMap = createMockMap(15, 15);
@@ -677,7 +677,7 @@ describe('Overwatch', () => {
 
             const friendlyCharacter = createMockCharacter({
                 name: 'friendly',
-                player: 'human', // Same team as overwatch character
+                controller: 'human', faction: 'player', // Same faction as overwatch character
                 position: { x: 10, y: 5 }
             });
 
@@ -797,7 +797,7 @@ describe('Overwatch', () => {
                 name: 'overwatcher2',
                 direction: 'left' as Direction,
                 position: { x: 10, y: 10 },
-                player: 'human',
+                controller: 'human', faction: 'player',
                 actions: { ...baseCharacter.actions, pointsLeft: 8 }
             });
 
@@ -1421,7 +1421,7 @@ describe('Overwatch', () => {
 
             const closerEnemy = createMockCharacter({
                 name: 'closerEnemy',
-                player: 'ai',
+                controller: 'ai', faction: 'enemy',
                 position: { x: 6, y: 5 } // Closer to overwatcher
             });
 

@@ -45,7 +45,7 @@ describe('AI Conversation Integration', () => {
                     name: 'Jim',
                     race: 'human',
                     description: 'The player character',
-                    player: 'human',
+                    controller: 'human', faction: 'player',
                     position: { x: 10, y: 10 },
                     location: '',
                     blocker: true,
@@ -76,7 +76,7 @@ describe('AI Conversation Integration', () => {
                     name: 'data',
                     race: 'robot',
                     description: 'AI companion robot',
-                    player: 'ai',
+                    controller: 'ai', faction: 'enemy',
                     position: { x: 11, y: 10 }, // Adjacent to player
                     location: '',
                     blocker: true,

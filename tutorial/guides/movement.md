@@ -105,7 +105,7 @@ Retreat while maintaining defense:
 - Control chokepoints
 
 ### Combined Arms
-- Coordinate movement with team
+- Coordinate movement with faction
 - Support advancing allies
 - Create crossfire zones
 - Maintain unit spacing
@@ -130,7 +130,7 @@ The AP display shows:
 
 1. **Moving too far** - Exhausting all AP leaves you vulnerable
 2. **Ignoring elevation** - Height advantage is significant
-3. **Bunching up** - Makes your team vulnerable to area attacks
+3. **Bunching up** - Makes your faction vulnerable to area attacks
 4. **Predictable patterns** - Vary your movement to stay unpredictable
 5. **Forgetting overwatch** - Enemy overwatch can interrupt movement
 

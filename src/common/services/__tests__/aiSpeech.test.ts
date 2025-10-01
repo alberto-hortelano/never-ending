@@ -46,7 +46,7 @@ describe('AI Speech System', () => {
                     name: 'Jim',
                     race: 'human',
                     description: 'The player character',
-                    player: 'human',
+                    controller: 'human', faction: 'player',
                     position: { x: 10, y: 10 }, // Position player at 10,10
                     location: '',
                     blocker: true,
@@ -77,7 +77,7 @@ describe('AI Speech System', () => {
                     name: 'data',
                     race: 'robot',
                     description: 'AI companion robot',
-                    player: 'ai',
+                    controller: 'ai', faction: 'enemy',
                     position: { x: 11, y: 10 }, // Position data adjacent to player
                     location: '',
                     blocker: true,

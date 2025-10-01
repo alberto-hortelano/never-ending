@@ -35,7 +35,7 @@ Overwatch fires when:
 - Enemy enters your field of view
 - Enemy moves within your coverage area
 - Enemy performs hostile action in view
-- Ally requests covering fire (team overwatch)
+- Ally requests covering fire (faction overwatch)
 
 ### Coverage Areas
 
@@ -178,9 +178,9 @@ Overwatch effectiveness depends on:
 - Enemy must brave kill zone or find alternate path
 
 ### Scenario 2: Extraction Coverage
-- Team needs to retreat
+- Faction needs to retreat
 - Rear guard sets 360° overwatch
-- Team moves to safety
+- Faction moves to safety
 - Overwatch character withdraws last
 
 ### Scenario 3: Ambush Setup

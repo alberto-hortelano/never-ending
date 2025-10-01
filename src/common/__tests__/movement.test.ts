@@ -72,7 +72,7 @@ describe('Movement', () => {
 
         // Create test data
         testCharacter = createMockCharacter({
-            player: 'human'
+            controller: 'human', faction: 'player'
         });
         testMap = createMockMap(5, 5);
 
@@ -236,7 +236,7 @@ describe('Movement', () => {
     describe('characterPath', () => {
         it('should create animation and clear path when character has a path', () => {
             const characterWithPath: ICharacter = createMockCharacter({
-                player: 'human',
+                controller: 'human', faction: 'player',
                 path: [
                     { x: 2, y: 1 },
                     { x: 3, y: 1 }
@@ -269,7 +269,7 @@ describe('Movement', () => {
 
         it('should not create animation when character has empty path', () => {
             const characterWithEmptyPath: ICharacter = createMockCharacter({
-                player: 'human',
+                controller: 'human', faction: 'player',
                 path: []
             });
 
@@ -287,7 +287,7 @@ describe('Movement', () => {
     describe('animation completion', () => {
         it('should track completed movements', () => {
             const characterWithPath: ICharacter = createMockCharacter({
-                player: 'human',
+                controller: 'human', faction: 'player',
                 path: [
                     { x: 2, y: 1 },
                     { x: 3, y: 1 }
@@ -315,7 +315,7 @@ describe('Movement', () => {
 
             testCases.forEach(({ pointsLeft, moveCost, expectedDistance }) => {
                 const character = createMockCharacter({ 
-                    player: 'human', 
+                    controller: 'human', faction: 'player', 
                     actions: {
                         ...baseCharacter.actions,
                         pointsLeft,
@@ -347,7 +347,7 @@ describe('Movement', () => {
     describe('defeated character handling', () => {
         it('should stop movement when character is defeated during animation', () => {
             const characterWithPath: ICharacter = createMockCharacter({
-                player: 'human',
+                controller: 'human', faction: 'player',
                 name: 'testChar',
                 health: 50,
                 path: [
@@ -392,7 +392,7 @@ describe('Movement', () => {
 
         it('should not allow movement selection for defeated characters', () => {
             const defeatedCharacter = createMockCharacter({
-                player: 'human',
+                controller: 'human', faction: 'player',
                 name: 'deadChar',
                 health: 0
             });
@@ -412,7 +412,7 @@ describe('Movement', () => {
 
         it('should clear path when character is defeated', () => {
             const character = createMockCharacter({
-                player: 'human',
+                controller: 'human', faction: 'player',
                 name: 'testChar',
                 health: 50,
                 path: [{ x: 2, y: 1 }, { x: 3, y: 1 }]
@@ -440,7 +440,7 @@ describe('Movement', () => {
 
         it('should not create animation for defeated character', () => {
             const defeatedCharacter = createMockCharacter({
-                player: 'human',
+                controller: 'human', faction: 'player',
                 name: 'deadChar',
                 health: 0,
                 path: [{ x: 2, y: 1 }, { x: 3, y: 1 }]
@@ -471,8 +471,8 @@ describe('Movement', () => {
 
     describe('event cleanup', () => {
         it('should properly handle multiple movement sequences', () => {
-            const character1 = createMockCharacter({ player: 'human', name: 'char1' });
-            const character2 = createMockCharacter({ player: 'human', name: 'char2', position: { x: 3, y: 3 } });
+            const character1 = createMockCharacter({ controller: 'human', faction: 'player', name: 'char1' });
+            const character2 = createMockCharacter({ controller: 'human', faction: 'player', name: 'char2', position: { x: 3, y: 3 } });
 
             const reachableCells1 = [{ x: 0, y: 1 }, { x: 1, y: 0 }];
             const reachableCells2 = [{ x: 3, y: 2 }, { x: 4, y: 3 }];

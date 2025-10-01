@@ -60,7 +60,7 @@ describe('Overwatch Cross-Turn Preservation', () => {
             name: 'humanCharacter',
             direction: 'right' as const,
             position: { x: 5, y: 5 },
-            player: 'human',
+            controller: 'human', faction: 'player',
             actions: {
                 ...baseCharacter.actions,
                 pointsLeft: 10,
@@ -99,7 +99,7 @@ describe('Overwatch Cross-Turn Preservation', () => {
             name: 'aiCharacter',
             direction: 'left' as const,
             position: { x: 15, y: 15 },
-            player: 'ai',
+            controller: 'ai', faction: 'enemy',
             actions: {
                 ...baseCharacter.actions,
                 pointsLeft: 10,

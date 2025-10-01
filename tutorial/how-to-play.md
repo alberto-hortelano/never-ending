@@ -16,7 +16,7 @@ For detailed information on specific game mechanics:
 - ⚔️ **[Combat Guide](guides/combat.md)** - Shooting mechanics and damage
 - 🛡️ **[Overwatch Guide](guides/overwatch.md)** - Defensive tactics and area control
 - 🎮 **[Actions Guide](guides/actions.md)** - Complete list of all actions and AP costs
-- 🧠 **[Strategy Guide](guides/strategy.md)** - Advanced tactics and team compositions
+- 🧠 **[Strategy Guide](guides/strategy.md)** - Advanced tactics and faction compositions
 
 ## Getting Started
 

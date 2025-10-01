@@ -262,7 +262,7 @@ export class WebSocketServer {
                 // Override with any custom character data from player
                 ...player.character,
                 // Set multiplayer-specific properties
-                player: player.id,
+                controller: player.id,
                 name: player.name,
                 // Assign different rooms to each player to avoid crowding
                 location: spawnRooms[index % spawnRooms.length],

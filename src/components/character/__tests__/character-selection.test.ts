@@ -13,7 +13,7 @@ describe('Character Selection Restriction', () => {
             ...baseCharacter,
             name: 'Jim',
             race: 'human',
-            player: 'human',
+            controller: 'human', faction: 'player',
             description: 'Human player character',
             position: { x: 1, y: 1 },
             location: 'room1',
@@ -28,7 +28,7 @@ describe('Character Selection Restriction', () => {
             ...baseCharacter,
             name: 'enemy',
             race: 'robot',
-            player: 'ai',
+            controller: 'ai', faction: 'enemy',
             description: 'AI controlled enemy',
             position: { x: 3, y: 3 },
             location: 'room1',
@@ -67,15 +67,15 @@ describe('Character Selection Restriction', () => {
         expect(aiChar).toBeDefined();
 
         // Verify character ownership
-        expect(humanChar?.player).toBe('human');
-        expect(aiChar?.player).toBe('ai');
+        expect(humanChar?.controller).toBe('human');
+        expect(aiChar?.controller).toBe('ai');
 
         // Human turn should be able to select their character
-        const canSelectHuman = humanChar?.player === state.game.turn;
+        const canSelectHuman = humanChar?.controller === state.game.turn;
         expect(canSelectHuman).toBe(true);
 
         // Human turn should NOT be able to select AI character
-        const canSelectAI = aiChar?.player === state.game.turn;
+        const canSelectAI = aiChar?.controller === state.game.turn;
         expect(canSelectAI).toBe(false);
     });
 
@@ -93,12 +93,12 @@ describe('Character Selection Restriction', () => {
 
         // Now AI should be able to select their character
         const aiChar = state.findCharacter('enemy');
-        const canSelectAI = aiChar?.player === state.game.turn;
+        const canSelectAI = aiChar?.controller === state.game.turn;
         expect(canSelectAI).toBe(true);
 
         // And human should NOT be able to select their character
         const humanChar = state.findCharacter('Jim');
-        const canSelectHuman = humanChar?.player === state.game.turn;
+        const canSelectHuman = humanChar?.controller === state.game.turn;
         expect(canSelectHuman).toBe(false);
     });
 });
