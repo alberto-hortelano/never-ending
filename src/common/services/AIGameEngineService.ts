@@ -105,14 +105,6 @@ Response format:
 
             const command = this.parseAIResponse(response.content);
 
-            // const duration = Date.now() - startTime;
-            if (command?.type === 'speech') {
-                // const speechCmd = command as SpeechCommand;
-                // DEBUG: console.log(`[AI] Response (${duration}ms): Speech - "${speechCmd.content?.substring(0, 60)}..."`);
-            } else {
-                // DEBUG: console.log(`[AI] Response (${startTime}ms): ${command?.type || 'none'}`);
-            }
-
             return {
                 messages: response.messages,
                 command: command
@@ -212,11 +204,6 @@ Response format:
                 // For overload errors, use longer delays
                 const baseDelay = isOverloadError ? 5000 : this.retryDelay;
                 const backoffDelay = baseDelay * Math.pow(2, retry);
-
-                if (isOverloadError) {
-                    // DEBUG: console.log(`[AI] Service overloaded, retrying in ${backoffDelay}ms...`);
-                }
-
                 await new Promise(resolve => setTimeout(resolve, backoffDelay));
                 return this.callGameEngine(data, retry + 1);
             }
@@ -531,7 +518,6 @@ Response format:
         retryCount: number = 2
     ): Promise<IValidationResult> {
         const retryCallback = async (fixPrompt: string): Promise<unknown> => {
-            // DEBUG: console.log('[AIGameEngineService] Requesting AI to fix validation errors');
 
             const messages: IMessage[] = [{
                 role: 'user',

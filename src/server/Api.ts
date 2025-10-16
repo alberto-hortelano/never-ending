@@ -161,33 +161,37 @@ export class Api {
         });
     }
 
-    private buildContextPrompt(context: any, _storyState?: IStoryState): string {
-        const current = context.currentCharacter;
-        const visibleChars = context.visibleCharacters || [];
-        const conversableChars = context.charactersInConversationRange || [];
+    private buildContextPrompt(context: Record<string, unknown>, _storyState?: IStoryState): string {
+        const current = context.currentCharacter as Record<string, unknown> | undefined;
+        const visibleChars = (context.visibleCharacters as unknown[]) || [];
+        const conversableChars = (context.charactersInConversationRange as unknown[]) || [];
 
         // Build character descriptions with clear status
-        const characterDescriptions = visibleChars.map((char: any) => {
+        const characterDescriptions = visibleChars.map((char: unknown) => {
+            const charObj = char as Record<string, unknown>;
             const status = [];
-            if (char.isPlayer) {
+            if (charObj.isPlayer) {
                 status.push('PLAYER');
             } else {
                 status.push('NPC');
             }
-            if (char.isAlly) status.push('ALLY');
-            if (char.isEnemy) status.push('ENEMY');
-            if (char.canConverse) status.push('CAN TALK');
-            if (char.isAdjacent) status.push('ADJACENT');
+            if (charObj.isAlly) status.push('ALLY');
+            if (charObj.isEnemy) status.push('ENEMY');
+            if (charObj.canConverse) status.push('CAN TALK');
+            if (charObj.isAdjacent) status.push('ADJACENT');
 
-            return `  - ${char.name}: ${Math.round(char.distanceFromCurrent || 0)} cells away [${status.join(', ')}] Health: ${char.health?.current}/${char.health?.max}`;
+            const health = charObj.health as Record<string, unknown> | undefined;
+            return `  - ${charObj.name}: ${Math.round(Number(charObj.distanceFromCurrent) || 0)} cells away [${status.join(', ')}] Health: ${health?.current}/${health?.max}`;
         }).join('\n');
 
         // Create natural language situation summary
+        const position = current?.position as Record<string, unknown> | undefined;
+        const health = current?.health as Record<string, unknown> | undefined;
         let situationSummary = `## CURRENT SITUATION
 
 You are: ${current?.name || 'unknown'} (${current?.race || 'unknown'})
-Your position: (${current?.position?.x || 0}, ${current?.position?.y || 0})
-Your health: ${current?.health?.current || 0}/${current?.health?.max || 100}
+Your position: (${position?.x || 0}, ${position?.y || 0})
+Your health: ${health?.current || 0}/${health?.max || 100}
 Your faction: ${current?.faction || 'neutral'}
 Your personality: ${current?.personality || 'standard'}
 
@@ -195,33 +199,41 @@ Your personality: ${current?.personality || 'standard'}
 ${characterDescriptions || '  None visible'}
 
 ## CONVERSATION OPTIONS (within 8 cells)
-${conversableChars.map((c: any) => `  - ${c.name}`).join('\n') || '  None in range'}`;
+${conversableChars.map((c: unknown) => `  - ${(c as Record<string, unknown>).name}`).join('\n') || '  None in range'}`;
 
         // Add conversation history if present
-        if (context.conversationHistory && context.conversationHistory.length > 0) {
-            situationSummary += `\n\n## RECENT CONVERSATION\n${context.conversationHistory.map((exchange: any) =>
-                `  ${exchange.speaker}: "${exchange.content}"`
-            ).join('\n')}`;
+        const convHistory = context.conversationHistory as unknown[] | undefined;
+        if (convHistory && convHistory.length > 0) {
+            situationSummary += `\n\n## RECENT CONVERSATION\n${convHistory.map((exchange: unknown) => {
+                const ex = exchange as Record<string, unknown>;
+                return `  ${ex.speaker}: "${ex.content}"`;
+            }).join('\n')}`;
         }
 
         // Add blockage information if present
-        if (context.blockageInfo) {
-            situationSummary += `\n\n## PATH BLOCKED\n  Your path is blocked by ${context.blockageInfo.blockingCharacter.name}\n  They are ${context.blockageInfo.blockingCharacter.isAlly ? 'an ally' : 'not an ally'}\n  Original target: ${context.blockageInfo.originalTarget}`;
+        const blockageInfo = context.blockageInfo as Record<string, unknown> | undefined;
+        if (blockageInfo) {
+            const blockingChar = blockageInfo.blockingCharacter as Record<string, unknown>;
+            situationSummary += `\n\n## PATH BLOCKED\n  Your path is blocked by ${blockingChar.name}\n  They are ${blockingChar.isAlly ? 'an ally' : 'not an ally'}\n  Original target: ${blockageInfo.originalTarget}`;
         }
 
         // Add mission information
-        if (context.currentMission) {
-            situationSummary += `\n\n## CURRENT MISSION\n  Name: ${context.currentMission.name}\n  Type: ${context.currentMission.type}\n  Objectives: ${context.currentMission.objectives.join(', ')}`;
+        const currentMission = context.currentMission as Record<string, unknown> | undefined;
+        if (currentMission) {
+            const objectives = currentMission.objectives as string[] | undefined;
+            situationSummary += `\n\n## CURRENT MISSION\n  Name: ${currentMission.name}\n  Type: ${currentMission.type}\n  Objectives: ${objectives?.join(', ') || 'None'}`;
         }
 
         // Add existing characters list
-        if (context.existingCharacters && context.existingCharacters.length > 0) {
-            situationSummary += `\n\n## ALL EXISTING CHARACTERS\nThese are the ONLY characters that exist and can be referenced in commands:\n${context.existingCharacters.map((name: string) => `  - ${name}`).join('\n')}`;
+        const existingChars = context.existingCharacters as string[] | undefined;
+        if (existingChars && existingChars.length > 0) {
+            situationSummary += `\n\n## ALL EXISTING CHARACTERS\nThese are the ONLY characters that exist and can be referenced in commands:\n${existingChars.map((name: string) => `  - ${name}`).join('\n')}`;
         }
 
         // Add available locations list
-        if (context.availableLocations && context.availableLocations.length > 0) {
-            situationSummary += `\n\n## AVAILABLE LOCATIONS\nThese are the ONLY rooms/locations that exist and can be used in movement commands:\n${context.availableLocations.map((loc: string) => `  - ${loc}`).join('\n')}`;
+        const availableLocs = context.availableLocations as string[] | undefined;
+        if (availableLocs && availableLocs.length > 0) {
+            situationSummary += `\n\n## AVAILABLE LOCATIONS\nThese are the ONLY rooms/locations that exist and can be used in movement commands:\n${availableLocs.map((loc: string) => `  - ${loc}`).join('\n')}`;
         }
 
         situationSummary += `\n\n## YOUR RESPONSE\nDecide what ${current?.name || 'the character'} should do next. You must respond with a valid JSON command.\nIMPORTANT: Only use character names and locations from the lists above.`;

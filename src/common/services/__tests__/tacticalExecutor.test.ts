@@ -21,7 +21,7 @@ describe('TacticalExecutor', () => {
             position: { x: 10, y: 10 },
             health: 80,
             maxHealth: 100,
-            faction: 'enemy',
+            faction: 'player',
             controller: 'ai',
             direction: 'bottom',
             speed: 'medium',
@@ -68,7 +68,7 @@ describe('TacticalExecutor', () => {
             position: { x: 8, y: 10 },
             health: 60,
             maxHealth: 100,
-            faction: 'enemy',
+            faction: 'player',
             controller: 'ai',
             direction: 'right',
             speed: 'medium',
@@ -93,7 +93,9 @@ describe('TacticalExecutor', () => {
                 players: ['ai', 'enemy']
             },
             characters: [character, enemy, ally],
-            map: {},
+            map: Array(100).fill(null).map(() =>
+                Array(100).fill(null).map(() => ({ content: {} }))
+            ),
             ui: {}
         };
     });

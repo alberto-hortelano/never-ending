@@ -33,11 +33,8 @@ export class WebSocketServer {
     private rooms = new Map<string, Room>();
 
     constructor(server: Server) {
-        // DEBUG: console.log('Initializing WebSocketServer on server:', server.address());
         this.wss = new WSServer({ server });
-        // DEBUG: console.log('WebSocket server created');
         this.setupWebSocketServer();
-        // DEBUG: console.log('WebSocket server setup complete');
     }
 
     private setupWebSocketServer() {
@@ -46,12 +43,10 @@ export class WebSocketServer {
         });
 
         this.wss.on('listening', () => {
-            // DEBUG: console.log('WebSocket server is listening');
         });
 
         this.wss.on('connection', (ws: WebSocket) => {
             const playerId = randomUUID();
-            // DEBUG: console.log(`New WebSocket connection: ${playerId}`);
 
             ws.on('message', (data: Buffer) => {
                 try {
@@ -64,7 +59,6 @@ export class WebSocketServer {
             });
 
             ws.on('close', () => {
-                // DEBUG: console.log(`WebSocket disconnected: ${playerId}`);
                 this.handleDisconnect(playerId);
             });
 
@@ -114,7 +108,6 @@ export class WebSocketServer {
         this.players.set(playerId, player);
 
         this.sendToPlayer(playerId, 'connect', { playerId, playerName: data.playerName });
-        // DEBUG: console.log(`Player connected: ${playerId} (${data.playerName})`);
     }
 
     private handleCreateRoom(playerId: string, data: CreateRoomEvent) {
@@ -140,7 +133,6 @@ export class WebSocketServer {
             creatorId: playerId 
         });
         this.broadcastRoomState(roomId);
-        // DEBUG: console.log(`Room created: ${roomId} by player ${playerId}`);
     }
 
     private handleJoinRoom(playerId: string, data: JoinRoomEvent) {
@@ -179,7 +171,6 @@ export class WebSocketServer {
             });
         }
 
-        // DEBUG: console.log(`Player ${playerId} joined room ${data.roomId}`);
     }
 
     private handleLeaveRoom(playerId: string) {
@@ -199,23 +190,19 @@ export class WebSocketServer {
         if (room.players.size === 0) {
             this.rooms.delete(roomId);
             this.broadcastRoomList(); // Update room list for all players
-            // DEBUG: console.log(`Room ${roomId} deleted (empty)`);
         } else {
             this.broadcastRoomState(roomId);
             this.broadcastRoomList(); // Update room list for all players
         }
 
-        // DEBUG: console.log(`Player ${playerId} left room ${roomId}`);
     }
 
     private handlePlayerReady(playerId: string, data: PlayerReadyEvent) {
         const player = this.players.get(playerId);
         const room = player?.roomId ? this.rooms.get(player.roomId) : null;
 
-        // DEBUG: console.log(`Player ${playerId} ready status: ${data.ready}, room: ${player?.roomId}`);
 
         if (!player || !room) {
-            // DEBUG: console.log(`Player or room not found for ready: player=${!!player}, room=${!!room}`);
             return;
         }
 
@@ -225,7 +212,6 @@ export class WebSocketServer {
         this.broadcastRoomState(room.id);
 
         const allReady = Array.from(room.players.values()).every(p => p.ready);
-        // DEBUG: console.log(`Room ${room.id}: All ready? ${allReady}, player count: ${room.players.size}`);
         if (allReady && room.players.size >= 2 && room.status === 'waiting') {
             this.startGame(room);
         }
@@ -311,7 +297,6 @@ export class WebSocketServer {
         }
 
         this.players.delete(playerId);
-        // DEBUG: console.log(`Player ${playerId} disconnected`);
     }
 
     private sendToPlayer(playerId: string, type: keyof NetworkEventMap, data: NetworkEventMap[keyof NetworkEventMap]) {

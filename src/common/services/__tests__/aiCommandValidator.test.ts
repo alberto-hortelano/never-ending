@@ -1,4 +1,4 @@
-import { AICommandValidator, ValidationError, ValidationResult } from '../AICommandValidator';
+import { AICommandValidator } from '../AICommandValidator';
 import { State } from '../../State';
 import { IState, ICharacter, ICell, Direction } from '../../interfaces';
 import { AIContextBuilder } from '../AIContextBuilder';
@@ -139,11 +139,11 @@ function createMockState(): State {
 describe('AICommandValidator', () => {
     let validator: AICommandValidator;
     let mockState: State;
-    let mockContextBuilder: AIContextBuilder;
+    let _mockContextBuilder: AIContextBuilder;
 
     beforeEach(() => {
         mockState = createMockState();
-        mockContextBuilder = new AIContextBuilder(mockState);
+        _mockContextBuilder = new AIContextBuilder(mockState);
         validator = new AICommandValidator(mockState);
     });
 

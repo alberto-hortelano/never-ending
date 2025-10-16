@@ -161,51 +161,53 @@ export class Conversation extends Component {
             // console.log('[Conversation] Added to history, current index:', this.currentHistoryIndex);
         }
 
-        // Clear previous content
-        this.contentElement.innerHTML = '';
-        this.answersElement.innerHTML = '';
+        // Batch all DOM updates in RAF for better performance
+        requestAnimationFrame(() => {
+            // Clear previous content
+            this.contentElement!.innerHTML = '';
+            this.answersElement!.innerHTML = '';
 
-        // Create conversation bubble
-        const bubble = document.createElement('div');
-        bubble.className = `conversation-bubble ${data.type}`;
+            // Create conversation bubble
+            const bubble = document.createElement('div');
+            bubble.className = `conversation-bubble ${data.type}`;
 
-        // Add source/speaker
-        if (data.source) {
-            const source = document.createElement('div');
-            source.className = 'conversation-source';
-            source.textContent = data.source;
-            bubble.appendChild(source);
-        }
+            // Add source/speaker
+            if (data.source) {
+                const source = document.createElement('div');
+                source.className = 'conversation-source';
+                source.textContent = data.source;
+                bubble.appendChild(source);
+            }
 
-        // Add content
-        const content = document.createElement('div');
-        content.className = 'conversation-text';
-        content.textContent = data.content;
-        bubble.appendChild(content);
+            // Add content
+            const content = document.createElement('div');
+            content.className = 'conversation-text';
+            content.textContent = data.content;
+            bubble.appendChild(content);
 
-        // Add action indicator if present
-        if (data.action) {
-            const actionInfo = document.createElement('div');
-            actionInfo.className = 'conversation-action-info';
-            actionInfo.textContent = `[${i18n.t('conversation.actionRequired')}: ${data.action}]`;
-            bubble.appendChild(actionInfo);
-        }
+            // Add action indicator if present
+            if (data.action) {
+                const actionInfo = document.createElement('div');
+                actionInfo.className = 'conversation-action-info';
+                actionInfo.textContent = `[${i18n.t('conversation.actionRequired')}: ${data.action}]`;
+                bubble.appendChild(actionInfo);
+            }
 
-        this.contentElement.appendChild(bubble);
+            this.contentElement!.appendChild(bubble);
 
-        // Add answer buttons or show selected answer for historical conversations
-        const isCurrentConversation = this.currentHistoryIndex === this.conversationHistory.length - 1;
-        const currentTurn = this.conversationHistory[this.currentHistoryIndex];
+            // Add answer buttons or show selected answer for historical conversations
+            const isCurrentConversation = this.currentHistoryIndex === this.conversationHistory.length - 1;
+            const currentTurn = this.conversationHistory[this.currentHistoryIndex];
 
-        if (isHistorical && currentTurn?.selectedAnswer) {
-            // Show the selected answer for historical conversations
-            const selectedAnswer = document.createElement('div');
-            selectedAnswer.className = 'selected-answer';
-            selectedAnswer.innerHTML = `
-                <span class="selected-label">${i18n.t('conversation.yourResponse')}</span>
-                <span class="selected-text">${currentTurn.selectedAnswer}</span>
-            `;
-            this.answersElement.appendChild(selectedAnswer);
+            if (isHistorical && currentTurn?.selectedAnswer) {
+                // Show the selected answer for historical conversations
+                const selectedAnswer = document.createElement('div');
+                selectedAnswer.className = 'selected-answer';
+                selectedAnswer.innerHTML = `
+                    <span class="selected-label">${i18n.t('conversation.yourResponse')}</span>
+                    <span class="selected-text">${currentTurn.selectedAnswer}</span>
+                `;
+                this.answersElement!.appendChild(selectedAnswer);
         } else if (data.answers && data.answers.length > 0 && this.answersElement && !currentTurn?.selectedAnswer) {
             // Show interactive answers if no answer has been selected yet
             const answersElement = this.answersElement;
@@ -277,15 +279,16 @@ export class Conversation extends Component {
                         bubbles: true
                     }));
                 });
-                this.answersElement.appendChild(closeButton);
+                this.answersElement!.appendChild(closeButton);
             }
-        }
+            }
 
-        // Dispatch event to notify parent that conversation has been updated
-        this.dispatchEvent(new CustomEvent('conversation-updated', {
-            detail: { data },
-            bubbles: true
-        }));
+            // Dispatch event to notify parent that conversation has been updated
+            this.dispatchEvent(new CustomEvent('conversation-updated', {
+                detail: { data },
+                bubbles: true
+            }));
+        }); // Close RAF callback
     }
 
     private handleAnswerClick(answer: string) {

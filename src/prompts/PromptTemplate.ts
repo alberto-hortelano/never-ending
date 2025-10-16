@@ -80,6 +80,3 @@ export class PromptTemplate {
         return fs.readFile(filePath, 'utf8');
     }
 }
-
-// Export singleton instance for convenience
-export const promptTemplate = new PromptTemplate();

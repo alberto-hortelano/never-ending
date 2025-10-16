@@ -343,7 +343,6 @@ window.saveGame = (slotName?: string) => {
     const eventBus = new EventBus<never, ControlsEventsMap>();
     if (slotName) {
         eventBus.dispatch(ControlsEvent.saveGame, { slotName });
-        // DEBUG: console.log(`Game saved to slot: ${slotName}`);
     } else {
         console.error('Please provide a slot name for saveGame(slotName)');
     }
@@ -353,7 +352,6 @@ window.loadGame = (slotName?: string) => {
     const eventBus = new EventBus<never, ControlsEventsMap>();
     if (slotName) {
         eventBus.dispatch(ControlsEvent.loadGame, { slotName });
-        // DEBUG: console.log(`Loading game from slot: ${slotName}`);
     } else {
         console.error('Please provide a slot name for loadGame(slotName)');
     }
@@ -393,20 +391,17 @@ window.listSaves = () => {
 window.quickSave = () => {
     const eventBus = new EventBus<never, ControlsEventsMap>();
     eventBus.dispatch(ControlsEvent.quickSave, undefined as void);
-    // DEBUG: console.log('Quick save triggered (F5)');
 };
 
 window.quickLoad = () => {
     const eventBus = new EventBus<never, ControlsEventsMap>();
     eventBus.dispatch(ControlsEvent.quickLoad, undefined as void);
-    // DEBUG: console.log('Quick load triggered (F9)');
 };
 
 window.deleteSave = (slotName?: string) => {
     const eventBus = new EventBus<never, ControlsEventsMap>();
     if (slotName) {
         eventBus.dispatch(ControlsEvent.deleteSave, { slotName });
-        // DEBUG: console.log(`Deleted save: ${slotName}`);
     } else {
         console.error('Please provide a slot name for deleteSave(slotName)');
     }
@@ -512,7 +507,6 @@ window.playWithState = (state?: any) => {
 // Add a simpler helper function to load and start a game
 window.loadAndPlayGame = async (slotName: string) => {
     try {
-        // DEBUG: console.log(`Loading game from slot: ${slotName}`);
 
         // First, trigger the load through the window function
         // This will update the state internally
@@ -528,7 +522,6 @@ window.loadAndPlayGame = async (slotName: string) => {
             throw new Error('Failed to get loaded state');
         }
         
-        // DEBUG: console.log('Starting game with loaded state...');
         
         // Hide main menu if visible
         const mainMenu = document.querySelector('main-menu') as HTMLElement;
@@ -539,7 +532,6 @@ window.loadAndPlayGame = async (slotName: string) => {
         // Start the game with the loaded state
         window.playWithState(loadedState);
         
-        // DEBUG: console.log('Game started successfully');
         return { success: true, message: 'Game loaded and started' };
         
     } catch (error) {

@@ -1,6 +1,8 @@
 import { AIController } from '../AIController';
+import { AILocationResolver } from '../AILocationResolver';
 import { EventBus } from '../../events';
 import { ICharacter, ICell, Direction } from '../../interfaces';
+import { State } from '../../State';
 
 // Mock the AIGameEngineService
 jest.mock('../AIGameEngineService', () => ({
@@ -212,8 +214,9 @@ describe('AI Movement Location Validation', () => {
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
 
         // Create AI controller
+        const state = new State(testState);
         aiController = AIController.getInstance();
-        (aiController as any).state = testState;
+        aiController.setGameState(state);
         (aiController as any).eventBus = eventBus;
         (aiController as any).dispatch = eventBus.dispatch.bind(eventBus);
     });
@@ -226,30 +229,34 @@ describe('AI Movement Location Validation', () => {
     describe('Valid Location Formats', () => {
         test('should accept valid room names', () => {
             const character = (aiController as any).state.characters[1]; // Enemy Guard
-            const location = (aiController as any).resolveLocation('Ship - Cargo Bay', character);
+            const location = AILocationResolver.resolveLocation('Ship - Cargo Bay', (aiController as any).state, character);
 
             expect(location).toBeTruthy();
-            expect(location.x).toBeGreaterThanOrEqual(5);
-            expect(location.x).toBeLessThanOrEqual(10);
-            expect(location.y).toBeGreaterThanOrEqual(5);
-            expect(location.y).toBeLessThanOrEqual(10);
+            if (location) {
+                expect(location.x).toBeGreaterThanOrEqual(5);
+                expect(location.x).toBeLessThanOrEqual(10);
+                expect(location.y).toBeGreaterThanOrEqual(5);
+                expect(location.y).toBeLessThanOrEqual(10);
+            }
         });
 
         test('should accept valid character names', () => {
             const character = (aiController as any).state.characters[1]; // Enemy Guard
-            const location = (aiController as any).resolveLocation('Jim', character);
+            const location = AILocationResolver.resolveLocation('Jim', (aiController as any).state, character);
 
             expect(location).toEqual({ x: 7, y: 7 });
         });
 
         test('should accept room names without building prefix', () => {
             const character = (aiController as any).state.characters[1];
-            const location = (aiController as any).resolveLocation('cargo bay', character);
+            const location = AILocationResolver.resolveLocation('cargo bay', (aiController as any).state, character);
 
             expect(location).toBeTruthy();
             // Should find the cargo bay
-            expect(location.x).toBeGreaterThanOrEqual(5);
-            expect(location.x).toBeLessThanOrEqual(10);
+            if (location) {
+                expect(location.x).toBeGreaterThanOrEqual(5);
+                expect(location.x).toBeLessThanOrEqual(10);
+            }
         });
     });
 
@@ -259,19 +266,19 @@ describe('AI Movement Location Validation', () => {
 
             // Test cardinal directions
             expect(() => {
-                (aiController as any).resolveLocation('north', character);
+                AILocationResolver.resolveLocation('north', (aiController as any).state, character);
             }).toThrow(/Invalid location format.*not directions/);
 
             expect(() => {
-                (aiController as any).resolveLocation('south', character);
+                AILocationResolver.resolveLocation('south', (aiController as any).state, character);
             }).toThrow(/Invalid location format.*not directions/);
 
             expect(() => {
-                (aiController as any).resolveLocation('east', character);
+                AILocationResolver.resolveLocation('east', (aiController as any).state, character);
             }).toThrow(/Invalid location format.*not directions/);
 
             expect(() => {
-                (aiController as any).resolveLocation('west', character);
+                AILocationResolver.resolveLocation('west', (aiController as any).state, character);
             }).toThrow(/Invalid location format.*not directions/);
         });
 
@@ -279,11 +286,11 @@ describe('AI Movement Location Validation', () => {
             const character = (aiController as any).state.characters[1];
 
             expect(() => {
-                (aiController as any).resolveLocation('northeast', character);
+                AILocationResolver.resolveLocation('northeast', (aiController as any).state, character);
             }).toThrow(/Invalid location format.*not directions/);
 
             expect(() => {
-                (aiController as any).resolveLocation('south-west', character);
+                AILocationResolver.resolveLocation('south-west', (aiController as any).state, character);
             }).toThrow(/Invalid location format.*not directions/);
         });
 
@@ -291,19 +298,19 @@ describe('AI Movement Location Validation', () => {
             const character = (aiController as any).state.characters[1];
 
             expect(() => {
-                (aiController as any).resolveLocation('up', character);
+                AILocationResolver.resolveLocation('up', (aiController as any).state, character);
             }).toThrow(/Invalid location format.*not directions/);
 
             expect(() => {
-                (aiController as any).resolveLocation('down', character);
+                AILocationResolver.resolveLocation('down', (aiController as any).state, character);
             }).toThrow(/Invalid location format.*not directions/);
 
             expect(() => {
-                (aiController as any).resolveLocation('left', character);
+                AILocationResolver.resolveLocation('left', (aiController as any).state, character);
             }).toThrow(/Invalid location format.*not directions/);
 
             expect(() => {
-                (aiController as any).resolveLocation('right', character);
+                AILocationResolver.resolveLocation('right', (aiController as any).state, character);
             }).toThrow(/Invalid location format.*not directions/);
         });
 
@@ -311,7 +318,7 @@ describe('AI Movement Location Validation', () => {
             const character = (aiController as any).state.characters[1];
 
             expect(() => {
-                (aiController as any).resolveLocation('15,15', character);
+                AILocationResolver.resolveLocation('15,15', (aiController as any).state, character);
             }).toThrow(/Invalid location format.*Movement locations must be room names or character names/);
         });
 
@@ -319,7 +326,7 @@ describe('AI Movement Location Validation', () => {
             const character = (aiController as any).state.characters[1];
 
             expect(() => {
-                (aiController as any).resolveLocation('10, 10', character);
+                AILocationResolver.resolveLocation('10, 10', (aiController as any).state, character);
             }).toThrow(/Invalid location format.*Movement locations must be room names or character names/);
         });
 
@@ -327,7 +334,7 @@ describe('AI Movement Location Validation', () => {
             const character = (aiController as any).state.characters[1];
 
             expect(() => {
-                (aiController as any).resolveLocation('Nonexistent Room', character);
+                AILocationResolver.resolveLocation('Nonexistent Room', (aiController as any).state, character);
             }).toThrow(/Could not resolve location.*Available rooms/);
         });
 
@@ -335,7 +342,7 @@ describe('AI Movement Location Validation', () => {
             const character = (aiController as any).state.characters[1];
 
             expect(() => {
-                (aiController as any).resolveLocation('Unknown Character', character);
+                AILocationResolver.resolveLocation('Unknown Character', (aiController as any).state, character);
             }).toThrow(/Could not resolve location.*Available characters/);
         });
 
@@ -343,7 +350,7 @@ describe('AI Movement Location Validation', () => {
             const character = (aiController as any).state.characters[1];
 
             expect(() => {
-                (aiController as any).resolveLocation('', character);
+                AILocationResolver.resolveLocation('', (aiController as any).state, character);
             }).toThrow(/Invalid location: location is empty or null/);
         });
 
@@ -352,7 +359,7 @@ describe('AI Movement Location Validation', () => {
             (aiController as any).state = null;
 
             expect(() => {
-                (aiController as any).resolveLocation('Ship - Bridge', character);
+                AILocationResolver.resolveLocation('Ship - Bridge', (aiController as any).state, character);
             }).toThrow(/Cannot resolve location: game state is not initialized/);
         });
     });
@@ -364,13 +371,13 @@ describe('AI Movement Location Validation', () => {
                 type: 'movement',
                 characters: [{
                     name: 'Enemy Guard',
-                    location: '15,15' // Invalid coordinates
+                    location: '999,999' // Out of bounds coordinates
                 }]
             };
 
-            const endAITurnSpy = jest.spyOn(aiController as any, 'endAITurn').mockImplementation();
+            const endTurnSpy = jest.spyOn((aiController as any).turnManager, 'endTurn').mockImplementation();
 
-            await (aiController as any).executeMovement(command, character);
+            await (aiController as any).commandExecutor?.executeMovement(command, character);
 
             // Should log error
             expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -379,7 +386,7 @@ describe('AI Movement Location Validation', () => {
             );
 
             // Should end the turn
-            expect(endAITurnSpy).toHaveBeenCalled();
+            expect(endTurnSpy).toHaveBeenCalled();
         });
 
         test('should not crash when movement location is invalid', async () => {
@@ -392,13 +399,13 @@ describe('AI Movement Location Validation', () => {
                 }]
             };
 
-            const endAITurnSpy = jest.spyOn(aiController as any, 'endAITurn').mockImplementation();
+            const endTurnSpy = jest.spyOn((aiController as any).turnManager, 'endTurn').mockImplementation();
 
             // Should not throw, but handle gracefully
-            await expect((aiController as any).executeMovement(command, character))
+            await expect((aiController as any).commandExecutor?.executeMovement(command, character))
                 .resolves.toBeUndefined();
 
-            expect(endAITurnSpy).toHaveBeenCalled();
+            expect(endTurnSpy).toHaveBeenCalled();
         });
 
         test('should continue processing other characters after error', async () => {
@@ -412,12 +419,12 @@ describe('AI Movement Location Validation', () => {
                 }]
             };
 
-            const endAITurnSpy = jest.spyOn(aiController as any, 'endAITurn').mockImplementation();
+            const endTurnSpy = jest.spyOn((aiController as any).turnManager, 'endTurn').mockImplementation();
 
-            await (aiController as any).executeMovement(command, character);
+            await (aiController as any).commandExecutor?.executeMovement(command, character);
 
             // Should NOT end turn when processing multiple characters
-            expect(endAITurnSpy).not.toHaveBeenCalled();
+            expect(endTurnSpy).not.toHaveBeenCalled();
         });
     });
 
@@ -426,7 +433,7 @@ describe('AI Movement Location Validation', () => {
             const character = (aiController as any).state.characters[1];
 
             try {
-                (aiController as any).resolveLocation('Unknown Place', character);
+                AILocationResolver.resolveLocation('Unknown Place', (aiController as any).state, character);
                 fail('Should have thrown error');
             } catch (error: any) {
                 expect(error.message).toContain('Available rooms:');
@@ -440,7 +447,7 @@ describe('AI Movement Location Validation', () => {
             const character = (aiController as any).state.characters[1];
 
             try {
-                (aiController as any).resolveLocation('Unknown Person', character);
+                AILocationResolver.resolveLocation('Unknown Person', (aiController as any).state, character);
                 fail('Should have thrown error');
             } catch (error: any) {
                 expect(error.message).toContain('Available characters:');
@@ -454,7 +461,7 @@ describe('AI Movement Location Validation', () => {
             const character = (aiController as any).state.characters[1];
 
             try {
-                (aiController as any).resolveLocation('20,20', character);
+                AILocationResolver.resolveLocation('20,20', (aiController as any).state, character);
                 fail('Should have thrown error');
             } catch (error: any) {
                 expect(error.message).toContain('Invalid location format');

@@ -1,13 +1,14 @@
 import { State } from '../State';
 import { AICommandValidator, ValidationResult } from './AICommandValidator';
-import { AIGameEngineService } from './AIGameEngineService';
+import { AIGameEngineService, AIActionContext } from './AIGameEngineService';
 import { AICommand } from './AICommandParser';
+import type { LanguageCode } from '../constants';
 
 export interface ErrorFeedback {
     originalCommand: unknown;
     errors: Array<{
         field: string;
-        value: any;
+        value: unknown;
         error: string;
         suggestions?: string[];
     }>;
@@ -40,7 +41,7 @@ export class AIErrorHandler {
      */
     public async executeWithRetry(
         command: unknown,
-        context: any,
+        context: AIActionContext,
         state: State,
         language: string = 'en'
     ): Promise<RetryResult> {
@@ -130,7 +131,7 @@ export class AIErrorHandler {
      */
     private async requestCorrection(
         errorFeedback: ErrorFeedback,
-        context: any,
+        context: AIActionContext,
         _state: State,
         language: string
     ): Promise<unknown> {
@@ -160,7 +161,7 @@ Remember: Return ONLY the corrected JSON command, no explanation.
                 contextWithErrors,
                 systemPrompt,
                 undefined,
-                language as any
+                language as LanguageCode
             );
 
             if (response.command) {
@@ -183,6 +184,21 @@ Remember: Return ONLY the corrected JSON command, no explanation.
         let prompt = `## COMMAND VALIDATION ERRORS\n\n`;
         prompt += `Your previous command had ${errorFeedback.errors.length} validation error(s). `;
         prompt += `This is attempt ${errorFeedback.retryCount} of ${errorFeedback.maxRetries}.\n\n`;
+
+        // Check if this is a "multiple commands" error and add special emphasis
+        const hasMultipleCommandsError = errorFeedback.errors.some(e =>
+            e.error.includes('Multiple commands') ||
+            e.error.includes('commands array') ||
+            e.error.includes('only ONE command')
+        );
+
+        if (hasMultipleCommandsError) {
+            prompt += `### ⚠️ CRITICAL: SINGLE COMMAND REQUIRED ⚠️\n`;
+            prompt += `You must return exactly ONE command object. Do not return:\n`;
+            prompt += `- Arrays of commands []\n`;
+            prompt += `- Multiple commands of the same type\n`;
+            prompt += `- Commands wrapped in a "commands" field\n\n`;
+        }
 
         prompt += `### Errors Found:\n`;
         errorFeedback.errors.forEach((error, index) => {
@@ -217,7 +233,7 @@ Remember: Return ONLY the corrected JSON command, no explanation.
 
         try {
             return JSON.parse(jsonString || response);
-        } catch (error) {
+        } catch (_error) {
             // Try to find any JSON object in the response
             const objectMatch = response.match(/\{[\s\S]*\}/);
             if (objectMatch) {
