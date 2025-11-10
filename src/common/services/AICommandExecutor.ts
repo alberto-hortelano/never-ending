@@ -105,18 +105,54 @@ export class AICommandExecutor {
         if (!characters || !characters[0]) {
             throw new Error('[AI] ExecuteMovement - No characters in command');
         }
-        const targetLocationString = characters[0].location;
 
+        const moveData = characters[0];
         let targetLocation: ICoord | null = null;
-        try {
-            // Allow coordinates if the location string looks like coordinates (e.g., "11,12")
-            // This is for internal system use (e.g., when executeSpeech generates movement to line-of-sight positions)
-            const isCoordinate = /^\d+,\s*\d+$/.test(targetLocationString);
-            targetLocation = AILocationResolver.resolveLocation(targetLocationString, this.state!, character, isCoordinate);
-        } catch (error) {
-            console.error(`[AI] ExecuteMovement - Failed to resolve location for ${character.name}:`, error);
 
-            // End the turn properly on invalid location
+        // Check if this is an abstract movement action
+        if (moveData.action) {
+            console.log(`[AI] ${character.name} executing abstract movement: ${moveData.action}${moveData.target ? ` (target: ${moveData.target})` : ''}`);
+            try {
+                targetLocation = AILocationResolver.resolveAbstractMovement(
+                    moveData.action,
+                    character,
+                    this.state!,
+                    moveData.target
+                );
+
+                if (!targetLocation) {
+                    console.error(`[AI] Failed to resolve abstract movement: ${moveData.action}`);
+                    if (!this.isProcessingMultipleCharacters()) {
+                        this.endTurnCallback();
+                    }
+                    return;
+                }
+            } catch (error) {
+                console.error(`[AI] Error during abstract movement resolution:`, error);
+                if (!this.isProcessingMultipleCharacters()) {
+                    this.endTurnCallback();
+                }
+                return;
+            }
+        } else if (moveData.location) {
+            // Traditional location-based movement
+            const targetLocationString = moveData.location;
+            try {
+                // Allow coordinates if the location string looks like coordinates (e.g., "11,12")
+                // This is for internal system use (e.g., when executeSpeech generates movement to line-of-sight positions)
+                const isCoordinate = /^\d+,\s*\d+$/.test(targetLocationString);
+                targetLocation = AILocationResolver.resolveLocation(targetLocationString, this.state!, character, isCoordinate);
+            } catch (error) {
+                console.error(`[AI] ExecuteMovement - Failed to resolve location for ${character.name}:`, error);
+
+                // End the turn properly on invalid location
+                if (!this.isProcessingMultipleCharacters()) {
+                    this.endTurnCallback();
+                }
+                return;
+            }
+        } else {
+            console.error('[AI] ExecuteMovement - No location or action specified');
             if (!this.isProcessingMultipleCharacters()) {
                 this.endTurnCallback();
             }
@@ -126,7 +162,7 @@ export class AICommandExecutor {
         if (!targetLocation || !isFinite(targetLocation.x) || !isFinite(targetLocation.y) ||
             targetLocation.x < -1000 || targetLocation.x > 1000 ||
             targetLocation.y < -1000 || targetLocation.y > 1000) {
-            console.error('[AI] ExecuteMovement - Invalid resolved location:', targetLocationString, targetLocation);
+            console.error('[AI] ExecuteMovement - Invalid resolved location:', moveData.location || moveData.action, targetLocation);
             if (!this.isProcessingMultipleCharacters()) {
                 this.endTurnCallback();
             }
@@ -190,6 +226,31 @@ export class AICommandExecutor {
             return;
         }
 
+        // Pre-check: Verify the target location is walkable before pathfinding
+        const mapHeight = this.state!.map.length;
+        const mapWidth = this.state!.map[0]?.length || 0;
+        const targetX = Math.round(targetLocation.x);
+        const targetY = Math.round(targetLocation.y);
+
+        // Quick validation of target location
+        if (targetX < 0 || targetX >= mapWidth || targetY < 0 || targetY >= mapHeight) {
+            console.warn(`[AI] Target location out of bounds: (${targetX}, ${targetY})`);
+            if (!this.isProcessingMultipleCharacters()) {
+                this.endTurnCallback();
+            }
+            return;
+        }
+
+        const targetCell = this.state!.map[targetY]?.[targetX];
+        if (targetCell?.content?.blocker) {
+            console.warn(`[AI] Target location is a wall/blocker: (${targetX}, ${targetY})`);
+            // Don't waste time on pathfinding to a wall - end turn immediately
+            if (!this.isProcessingMultipleCharacters()) {
+                this.endTurnCallback();
+            }
+            return;
+        }
+
         // For AI characters, calculate the full path directly without entering movement mode
         const path = calculatePath(
             character.position,
@@ -200,7 +261,7 @@ export class AICommandExecutor {
         );
 
         if (path.length === 0) {
-            console.warn('[AI] No path to target found');
+            console.warn('[AI] No path to target found - pathfinding returned empty');
 
             // Detect what's blocking the path
             const blockage = AISpatialUtils.detectBlockingEntity(character.position, targetLocation, this.state!.map, this.state!.characters);
@@ -257,6 +318,51 @@ export class AICommandExecutor {
                     }
                 }
             } else if (blockage.type === 'wall') {
+                console.log(`[AI] Path blocked by wall - cannot reach target`);
+
+                // Try to find an alternative nearby walkable position
+                const nearbyPosition = AILocationResolver.findNearestEmptyCell(
+                    targetLocation,
+                    this.state!,
+                    character.position
+                );
+
+                if (nearbyPosition) {
+                    console.log(`[AI] Found alternative position near target: (${nearbyPosition.x}, ${nearbyPosition.y})`);
+                    // Try to move to the alternative position
+                    const alternativePath = calculatePath(
+                        character.position,
+                        nearbyPosition,
+                        this.state!.map,
+                        this.state!.characters,
+                        character.name
+                    );
+
+                    if (alternativePath.length > 0) {
+                        // Calculate how many cells we can move based on action points
+                        const moveCost = character.actions.general.move;
+                        const pointsLeft = character.actions.pointsLeft;
+                        const maxCellsToMove = Math.floor(pointsLeft / moveCost);
+
+                        // Move as far as we can toward the alternative target
+                        const cellsToMove = Math.min(alternativePath.length, maxCellsToMove);
+
+                        if (cellsToMove > 0) {
+                            const pathToMove = alternativePath.slice(0, cellsToMove);
+                            this.dispatch(UpdateStateEvent.characterPath, {
+                                ...character,
+                                path: pathToMove
+                            });
+
+                            console.log(`[AI] Moving to alternative position instead`);
+                            return;
+                        }
+                    }
+                }
+
+                console.log(`[AI] No alternative path found - character will wait`);
+            } else {
+                console.log(`[AI] Path blocked by unknown obstacle`);
             }
 
             // If no alternative found, end turn
@@ -517,7 +623,7 @@ export class AICommandExecutor {
                     });
 
                     // Wait for popup to be ready
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         // Dispatch AI-to-AI conversation start event
                         this.dispatch(ConversationEvent.startAIToAI, {
                             speaker: speaker,
@@ -525,11 +631,27 @@ export class AICommandExecutor {
                             isEavesdropping: isEavesdropping
                         });
 
-                        // End the AI turn
-                        this.setIsForcedTurnEnd(true);
-                        this.setIsProcessingTurn(true);
-                        this.setIsProcessingMultipleCharacters(false);
-                        this.endTurnCallback(true);
+                        // Check if there's a follow-up command to execute after conversation
+                        if (speechCmd.command) {
+                            console.log(`[AI] Speech has follow-up command: ${speechCmd.command.type}`);
+                            // Execute the follow-up command after a short delay
+                            setTimeout(async () => {
+                                try {
+                                    await this.executeCommand(speechCmd.command!, character);
+                                } catch (error) {
+                                    console.error('[AI] Failed to execute follow-up command:', error);
+                                    if (!this.isProcessingMultipleCharacters()) {
+                                        this.endTurnCallback(true);
+                                    }
+                                }
+                            }, 500);
+                        } else {
+                            // End the AI turn if no follow-up command
+                            this.setIsForcedTurnEnd(true);
+                            this.setIsProcessingTurn(true);
+                            this.setIsProcessingMultipleCharacters(false);
+                            this.endTurnCallback(true);
+                        }
                     }, 200);
 
                     return;
@@ -598,8 +720,8 @@ export class AICommandExecutor {
                         if (bestPos) {
                             targetLocation = `${bestPos.x},${bestPos.y}`;
                         }
-                    } else {
                     }
+                    // If no good positions found, will use original targetLocation
                 }
 
                 // Execute a movement command to get closer
@@ -661,7 +783,7 @@ export class AICommandExecutor {
             });
 
             // Wait a bit for the popup and conversation component to be created
-            setTimeout(() => {
+            setTimeout(async () => {
                 // Directly dispatch conversation update event with the AI's speech
                 // No need to call ConversationEvent.start which would make another API call
                 this.dispatch(ConversationEvent.update, {
@@ -671,6 +793,15 @@ export class AICommandExecutor {
                     answers: speechCmd.answers || [],
                     action: undefined
                 });
+
+                // Check if there's a follow-up command to execute after conversation
+                if (speechCmd.command) {
+                    console.log(`[AI] Speech to human has follow-up command: ${speechCmd.command.type}`);
+                    // Store the command to execute after conversation ends
+                    // This will be triggered when the conversation popup closes
+                    // For now, just log it - the actual execution should happen after human responds
+                    console.log('[AI] Follow-up command will execute after player response');
+                }
 
                 // End the AI turn immediately when conversation starts
                 // This prevents other AI characters from continuing to act

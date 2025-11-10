@@ -46,6 +46,7 @@ export class StoryInitializationValidator {
         // Extract room names from the map command (if present) for character location validation
         const roomNames: string[] = [];
         const createdCharacterNames: string[] = [];
+        let hasCharactersInMap = false;
 
         // First pass: Extract context from commands for validation
         commands.forEach(command => {
@@ -63,9 +64,19 @@ export class StoryInitializationValidator {
                             });
                         }
                     });
+
+                    // Check for characters embedded in map command
+                    if (Array.isArray(cmd.characters) && cmd.characters.length > 0) {
+                        hasCharactersInMap = true;
+                        cmd.characters.forEach((char: any) => {
+                            if (char.name && typeof char.name === 'string') {
+                                createdCharacterNames.push(char.name);
+                            }
+                        });
+                    }
                 }
 
-                // Extract character names being created
+                // Extract character names being created (for standalone character command)
                 if (cmd.type === 'character' && Array.isArray(cmd.characters)) {
                     cmd.characters.forEach((char: any) => {
                         if (char.name && typeof char.name === 'string') {
@@ -108,6 +119,63 @@ export class StoryInitializationValidator {
                         });
                     }
                 }
+            } else if (command && typeof command === 'object' && (command as any).type === 'map') {
+                // Special handling for map commands with embedded characters
+                const mapCmd = command as any;
+
+                // Validate map command structure first
+                const result = this.commandValidator.validateCommand(command);
+
+                if (!result.isValid) {
+                    result.errors.forEach(error => {
+                        errors.push({
+                            ...error,
+                            field: `commands[${index}].${error.field}`
+                        });
+                    });
+                } else {
+                    // If map has characters, validate them with the initialization context
+                    if (Array.isArray(mapCmd.characters) && mapCmd.characters.length > 0) {
+                        // Create a pseudo character command for validation
+                        const pseudoCharCmd = {
+                            type: 'character',
+                            characters: mapCmd.characters
+                        };
+
+                        const charResult = this.validateCharacterCommandForInitialization(
+                            pseudoCharCmd as CharacterCommand,
+                            roomNames,
+                            createdCharacterNames
+                        );
+
+                        if (!charResult.isValid) {
+                            charResult.errors.forEach(error => {
+                                // Adjust field path for embedded characters
+                                const adjustedField = error.field.replace('characters', 'characters');
+                                errors.push({
+                                    ...error,
+                                    field: `commands[${index}].${adjustedField}`
+                                });
+                            });
+                        }
+                    }
+
+                    if (result.command) {
+                        validatedCommands.push(result.command);
+                        const type = result.command.type;
+                        const count = (commandTypes.get(type) || 0) + 1;
+                        commandTypes.set(type, count);
+
+                        if (count > 1) {
+                            errors.push({
+                                field: `commands[${index}]`,
+                                value: command,
+                                error: `Duplicate command type "${type}". Story initialization can only have ONE command of each type.`,
+                                suggestions: ['Remove duplicate commands', `Keep only one ${type} command`]
+                            });
+                        }
+                    }
+                }
             } else {
                 // For non-character commands, use regular validation
                 const result = this.commandValidator.validateCommand(command);
@@ -138,16 +206,24 @@ export class StoryInitializationValidator {
         });
 
         // Check for required command types for story initialization
-        const requiredTypes = ['map', 'character'];
-        for (const requiredType of requiredTypes) {
-            if (!commandTypes.has(requiredType)) {
-                errors.push({
-                    field: 'commands',
-                    value: commands,
-                    error: `Missing required "${requiredType}" command for story initialization`,
-                    suggestions: [`Add a ${requiredType} command to initialize the game`]
-                });
-            }
+        // Map is always required
+        if (!commandTypes.has('map')) {
+            errors.push({
+                field: 'commands',
+                value: commands,
+                error: `Missing required "map" command for story initialization`,
+                suggestions: [`Add a map command to initialize the game`]
+            });
+        }
+
+        // Characters can be either in a separate command OR embedded in the map command
+        if (!commandTypes.has('character') && !hasCharactersInMap) {
+            errors.push({
+                field: 'commands',
+                value: commands,
+                error: `Missing characters for story initialization`,
+                suggestions: [`Add characters either in the map command or as a separate character command`]
+            });
         }
 
         if (errors.length === 0) {

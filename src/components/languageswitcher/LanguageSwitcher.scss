@@ -45,6 +45,43 @@
     }
 }
 
+// Compact mode styles
+:host([compact]) {
+    .language-switcher {
+        padding: $spacing-sm;
+        background: rgba($color-bg-secondary, 0.85);
+        backdrop-filter: blur(4px);
+        border: 1px solid $color-border-primary;
+        border-radius: $border-radius-sm;
+        transition: $transition-all;
+
+        &:hover {
+            background: rgba($color-bg-tertiary, 0.9);
+            border-color: $color-highlight;
+        }
+    }
+
+    .language-select.compact {
+        padding: $spacing-xs $spacing-sm;
+        font-size: $font-size-sm;
+        min-width: 60px;
+        text-align: center;
+        font-weight: $font-weight-medium;
+        text-transform: uppercase;
+        background: transparent;
+        border: none;
+
+        &:hover {
+            background: rgba($color-bg-primary, 0.5);
+        }
+
+        &:focus {
+            box-shadow: none;
+            background: rgba($color-bg-primary, 0.7);
+        }
+    }
+}
+
 // Mobile responsive
 @include sm-down {
     .language-switcher {

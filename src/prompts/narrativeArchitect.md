@@ -51,8 +51,11 @@ Used for all character dialogue, narration, and story progression.
   "answers": ["Option 1", "Option 2", "Option 3"],
   "target": "NPC Name",  // ONLY for NPC-to-NPC conversations
   "command": {            // Optional: Action after conversation ends
-    "type": "attack",
-    "characters": [{"name": "Enemy", "target": "{{mainCharacter}}"}]
+    "type": "movement",
+    "characters": [
+      {"name": "Guard 1", "action": "patrol"},
+      {"name": "Guard 2", "action": "search", "target": "player"}
+    ]
   }
 }
 ```
@@ -60,13 +63,33 @@ Used for all character dialogue, narration, and story progression.
 **Key Rules**:
 - Include `target` ONLY when NPC talks to another NPC
 - Use `answers: []` to end conversation (shows "Continue" button)
-- Add `command` field to trigger action after player closes dialogue
+- Add `command` field to trigger action after conversation ends
 - Content MUST be in {{language}}
 
+**Powerful Pattern - Speech + Action**:
+NPCs can talk then immediately take action! Perfect for dramatic moments:
+```json
+{
+  "type": "speech",
+  "source": "Enemy Commander",
+  "target": "Enemy Squad",
+  "content": "¡Los intrusos escaparon! ¡Búsquenlos!",
+  "command": {
+    "type": "movement",
+    "characters": [
+      {"name": "Enemy Soldier 1", "action": "patrol"},
+      {"name": "Enemy Soldier 2", "action": "search", "target": "{{mainCharacter}}"},
+      {"name": "Enemy Scout", "action": "scout"}
+    ]
+  }
+}
+```
+
 ### 2. `movement` - Repositioning Characters
-Used to move characters within the current map.
+Used to move characters within the current map. Now supports BOTH specific locations AND abstract movement actions!
 
 ```json
+// Traditional location-based movement
 {
   "type": "movement",
   "characters": [
@@ -74,12 +97,33 @@ Used to move characters within the current map.
     {"name": "Data", "location": "{{mainCharacter}}"}  // Move to another character
   ]
 }
+
+// NEW: Abstract movement actions (perfect for when you don't know the map layout!)
+{
+  "type": "movement",
+  "characters": [
+    {"name": "Guard 1", "action": "patrol"},  // Randomly patrol the area
+    {"name": "Scout", "action": "search", "target": "intruders"},  // Search for someone
+    {"name": "Soldier", "action": "investigate", "target": "Cargo Bay"},  // Investigate location
+    {"name": "Explorer", "action": "scout"},  // Scout unexplored areas
+    {"name": "Wounded", "action": "retreat"},  // Retreat from enemies
+    {"name": "Attacker", "action": "advance"}  // Advance toward enemies
+  ]
+}
 ```
 
-**Location formats**:
+**Location formats** (when using `location`):
 - Room name: `"Cargo Bay"` (in English)
 - Character name: `"Enemy Captain"` (to move toward that character)
 - NEVER use coordinates (`"10,15"`) or directions (`"north"`)
+
+**Abstract actions** (when using `action`):
+- `"patrol"` - Move randomly within area
+- `"search"` - Look for target (use with `target` field)
+- `"investigate"` - Go to specific place/last known position (use with `target`)
+- `"scout"` - Explore distant/unexplored areas
+- `"retreat"` - Move away from enemies
+- `"advance"` - Move toward enemies/objectives
 
 ### 3. `attack` - Combat Actions
 Used when characters engage in combat.

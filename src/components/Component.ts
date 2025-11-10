@@ -45,7 +45,7 @@ export abstract class Component extends HTMLElement {
                 return this.shadowRoot;
             }
 
-            const root = this.attachShadow({ mode: 'closed' });
+            const root = this.attachShadow({ mode: 'open' });
 
             // Store reference for testing and internal use
             this._testingShadowRoot = root;

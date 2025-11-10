@@ -1,12 +1,37 @@
 import type { ICoord, ICell, ICharacter } from '../interfaces';
 import type { DeepReadonly } from '../helpers/types';
 import type { State } from '../State';
+import { CharacterService } from './CharacterService';
 
 /**
  * Location resolution and positioning utilities for AI
  * Handles converting location strings (room names, character names) to coordinates
+ * Also handles abstract movement actions like patrol, search, investigate
  */
 export class AILocationResolver {
+    // Movement resolution constants
+    private static readonly PATROL_MAX_DISTANCE = 8;
+    private static readonly PATROL_MIN_DISTANCE = 2;
+    private static readonly PATROL_MAX_ATTEMPTS = 10;
+    private static readonly PATROL_DISTANCE_REDUCTION_INTERVAL = 3; // Reduce distance every N attempts
+    private static readonly PATROL_DISTANCE_REDUCTION = 5;
+
+    private static readonly SEARCH_BASE_DISTANCE = 5;
+    private static readonly SEARCH_DISTANCE_VARIANCE = 3;
+    private static readonly SEARCH_MAX_ATTEMPTS = 6;
+    private static readonly SEARCH_ANGLE_VARIANCE = Math.PI / 3; // +/- 30 degrees
+
+    private static readonly SCOUT_MAX_ATTEMPTS = 12;
+
+    private static readonly RETREAT_MAX_DISTANCE = 12;
+    private static readonly RETREAT_MIN_DISTANCE = 4;
+    private static readonly RETREAT_MAX_ATTEMPTS = 8;
+    private static readonly RETREAT_DISTANCE_REDUCTION_INTERVAL = 2;
+    private static readonly RETREAT_ANGLE_VARIANCE = Math.PI / 3; // +/- 30 degrees
+
+    private static readonly DEFAULT_MAP_SIZE = 50;
+    private static readonly MAX_NEARBY_CELL_SEARCH_RADIUS = 10;
+
     /**
      * Resolve a location string to coordinates
      * @param location - Room name, character name, or "center"
@@ -49,8 +74,8 @@ export class AILocationResolver {
 
         // Handle "center" or "center of map"
         if (lowerLocation.includes('center')) {
-            const mapWidth = state.map[0]?.length || 50;
-            const mapHeight = state.map.length || 50;
+            const mapWidth = state.map[0]?.length || this.DEFAULT_MAP_SIZE;
+            const mapHeight = state.map.length || this.DEFAULT_MAP_SIZE;
             return { x: Math.floor(mapWidth / 2), y: Math.floor(mapHeight / 2) };
         }
 
@@ -89,8 +114,8 @@ export class AILocationResolver {
                 const y = parseInt(coordMatch[2], 10);
 
                 // Validate coordinates are within map bounds
-                const mapWidth = state.map[0]?.length || 50;
-                const mapHeight = state.map.length || 50;
+                const mapWidth = state.map[0]?.length || this.DEFAULT_MAP_SIZE;
+                const mapHeight = state.map.length || this.DEFAULT_MAP_SIZE;
 
                 if (x >= 0 && x < mapWidth && y >= 0 && y < mapHeight) {
                     return { x, y };
@@ -129,7 +154,7 @@ export class AILocationResolver {
         const mapHeight = map.length;
 
         // Check cells in expanding radius around target
-        const maxRadius = 10; // Don't search too far
+        const maxRadius = this.MAX_NEARBY_CELL_SEARCH_RADIUS; // Don't search too far
 
         for (let radius = 1; radius <= maxRadius; radius++) {
             const candidates: Array<{ pos: ICoord; distance: number }> = [];
@@ -202,6 +227,363 @@ export class AILocationResolver {
         }
 
         return Array.from(roomNames);
+    }
+
+    /**
+     * Check if a cell is valid and walkable
+     * @param pos - The position to check
+     * @param state - Game state
+     * @param excludeCharacter - Character name to exclude from blocking check
+     * @returns True if the cell is walkable
+     */
+    private static isValidWalkableCell(
+        pos: ICoord,
+        state: State,
+        excludeCharacter?: string
+    ): boolean {
+        const map = state.map;
+        const mapHeight = map.length;
+        const mapWidth = map[0]?.length || 0;
+
+        // Check bounds
+        if (pos.x < 0 || pos.x >= mapWidth || pos.y < 0 || pos.y >= mapHeight) {
+            return false;
+        }
+
+        // Check if cell is blocked
+        const cell = map[pos.y]?.[pos.x];
+        if (cell?.content?.blocker) {
+            return false;
+        }
+
+        // Check if a living character is blocking the cell
+        const characters = state.characters;
+        if (characters && CharacterService.isCharacterAtPosition(characters, pos, excludeCharacter)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Resolve an abstract movement action to coordinates
+     * @param action - The abstract action (patrol, search, investigate, etc.)
+     * @param character - The character performing the action
+     * @param state - Game state
+     * @param target - Optional target for search/investigate actions
+     * @returns Target coordinates or null if cannot resolve
+     */
+    static resolveAbstractMovement(
+        action: 'patrol' | 'search' | 'investigate' | 'scout' | 'retreat' | 'advance',
+        character: DeepReadonly<ICharacter>,
+        state: State,
+        target?: string
+    ): ICoord | null {
+        try {
+            switch (action) {
+                case 'patrol':
+                    return this.resolvePatrol(character, state);
+                case 'search':
+                    return this.resolveSearch(character, state, target);
+                case 'investigate':
+                    return this.resolveInvestigate(character, state, target);
+                case 'scout':
+                    return this.resolveScout(character, state);
+                case 'retreat':
+                    return this.resolveRetreat(character, state);
+                case 'advance':
+                    return this.resolveAdvance(character, state);
+                default:
+                    console.error(`[AI] Unknown abstract movement action: ${action}`);
+                    return null;
+            }
+        } catch (error) {
+            console.error(`[AI] Error resolving ${action} movement for ${character.name}:`, error);
+            return null;
+        }
+    }
+
+    /**
+     * Resolve patrol movement - random movement within radius
+     */
+    private static resolvePatrol(
+        character: DeepReadonly<ICharacter>,
+        state: State
+    ): ICoord | null {
+        const map = state.map;
+        const mapWidth = map[0]?.length || this.DEFAULT_MAP_SIZE;
+        const mapHeight = map.length || this.DEFAULT_MAP_SIZE;
+
+        for (let attempt = 0; attempt < this.PATROL_MAX_ATTEMPTS; attempt++) {
+            // Start with larger distance, reduce if failing
+            const maxDistance = this.PATROL_MAX_DISTANCE - Math.floor(attempt / this.PATROL_DISTANCE_REDUCTION_INTERVAL);
+            const minDistance = Math.max(this.PATROL_MIN_DISTANCE, maxDistance - this.PATROL_DISTANCE_REDUCTION);
+
+            const angle = Math.random() * Math.PI * 2;
+            const distance = minDistance + Math.random() * (maxDistance - minDistance + 1);
+            const patrolX = character.position.x + Math.cos(angle) * distance;
+            const patrolY = character.position.y + Math.sin(angle) * distance;
+
+            // Clamp to map bounds
+            const clampedX = Math.max(0, Math.min(mapWidth - 1, Math.round(patrolX)));
+            const clampedY = Math.max(0, Math.min(mapHeight - 1, Math.round(patrolY)));
+
+            const targetPos = { x: clampedX, y: clampedY };
+
+            // Check if the target is walkable
+            if (this.isValidWalkableCell(targetPos, state, character.name)) {
+                return targetPos;
+            }
+        }
+
+        // If no valid patrol target found, try to find any nearby walkable cell
+        const nearbyCell = this.findNearestEmptyCell(
+            character.position,
+            state,
+            character.position
+        );
+
+        if (nearbyCell) {
+            return nearbyCell;
+        }
+
+        // Last resort: stay in place
+        console.log(`[AI] Patrol: No valid target found for ${character.name}, staying in place`);
+        return { x: character.position.x, y: character.position.y };
+    }
+
+    /**
+     * Resolve search movement - move toward target or explore
+     */
+    private static resolveSearch(
+        character: DeepReadonly<ICharacter>,
+        state: State,
+        target?: string
+    ): ICoord | null {
+        const map = state.map;
+        const characters = state.characters;
+
+        if (target) {
+            const targetChar = characters.find(c =>
+                c.name.toLowerCase() === target.toLowerCase() && c.health > 0
+            );
+            if (targetChar) {
+                // Try multiple positions toward target's general area
+                const baseAngle = Math.atan2(
+                    targetChar.position.y - character.position.y,
+                    targetChar.position.x - character.position.x
+                );
+                const mapWidth = map[0]?.length || this.DEFAULT_MAP_SIZE;
+                const mapHeight = map.length || this.DEFAULT_MAP_SIZE;
+
+                for (let attempt = 0; attempt < this.SEARCH_MAX_ATTEMPTS; attempt++) {
+                    // Vary angle for each attempt
+                    const angleVariation = (Math.random() - 0.5) * this.SEARCH_ANGLE_VARIANCE;
+                    const angle = baseAngle + angleVariation;
+
+                    // Vary distance
+                    const distance = this.SEARCH_BASE_DISTANCE + Math.random() * this.SEARCH_DISTANCE_VARIANCE;
+
+                    const searchX = character.position.x + Math.cos(angle) * distance;
+                    const searchY = character.position.y + Math.sin(angle) * distance;
+
+                    const targetPos = {
+                        x: Math.max(0, Math.min(mapWidth - 1, Math.round(searchX))),
+                        y: Math.max(0, Math.min(mapHeight - 1, Math.round(searchY)))
+                    };
+
+                    // Check if the search target is walkable
+                    if (this.isValidWalkableCell(targetPos, state, character.name)) {
+                        return targetPos;
+                    }
+                }
+
+                // If no valid position toward target, try to get closer by any means
+                const nearbyCell = this.findNearestEmptyCell(
+                    targetChar.position,
+                    state,
+                    character.position
+                );
+
+                if (nearbyCell) {
+                    return nearbyCell;
+                }
+            }
+        }
+        // Fall through to scout behavior if no target found
+        return this.resolveScout(character, state);
+    }
+
+    /**
+     * Resolve investigate movement - move to specific location
+     */
+    private static resolveInvestigate(
+        character: DeepReadonly<ICharacter>,
+        state: State,
+        target?: string
+    ): ICoord | null {
+        const characters = state.characters;
+
+        if (target) {
+            // First try to find a room by that name
+            const roomPos = this.findRoomCenter(target, state);
+            if (roomPos) {
+                return roomPos;
+            }
+
+            // Then try to find a character
+            const targetChar = characters.find(c =>
+                c.name.toLowerCase() === target.toLowerCase()
+            );
+            if (targetChar) {
+                return { x: targetChar.position.x, y: targetChar.position.y };
+            }
+        }
+        // If no specific target, patrol the area
+        return this.resolvePatrol(character, state);
+    }
+
+    /**
+     * Resolve scout movement - explore map edges
+     */
+    private static resolveScout(
+        character: DeepReadonly<ICharacter>,
+        state: State
+    ): ICoord | null {
+        const map = state.map;
+        const mapWidth = map[0]?.length || this.DEFAULT_MAP_SIZE;
+        const mapHeight = map.length || this.DEFAULT_MAP_SIZE;
+
+        for (let attempt = 0; attempt < this.SCOUT_MAX_ATTEMPTS; attempt++) {
+            const edge = Math.floor(Math.random() * 4);
+            let targetPos: ICoord;
+
+            switch (edge) {
+                case 0: // North edge
+                    targetPos = { x: Math.floor(Math.random() * mapWidth), y: 0 };
+                    break;
+                case 1: // East edge
+                    targetPos = { x: mapWidth - 1, y: Math.floor(Math.random() * mapHeight) };
+                    break;
+                case 2: // South edge
+                    targetPos = { x: Math.floor(Math.random() * mapWidth), y: mapHeight - 1 };
+                    break;
+                case 3: // West edge
+                    targetPos = { x: 0, y: Math.floor(Math.random() * mapHeight) };
+                    break;
+                default:
+                    targetPos = { x: Math.floor(mapWidth / 2), y: Math.floor(mapHeight / 2) };
+            }
+
+            // Check if the target is walkable
+            if (this.isValidWalkableCell(targetPos, state, character.name)) {
+                return targetPos;
+            }
+        }
+
+        // If no valid edge target found, fall back to patrol behavior
+        console.log(`[AI] Scout: No valid edge target found for ${character.name}, using patrol`);
+        return this.resolvePatrol(character, state);
+    }
+
+    /**
+     * Resolve retreat movement - move away from enemies
+     */
+    private static resolveRetreat(
+        character: DeepReadonly<ICharacter>,
+        state: State
+    ): ICoord | null {
+        const map = state.map;
+        const characters = state.characters;
+
+        // Find enemies
+        const enemies = characters.filter(c => {
+            if (c.health <= 0 || c.name === character.name) return false;
+            // Simple faction check
+            return c.controller !== character.controller;
+        });
+
+        if (enemies.length > 0) {
+            // Find average position of enemies
+            const avgX = enemies.reduce((sum, e) => sum + e.position.x, 0) / enemies.length;
+            const avgY = enemies.reduce((sum, e) => sum + e.position.y, 0) / enemies.length;
+
+            // Try multiple retreat distances/angles until we find a valid position
+            const baseAngle = Math.atan2(character.position.y - avgY, character.position.x - avgX);
+            const mapWidth = map[0]?.length || this.DEFAULT_MAP_SIZE;
+            const mapHeight = map.length || this.DEFAULT_MAP_SIZE;
+
+            for (let attempt = 0; attempt < this.RETREAT_MAX_ATTEMPTS; attempt++) {
+                // Vary the angle slightly for each attempt
+                const angleVariation = (Math.random() - 0.5) * this.RETREAT_ANGLE_VARIANCE;
+                const angle = baseAngle + angleVariation;
+
+                // Vary distance, start with further away
+                const maxDistance = this.RETREAT_MAX_DISTANCE - Math.floor(attempt / this.RETREAT_DISTANCE_REDUCTION_INTERVAL);
+                const minDistance = Math.max(this.RETREAT_MIN_DISTANCE, maxDistance - this.RETREAT_MIN_DISTANCE);
+                const distance = minDistance + Math.random() * (maxDistance - minDistance + 1);
+
+                const retreatX = character.position.x + Math.cos(angle) * distance;
+                const retreatY = character.position.y + Math.sin(angle) * distance;
+
+                const targetPos = {
+                    x: Math.max(0, Math.min(mapWidth - 1, Math.round(retreatX))),
+                    y: Math.max(0, Math.min(mapHeight - 1, Math.round(retreatY)))
+                };
+
+                // Check if the retreat target is walkable
+                if (this.isValidWalkableCell(targetPos, state, character.name)) {
+                    return targetPos;
+                }
+            }
+
+            // If no valid retreat position found, try to find any safe cell away from enemies
+            const nearbyCell = this.findNearestEmptyCell(
+                character.position,
+                state,
+                character.position
+            );
+
+            if (nearbyCell) {
+                return nearbyCell;
+            }
+        }
+        // If no enemies or can't retreat, just patrol
+        return this.resolvePatrol(character, state);
+    }
+
+    /**
+     * Resolve advance movement - move toward enemies
+     */
+    private static resolveAdvance(
+        character: DeepReadonly<ICharacter>,
+        state: State
+    ): ICoord | null {
+        const map = state.map;
+        const characters = state.characters;
+
+        const enemies = characters.filter(c => {
+            if (c.health <= 0 || c.name === character.name) return false;
+            return c.controller !== character.controller;
+        });
+
+        if (enemies.length > 0) {
+            // Find nearest enemy
+            const nearest = enemies.reduce((closest, enemy) => {
+                const closestDist = Math.abs(closest.position.x - character.position.x) +
+                                   Math.abs(closest.position.y - character.position.y);
+                const enemyDist = Math.abs(enemy.position.x - character.position.x) +
+                                 Math.abs(enemy.position.y - character.position.y);
+                return enemyDist < closestDist ? enemy : closest;
+            });
+
+            // Move toward nearest enemy
+            return { x: nearest.position.x, y: nearest.position.y };
+        }
+        // If no enemies, move to center of map
+        const mapWidth = map[0]?.length || this.DEFAULT_MAP_SIZE;
+        const mapHeight = map.length || this.DEFAULT_MAP_SIZE;
+        return { x: Math.floor(mapWidth / 2), y: Math.floor(mapHeight / 2) };
     }
 
     /**

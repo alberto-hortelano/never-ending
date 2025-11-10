@@ -174,14 +174,15 @@ export class AICommandValidator {
                 });
             }
 
-            // Check location
-            if (!char.location) {
+            // Check location (only required if no abstract action is specified)
+            if (!char.location && !char.action) {
                 errors.push({
                     field: `characters[${index}].location`,
                     value: undefined,
-                    error: 'Location is required'
+                    error: 'Location is required (or use an abstract action like patrol, search, etc.)',
+                    suggestions: ['Add a location (room/character name)', 'Or use an action: patrol, search, investigate, scout, retreat, advance']
                 });
-            } else {
+            } else if (char.location) {
                 // Check for invalid location formats
                 const location = char.location.toLowerCase().trim();
 
@@ -213,6 +214,25 @@ export class AICommandValidator {
                         error: 'Location does not exist',
                         suggestions: [...availableLocations, ...existingCharacters]
                     });
+                }
+            }
+
+            // Validate action field if present
+            if (char.action) {
+                const validActions = ['patrol', 'search', 'investigate', 'scout', 'retreat', 'advance'];
+                if (!validActions.includes(char.action)) {
+                    errors.push({
+                        field: `characters[${index}].action`,
+                        value: char.action,
+                        error: 'Invalid action type',
+                        suggestions: validActions
+                    });
+                }
+
+                // If action is 'search' or 'investigate', suggest adding a target
+                if ((char.action === 'search' || char.action === 'investigate') && !char.target) {
+                    // This is just a suggestion, not an error
+                    // The action can work without a target (will search/investigate generally)
                 }
             }
         });
