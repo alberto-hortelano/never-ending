@@ -25,7 +25,6 @@ export class Talk extends EventBus<
         // Check if the character belongs to the current turn
         const currentTurn = this.state.game.turn;
         if (talkingCharacter.controller !== currentTurn) {
-            // DEBUG: console.log(`${characterName} cannot be used by ${currentTurn} - belongs to ${talkingCharacter.controller}`);
             return;
         }
 
@@ -35,7 +34,6 @@ export class Talk extends EventBus<
         );
 
         if (availableCharacters.length === 0) {
-            // DEBUG: console.log(`${characterName} has no one to talk to`);
             return;
         }
 

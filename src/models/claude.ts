@@ -2,7 +2,6 @@ import type { IMessage } from '../common/interfaces';
 
 import Anthropic from '@anthropic-ai/sdk';
 import { PromptTemplate } from '../prompts/PromptTemplate';
-import { initialSetup } from '../prompts/shortPrompts';
 import { FileLogger } from './fileLogger';
 import { LANGUAGE_NAMES, LANGUAGE_INSTRUCTIONS, getMainCharacterName } from '../common/constants';
 
@@ -76,7 +75,6 @@ class ModelFallbackManager {
                 errorType: isOverload ? 'overload' : 'error'
             });
 
-            // DEBUG: console.log(`[ModelFallback] Model ${model} failed (${isOverload ? 'overload' : 'error'}). Falling back to ${fallbackModel}`);
         } else {
             FileLogger.error(`[ModelFallback] Model ${model} failed with no fallback available`);
         }
@@ -118,7 +116,6 @@ class ModelFallbackManager {
     cleanupExpired(): void {
         for (const [model, state] of this.fallbackStates.entries()) {
             if (this.isExpired(state)) {
-                // DEBUG: console.log(`[ModelFallback] Clearing expired fallback for ${model}`);
                 this.fallbackStates.delete(model);
             }
         }
@@ -127,7 +124,6 @@ class ModelFallbackManager {
     // Clear a specific model's fallback (e.g., after successful use)
     clearFallback(model: ClaudeModel): void {
         if (this.fallbackStates.has(model)) {
-            // DEBUG: console.log(`[ModelFallback] Clearing fallback for ${model} after successful use`);
             this.fallbackStates.delete(model);
         }
     }
@@ -160,25 +156,6 @@ const fallbackManager = new ModelFallbackManager();
 export type SendMessage = (messages: IMessage[]) => Promise<string>;
 
 const cache = new Map<string, string>();
-cache.set(initialSetup, JSON.stringify({
-    "type": "speech",
-    "source": "Data",
-    "content": "Bienvenido a bordo, Jim. Me alegro de que hayamos logrado escapar. ¿Tienes alguna idea de hacia dónde deberíamos dirigirnos ahora? Nuestras opciones son limitadas, pero podríamos intentar llegar a un planeta en el borde exterior donde sea menos probable que nos encuentren.",
-    "answers": [
-        "Vayamos al planeta más cercano para reabastecernos.",
-        "Busquemos un lugar para escondernos por un tiempo.",
-        "Contactemos con la Coalición Rebelde en busca de ayuda.",
-        "¿Qué sugieres tú, Data?"
-    ],
-    //     "type": "speech",
-    //     "source": "Data",
-    //     "content": "Welcome aboard, Jim. I'm Data, the service droid assigned to this vessel. We've successfully escaped from your former unit, but our situation remains precarious. What's our next move? Should we seek a safe haven, look for allies, or attempt to gather resources?",
-    //     "answers": [
-    //         "Let's head to the nearest populated planet.",
-    //         "We need allies. Any rebel groups or independent colonies nearby?",
-    //         "Resources are crucial. Where can we get supplies and fuel?"
-    //     ]
-}));
 
 async function callClaudeWithModel(
     model: ClaudeModel,
@@ -289,17 +266,14 @@ export const sendMessage: SendMessage = async (messages: IMessage[]) => {
     // Get the current model (considering active fallbacks)
     const currentModel = fallbackManager.getCurrentModel();
 
-    // DEBUG: console.log(`[Claude] Using model: ${currentModel}`);
 
     // Log fallback status if there are active fallbacks
     const status = fallbackManager.getStatus();
     if (status.fallbacks.length > 0) {
-        // DEBUG: console.log('[Claude] Active fallbacks:', status);
+        // Fallbacks are active
     }
 
     try {
-        // DEBUG: console.log('PROMPT ###############');
-        // DEBUG: console.log('CLAUDE:\n', messages[messages.length - 1]);
         const msg = await callClaudeWithModel(currentModel, messages, narrativeArchitect);
 
         const response = msg.content[0];
@@ -309,8 +283,6 @@ export const sendMessage: SendMessage = async (messages: IMessage[]) => {
 
         // Extract JSON from markdown code blocks if present
         const text = response.text;
-        // DEBUG: console.log('RESPONSE ###############');
-        // DEBUG: console.log('CLAUDE:\n', text);
         const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
 
         if (jsonMatch && jsonMatch[1]) {

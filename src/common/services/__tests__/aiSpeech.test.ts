@@ -168,7 +168,7 @@ describe('AI Speech System', () => {
             expect(dataCharacter).toBeDefined();
             
             // Execute the speech command directly
-            await (aiController as any).executeSpeech(speechCommand, dataCharacter);
+            await (aiController as any).commandExecutor?.executeSpeech(speechCommand, dataCharacter);
             
             // Fast-forward timers to execute the delayed dispatch
             jest.advanceTimersByTime(200);
@@ -217,7 +217,7 @@ describe('AI Speech System', () => {
             };
             
             // Execute speech
-            await (aiController as any).executeSpeech(speechCommand, data);
+            await (aiController as any).commandExecutor?.executeSpeech(speechCommand, data);
             
             // Fast-forward timers to execute the delayed dispatch
             jest.advanceTimersByTime(200);
@@ -259,7 +259,7 @@ describe('AI Speech System', () => {
             };
             
             // Execute speech - should trigger movement instead
-            await (aiController as any).executeSpeech(speechCommand, dataCharacter);
+            await (aiController as any).commandExecutor?.executeSpeech(speechCommand, dataCharacter);
             
             // Fast-forward timers to execute any immediate operations
             jest.advanceTimersByTime(100);
@@ -292,7 +292,7 @@ describe('AI Speech System', () => {
             };
             
             const dataCharacter = state.characters.find(c => c.name === 'data');
-            await (aiController as any).executeSpeech(speechCommand, dataCharacter);
+            await (aiController as any).commandExecutor?.executeSpeech(speechCommand, dataCharacter);
             
             // Fast-forward timers to execute the delayed dispatch
             jest.advanceTimersByTime(200);

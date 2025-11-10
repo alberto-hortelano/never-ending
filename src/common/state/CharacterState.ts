@@ -67,14 +67,12 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
         const maxX = mapBounds?.width || 50;
         const maxY = mapBounds?.height || 50;
 
-        console.log(`[CharacterState] Validating position for ${characterName}: (${position.x}, ${position.y}) against bounds (${maxX}x${maxY})`);
-
         // Check if position is outside bounds
         if (position.x < 0 || position.x >= maxX || position.y < 0 || position.y >= maxY) {
             console.error(`[CharacterState] CRITICAL: Character ${characterName} placed outside map bounds!`);
             console.error(`[CharacterState]   Position: (${position.x}, ${position.y})`);
             console.error(`[CharacterState]   Map bounds: width=${maxX}, height=${maxY}`);
-            console.error(`[CharacterState]   Valid range: x=[0,${maxX-1}], y=[0,${maxY-1}]`);
+            console.error(`[CharacterState]   Valid range: x=[0,${maxX - 1}], y=[0,${maxY - 1}]`);
 
             throw new CharacterPositioningError(
                 characterName,
@@ -99,7 +97,7 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
 
         // Validate position - throw error if invalid
         this.validatePosition(characterData.position, characterData.name);
-        
+
         character.position = characterData.position;
         character.direction = characterData.direction;
 
@@ -129,7 +127,7 @@ export class CharacterState extends EventBus<UpdateStateEventsMap, StateChangeEv
                 throw error;
             }
         });
-        
+
         character.path = [...characterData.path];
         const eventData = { ...structuredClone(character), fromNetwork };
         this.dispatch(StateChangeEvent.characterPath, eventData);

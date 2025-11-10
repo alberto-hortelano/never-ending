@@ -1,13 +1,21 @@
 import { State } from '../State';
 import {
-    AICommand
+    AICommand,
+    MovementCommand,
+    AttackCommand,
+    CharacterCommand
 } from './AICommandParser';
 import { DeepReadonly } from '../helpers/types';
 import { ICharacter } from '../interfaces';
 
+// Extract character data types from command interfaces for proper typing
+type MovementCharacterData = MovementCommand['characters'][number];
+type AttackCharacterData = AttackCommand['characters'][number];
+type CharacterCreationData = CharacterCommand['characters'][number];
+
 export interface ValidationError {
     field: string;
-    value: any;
+    value: unknown;
     error: string;
     suggestions?: string[];
 }
@@ -33,6 +41,17 @@ export class AICommandValidator {
     public validateCommand(command: unknown): ValidationResult {
         const errors: ValidationError[] = [];
 
+        // Check if command is an array (multiple commands not allowed in regular gameplay)
+        if (Array.isArray(command)) {
+            errors.push({
+                field: 'command',
+                value: command,
+                error: 'Multiple commands detected. You must return only ONE command object, not an array.',
+                suggestions: ['Return a single command object like {"type": "speech", ...}']
+            });
+            return { isValid: false, errors };
+        }
+
         // Check if command is an object
         if (!command || typeof command !== 'object') {
             errors.push({
@@ -44,6 +63,34 @@ export class AICommandValidator {
         }
 
         const cmd = command as Record<string, unknown>;
+
+        // Check for embedded commands array (like story initialization format used incorrectly)
+        if ('commands' in cmd && Array.isArray(cmd.commands)) {
+            errors.push({
+                field: 'commands',
+                value: cmd.commands,
+                error: 'Invalid format: "commands" array is only for story initialization. Return a single command object.',
+                suggestions: ['Return {"type": "speech", ...} not {"commands": [...]}']
+            });
+            return { isValid: false, errors };
+        }
+
+        // Check for multiple embedded commands of same type (in case AI tries to embed multiple)
+        // This would catch cases like {speech1: {...}, speech2: {...}}
+        const commandTypeFields = Object.keys(cmd).filter(key =>
+            key.toLowerCase().includes('speech') ||
+            key.toLowerCase().includes('movement') ||
+            key.toLowerCase().includes('attack')
+        );
+        if (commandTypeFields.length > 1) {
+            errors.push({
+                field: 'command',
+                value: cmd,
+                error: 'Multiple command fields detected. Return only ONE command with a single "type" field.',
+                suggestions: ['Use format: {"type": "speech", "source": "...", "content": "..."}']
+            });
+            return { isValid: false, errors };
+        }
 
         // Check if type exists
         if (!cmd.type) {
@@ -110,7 +157,7 @@ export class AICommandValidator {
         const existingCharacters = this.getExistingCharacterNames();
         const availableLocations = this.getAvailableLocations();
 
-        cmd.characters.forEach((char: any, index: number) => {
+        cmd.characters.forEach((char: MovementCharacterData, index: number) => {
             // Check character name
             if (!char.name) {
                 errors.push({
@@ -127,16 +174,17 @@ export class AICommandValidator {
                 });
             }
 
-            // Check location
-            if (!char.location) {
+            // Check location (only required if no abstract action is specified)
+            if (!char.location && !char.action) {
                 errors.push({
                     field: `characters[${index}].location`,
                     value: undefined,
-                    error: 'Location is required'
+                    error: 'Location is required (or use an abstract action like patrol, search, etc.)',
+                    suggestions: ['Add a location (room/character name)', 'Or use an action: patrol, search, investigate, scout, retreat, advance']
                 });
-            } else {
+            } else if (char.location) {
                 // Check for invalid location formats
-                const location = char.location.toString().toLowerCase().trim();
+                const location = char.location.toLowerCase().trim();
 
                 // Check if it's coordinates (not allowed)
                 if (/^\d+\s*,\s*\d+$/.test(location)) {
@@ -168,6 +216,25 @@ export class AICommandValidator {
                     });
                 }
             }
+
+            // Validate action field if present
+            if (char.action) {
+                const validActions = ['patrol', 'search', 'investigate', 'scout', 'retreat', 'advance'];
+                if (!validActions.includes(char.action)) {
+                    errors.push({
+                        field: `characters[${index}].action`,
+                        value: char.action,
+                        error: 'Invalid action type',
+                        suggestions: validActions
+                    });
+                }
+
+                // If action is 'search' or 'investigate', suggest adding a target
+                if ((char.action === 'search' || char.action === 'investigate') && !char.target) {
+                    // This is just a suggestion, not an error
+                    // The action can work without a target (will search/investigate generally)
+                }
+            }
         });
     }
 
@@ -184,7 +251,7 @@ export class AICommandValidator {
 
         const existingCharacters = this.getExistingCharacterNames();
 
-        cmd.characters.forEach((char: any, index: number) => {
+        cmd.characters.forEach((char: AttackCharacterData, index: number) => {
             // Check attacker name
             if (!char.name) {
                 errors.push({
@@ -266,7 +333,7 @@ export class AICommandValidator {
         const validSpeeds = ['slow', 'medium', 'fast'];
         const validOrientations = ['top', 'right', 'bottom', 'left'];
 
-        cmd.characters.forEach((char: any, index: number) => {
+        cmd.characters.forEach((char: CharacterCreationData, index: number) => {
             // Check name
             if (!char.name) {
                 errors.push({
@@ -413,15 +480,16 @@ export class AICommandValidator {
         }
     }
 
-    private validatePalette(palette: any, basePath: string, errors: ValidationError[]): void {
+    private validatePalette(palette: unknown, basePath: string, errors: ValidationError[]): void {
+        const paletteObj = palette as Record<string, unknown>;
         const colorFields = ['skin', 'helmet', 'suit'];
         const validColorNames = ['white', 'black', 'red', 'blue', 'green', 'yellow', 'gold',
                                  'silver', 'gray', 'brown', 'orange', 'purple', 'pink',
                                  'darkred', 'darkblue', 'darkgreen', 'darkgray'];
 
         colorFields.forEach(field => {
-            if (palette[field]) {
-                const color = palette[field].toString();
+            if (paletteObj[field]) {
+                const color = String(paletteObj[field]);
 
                 // Check if it's a hex color
                 if (color.startsWith('#')) {

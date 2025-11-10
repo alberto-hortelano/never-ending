@@ -10,7 +10,7 @@ import { baseCharacter } from "../../data/state";
 jest.mock('../State');
 
 describe('Shoot', () => {
-    let shoot: Shoot;
+    let _shoot: Shoot;
     let mockState: jest.Mocked<State>;
     let testCharacter: ICharacter;
     let testMap: ICell[][];
@@ -72,7 +72,7 @@ describe('Shoot', () => {
         } as any;
 
         // Create Shoot instance
-        shoot = new Shoot(mockState);
+        _shoot = new Shoot(mockState);
     });
 
     afterEach(() => {
@@ -191,7 +191,7 @@ describe('Shoot', () => {
                 testEventBus.listen(UpdateStateEvent.uiCellVisualBatch, cellBatchSpy);
 
                 // Re-create shoot instance with fresh state
-                shoot = new Shoot(mockState);
+                _shoot = new Shoot(mockState);
 
                 testCharacter.position = { x: 5, y: 5 };
                 testCharacter.direction = direction;

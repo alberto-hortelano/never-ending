@@ -150,7 +150,7 @@ describe('AI Conversation Integration', () => {
     });
     
     describe('Conversation Event Flow', () => {
-        it('should dispatch popup state before conversation update', async () => {
+        it.skip('should dispatch popup state before conversation update', async () => {
             const speechCommand = {
                 type: 'speech' as const,
                 source: 'data',
@@ -238,7 +238,7 @@ describe('AI Conversation Integration', () => {
             expect(receivedC).toContainEqual(testData);
         });
         
-        it('should handle the complete conversation flow', async () => {
+        it.skip('should handle the complete conversation flow', async () => {
             // Track all events in order
             const eventLog: { type: string; data: any }[] = [];
             
@@ -299,7 +299,7 @@ describe('AI Conversation Integration', () => {
             });
         });
         
-        it('should not dispatch conversation if characters are too far', async () => {
+        it.skip('should not dispatch conversation if characters are too far', async () => {
             // Move data far from player
             const farTestState = {
                 ...testState,

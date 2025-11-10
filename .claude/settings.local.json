@@ -27,7 +27,8 @@
       "Bash(node:*)",
       "Bash(curl:*)",
       "WebFetch(domain:github.com)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(gh pr list:*)"
     ],
     "deny": []
   }

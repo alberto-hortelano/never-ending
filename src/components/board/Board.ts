@@ -29,11 +29,14 @@ export default class Board extends Component {
     // Listen for UI state changes for board visual state
     this.listen(StateChangeEvent.uiVisualStates, (visualStates) => {
       const boardState = visualStates.board;
-      if (boardState.hasPopupActive && this.isMobile()) {
-        this.classList.add('popup-active');
-      } else {
-        this.classList.remove('popup-active');
-      }
+      // Batch classList changes in RAF for better performance
+      requestAnimationFrame(() => {
+        if (boardState.hasPopupActive && this.isMobile()) {
+          this.classList.add('popup-active');
+        } else {
+          this.classList.remove('popup-active');
+        }
+      });
     });
 
     // Listen for shoot projectile events
@@ -108,28 +111,31 @@ export default class Board extends Component {
       }
     });
     
-    this.style.setProperty('--map-width', dimensions.width.toString() || null);
-    this.style.setProperty('--map-height', dimensions.height.toString() || null);
-
-    this.innerHTML = '';
-
     const cellsToRender = BoardService.getCellsToRender(this.mapData);
     const totalCells = cellsToRender.length;
 
-    cellsToRender.forEach(cellData => {
-      const cellElement = document.createElement('cell-component');
-      cellElement.id = cellData.id;
-      cellElement.setAttribute('content', cellData.content);
-      cellElement.style.setProperty('--cell-x', cellData.x.toString());
-      cellElement.style.setProperty('--cell-y', cellData.y.toString());
+    // Batch ALL DOM updates in RAF for better performance
+    requestAnimationFrame(() => {
+      this.style.setProperty('--map-width', dimensions.width.toString() || null);
+      this.style.setProperty('--map-height', dimensions.height.toString() || null);
+      this.innerHTML = '';
 
-      cellData.wallClasses.forEach(wallClass => {
-        cellElement.classList.add(wallClass);
+      // Create and append cells inside RAF to avoid race condition
+      cellsToRender.forEach(cellData => {
+        const cellElement = document.createElement('cell-component');
+        cellElement.id = cellData.id;
+        cellElement.setAttribute('content', cellData.content);
+        cellElement.style.setProperty('--cell-x', cellData.x.toString());
+        cellElement.style.setProperty('--cell-y', cellData.y.toString());
+
+        cellData.wallClasses.forEach(wallClass => {
+          cellElement.classList.add(wallClass);
+        });
+
+        this.appendChild(cellElement);
       });
-
-      this.appendChild(cellElement);
     });
-    
+
     const duration = performance.now() - startTime;
     // DEBUG: Cell creation performance
     // console.log(`[Board] Created ${totalCells} cells (${dimensions.width}x${dimensions.height}) in ${duration.toFixed(1)}ms`);

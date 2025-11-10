@@ -15,7 +15,7 @@ export interface IStoryThread {
     currentNarrative: string;  // High-level description of what's happening
     lastUpdated: number;  // Turn number when last updated
     priority: 'low' | 'medium' | 'high';  // How important for current context
-    tags: Set<string>;  // For categorization and filtering
+    tags: string[];  // For categorization and filtering (serializable)
 }
 
 export interface IThreadOutcome {
@@ -39,10 +39,10 @@ export interface ICharacterProfile {
     goals: ICharacterGoal[];
     fears: string[];
     desires: string[];
-    relationships: Map<string, IRelationship>;
+    relationships: Record<string, IRelationship>;  // Character ID -> relationship (serializable)
     currentActivity: string;  // What they're doing right now
     locationBelief: string;  // Where they are or heading
-    knowledge: Set<string>;  // Story facts they're aware of
+    knowledge: string[];  // Story facts they're aware of (serializable)
     resources: ICharacterResource[];
     personality: IPersonalityTraits;
     lastSeen?: { location: string; turn: number };
@@ -114,15 +114,15 @@ export interface IFactionActivity {
     resources: ICharacterResource[];
     activeAgents: string[];  // Character IDs working for them
     currentGoals: string[];
-    relationships: Map<string, number>;  // Faction ID -> reputation
+    relationships: Record<string, number>;  // Faction ID -> reputation (serializable)
 }
 
 export interface IWorldState {
-    threads: Map<string, IStoryThread>;
-    characters: Map<string, ICharacterProfile>;
+    threads: Record<string, IStoryThread>;  // Thread ID -> thread (serializable)
+    characters: Record<string, ICharacterProfile>;  // Character ID -> profile (serializable)
     events: IWorldEvent[];
     conflicts: IEmergingConflict[];
-    factionActivities: Map<string, IFactionActivity>;
+    factionActivities: Record<string, IFactionActivity>;  // Faction ID -> activity (serializable)
     narrativePressure: INarrativePressure;
     lastMajorUpdate: number;  // Turn number
 }
@@ -136,7 +136,7 @@ export interface INarrativePressure {
 
 export interface IWorldContext {
     nearbyThreads: IStoryThread[];  // Threads relevant to current situation
-    characterMotivations: Map<string, string[]>;  // Character -> current goals
+    characterMotivations: Record<string, string[]>;  // Character -> current goals (serializable)
     emergingConflicts: IEmergingConflict[];
     offscreenEvents: IWorldEvent[];  // Things happening elsewhere
     narrativePressure: string;  // Suggested story direction

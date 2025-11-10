@@ -99,6 +99,167 @@ export class StoryPlanner extends EventBus<UpdateStateEventsMap, UpdateStateEven
     }
     
     /**
+     * Generate the next mission in the story on-demand
+     */
+    public async generateNextMission(
+        missionOutline: IMission,
+        actId: string,
+        storyState: IStoryState,
+        language: LanguageCode = 'en'
+    ): Promise<IMission | null> {
+        if (!this.currentStoryPlan) {
+            console.error('[StoryPlanner] Cannot generate mission - no story plan exists');
+            return null;
+        }
+
+        const messages: IMessage[] = [];
+
+        // Build prompt for mission generation
+        const prompt = this.buildMissionGenerationPrompt(
+            missionOutline,
+            actId,
+            storyState,
+            language
+        );
+
+        messages.push({
+            role: 'user',
+            content: prompt
+        });
+
+        try {
+            const response = await this.aiService.requestMapGeneration(
+                'mission_generation',
+                prompt,
+                storyState
+            );
+
+            if (response && typeof response === 'object' && 'mission' in response) {
+                const fullMission = response.mission as IMission;
+
+                // Ensure the mission has the correct IDs
+                fullMission.id = missionOutline.id;
+                fullMission.actId = actId;
+
+                // Update the mission in the story plan
+                const act = this.currentStoryPlan.acts.find(a => a.id === actId);
+                if (act) {
+                    const missionIndex = act.missions.findIndex(m => m.id === missionOutline.id);
+                    if (missionIndex >= 0) {
+                        act.missions[missionIndex] = fullMission;
+                    }
+
+                    // Update state
+                    this.dispatch(UpdateStateEvent.storyState, {
+                        storyPlan: this.currentStoryPlan
+                    });
+                }
+
+                return fullMission;
+            }
+
+            console.error('[StoryPlanner] Failed to generate mission - invalid response');
+            return null;
+        } catch (error) {
+            console.error('[StoryPlanner] Failed to generate next mission:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Build prompt for generating a full mission from an outline
+     */
+    private buildMissionGenerationPrompt(
+        missionOutline: IMission,
+        actId: string,
+        storyState: IStoryState,
+        language: LanguageCode
+    ): string {
+        const currentAct = this.currentStoryPlan?.acts.find(a => a.id === actId);
+
+        return `# MISSION GENERATION REQUEST
+
+Language: Generate all text content in ${LANGUAGE_NAMES[language]}.
+
+Generate FULL details for the following mission outline:
+
+## Mission Outline:
+- Name: ${missionOutline.name}
+- Type: ${missionOutline.type}
+- Brief Description: ${missionOutline.description}
+
+## Story Context:
+- Overall Narrative: ${this.currentStoryPlan?.overallNarrative || 'Unknown'}
+- Theme: ${this.currentStoryPlan?.theme || 'Unknown'}
+- Current Act: ${currentAct?.title || 'Unknown'} - ${currentAct?.description || ''}
+- Completed Missions: ${storyState.completedMissions.join(', ') || 'None'}
+
+## Requirements:
+Generate FULL mission details including:
+
+1. **Mission Details**:
+   - name: Keep the same name
+   - type: Keep the same type (${missionOutline.type})
+   - description: Expand into a full detailed description (2-3 sentences)
+
+2. **Objectives** (2-4 objectives):
+   - Each with type: EXACTLY one of [primary, secondary, hidden]
+   - Clear description
+   - conditions: Array with type being EXACTLY one of [kill, reach, collect, talk, survive, escort, destroy]
+
+3. **Map Context**:
+   - environment: EXACTLY one of [spaceship, station, planet, settlement, ruins, wilderness]
+   - atmosphere: Detailed atmosphere description
+   - lightingCondition: EXACTLY one of [bright, normal, dim, dark]
+
+4. **NPCs** (2-4 NPCs):
+   - Each with: name, purpose, dialogue array (2-3 dialogue options)
+
+5. **Narrative Elements**:
+   - requiredObjects: Array of object IDs if needed
+   - narrativeHooks: Array of 2-3 narrative hooks for engagement
+   - estimatedDuration: Number (minutes)
+
+## Response Format:
+Return a JSON object with type "mission":
+
+{
+  "type": "mission",
+  "mission": {
+    "id": "${missionOutline.id}",
+    "actId": "${actId}",
+    "name": "${missionOutline.name}",
+    "description": "Full detailed description...",
+    "type": "${missionOutline.type}",
+    "objectives": [
+      {
+        "id": "obj1",
+        "type": "primary",
+        "description": "...",
+        "completed": false,
+        "conditions": [
+          {"type": "reach", "location": "..."}
+        ]
+      }
+    ],
+    "mapContext": {
+      "environment": "spaceship",
+      "atmosphere": "...",
+      "lightingCondition": "dim"
+    },
+    "requiredObjects": [],
+    "npcs": [
+      {"name": "...", "purpose": "...", "dialogue": ["...", "..."]}
+    ],
+    "narrativeHooks": ["...", "..."],
+    "estimatedDuration": 15,
+    "isCompleted": false,
+    "isCurrent": false
+  }
+}`;
+    }
+
+    /**
      * Get context for the current screen/mission
      */
     public async getScreenContext(
@@ -194,79 +355,131 @@ Return updated story plan maintaining consistency with established narrative.`
     
     /**
      * Advance to the next mission in the story
+     * Generates full mission details on-demand if the mission is just an outline
      */
-    public advanceToNextMission(): IMission | null {
+    public async advanceToNextMission(storyState?: IStoryState, language?: LanguageCode): Promise<IMission | null> {
         if (!this.currentStoryPlan) {
             return null;
         }
-        
+
         const currentAct = this.currentStoryPlan.acts[this.currentStoryPlan.currentAct];
         if (!currentAct) {
             return null;
         }
-        
+
         // Find next uncompleted mission
         for (const mission of currentAct.missions) {
             if (!mission.isCompleted) {
-                this.currentMission = mission;
-                mission.isCurrent = true;
-                
-                // Update state
-                this.dispatch(UpdateStateEvent.storyState, {
-                    currentMissionId: mission.id
-                });
-                
-                return mission;
+                // Check if mission has full details or just outline
+                // A mission outline has empty objectives array
+                const needsGeneration = !mission.objectives || mission.objectives.length === 0;
+
+                if (needsGeneration && storyState) {
+                    console.log(`[StoryPlanner] Generating full details for mission: ${mission.name}`);
+                    const fullMission = await this.generateNextMission(
+                        mission,
+                        currentAct.id,
+                        storyState,
+                        language || 'en'
+                    );
+
+                    if (fullMission) {
+                        this.currentMission = fullMission;
+                        fullMission.isCurrent = true;
+
+                        // Update state
+                        this.dispatch(UpdateStateEvent.storyState, {
+                            currentMissionId: fullMission.id
+                        });
+
+                        return fullMission;
+                    } else {
+                        console.error('[StoryPlanner] Failed to generate mission details');
+                        // Fall back to using the outline
+                        this.currentMission = mission;
+                        mission.isCurrent = true;
+                        return mission;
+                    }
+                } else {
+                    // Mission already has full details
+                    this.currentMission = mission;
+                    mission.isCurrent = true;
+
+                    // Update state
+                    this.dispatch(UpdateStateEvent.storyState, {
+                        currentMissionId: mission.id
+                    });
+
+                    return mission;
+                }
             }
         }
-        
+
         // Move to next act if all missions completed
         if (this.currentStoryPlan.currentAct < this.currentStoryPlan.acts.length - 1) {
             this.currentStoryPlan.currentAct++;
             this.currentStoryPlan.currentScene = 0;
-            
+
             const nextAct = this.currentStoryPlan.acts[this.currentStoryPlan.currentAct];
             if (nextAct && nextAct.missions.length > 0) {
                 const firstMission = nextAct.missions[0];
                 if (firstMission) {
+                    // Check if this mission needs generation too
+                    const needsGeneration = !firstMission.objectives || firstMission.objectives.length === 0;
+
+                    if (needsGeneration && storyState) {
+                        const fullMission = await this.generateNextMission(
+                            firstMission,
+                            nextAct.id,
+                            storyState,
+                            language || 'en'
+                        );
+
+                        if (fullMission) {
+                            this.currentMission = fullMission;
+                            fullMission.isCurrent = true;
+                            return fullMission;
+                        }
+                    }
+
                     this.currentMission = firstMission;
                     this.currentMission.isCurrent = true;
                     return this.currentMission;
                 }
             }
         }
-        
+
         return null;
     }
     
     /**
      * Mark an objective as completed
      */
-    public completeObjective(objectiveId: string): void {
+    public async completeObjective(objectiveId: string, storyState?: IStoryState, language?: LanguageCode): Promise<void> {
         if (!this.currentMission) {
             return;
         }
-        
+
         // Ensure objectives is an array before trying to find
         if (!Array.isArray(this.currentMission.objectives)) {
             console.warn('[StoryPlanner] Current mission has no objectives array');
             return;
         }
-        
+
         const objective = this.currentMission.objectives.find(o => o.id === objectiveId);
         if (objective && this.currentMission) {
             objective.completed = true;
-            
+
             // Check if all primary objectives are completed
             const allPrimaryCompleted = this.currentMission.objectives
                 .filter(o => o.type === 'primary')
                 .every(o => o.completed);
-            
+
             if (allPrimaryCompleted && this.currentMission) {
                 this.currentMission.isCompleted = true;
-                this.advanceToNextMission();
+                await this.advanceToNextMission(storyState, language);
             }
-            
+
             // Update state
             this.dispatch(UpdateStateEvent.storyState, {
                 completedObjectives: [objectiveId]
@@ -279,16 +492,17 @@ Return updated story plan maintaining consistency with established narrative.`
     private buildStoryPlanPrompt(request: StoryPlanRequest): string {
         const origin = request.origin;
         const language = request.language || 'en';
-        
+
         // Use the appropriate language version of origin
         const originName = language === 'es' ? (origin.nameES || origin.name) : origin.name;
         const originDesc = language === 'es' ? (origin.descriptionES || origin.description) : origin.description;
-        
-        return `# STORY PLAN GENERATION REQUEST
+
+        return `# INCREMENTAL STORY PLAN GENERATION REQUEST
 
 Language: Generate all text content in ${LANGUAGE_NAMES[language]}.
 
-Generate a comprehensive story plan for "Never Ending" based on the following origin:
+Generate an INCREMENTAL story plan for "Never Ending" based on the following origin.
+This should provide background context and the current mission only. Future missions will be generated as the story evolves.
 
 ## Selected Origin: ${originName}
 - Description: ${originDesc}
@@ -297,23 +511,25 @@ Generate a comprehensive story plan for "Never Ending" based on the following or
 - Faction Relations: ${Object.entries(origin.factionRelations).map(([f, v]) => `${f}: ${v}`).join(', ')}
 
 ## Requirements:
-Create a multi-act story with the following structure:
+Create an incremental story plan with:
 
 1. **Overall Narrative** (200 words)
-   - Main story arc connecting all acts
-   - Central conflict and resolution path
-   - Thematic elements
+   - Background story and setting
+   - Central conflict and themes
+   - Overall story direction (NOT detailed missions)
 
-2. **Three Acts** each containing:
+2. **Current Act Only** (Act 1):
    - Act title and description
-   - 3-5 missions per act
-   - Key characters and their roles
-   - Important objects and their purposes
-   - Climax description
+   - FIRST mission with FULL details (the current mission)
+   - 2-3 BRIEF mission outlines (name, type, one sentence description only)
+   - Key characters for THIS act (3-5 characters)
+   - Important objects for THIS act
+   - Climax description for this act
 
-3. **Each Mission** must include:
+3. **First Mission (FULL DETAILS)**:
    - name: Mission name (string)
    - type: EXACTLY one of [combat, exploration, infiltration, diplomacy, survival]
+   - description: Full mission description
    - objectives: Array of objectives, each with:
      * type: EXACTLY one of [primary, secondary, hidden]
      * description: Clear objective description
@@ -322,19 +538,13 @@ Create a multi-act story with the following structure:
      * environment: EXACTLY one of [spaceship, station, planet, settlement, ruins, wilderness]
      * atmosphere: Description of the atmosphere (string)
      * lightingCondition: EXACTLY one of [bright, normal, dim, dark]
-   - NPCs with defined roles
+   - NPCs with defined roles (2-4 NPCs)
    - Required objects or items
    - Narrative hooks for player engagement
 
-4. **Character Details**:
-   - Define 5-7 key characters across all acts
-   - Include motivations and relationships
-   - Specify when they appear in the story
-
-5. **Object Significance**:
-   - List critical story objects
-   - Explain their purpose and importance
-   - Define where they can be found
+4. **Next 2-3 Missions (BRIEF OUTLINES ONLY)**:
+   - Just: id, name, type, brief description (one sentence)
+   - NO full details - these will be generated later
 
 ## CRITICAL ENUM VALUES (use EXACTLY these values):
 - Mission type: combat, exploration, infiltration, diplomacy, survival
@@ -344,7 +554,7 @@ Create a multi-act story with the following structure:
 - Lighting: bright, normal, dim, dark
 
 ## Response Format:
-Return a JSON object with type "storyPlan" containing the full story structure.
+Return a JSON object with type "storyPlan" containing ONLY the current context:
 
 {
   "type": "storyPlan",
@@ -381,6 +591,27 @@ Return a JSON object with type "storyPlan" containing the full story structure.
               "lightingCondition": "dim"
             },
             "requiredObjects": [],
+            "npcs": [
+              {"name": "...", "purpose": "...", "dialogue": ["..."]}
+            ],
+            "narrativeHooks": ["..."],
+            "estimatedDuration": 15,
+            "isCompleted": false,
+            "isCurrent": true
+          },
+          {
+            "id": "mission2",
+            "actId": "act1",
+            "name": "...",
+            "description": "Brief one sentence description",
+            "type": "exploration",
+            "objectives": [],
+            "mapContext": {
+              "environment": "settlement",
+              "atmosphere": "Por determinar",
+              "lightingCondition": "normal"
+            },
+            "requiredObjects": [],
             "npcs": [],
             "narrativeHooks": [],
             "estimatedDuration": 15,
@@ -395,7 +626,7 @@ Return a JSON object with type "storyPlan" containing the full story structure.
     ],
     "currentAct": 0,
     "currentScene": 0,
-    "totalEstimatedMissions": 12
+    "totalEstimatedMissions": 10
   }
 }`;
     }
@@ -404,15 +635,83 @@ Return a JSON object with type "storyPlan" containing the full story structure.
         // Use appropriate language based on user preference
         const originName = origin.nameES || origin.name;
         return {
-            overallNarrative: `Una historia de ${originName} luchando por sobrevivir en la galaxia post-colapso.`,
+            overallNarrative: `Una historia de ${originName} luchando por sobrevivir en la galaxia post-colapso. En un universo fragmentado donde las antiguas estructuras de poder han colapsado, deben forjar su propio camino entre facciones rivales, peligros desconocidos y secretos del pasado.`,
             theme: 'Supervivencia y redención',
             acts: [
                 {
                     id: 'act1',
                     actNumber: 1,
                     title: 'El Comienzo',
-                    description: 'El viaje comienza con incertidumbre y peligro.',
-                    missions: [],
+                    description: 'El viaje comienza con incertidumbre y peligro. Los primeros pasos en un mundo desconocido.',
+                    missions: [
+                        {
+                            id: 'mission1',
+                            actId: 'act1',
+                            name: 'Primera Exploración',
+                            description: 'Familiarízate con el entorno y evalúa la situación.',
+                            type: 'exploration',
+                            objectives: [
+                                {
+                                    id: 'obj1',
+                                    type: 'primary',
+                                    description: 'Explora el área inicial',
+                                    completed: false,
+                                    conditions: [
+                                        { type: 'reach', location: 'area objetivo' }
+                                    ]
+                                }
+                            ],
+                            mapContext: {
+                                environment: origin.startingLocation as 'spaceship' | 'station' | 'planet' | 'settlement' | 'ruins' | 'wilderness',
+                                atmosphere: 'Ambiente desconocido y potencialmente peligroso',
+                                lightingCondition: 'normal'
+                            },
+                            requiredObjects: [],
+                            npcs: [],
+                            narrativeHooks: ['¿Qué secretos esconde este lugar?', '¿Quién más podría estar aquí?'],
+                            estimatedDuration: 15,
+                            isCompleted: false,
+                            isCurrent: true
+                        },
+                        {
+                            id: 'mission2',
+                            actId: 'act1',
+                            name: 'Encuentro Inesperado',
+                            description: 'Un encuentro cambia el curso de los acontecimientos.',
+                            type: 'diplomacy',
+                            objectives: [],
+                            mapContext: {
+                                environment: 'settlement',
+                                atmosphere: 'Por determinar',
+                                lightingCondition: 'normal'
+                            },
+                            requiredObjects: [],
+                            npcs: [],
+                            narrativeHooks: [],
+                            estimatedDuration: 15,
+                            isCompleted: false,
+                            isCurrent: false
+                        },
+                        {
+                            id: 'mission3',
+                            actId: 'act1',
+                            name: 'Primera Amenaza',
+                            description: 'El peligro se hace presente y hay que actuar.',
+                            type: 'combat',
+                            objectives: [],
+                            mapContext: {
+                                environment: 'ruins',
+                                atmosphere: 'Por determinar',
+                                lightingCondition: 'normal'
+                            },
+                            requiredObjects: [],
+                            npcs: [],
+                            narrativeHooks: [],
+                            estimatedDuration: 15,
+                            isCompleted: false,
+                            isCurrent: false
+                        }
+                    ],
                     keyCharacters: [],
                     keyObjects: [],
                     climaxDescription: 'Una revelación impactante lo cambia todo.'

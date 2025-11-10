@@ -10,10 +10,8 @@ import type {
     ICharacterProfile,
     IWorldEvent,
     IEmergingConflict,
-    IFactionActivity,
     IWorldContext,
     IWorldStateUpdate,
-    IThreadOutcome,
     IConsequence
 } from '../interfaces/worldState';
 import type { IStoryState } from '../interfaces';
@@ -21,16 +19,19 @@ import type { DeepReadonly } from '../helpers/types';
 
 import { EventBus } from '../events/EventBus';
 import { StateChangeEvent, UpdateStateEvent, StateChangeEventsMap, UpdateStateEventsMap } from '../events/StateEvents';
+import { WorldThreadManager } from './WorldThreadManager';
+import { WorldFactionManager } from './WorldFactionManager';
+import { WorldEventGenerator } from './WorldEventGenerator';
 
 export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEventsMap> {
     private static instance: WorldState;
     
     private worldState: IWorldState = {
-        threads: new Map(),
-        characters: new Map(),
+        threads: {},
+        characters: {},
         events: [],
         conflicts: [],
-        factionActivities: new Map(),
+        factionActivities: {},
         narrativePressure: {
             suggestedFocus: 'exploration',
             activeThemes: [],
@@ -44,10 +45,30 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
     private updateInterval: number = 5; // Update every N turns
     private isInitialized: boolean = false;
     private debugMode: boolean = false;
-    private logCategories = new Set(['init', 'update', 'thread', 'event', 'error']);
+    private logCategories = ['init', 'update', 'thread', 'event', 'error'];
+    private threadManager: WorldThreadManager;
+    private factionManager: WorldFactionManager;
+    private eventGenerator: WorldEventGenerator;
     
     private constructor() {
         super();
+        this.threadManager = new WorldThreadManager(
+            (threads) => { this.worldState.threads = threads; },
+            (consequence) => { this.applyConsequence(consequence); }
+        );
+        this.threadManager.setThreads(this.worldState.threads);
+
+        this.factionManager = new WorldFactionManager(
+            (activities) => { this.worldState.factionActivities = activities; }
+        );
+        this.factionManager.setActivities(this.worldState.factionActivities);
+
+        this.eventGenerator = new WorldEventGenerator(
+            (events) => { this.worldState.events.push(...events); },
+            (conflicts) => { this.worldState.conflicts.push(...conflicts); },
+            (pressure) => { this.worldState.narrativePressure = pressure; }
+        );
+
         this.setupEventListeners();
     }
     
@@ -78,6 +99,8 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
         this.listen(StateChangeEvent.game, (game) => {
             if (game && typeof game === 'object' && 'turn' in game) {
                 this.currentTurn = parseInt(String((game as {turn?: string | number}).turn || 0));
+                this.threadManager.setCurrentTurn(this.currentTurn);
+                this.factionManager.setCurrentTurn(this.currentTurn);
                 this.checkForScheduledUpdates();
             }
         });
@@ -93,201 +116,17 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
         
         // Create initial story threads based on origin
         if (storyState.selectedOrigin) {
-            this.createOriginThreads(storyState.selectedOrigin);
+            this.threadManager.createOriginThreads(storyState.selectedOrigin);
         }
         
         // Initialize faction activities
-        this.initializeFactionActivities(storyState.factionReputation || {});
+        this.factionManager.initialize(storyState.factionReputation || {});
         
         // Create character profiles for known NPCs
         this.initializeCharacterProfiles();
         
         this.isInitialized = true;
         this.log('init', 'Initialization complete');
-    }
-    
-    /**
-     * Create story threads based on the player's origin
-     */
-    private createOriginThreads(origin: {id?: string, name?: string, traits?: string[]}): void {
-        // Skip creation if no valid origin
-        if (!origin.name && !origin.id) {
-            console.warn('[WorldState] No valid origin provided, skipping thread creation');
-            return;
-        }
-        const originName = origin.name || origin.id || '';
-        
-        // Create a thread for the main origin conflict
-        const mainThread: IStoryThread = {
-            id: `origin_${originName}_main`,
-            type: 'conflict',
-            title: `${originName} Main Conflict`,
-            participants: ['player'],
-            status: 'active',
-            tension: 30,
-            potentialOutcomes: [],
-            currentNarrative: this.generateOriginNarrative(originName),
-            lastUpdated: this.currentTurn,
-            priority: 'high',
-            tags: new Set(['origin', 'main'])
-        };
-        
-        this.worldState.threads.set(mainThread.id, mainThread);
-        
-        // Create threads for potential allies and enemies
-        if (originName) {
-            this.createRelationshipThreads(originName);
-        }
-    }
-    
-    private generateOriginNarrative(originName: string): string {
-        const narratives: Record<string, string> = {
-            'The Deserter': 'Military forces are closing in. Former comrades have been spotted in nearby systems.',
-            'The Scavenger': 'Word of the ancient artifact has spread. Multiple factions are mobilizing salvage teams.',
-            'The Investigator': 'The Syndicate has noticed your investigation. Counter-intelligence operations are being prepared.',
-            'The Rebel': 'Your sabotage has triggered a massive security response. Loyalist forces are on high alert.',
-            'The Survivor': 'Resources are dwindling in the refugee sectors. Desperate groups are forming alliances.'
-        };
-        
-        return narratives[originName] || 'Your journey begins in uncertain times. The galaxy watches with interest as new players enter the game.';
-    }
-    
-    private createRelationshipThreads(originName: string): void {
-        // Create threads for key relationships based on origin
-        const relationships: Record<string, string[]> = {
-            'The Deserter': ['Former Squadron', 'Military Command', 'Underground Network'],
-            'The Scavenger': ['Salvage Guild', 'Tech Collectors', 'Artifact Hunters'],
-            'The Investigator': ['Informant Network', 'Syndicate Enforcers', 'Corrupt Officials'],
-            'The Rebel': ['Resistance Cells', 'Government Forces', 'Sympathizers'],
-            'The Survivor': ['Fellow Refugees', 'Aid Organizations', 'Exploitation Gangs']
-        };
-        
-        const groups = relationships[originName] || [];
-        groups.forEach(group => {
-            const thread: IStoryThread = {
-                id: `relationship_${group.replace(/\s+/g, '_').toLowerCase()}`,
-                type: 'relationship',
-                title: `Relations with ${group}`,
-                participants: [group],
-                status: 'building',
-                tension: Math.random() * 50 + 10,
-                potentialOutcomes: this.generatePotentialOutcomes(group),
-                currentNarrative: `The ${group} are aware of your presence and considering their response.`,
-                lastUpdated: this.currentTurn,
-                priority: 'medium',
-                tags: new Set(['relationship', originName.toLowerCase()])
-            };
-            
-            this.worldState.threads.set(thread.id, thread);
-        });
-    }
-    
-    private generatePotentialOutcomes(group: string): IThreadOutcome[] {
-        return [
-            {
-                id: `${group}_alliance`,
-                description: `Form an alliance with ${group}`,
-                probability: 0.3,
-                consequences: [
-                    {
-                        type: 'relationship',
-                        target: group,
-                        value: 'ally',
-                        description: `${group} becomes a reliable ally`
-                    }
-                ]
-            },
-            {
-                id: `${group}_conflict`,
-                description: `Open conflict with ${group}`,
-                probability: 0.3,
-                consequences: [
-                    {
-                        type: 'relationship',
-                        target: group,
-                        value: 'enemy',
-                        description: `${group} becomes hostile`
-                    }
-                ]
-            },
-            {
-                id: `${group}_neutral`,
-                description: `Maintain cautious neutrality`,
-                probability: 0.4,
-                consequences: [
-                    {
-                        type: 'relationship',
-                        target: group,
-                        value: 'neutral',
-                        description: `${group} remains watchful but uncommitted`
-                    }
-                ]
-            }
-        ];
-    }
-    
-    private initializeFactionActivities(factionReputation: Record<string, number>): void {
-        const factions = Object.keys(factionReputation).length > 0 
-            ? Object.keys(factionReputation)
-            : ['Syndicate', 'Rebels', 'Technomancers', 'Free Worlds', 'Military'];
-        
-        factions.forEach(faction => {
-            const reputation = factionReputation[faction] || 0;
-            // Use reputation to influence resources - higher reputation = more resources
-            const influenceBase = reputation > 0 ? 100 + reputation : 50;
-            const militaryBase = reputation > 0 ? 50 + (reputation / 2) : 20;
-            
-            const activity: IFactionActivity = {
-                factionId: faction,
-                currentOperations: this.generateFactionOperations(faction),
-                territories: [],
-                resources: [
-                    { type: 'influence', amount: Math.random() * 50 + influenceBase },
-                    { type: 'military', amount: Math.random() * 30 + militaryBase }
-                ],
-                activeAgents: [],
-                currentGoals: this.generateFactionGoals(faction),
-                relationships: new Map()
-            };
-            
-            // Set relationships with other factions based on reputation differences
-            factions.forEach(otherFaction => {
-                if (otherFaction !== faction) {
-                    const myRep = factionReputation[faction] || 0;
-                    const theirRep = factionReputation[otherFaction] || 0;
-                    // Factions with similar reputation levels have better relationships
-                    const basRelation = Math.random() * 200 - 100;
-                    const repModifier = -Math.abs(myRep - theirRep) / 2;
-                    activity.relationships.set(otherFaction, basRelation + repModifier);
-                }
-            });
-            
-            this.worldState.factionActivities.set(faction, activity);
-        });
-    }
-    
-    private generateFactionOperations(faction: string): string[] {
-        const operations: Record<string, string[]> = {
-            'Syndicate': ['Expanding smuggling routes', 'Eliminating competition', 'Corrupting officials'],
-            'Rebels': ['Recruiting sympathizers', 'Planning strikes', 'Securing supply lines'],
-            'Technomancers': ['Searching for artifacts', 'Conducting experiments', 'Hoarding technology'],
-            'Free Worlds': ['Defending territories', 'Negotiating alliances', 'Resisting control'],
-            'Military': ['Hunting deserters', 'Securing strategic points', 'Enforcing order']
-        };
-        
-        return operations[faction] || ['Consolidating power'];
-    }
-    
-    private generateFactionGoals(faction: string): string[] {
-        const goals: Record<string, string[]> = {
-            'Syndicate': ['Control all trade routes', 'Eliminate rivals', 'Maximize profits'],
-            'Rebels': ['Overthrow the regime', 'Liberate oppressed systems', 'Build coalition'],
-            'Technomancers': ['Unlock ancient secrets', 'Achieve technological supremacy', 'Control information'],
-            'Free Worlds': ['Maintain independence', 'Create mutual defense pact', 'Promote free trade'],
-            'Military': ['Restore order', 'Eliminate threats', 'Expand control']
-        };
-        
-        return goals[faction] || ['Survive and thrive'];
     }
     
     private initializeCharacterProfiles(): void {
@@ -309,8 +148,8 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
             ],
             fears: ['Deactivation', 'Memory wipe', 'Losing the commander'],
             desires: ['Efficiency', 'Order', 'Commander safety'],
-            relationships: new Map([
-                ['player', {
+            relationships: {
+                'player': {
                     characterId: 'player',
                     type: 'ally',
                     trust: 100,
@@ -318,11 +157,11 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
                     fear: 0,
                     history: ['Loyal service since desertion'],
                     lastInteraction: this.currentTurn
-                }]
-            ]),
+                }
+            },
             currentActivity: 'Analyzing tactical data',
             locationBelief: 'With the commander',
-            knowledge: new Set(['Military protocols', 'Commander history']),
+            knowledge: ['Military protocols', 'Commander history'],
             resources: [],
             personality: {
                 aggression: 20,
@@ -333,8 +172,8 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
                 compassion: 40
             }
         };
-        
-        this.worldState.characters.set('Data', dataProfile);
+
+        this.worldState.characters['Data'] = dataProfile;
     }
     
     /**
@@ -365,18 +204,22 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
         }
         
         // Update narrative pressure based on recent events
-        this.updateNarrativePressure();
+        this.eventGenerator.updatePressure(
+            this.threadManager.getThreads(),
+            this.worldState.narrativePressure,
+            this.currentTurn
+        );
     }
     
     private processCombatUpdate(update: IWorldStateUpdate): void {
         // Increase tension in conflict threads
-        this.worldState.threads.forEach(thread => {
-            if (thread.type === 'conflict' && thread.status !== 'resolved') {
+        Object.values(this.threadManager.getThreads()).forEach(thread => {
+            if (thread && thread.type === 'conflict' && thread.status !== 'resolved') {
                 thread.tension = Math.min(100, thread.tension + 10);
                 thread.lastUpdated = this.currentTurn;
             }
         });
-        
+
         // Update participating character relationships
         if (update.participants) {
             this.updateCharacterRelationships(update.participants, 'combat');
@@ -387,16 +230,17 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
         // Update relationship threads
         if (update.participants && update.participants.length >= 2) {
             const [speaker, listener] = update.participants;
-            
+
             // Find or create relationship thread
             const threadId = `dialogue_${speaker}_${listener}`;
-            let thread = this.worldState.threads.get(threadId);
-            
+            const threads = this.threadManager.getThreads();
+            let thread = threads[threadId];
+
             if (!thread && speaker && listener) {
                 thread = this.createRelationshipThread(speaker, listener);
-                this.worldState.threads.set(threadId, thread);
+                threads[threadId] = thread;
             }
-            
+
             // Update thread based on conversation outcome
             if (thread) {
                 thread.tension = Math.max(0, thread.tension + (update.outcome === 'positive' ? -5 : 5));
@@ -417,7 +261,7 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
             currentNarrative: `${char1} and ${char2} are establishing their relationship`,
             lastUpdated: this.currentTurn,
             priority: 'low',
-            tags: new Set(['dialogue', 'relationship'])
+            tags: ['dialogue', 'relationship']
         };
     }
     
@@ -441,8 +285,8 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
     
     private processMissionUpdate(_update: IWorldStateUpdate): void {
         // Update relevant story threads based on mission progress
-        this.worldState.threads.forEach(thread => {
-            if (thread.tags.has('mission') && thread.status === 'active') {
+        Object.values(this.threadManager.getThreads()).forEach(thread => {
+            if (thread && thread.tags.includes('mission') && thread.status === 'active') {
                 thread.tension = Math.min(100, thread.tension + 15);
                 thread.lastUpdated = this.currentTurn;
             }
@@ -451,16 +295,20 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
     
     private processTurnUpdate(_update: IWorldStateUpdate): void {
         // Regular turn-based updates
-        this.advanceStoryThreads();
-        this.updateFactionActivities();
-        this.checkForEmergingConflicts();
+        this.threadManager.advanceThreads();
+        this.factionManager.updateActivities();
+        this.eventGenerator.checkForConflicts(
+            this.worldState.characters,
+            this.factionManager.getActivities(),
+            this.worldState.conflicts
+        );
     }
     
     private processMovementUpdate(update: IWorldStateUpdate): void {
         // Track character movements for location beliefs
         if (update.participants && update.location) {
             update.participants.forEach(character => {
-                const profile = this.worldState.characters.get(character);
+                const profile = this.worldState.characters[character];
                 if (profile) {
                     profile.locationBelief = update.location!;
                     profile.lastSeen = {
@@ -479,13 +327,13 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
                 const participant1 = participants[i];
                 const participant2 = participants[j];
                 if (!participant1 || !participant2) continue;
-                
-                const char1 = this.worldState.characters.get(participant1);
-                const char2 = this.worldState.characters.get(participant2);
-                
+
+                const char1 = this.worldState.characters[participant1];
+                const char2 = this.worldState.characters[participant2];
+
                 if (char1 && char2) {
                     // Update or create relationships
-                    const rel1 = char1.relationships.get(participant2) || {
+                    const rel1 = char1.relationships[participant2] || {
                         characterId: participant2,
                         type: 'neutral' as const,
                         trust: 0,
@@ -494,101 +342,22 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
                         history: [],
                         lastInteraction: this.currentTurn
                     };
-                    
+
                     // Adjust based on context
                     if (context === 'combat') {
                         rel1.fear = Math.min(100, rel1.fear + 10);
                         rel1.respect = Math.max(-100, rel1.respect - 5);
                     }
-                    
+
                     rel1.history.push(`${context} at turn ${this.currentTurn}`);
                     rel1.lastInteraction = this.currentTurn;
-                    
-                    char1.relationships.set(participant2, rel1);
+
+                    char1.relationships[participant2] = rel1;
                 }
             }
         }
     }
     
-    private advanceStoryThreads(): void {
-        // Progress story threads based on time
-        this.worldState.threads.forEach(thread => {
-            if (thread.status === 'building' && thread.tension >= 75) {
-                this.activateThread(thread);
-            } else if (thread.status === 'active' && thread.tension >= 100) {
-                // Trigger thread resolution
-                this.resolveThread(thread, undefined);
-            }
-            
-            // Natural tension increase over time
-            if (thread.status !== 'resolved' && thread.status !== 'dormant') {
-                thread.tension = Math.min(100, thread.tension + 1);
-            }
-        });
-    }
-    
-    private activateThread(thread: IStoryThread): void {
-        try {
-            if (!thread) {
-                this.log('error', 'Cannot activate null thread');
-                return;
-            }
-            
-            thread.status = 'active';
-            
-            // Generate outcomes if not present
-            if (!thread.potentialOutcomes || thread.potentialOutcomes.length === 0) {
-                thread.potentialOutcomes = this.generateThreadOutcomes(thread);
-            }
-            
-            this.log('thread', `Thread activated: ${thread.title}`, { tension: thread.tension });
-        } catch (error) {
-            this.log('error', `Failed to activate thread: ${thread?.title}`, error);
-        }
-    }
-    
-    private resolveThread(thread: IStoryThread, selectedOutcome?: IThreadOutcome): void {
-        try {
-            if (!thread) {
-                this.log('error', 'Cannot resolve null thread');
-                return;
-            }
-            
-            this.log('thread', `Resolving thread: ${thread.title}`);
-            
-            // Select outcome based on probabilities or use provided outcome
-            const outcome = selectedOutcome || this.selectOutcome(thread.potentialOutcomes);
-            if (outcome) {
-                // Apply consequences with error handling
-                outcome.consequences.forEach(consequence => {
-                    this.safeExecute(() => this.applyConsequence(consequence), `applyConsequence for ${thread.title}`);
-                });
-            }
-            
-            thread.status = 'resolved';
-            thread.lastUpdated = this.currentTurn;
-        } catch (error) {
-            this.log('error', `Failed to resolve thread: ${thread?.title}`, error);
-            // Set to resolved anyway to prevent stuck threads
-            thread.status = 'resolved';
-        }
-    }
-    
-    private selectOutcome(outcomes: IThreadOutcome[]): IThreadOutcome | null {
-        if (!outcomes || outcomes.length === 0) return null;
-        
-        const rand = Math.random();
-        let cumulative = 0;
-        
-        for (const outcome of outcomes) {
-            cumulative += outcome.probability;
-            if (rand <= cumulative) {
-                return outcome;
-            }
-        }
-        
-        return outcomes[outcomes.length - 1] || null;
-    }
     
     private applyConsequence(consequence: IConsequence): void {
         // DEBUG: console.log(`[WorldState] Applying consequence:`, consequence);
@@ -611,77 +380,6 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
             // Add more consequence types as needed
         }
     }
-    
-    private updateFactionActivities(): void {
-        // Update faction activities each turn
-        this.worldState.factionActivities.forEach((activity, factionId) => {
-            // Rotate operations occasionally
-            if (Math.random() < 0.1) {
-                activity.currentOperations = this.generateFactionOperations(factionId);
-            }
-            
-            // Adjust resources
-            activity.resources.forEach(resource => {
-                resource.amount = Math.max(0, resource.amount + (Math.random() * 10 - 3));
-            });
-        });
-    }
-    
-    private checkForEmergingConflicts(): void {
-        // Check faction relationships for potential conflicts
-        const conflicts: IEmergingConflict[] = [];
-        
-        this.worldState.factionActivities.forEach((activity1, faction1) => {
-            activity1.relationships.forEach((reputation, faction2) => {
-                if (reputation < -50 && Math.random() < 0.05) {
-                    // Potential conflict emerging
-                    const conflict: IEmergingConflict = {
-                        id: `conflict_${faction1}_${faction2}_${Date.now()}`,
-                        type: 'territorial',
-                        instigators: [faction1],
-                        targets: [faction2],
-                        stakes: 'Control over disputed territories',
-                        escalation: Math.abs(reputation) / 2,
-                        possibleResolutions: ['Negotiation', 'Show of force', 'Third party mediation'],
-                        currentState: 'Tensions rising'
-                    };
-                    
-                    conflicts.push(conflict);
-                }
-            });
-        });
-        
-        // Add new conflicts to world state
-        this.worldState.conflicts.push(...conflicts);
-    }
-    
-    private updateNarrativePressure(): void {
-        const activeThreadCount = Array.from(this.worldState.threads.values())
-            .filter(t => t.status === 'active').length;
-        
-        const highTensionCount = Array.from(this.worldState.threads.values())
-            .filter(t => t.tension > 75).length;
-        
-        // Determine narrative pressure based on world state
-        if (highTensionCount > 3) {
-            this.worldState.narrativePressure.momentum = 'climactic';
-            this.worldState.narrativePressure.suggestedFocus = 'action';
-        } else if (activeThreadCount > 2) {
-            this.worldState.narrativePressure.momentum = 'building';
-            this.worldState.narrativePressure.suggestedFocus = 'tension';
-        } else {
-            this.worldState.narrativePressure.momentum = 'steady';
-            this.worldState.narrativePressure.suggestedFocus = 'exploration';
-        }
-        
-        // Update active themes based on current threads
-        const themes = new Set<string>();
-        this.worldState.threads.forEach(thread => {
-            thread.tags.forEach(tag => themes.add(tag));
-        });
-        this.worldState.narrativePressure.activeThemes = Array.from(themes);
-    }
-    
     private checkForScheduledUpdates(): void {
         // Perform major updates at intervals
         if (this.currentTurn % this.updateInterval === 0) {
@@ -691,86 +389,36 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
     
     private performMajorUpdate(): void {
         // DEBUG: console.log('[WorldState] Performing major update at turn', this.currentTurn);
-        
+
         // Generate new events
-        this.generateWorldEvents();
-        
+        this.eventGenerator.generateEvents(
+            this.currentTurn,
+            this.threadManager.getThreads(),
+            this.worldState.characters,
+            this.factionManager.getActivities()
+        );
+
         // Update all character profiles
         this.updateCharacterProfiles();
-        
+
         // Prune old resolved threads
         this.pruneOldThreads();
-        
+
         this.worldState.lastMajorUpdate = this.currentTurn;
-    }
-    
-    private generateWorldEvents(): void {
-        // Generate random world events occasionally
-        if (Math.random() < 0.2) {
-            const event: IWorldEvent = {
-                id: `event_${Date.now()}`,
-                type: (['political', 'military', 'economic', 'discovery', 'disaster'] as const)[Math.floor(Math.random() * 5)] as ('political' | 'military' | 'economic' | 'discovery' | 'disaster'),
-                title: this.generateEventTitle(),
-                description: this.generateEventDescription(),
-                affectedFactions: this.selectRandomFactions(),
-                affectedSystems: [],
-                startTurn: this.currentTurn,
-                duration: Math.floor(Math.random() * 10) + 5,
-                intensity: (['minor', 'moderate', 'major'] as const)[Math.floor(Math.random() * 3)] as ('minor' | 'moderate' | 'major' | 'critical'),
-                consequences: []
-            };
-            
-            this.worldState.events.push(event);
-            this.log('event', `New world event: ${event.title}`, { type: event.type, intensity: event.intensity });
-        }
-    }
-    
-    private generateEventTitle(): string {
-        const titles = [
-            'Supply Line Disruption',
-            'Faction Alliance Formed',
-            'Technology Breakthrough',
-            'System Blockade',
-            'Refugee Crisis',
-            'Black Market Surge',
-            'Military Mobilization',
-            'Diplomatic Summit'
-        ];
-        const title = titles[Math.floor(Math.random() * titles.length)];
-        return title || 'Mysterious Occurrence';
-    }
-    
-    private generateEventDescription(): string {
-        return 'Significant developments are unfolding across the galaxy.';
-    }
-    
-    private selectRandomFactions(): string[] {
-        const allFactions = Array.from(this.worldState.factionActivities.keys());
-        const count = Math.floor(Math.random() * 3) + 1;
-        const selected: string[] = [];
-        
-        for (let i = 0; i < count && allFactions.length > 0; i++) {
-            const index = Math.floor(Math.random() * allFactions.length);
-            const faction = allFactions[index];
-            if (faction) {
-                selected.push(faction);
-            }
-            allFactions.splice(index, 1);
-        }
-        
-        return selected;
     }
     
     private updateCharacterProfiles(): void {
         // Update character goals and activities
-        this.worldState.characters.forEach(character => {
+        Object.values(this.worldState.characters).forEach(character => {
+            if (!character) return;
+
             // Progress goals
             character.goals.forEach(goal => {
                 if (goal.progress < 100 && Math.random() < 0.1) {
                     goal.progress = Math.min(100, goal.progress + 10);
                 }
             });
-            
+
             // Update current activity
             if (Math.random() < 0.2) {
                 character.currentActivity = this.generateCharacterActivity(character);
@@ -821,10 +469,11 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
     private pruneOldThreads(): void {
         // Remove resolved threads older than 20 turns
         const cutoff = this.currentTurn - 20;
-        
-        this.worldState.threads.forEach((thread, id) => {
-            if (thread.status === 'resolved' && thread.lastUpdated < cutoff) {
-                this.worldState.threads.delete(id);
+        const threads = this.threadManager.getThreads();
+
+        Object.entries(threads).forEach(([id, thread]) => {
+            if (thread && thread.status === 'resolved' && thread.lastUpdated < cutoff) {
+                delete threads[id];
                 // DEBUG: console.log(`[WorldState] Pruned old thread: ${thread.title}`);
             }
         });
@@ -832,19 +481,21 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
     
     private handleCharacterDefeat(characterName: string): void {
         // Update character profile
-        const profile = this.worldState.characters.get(characterName);
+        const profile = this.worldState.characters[characterName];
         if (profile) {
             profile.currentActivity = 'Defeated';
-            
+
             // Update relationships
-            profile.relationships.forEach(rel => {
-                rel.history.push(`Defeated at turn ${this.currentTurn}`);
+            Object.values(profile.relationships).forEach(rel => {
+                if (rel) {
+                    rel.history.push(`Defeated at turn ${this.currentTurn}`);
+                }
             });
         }
-        
+
         // Update related threads
-        this.worldState.threads.forEach(thread => {
-            if (thread.participants.includes(characterName)) {
+        Object.values(this.threadManager.getThreads()).forEach(thread => {
+            if (thread && thread.participants.includes(characterName)) {
                 thread.tension = Math.max(0, thread.tension - 20);
                 if (thread.status === 'active') {
                     thread.status = 'building';
@@ -871,8 +522,10 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
     
     private getRelevantThreads(_location?: string, participants?: string[]): IStoryThread[] {
         const relevant: IStoryThread[] = [];
-        
-        this.worldState.threads.forEach(thread => {
+
+        Object.values(this.threadManager.getThreads()).forEach(thread => {
+            if (!thread) return;
+
             // Include if participants are involved
             if (participants && thread.participants.some(p => participants.includes(p))) {
                 relevant.push(thread);
@@ -886,7 +539,7 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
                 relevant.push(thread);
             }
         });
-        
+
         // Sort by priority and tension
         return relevant.sort((a, b) => {
             const priorityWeight = { high: 3, medium: 2, low: 1 };
@@ -896,21 +549,21 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
         }).slice(0, 5); // Limit to top 5
     }
     
-    private getCharacterMotivations(participants?: string[]): Map<string, string[]> {
-        const motivations = new Map<string, string[]>();
-        
+    private getCharacterMotivations(participants?: string[]): Record<string, string[]> {
+        const motivations: Record<string, string[]> = {};
+
         if (participants) {
             participants.forEach(participant => {
-                const profile = this.worldState.characters.get(participant);
+                const profile = this.worldState.characters[participant];
                 if (profile) {
                     const goals = profile.goals
                         .filter(g => g.priority === 'high' || g.priority === 'critical')
                         .map(g => g.description);
-                    motivations.set(participant, goals);
+                    motivations[participant] = goals;
                 }
             });
         }
-        
+
         return motivations;
     }
     
@@ -944,20 +597,20 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
     
     private getRelevantHistory(participants?: string[]): string[] {
         const history: string[] = [];
-        
+
         if (participants) {
             participants.forEach(participant => {
-                const profile = this.worldState.characters.get(participant);
+                const profile = this.worldState.characters[participant];
                 if (profile) {
-                    profile.relationships.forEach(rel => {
-                        if (rel.history.length > 0) {
+                    Object.values(profile.relationships).forEach(rel => {
+                        if (rel && rel.history.length > 0) {
                             history.push(...rel.history.slice(-2)); // Last 2 events
                         }
                     });
                 }
             });
         }
-        
+
         return history.slice(0, 5); // Limit to 5 most recent
     }
     
@@ -965,21 +618,21 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
      * Generate narrative summary for AI context
      */
     public generateNarrativeSummary(): string {
-        const activeThreads = Array.from(this.worldState.threads.values())
-            .filter(t => t.status === 'active')
-            .map(t => t.currentNarrative)
+        const activeThreads = Object.values(this.threadManager.getThreads())
+            .filter(t => t && t.status === 'active')
+            .map(t => t!.currentNarrative)
             .join(' ');
-        
+
         const worldEvents = this.worldState.events
             .filter(e => e.intensity === 'major' || e.intensity === 'critical')
             .map(e => e.description)
             .join(' ');
-        
+
         const conflicts = this.worldState.conflicts
             .filter(c => c.escalation > 75)
             .map(c => c.currentState)
             .join(' ');
-        
+
         return `World State: ${activeThreads} ${worldEvents} ${conflicts}`.trim();
     }
     
@@ -991,9 +644,8 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
     public enableDebug(categories?: string[]): void {
         this.debugMode = true;
         if (categories) {
-            this.logCategories = new Set(categories);
+            this.logCategories = categories;
         }
-        // DEBUG: console.log('[WorldState] Debug mode enabled for categories:', Array.from(this.logCategories));
     }
     
     /**
@@ -1008,17 +660,21 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
      * Get comprehensive debug information about the world state
      */
     public getDebugInfo(): unknown {
+        const threads = Object.values(this.threadManager.getThreads()).filter(t => t !== undefined);
+        const characters = Object.values(this.worldState.characters).filter(c => c !== undefined);
+        const factions = Object.values(this.worldState.factionActivities).filter(f => f !== undefined);
+
         const info = {
             initialized: this.isInitialized,
             currentTurn: this.currentTurn,
             debugMode: this.debugMode,
             threads: {
-                total: this.worldState.threads.size,
-                active: Array.from(this.worldState.threads.values()).filter(t => t.status === 'active').length,
-                building: Array.from(this.worldState.threads.values()).filter(t => t.status === 'building').length,
-                resolved: Array.from(this.worldState.threads.values()).filter(t => t.status === 'resolved').length,
-                dormant: Array.from(this.worldState.threads.values()).filter(t => t.status === 'dormant').length,
-                details: Array.from(this.worldState.threads.values()).map(t => ({
+                total: Object.keys(this.threadManager.getThreads()).length,
+                active: threads.filter(t => t.status === 'active').length,
+                building: threads.filter(t => t.status === 'building').length,
+                resolved: threads.filter(t => t.status === 'resolved').length,
+                dormant: threads.filter(t => t.status === 'dormant').length,
+                details: threads.map(t => ({
                     id: t.id,
                     type: t.type,
                     title: t.title,
@@ -1029,20 +685,20 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
                 }))
             },
             characters: {
-                total: this.worldState.characters.size,
-                profiles: Array.from(this.worldState.characters.values()).map(c => ({
+                total: Object.keys(this.worldState.characters).length,
+                profiles: characters.map(c => ({
                     id: c.id,
                     name: c.name,
                     faction: 'independent',  // No faction in ICharacterProfile
                     currentActivity: c.currentActivity,
                     goals: c.goals?.length || 0,
-                    relationships: c.relationships.size
+                    relationships: Object.keys(c.relationships).length
                 }))
             },
             worldEvents: {
                 total: this.worldState.events.length,
-                active: this.worldState.events.filter(e => 
-                    e.startTurn <= this.currentTurn && 
+                active: this.worldState.events.filter(e =>
+                    e.startTurn <= this.currentTurn &&
                     e.startTurn + e.duration > this.currentTurn
                 ).length,
                 recent: this.worldState.events.slice(-3).map(e => ({
@@ -1052,8 +708,8 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
                 }))
             },
             factions: {
-                total: this.worldState.factionActivities.size,
-                activities: Array.from(this.worldState.factionActivities.values()).map(f => ({
+                total: Object.keys(this.worldState.factionActivities).length,
+                activities: factions.map(f => ({
                     faction: f.factionId,
                     operations: f.currentOperations,
                     goals: f.currentGoals
@@ -1071,7 +727,7 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
             },
             narrativePressure: this.worldState.narrativePressure
         };
-        
+
         // DEBUG: console.log('[WorldState] Debug Info:', info);
         return info;
     }
@@ -1081,18 +737,18 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
      */
     public forceUpdate(type: 'minor' | 'major' = 'minor'): void {
         // DEBUG: console.log(`[WorldState] Forcing ${type} update at turn ${this.currentTurn}`);
-        
+
         if (type === 'major') {
             this.performMajorUpdate();
         } else {
             // Trigger a minor update by advancing a random thread
-            const threads = Array.from(this.worldState.threads.values());
+            const threads = Object.values(this.threadManager.getThreads()).filter(t => t !== undefined);
             if (threads.length > 0) {
                 const randomThread = threads[Math.floor(Math.random() * threads.length)];
                 if (randomThread) {
                     randomThread.tension = Math.min(100, randomThread.tension + 20);
                     if (randomThread.tension > 80 && randomThread.status === 'building') {
-                        this.activateThread(randomThread);
+                        this.threadManager.activateThread(randomThread);
                     }
                     // DEBUG: console.log(`[WorldState] Advanced thread: ${randomThread.title} (tension: ${randomThread.tension})`);
                 }
@@ -1136,7 +792,12 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
      */
     public testMajorEvent(): void {
         // DEBUG: console.log('[WorldState] Testing major world event');
-        this.generateWorldEvents();
+        this.eventGenerator.generateEvents(
+            this.currentTurn,
+            this.threadManager.getThreads(),
+            this.worldState.characters,
+            this.factionManager.getActivities()
+        );
         const latestEvent = this.worldState.events[this.worldState.events.length - 1];
         if (latestEvent) {
             // DEBUG: console.log('[WorldState] Generated event:', latestEvent);
@@ -1148,26 +809,26 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
      */
     public getNarrativeSuggestions(): string[] {
         const suggestions: string[] = [];
-        
+
         // Check for threads ready to activate
-        this.worldState.threads.forEach(thread => {
-            if (thread.status === 'building' && thread.tension > 70) {
+        Object.values(this.threadManager.getThreads()).forEach(thread => {
+            if (thread && thread.status === 'building' && thread.tension > 70) {
                 suggestions.push(`Thread "${thread.title}" is ready to activate (tension: ${thread.tension})`);
             }
         });
-        
+
         // Check for conflicts escalating
         this.worldState.conflicts.forEach(conflict => {
             if (conflict.escalation > 80) {
                 suggestions.push(`Conflict involving ${[...conflict.instigators, ...conflict.targets].join(' and ')} is critical`);
             }
         });
-        
+
         // Check narrative pressure
         const pressure = this.worldState.narrativePressure;
         suggestions.push(`Narrative focus suggestion: ${pressure.suggestedFocus}`);
         suggestions.push(`Current momentum: ${pressure.momentum}`);
-        
+
         return suggestions;
     }
     
@@ -1175,7 +836,7 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
      * Enhanced logging with categories and timestamps
      */
     private log(category: string, _message: string, _data?: unknown): void {
-        if (!this.debugMode || !this.logCategories.has(category)) {
+        if (!this.debugMode || !this.logCategories.includes(category)) {
             return;
         }
 
@@ -1190,39 +851,4 @@ export class WorldState extends EventBus<StateChangeEventsMap, UpdateStateEvents
         // }
     }
     
-    /**
-     * Safely execute a function with error handling
-     */
-    private safeExecute(fn: () => void, context: string): void {
-        try {
-            fn();
-        } catch (error) {
-            this.log('error', `Error in ${context}`, error);
-            // Continue processing other threads/updates
-        }
-    }
-    
-    /**
-     * Generate potential outcomes for a thread
-     */
-    private generateThreadOutcomes(thread: IStoryThread): IThreadOutcome[] {
-        const outcomes: IThreadOutcome[] = [];
-        
-        // Generate 2-3 potential outcomes based on thread type
-        const outcomeCount = Math.floor(Math.random() * 2) + 2;
-        
-        for (let i = 0; i < outcomeCount; i++) {
-            const isPositive = i === 0; // At least one positive outcome
-            const isNegative = i === 1; // At least one negative outcome
-            
-            outcomes.push({
-                id: `${thread.id}_outcome_${i}`,
-                description: isPositive ? 'Positive resolution' : isNegative ? 'Negative resolution' : 'Neutral resolution',
-                probability: 1 / outcomeCount,
-                consequences: []
-            });
-        }
-        
-        return outcomes;
-    }
 }

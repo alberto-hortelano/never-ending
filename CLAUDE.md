@@ -301,6 +301,50 @@ class Board extends Component {
 - `/gameEngine` - AI-powered game narrative endpoint
 - Static files served with smart ES module resolution
 
+## AI Integration Guidelines
+
+### Critical Rules for AI Response Handling
+
+**NEVER SILENTLY FIX OR DISCARD AI RESPONSES**
+
+This is the most important rule when working with AI-generated commands:
+
+1. **Do NOT modify AI responses**: If the AI generates invalid commands (wrong format, multiple commands of same type, etc.), do NOT silently fix them or use only part of the response.
+
+2. **Do NOT discard parts of AI responses**: If the AI returns multiple speech commands and you only use the first one, the AI will think ALL commands were executed successfully.
+
+3. **Why this matters**: The AI maintains conversation context. If you silently fix or discard responses:
+   - The AI thinks all its commands were executed
+   - Creates a disconnect between AI's understanding and actual game state
+   - Breaks conversation coherence and narrative flow
+   - The AI won't learn from its mistakes
+
+4. **Correct approach**:
+   - Validate the entire AI response
+   - If validation fails, send error feedback back to the AI with retry
+   - Let the AI correct itself and generate a new, valid response
+   - Only execute responses that fully pass validation
+
+5. **Implementation**: See `AIErrorHandler.ts` for the retry-with-feedback pattern
+
+### AI Command Structure
+
+- **One command per response**: The AI should return exactly ONE command per turn
+- **No multiple commands of same type**: Never accept responses with multiple speech, movement, or attack commands
+- **Supported command types**: `speech`, `movement`, `attack`, `character`, `map`, `item`
+- **Command format**: See `AICommandParser.ts` for validation rules
+
+### Error Feedback Loop
+
+When AI generates invalid commands:
+1. `AICommandValidator` detects the errors
+2. `AIErrorHandler` formats error feedback explaining what went wrong
+3. Feedback is sent back to AI with the original context
+4. AI generates a corrected command
+5. Process repeats up to 3 times before giving up
+
+This ensures the AI learns from mistakes and maintains accurate game state understanding.
+
 ## Code Quality & Maintenance
 
 ### Keeping Code Clean

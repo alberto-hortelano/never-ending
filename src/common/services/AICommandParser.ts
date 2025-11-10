@@ -1,5 +1,8 @@
 export type CommandType = 'map' | 'character' | 'movement' | 'attack' | 'speech' | 'item';
 
+// Maximum depth for nested commands to prevent infinite recursion
+const MAX_COMMAND_DEPTH = 3;
+
 export interface AICommand {
     type: CommandType;
     [key: string]: unknown;
@@ -9,7 +12,9 @@ export interface MovementCommand extends AICommand {
     type: 'movement';
     characters: Array<{
         name: string;
-        location: string;
+        location?: string;  // Optional - not needed for abstract actions
+        action?: 'patrol' | 'search' | 'investigate' | 'scout' | 'retreat' | 'advance';
+        target?: string;    // For "search for X" or "investigate X" actions
     }>;
 }
 
@@ -32,6 +37,7 @@ export interface SpeechCommand extends AICommand {
     actionData?: ActionData; // Additional data for the action
     target?: string;  // Target of the speech (for AI-to-AI conversations)
     listener?: string; // Alternative field name for target
+    command?: AICommand;  // Optional follow-up command to execute after speech
 }
 
 export interface CharacterCommand extends AICommand {
@@ -100,7 +106,12 @@ export interface MapCommand extends AICommand {
 }
 
 export class AICommandParser {
-    public validate(command: unknown): AICommand | null {
+    public validate(command: unknown, depth = 0): AICommand | null {
+        if (depth > MAX_COMMAND_DEPTH) {
+            console.error(`Command depth exceeds maximum allowed (${MAX_COMMAND_DEPTH}). Possible infinite nesting detected.`);
+            return null;
+        }
+
         if (!command || typeof command !== 'object') {
             console.error('Invalid command: not an object');
             return null;
@@ -114,40 +125,61 @@ export class AICommandParser {
 
         switch (cmd.type) {
             case 'movement':
-                return this.validateMovement(command);
+                return this.validateMovement(command, depth);
             case 'attack':
-                return this.validateAttack(command);
+                return this.validateAttack(command, depth);
             case 'speech':
-                return this.validateSpeech(command);
+                return this.validateSpeech(command, depth);
             case 'character':
-                return this.validateCharacter(command);
+                return this.validateCharacter(command, depth);
             case 'map':
-                return this.validateMap(command);
+                return this.validateMap(command, depth);
             case 'item':
-                return this.validateItem(command);
+                return this.validateItem(command, depth);
             default:
                 console.error('Invalid command type:', cmd.type);
                 return null;
         }
     }
 
-    private validateMovement(command: unknown): MovementCommand | null {
+    private validateMovement(command: unknown, _depth: number): MovementCommand | null {
         if (!command || typeof command !== 'object') {
             console.error('Movement command is not an object');
             return null;
         }
-        
+
         const cmd = command as Record<string, unknown>;
         if (!Array.isArray(cmd.characters) || cmd.characters.length === 0) {
             console.error('Movement command missing characters array');
             return null;
         }
 
+        const validActions = ['patrol', 'search', 'investigate', 'scout', 'retreat', 'advance'];
+
         for (const char of cmd.characters) {
             const charObj = char as Record<string, unknown>;
-            if (!charObj.name || !charObj.location) {
-                console.error('Movement character missing name or location');
+
+            // Must have name
+            if (!charObj.name) {
+                console.error('Movement character missing name');
                 return null;
+            }
+
+            // Must have either location OR action
+            if (!charObj.location && !charObj.action) {
+                console.error('Movement character must have either location or action');
+                return null;
+            }
+
+            // Validate action if present
+            if (charObj.action && !validActions.includes(charObj.action as string)) {
+                console.error('Invalid movement action:', charObj.action, 'Valid options:', validActions);
+                return null;
+            }
+
+            // If action is 'search' or 'investigate', should have a target
+            if ((charObj.action === 'search' || charObj.action === 'investigate') && !charObj.target) {
+                console.warn(`Movement action '${charObj.action}' should have a target`);
             }
         }
 
@@ -155,7 +187,7 @@ export class AICommandParser {
         return cmd as MovementCommand;
     }
 
-    private validateAttack(command: unknown): AttackCommand | null {
+    private validateAttack(command: unknown, _depth: number): AttackCommand | null {
         if (!command || typeof command !== 'object') {
             console.error('Attack command is not an object');
             return null;
@@ -179,7 +211,7 @@ export class AICommandParser {
         return cmd as AttackCommand;
     }
 
-    private validateSpeech(command: unknown): SpeechCommand | null {
+    private validateSpeech(command: unknown, depth: number): SpeechCommand | null {
         if (!command || typeof command !== 'object') {
             console.error('Speech command is not an object');
             return null;
@@ -202,11 +234,22 @@ export class AICommandParser {
             return null;
         }
 
+        // Validate follow-up command if present (with depth check)
+        if (cmd.command) {
+            const followUpCommand = this.validate(cmd.command, depth + 1);
+            if (!followUpCommand) {
+                console.error(`Speech command has invalid follow-up command at depth ${depth + 1}`);
+                return null;
+            }
+            // Replace with validated version
+            cmd.command = followUpCommand;
+        }
+
         // At this point, we've validated the structure matches SpeechCommand
         return cmd as SpeechCommand;
     }
 
-    private validateCharacter(command: unknown): CharacterCommand | null {
+    private validateCharacter(command: unknown, _depth: number): CharacterCommand | null {
         if (!command || typeof command !== 'object') {
             console.error('Character command is not an object');
             return null;
@@ -276,7 +319,7 @@ export class AICommandParser {
         return cmd as CharacterCommand;
     }
 
-    private validateMap(command: unknown): MapCommand | null {
+    private validateMap(command: unknown, _depth: number): MapCommand | null {
         if (!command || typeof command !== 'object') {
             console.error('Map command is not an object');
             return null;
@@ -336,7 +379,7 @@ export class AICommandParser {
         if (cmd['characters'] && Array.isArray(cmd['characters']) && cmd['characters'].length > 0) {
             // Reuse character validation logic only if there are characters to validate
             const charCommand = { type: 'character', characters: cmd['characters'] };
-            if (!this.validateCharacter(charCommand)) {
+            if (!this.validateCharacter(charCommand, _depth)) {
                 return null;
             }
         }
@@ -412,7 +455,7 @@ export class AICommandParser {
     }
 
     
-    private validateItem(command: unknown): AICommand | null {
+    private validateItem(command: unknown, _depth: number): AICommand | null {
         if (!command || typeof command !== 'object') {
             console.error('Item command is not an object');
             return null;

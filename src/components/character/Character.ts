@@ -554,36 +554,38 @@ export default class Character extends Component {
         // Store the visual state for class management
         this.currentVisualState = visualState;
 
+        // Batch all DOM updates in RAF for better performance
+        requestAnimationFrame(() => {
+            // Update all classes using centralized method
+            this.updateCharacterClasses();
 
-        // Update all classes using centralized method
-        this.updateCharacterClasses();
+            // Update styles
+            if (visualState.styles) {
+                Object.entries(visualState.styles).forEach(([prop, value]) => {
+                    if (prop === '--x' || prop === '--y') {
+                        // Position updates for movable element
+                        this.movable!.style.setProperty(prop, value);
+                    } else if (prop === '--skin' || prop === '--helmet' || prop === '--suit') {
+                        // Palette updates on the component itself
+                        this.style.setProperty(prop, value);
+                    } else if (prop.startsWith('--')) {
+                        // Other CSS custom properties
+                        this.style.setProperty(prop, value);
+                    }
+                });
+            }
 
-        // Update styles
-        if (visualState.styles) {
-            Object.entries(visualState.styles).forEach(([prop, value]) => {
-                if (prop === '--x' || prop === '--y') {
-                    // Position updates for movable element
-                    this.movable!.style.setProperty(prop, value);
-                } else if (prop === '--skin' || prop === '--helmet' || prop === '--suit') {
-                    // Palette updates on the component itself
-                    this.style.setProperty(prop, value);
-                } else if (prop.startsWith('--')) {
-                    // Other CSS custom properties
-                    this.style.setProperty(prop, value);
-                }
-            });
-        }
+            // Update health bar
+            this.updateHealthBar(visualState.healthBarPercentage, visualState.healthBarColor);
 
-        // Update health bar
-        this.updateHealthBar(visualState.healthBarPercentage, visualState.healthBarColor);
+            // Update interaction state
+            this.style.pointerEvents = visualState.isDefeated ? 'none' : '';
 
-        // Update interaction state
-        this.style.pointerEvents = visualState.isDefeated ? 'none' : '';
-
-        // Update weapon display
-        if (visualState.equippedWeapon !== undefined) {
-            this.updateWeaponDisplay(visualState.equippedWeapon);
-        }
+            // Update weapon display
+            if (visualState.equippedWeapon !== undefined) {
+                this.updateWeaponDisplay(visualState.equippedWeapon);
+            }
+        });
     }
 
     private updateTurnIndicator() {
@@ -608,6 +610,7 @@ export default class Character extends Component {
 
         const healthBarFill = this.root.querySelector('.health-bar-fill') as HTMLElement;
         if (healthBarFill) {
+            // Note: Already wrapped in RAF by applyVisualState caller, no need to double-wrap
             healthBarFill.style.width = `${percentage}%`;
             healthBarFill.style.backgroundColor = color;
         }
@@ -617,15 +620,17 @@ export default class Character extends Component {
     private onDefeated() {
         // The defeated visual state is already being set by UIState.updateCharacterDefeated
         // which is called by the State class when it receives the characterDefeated event.
-        // However, let's ensure our local visual state is updated immediately
-        if (this.currentVisualState) {
-            this.currentVisualState.isDefeated = true;
-            // Clear any action-related temporary classes
-            this.currentVisualState.temporaryClasses = [];
-            // Update classes immediately
-            this.updateCharacterClasses();
-        }
-        
+        // Batch DOM updates in RAF for smooth animation
+        requestAnimationFrame(() => {
+            if (this.currentVisualState) {
+                this.currentVisualState.isDefeated = true;
+                // Clear any action-related temporary classes
+                this.currentVisualState.temporaryClasses = [];
+                // Update classes immediately
+                this.updateCharacterClasses();
+            }
+        });
+
         // Also ensure the character element removes action classes immediately
         if (this.characterElement) {
             const actionClasses = ['walk', 'shoot', 'idle', 'powerStrike', 'slash', 'fastAttack', 'feint', 'breakGuard'];

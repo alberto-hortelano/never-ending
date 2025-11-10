@@ -21,15 +21,10 @@ export function getMainCharacterName(_originId?: string): string {
 // Faction Names (character allegiance)
 export const PLAYER_FACTION = 'player';
 export const ENEMY_FACTION = 'enemy';
-export const NEUTRAL_FACTION = 'neutral';
 
 // Controller Types (who controls the character)
 export const HUMAN_CONTROLLER = 'human';
 export const AI_CONTROLLER = 'ai';
-
-// Legacy aliases for backward compatibility (to be removed later)
-export const HUMAN_PLAYER = HUMAN_CONTROLLER;
-export const AI_PLAYER = AI_CONTROLLER;
 
 // Animation durations in milliseconds
 export const ANIMATION_DURATIONS = {

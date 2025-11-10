@@ -286,8 +286,6 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
     }
 
     switchToSinglePlayer(origin?: IOriginStory | null) {
-        // DEBUG: console.log('[MultiplayerManager] Switching to single player mode');
-        // DEBUG: console.log('[MultiplayerManager] Received origin:', origin?.id, origin?.name);
         this.isMultiplayer = false;
         this.isHost = false;
 
@@ -297,7 +295,6 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
         
         // If an origin was provided, add the story state
         if (origin) {
-            // DEBUG: console.log('[MultiplayerManager] Adding origin to state');
             singlePlayerState.story = {
                 selectedOrigin: origin,
                 currentChapter: 1,
@@ -316,8 +313,6 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
             };
         }
         
-        // DEBUG: console.log('[MultiplayerManager] Base state created, checking for story data...');
-        // DEBUG: console.log('[MultiplayerManager] Story state:', {
         //     hasStory: !!singlePlayerState.story,
         //     hasSelectedOrigin: !!singlePlayerState.story?.selectedOrigin,
         //     originName: singlePlayerState.story?.selectedOrigin?.name
@@ -326,7 +321,6 @@ export class MultiplayerManager extends EventBus<EventsMap, EventsMap> {
         // Don't create state here - let web.ts handle it
         this.state = null;
 
-        // DEBUG: console.log('[MultiplayerManager] Dispatching switchedToSinglePlayer event');
         this.dispatch('switchedToSinglePlayer', { state: singlePlayerState });
     }
 
