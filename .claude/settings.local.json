@@ -40,7 +40,10 @@
       "mcp__playwright__browser_snapshot",
       "mcp__playwright__browser_console_messages",
       "mcp__playwright__browser_wait_for",
-      "mcp__playwright__browser_run_code"
+      "mcp__playwright__browser_run_code",
+      "mcp__playwright__browser_press_key",
+      "Bash(cat:*)",
+      "mcp__playwright__browser_evaluate"
     ],
     "deny": []
   }

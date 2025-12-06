@@ -428,13 +428,44 @@ export class AIMockService {
                 }
             ],
             characters: [
+                // Player characters
+                {
+                    name: 'Jim',
+                    race: 'human',
+                    description: 'El desertor - ex-soldado del Comando Estelar',
+                    location: 'Main Hold',
+                    speed: 'medium',
+                    orientation: 'top',
+                    faction: 'player',
+                    palette: {
+                        skin: '#d4a574',
+                        helmet: '#1a472a',
+                        suit: '#2d5a3d'
+                    }
+                },
+                {
+                    name: 'Data',
+                    race: 'robot',
+                    description: 'Droide de servicio leal',
+                    location: 'Main Hold',
+                    speed: 'fast',
+                    orientation: 'top',
+                    faction: 'player',
+                    palette: {
+                        skin: '#c0c0c0',
+                        helmet: '#4a90d9',
+                        suit: '#6a6a6a'
+                    }
+                },
+                // Enemy characters
                 {
                     name: 'enemy_patrol_leader',
                     race: 'human',
                     description: 'Líder de patrulla del Comando',
-                    location: 'Bridge',  // Use room name instead of coordinates
+                    location: 'Bridge',
                     speed: 'medium',
                     orientation: 'bottom',
+                    faction: 'enemy',
                     palette: {
                         skin: '#d7a55f',
                         helmet: '#2a2a2a',
@@ -445,9 +476,10 @@ export class AIMockService {
                     name: 'enemy_soldier_1',
                     race: 'human',
                     description: 'Soldado del Comando',
-                    location: 'Engine Room',  // Use room name instead of coordinates
+                    location: 'Engine Room',
                     speed: 'medium',
                     orientation: 'left',
+                    faction: 'enemy',
                     palette: {
                         skin: '#c8956d',
                         helmet: '#333333',
@@ -458,9 +490,10 @@ export class AIMockService {
                     name: 'enemy_soldier_2',
                     race: 'human',
                     description: 'Guardia del Comando',
-                    location: 'Navigation',  // Use room name instead of coordinates
+                    location: 'Navigation',
                     speed: 'slow',
                     orientation: 'right',
+                    faction: 'enemy',
                     palette: {
                         skin: '#b8a590',
                         helmet: '#2d2d2d',

@@ -174,6 +174,12 @@ eventBus.listen('startSinglePlayer', () => {
     // Single player will be handled by switchedToSinglePlayer event
 });
 
+// Quick Play - starts immediately with a pre-built scenario
+eventBus.listen('quickPlay', () => {
+    console.log('[Web] Quick Play started');
+    play(); // Uses getBaseState() which creates a ready-to-play scenario
+});
+
 eventBus.listen('startMultiplayer', () => {
     // Multiplayer game will be started by the MultiplayerManager
     const state = multiplayerManager.getState();

@@ -67,6 +67,7 @@ export class MainMenu extends Component {
 
     private setupEventListeners(root: ShadowRoot): void {
         const buttons: Array<[string, () => void]> = [
+            ['quickPlayBtn', () => this.startQuickPlay()],
             ['singlePlayerBtn', () => this.startSinglePlayer()],
             ['multiplayerBtn', () => this.showMultiplayerLobby()],
             ['characterCreatorBtn', () => this.showCharacterCreator()],
@@ -79,6 +80,12 @@ export class MainMenu extends Component {
                 button.addEventListener('click', handler);
             }
         }
+    }
+
+    private startQuickPlay(): void {
+        // Cast to any since quickPlay is a custom event not in the typed events map
+        (this as any).dispatch('quickPlay', undefined);
+        this.style.display = 'none';
     }
     
     private setupDevelopmentUI(root: ShadowRoot): void {
